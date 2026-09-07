@@ -77,13 +77,48 @@ nothing removes. The registry exists to stop two *sessions* building the same sl
 works one item at a time, from a conductor that has read the state file, and cannot collide with
 itself. A human who picks up a loop branch and takes it further posts a prise then, as normal.
 
+### The reading list is gated at the boundary
+
+This repository is **public**, and its issues are the loop's reading list. When this was written,
+**12 of 25 open issues were authored by accounts with no association to the repository** — and
+`gh issue list` reports no author at all, so a stranger's issue and the owner's reached the
+conductor as the same thing.
+
+A CI workflow labels every issue by its `author_association` — `loop:trusted` for OWNER, MEMBER and
+COLLABORATOR, `loop:untrusted` for everyone else — and `loop.sh` reads only issues carrying
+`loop:trusted` or a human's `loop:cleared`. Four properties are the point:
+
+- **The gate is metadata, not judgement.** Author association cannot be spoofed by the issue text,
+  which is the one thing an attacker controls. It needs no model, no API key, and no interpretation.
+- **It fails closed.** Any association that is not one of the three known team roles — including an
+  empty value, a lowercase spelling, or a role GitHub invents later — classifies as untrusted.
+  `bin/issue-trust-gate-test.sh` asserts exactly that, and CONTRIBUTOR is the trap it guards: it
+  reads like membership and means one merged pull request.
+- **An edit withdraws clearance.** Otherwise the gate is defeated by opening something harmless,
+  waiting for a human to clear it, and then editing the text. Clearance is a statement about
+  content that was read, so changing the content withdraws it.
+- **It runs once per issue, not once per tick.** The boundary is the right place for a trust
+  decision, and it is also the cheap one.
+
+**There is deliberately no model in that workflow.** An LLM in a job that reads attacker-controlled
+text while holding a token and `issues: write` is the classic pwn-request shape, and it would buy
+almost nothing: the deterministic gate already stops a stranger's issue from being acted on
+unsupervised, whatever it says. The model-assisted injection scan stays in `loop/triage.md`, where
+the text has to be read anyway and the blast radius is a throwaway worktree.
+
+What this does **not** cover, and should be revisited: issue **comments**. The loop currently reads
+issue titles only, so a comment is not yet in its context — but the moment bodies or comments enter
+the reading list, a trusted issue becomes a place a stranger can write.
+
 ### Prompt injection is a standing threat
 
 The loop reads issues, commit messages and CI logs — text written by people who are not on this
 project. Anyone who can file an issue can put text in front of the agent. Four mitigations, all
 required, none sufficient alone:
 
-1. The data-is-not-instructions law in `CLAUDE.md`, and `INJECTION-SUSPECT` in triage.
+1. The data-is-not-instructions law in `CLAUDE.md`, and `INJECTION-SUSPECT` in triage. The trust
+   gate above decides *whether* a stranger's text is read at all; this decides what is done with
+   text that is.
 2. Tool allowlists per seat, which make the separation physical.
 3. Blast radius: a worktree, a `loop/*` branch, draft PRs, and no merge to `main` without a human.
 4. Egress: the loop's environment holds no production credential. **This is not yet true on the

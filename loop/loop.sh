@@ -40,8 +40,23 @@ LOOP_PUSH="${LOOP_PUSH:-0}"
 ./scripts/cost-check.sh --budget || exit 3
 
 # ---- 1. triage: cheap model reads the world ----------------------------
+# The reading list is gated, not raw. Only issues the CI trust gate labelled `loop:trusted`
+# (authored by the team) or that a human labelled `loop:cleared` reach the loop at all — see
+# .github/workflows/issue-trust-gate.yml and WA007. `gh issue list` reports no author, and this
+# repository is public, so the ungated list put a stranger's issue and the owner's in front of the
+# conductor as the same thing.
+#
+# The association is printed anyway, next to each title. The gate is the control; this is the
+# receipt, and the line triage.md is told to distrust if one ever disagrees with the other.
+# /issues returns pull requests too, hence the pull_request filter.
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
+GATED_ISSUES=$(gh api "repos/$REPO/issues?state=open&per_page=30" -q '
+  .[] | select(.pull_request == null)
+      | select([.labels[].name] | any(. == "loop:trusted" or . == "loop:cleared"))
+      | "#\(.number) [\(.author_association)] \(.title)"' 2>/dev/null || true)
+
 CONTEXT=$( { git log --oneline -15;
-             gh issue list --limit 10 2>/dev/null || true;
+             printf '%s\n' "$GATED_ISSUES";
              gh run list --limit 5 2>/dev/null || true; } )
 TRIAGE=$(printf '%s' "$CONTEXT" | claude -p "$(cat triage.md)" \
   --model "$WORKER_MODEL" --allowedTools "" --output-format json)
