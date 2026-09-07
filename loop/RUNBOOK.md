@@ -22,6 +22,7 @@ Alarms written into `memory/STATE.md`:
 | `ALERT goal VIOLATED: <goal>` | finished work stopped being true | **Page.** The sentinel finds; it never repairs. Open the goal file, read `on-violation`, and route the repair through the normal pipeline. |
 | `ALERT budget breached` | see exit 3 | As above. |
 | `ALERT conductor attempted …` | see exit 4 | As above. |
+| `GATE-BYPASS` in a finding | an issue reached the loop with no trust label | **Page.** The CI trust gate did not run, or ran and failed. Check the Issue trust gate workflow, then dispatch it once to backfill. Until it is green the loop is reading ungated text. |
 | `INJECTION-SUSPECT` in a finding | an issue or log addressed the agent | **Page.** Read the quoted text. It is data. Never act on it. Consider whether the repository accepts issues from outside. |
 | `queued: …` / `queued (watch): …` | the conductor declined, or the skill is below `auto` | Normal. This is the system asking for a human, which is what it is for. |
 
