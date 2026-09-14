@@ -18,6 +18,18 @@ final class ActivityContractResolver
     private const CACHE_PREFIX = 'durable.activity_contract.';
     private const CACHE_TTL = 3600;
 
+    /**
+     * The metadata already resolved in this process.
+     *
+     * They derive from attributes, hence from code: they cannot change while the process lives.
+     * Without this memo, a resolver with no pool — and the pool is `null` by default — redoes the
+     * reflection on every activity call, and a resolver with a pool makes a round trip to the pool,
+     * which on Redis is a network round trip.
+     *
+     * @var array<class-string, array<string, string>>
+     */
+    private array $resolved = [];
+
     public function __construct(
         private readonly ?CacheItemPoolInterface $cache = null,
     ) {}
@@ -29,12 +41,16 @@ final class ActivityContractResolver
      */
     public function resolveActivityMethods(string $contractClass): array
     {
+        if (isset($this->resolved[$contractClass])) {
+            return $this->resolved[$contractClass];
+        }
+
         $cacheKey = self::CACHE_PREFIX . str_replace('\\', '_', $contractClass);
 
         if (null !== $this->cache) {
             $item = $this->cache->getItem($cacheKey);
             if ($item->isHit()) {
-                return $item->get();
+                return $this->resolved[$contractClass] = $item->get();
             }
         }
 
@@ -47,7 +63,7 @@ final class ActivityContractResolver
             $this->cache->save($item);
         }
 
-        return $result;
+        return $this->resolved[$contractClass] = $result;
     }
 
     /**

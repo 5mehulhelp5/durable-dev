@@ -27,3 +27,14 @@ __pycache__/
 
 # The demonstration workers' logs and PIDs.
 /demo/var/
+
+# Tooling that lives in the checkout and belongs to a workstation, never to the repository:
+# the IDE project, the agent skill caches and their lock, and the per-task checkouts under
+# .worktrees/ — the coordination registry (prises/, PRISES.md) stays tracked.
+/.idea/
+/.claude/
+/.agents/
+/skills-lock.json
+/.worktrees/*
+!/.worktrees/prises/
+!/.worktrees/PRISES.md
