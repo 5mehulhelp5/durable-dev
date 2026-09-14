@@ -13,35 +13,34 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
- * Ce que le bundle accepte alors qu'il ne peut pas le tenir.
+ * What the bundle accepts while it cannot honour it.
  *
- * Trois formes du même défaut : une configuration reçue puis jetée, une dépendance dont l'absence
- * ne dit pas quoi faire, et une référence dure vers un paquet que personne ne déclare. Aucune ne
- * casse à l'installation — toutes se paient au premier incident, là où on ne cherche pas.
+ * Three shapes of the same defect: a configuration received then discarded, a dependency whose
+ * absence does not say what to do, and a hard reference to a package nobody declares. None breaks
+ * at install time — all are paid at the first incident, where nobody is looking.
  */
 final class DurableDeclaredWiringTest extends TestCase
 {
     /**
-     * Le pool est cherché par `hasDefinition()`. Un alias — et
-     * `Psr\Cache\CacheItemPoolInterface` en est un — n'en est pas une, et une définition posée par
-     * une extension qui tourne après celle-ci n'en est pas encore une. Dans les deux cas la
-     * configuration de l'exploitant était silencieusement jetée.
+     * The pool is looked up with `hasDefinition()`. An alias — and `Psr\Cache\CacheItemPoolInterface`
+     * is one — is not a definition, and neither yet is a definition placed by an extension that runs
+     * after this one. In both cases the operator's configuration was silently discarded.
      */
-    public function testUnPoolConfigureEstCableMemeSaDefinitionAbsenteAuChargement(): void
+    public function testAConfiguredPoolIsWiredEvenWhenItsDefinitionIsAbsentAtLoadTime(): void
     {
-        $container = $this->load(['activity_contracts' => ['cache' => 'mon.pool.declare.plus.tard']]);
+        $container = $this->load(['activity_contracts' => ['cache' => 'my.pool.declared.later']]);
 
         $argument = $container->getDefinition(ActivityContractResolver::class)->getArgument(0);
 
         self::assertInstanceOf(
             Reference::class,
             $argument,
-            "le pool configuré doit être référencé ; s'il n'existe pas, c'est une erreur de compilation, pas un silence",
+            'the configured pool must be referenced; if it does not exist, that is a compile error, not silence',
         );
-        self::assertSame('mon.pool.declare.plus.tard', (string) $argument);
+        self::assertSame('my.pool.declared.later', (string) $argument);
     }
 
-    public function testSansPoolConfigureLeResolveurNEnRecoitAucun(): void
+    public function testWithoutAConfiguredPoolTheResolverReceivesNone(): void
     {
         $container = $this->load([]);
 
@@ -49,11 +48,11 @@ final class DurableDeclaredWiringTest extends TestCase
     }
 
     /**
-     * Sans `framework.lock`, `lock.factory` n'existe pas et le conteneur échoue — mais sur un
-     * « service inexistant » qui ne dit pas quoi configurer. Le verrou est obligatoire sur DBAL :
-     * sans lui, deux workers rejouent le même journal en même temps.
+     * Without `framework.lock`, `lock.factory` does not exist and the container fails — but on a
+     * "non-existent service" that does not say what to configure. The lock is mandatory on DBAL:
+     * without it, two workers replay the same journal at the same time.
      */
-    public function testLAbsenceDeLockFactoryDitQuoiConfigurer(): void
+    public function testAMissingLockFactorySaysWhatToConfigure(): void
     {
         $container = new ContainerBuilder();
         $container->setDefinition('durable.dbal.single_resume_lock', new Definition(\stdClass::class))
@@ -65,7 +64,7 @@ final class DurableDeclaredWiringTest extends TestCase
         (new RequireLockFactoryPass())->process($container);
     }
 
-    public function testAvecLockFactoryLaPasseLaisseFaire(): void
+    public function testWithALockFactoryThePassLetsItThrough(): void
     {
         $container = new ContainerBuilder();
         $container->setDefinition('durable.dbal.single_resume_lock', new Definition(\stdClass::class));
@@ -76,7 +75,7 @@ final class DurableDeclaredWiringTest extends TestCase
         self::assertTrue($container->hasDefinition('durable.dbal.single_resume_lock'));
     }
 
-    public function testSansBackendDbalLaPasseNeDitRien(): void
+    public function testWithoutTheDbalBackendThePassSaysNothing(): void
     {
         $container = new ContainerBuilder();
 
@@ -86,10 +85,10 @@ final class DurableDeclaredWiringTest extends TestCase
     }
 
     /**
-     * L'extension importe des classes des deux ponts. Un `composer require` du seul bundle donne
-     * alors un conteneur qui compile et un fatal « class not found » au premier appel.
+     * The extension imports classes from both bridges. A `composer require` of the bundle alone then
+     * yields a container that compiles and a "class not found" fatal at the first call.
      */
-    public function testLesDeuxPontsSontDeclaresEnSuggest(): void
+    public function testBothBridgesAreDeclaredInSuggest(): void
     {
         $manifest = json_decode(
             (string) file_get_contents(__DIR__ . '/../../../../src/DurableBundle/composer.json'),
@@ -100,7 +99,7 @@ final class DurableDeclaredWiringTest extends TestCase
         $suggest = $manifest['suggest'] ?? [];
 
         foreach (['gplanchat/durable-bridge-temporal', 'gplanchat/durable-bridge-dbal'] as $bridge) {
-            self::assertArrayHasKey($bridge, $suggest, $bridge . ' est câblé en dur par DurableExtension');
+            self::assertArrayHasKey($bridge, $suggest, $bridge . ' is hard-wired by DurableExtension');
         }
     }
 

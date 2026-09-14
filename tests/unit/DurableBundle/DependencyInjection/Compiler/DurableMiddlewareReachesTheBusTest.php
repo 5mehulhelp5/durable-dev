@@ -74,9 +74,9 @@ final class DurableMiddlewareReachesTheBusTest extends TestCase
         $container->register('messenger.bus.default')->addTag('messenger.bus');
         $container->setParameter('messenger.bus.default.middleware', $existing);
 
-        // Et ce que FrameworkExtension pose quand `framework.lock` est configuré. Le backend DBAL
-        // l'exige : `RequireLockFactoryPass` refuse désormais un conteneur qui monte le verrou de
-        // reprise sans fabrique, parce qu'une application dans cet état ne démarrerait pas non plus.
+        // And what FrameworkExtension provides when `framework.lock` is configured. The DBAL backend
+        // requires it: `RequireLockFactoryPass` now refuses a container that mounts the resume lock
+        // without a factory, because an application in that state would not start either.
         $container->register('lock.factory', \stdClass::class);
 
         (new DurableBundle())->build($container);

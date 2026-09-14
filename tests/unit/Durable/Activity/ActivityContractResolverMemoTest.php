@@ -14,21 +14,20 @@ use Psr\Cache\CacheItemPoolInterface;
 #[AsActivity(name: 'memo')]
 interface MemoContract
 {
-    #[AsActivityMethod(name: 'faire')]
-    public function faire(string $quoi): string;
+    #[AsActivityMethod(name: 'do')]
+    public function do(string $what): string;
 }
 
 /**
- * Le résolveur est sur le chemin chaud : chaque appel d'activité passe par lui.
+ * The resolver is on the hot path: every activity call goes through it.
  *
- * Deux coûts s'y cachaient. Sans pool — et le pool est `null` par défaut — il refaisait la
- * réflexion à chaque appel. Avec un pool, il refaisait un aller-retour au pool à chaque appel, ce
- * qui sur un Redis est un aller-retour réseau pour une donnée dérivée du code, donc immuable dans
- * le processus.
+ * Two costs hid there. Without a pool — and the pool is `null` by default — it redid the reflection
+ * on every call. With a pool, it made a round trip to the pool on every call, which on Redis is a
+ * network round trip for data derived from code, hence immutable within the process.
  */
 final class ActivityContractResolverMemoTest extends TestCase
 {
-    public function testLeSecondAppelNInterrogePasLePool(): void
+    public function testTheSecondCallDoesNotAskThePool(): void
     {
         $pool = new class implements CacheItemPoolInterface {
             public int $getItemCalls = 0;
@@ -40,52 +39,96 @@ final class ActivityContractResolverMemoTest extends TestCase
                 ++$this->getItemCalls;
                 $values = &$this->values;
 
-                return new class($key, $values) implements CacheItemInterface {
+                return new class ($key, $values) implements CacheItemInterface {
                     /** @param array<string, mixed> $values */
                     public function __construct(private string $key, private array &$values) {}
-                    public function getKey(): string { return $this->key; }
-                    public function get(): mixed { return $this->values[$this->key] ?? null; }
-                    public function isHit(): bool { return \array_key_exists($this->key, $this->values); }
-                    public function set(mixed $value): static { $this->values[$this->key] = $value; return $this; }
-                    public function expiresAt(?\DateTimeInterface $expiration): static { return $this; }
-                    public function expiresAfter(\DateInterval|int|null $time): static { return $this; }
+                    public function getKey(): string
+                    {
+                        return $this->key;
+                    }
+                    public function get(): mixed
+                    {
+                        return $this->values[$this->key] ?? null;
+                    }
+                    public function isHit(): bool
+                    {
+                        return \array_key_exists($this->key, $this->values);
+                    }
+                    public function set(mixed $value): static
+                    {
+                        $this->values[$this->key] = $value;
+
+                        return $this;
+                    }
+                    public function expiresAt(?\DateTimeInterface $expiration): static
+                    {
+                        return $this;
+                    }
+                    public function expiresAfter(\DateInterval|int|null $time): static
+                    {
+                        return $this;
+                    }
                 };
             }
 
-            public function getItems(array $keys = []): iterable { return []; }
-            public function hasItem(string $key): bool { return false; }
-            public function clear(): bool { return true; }
-            public function deleteItem(string $key): bool { return true; }
-            public function deleteItems(array $keys): bool { return true; }
-            public function save(CacheItemInterface $item): bool { return true; }
-            public function saveDeferred(CacheItemInterface $item): bool { return true; }
-            public function commit(): bool { return true; }
+            public function getItems(array $keys = []): iterable
+            {
+                return [];
+            }
+            public function hasItem(string $key): bool
+            {
+                return false;
+            }
+            public function clear(): bool
+            {
+                return true;
+            }
+            public function deleteItem(string $key): bool
+            {
+                return true;
+            }
+            public function deleteItems(array $keys): bool
+            {
+                return true;
+            }
+            public function save(CacheItemInterface $item): bool
+            {
+                return true;
+            }
+            public function saveDeferred(CacheItemInterface $item): bool
+            {
+                return true;
+            }
+            public function commit(): bool
+            {
+                return true;
+            }
         };
 
         $resolver = new ActivityContractResolver($pool);
 
-        $premier = $resolver->resolveActivityMethods(MemoContract::class);
-        $appresLePremier = $pool->getItemCalls;
+        $first = $resolver->resolveActivityMethods(MemoContract::class);
+        $afterTheFirst = $pool->getItemCalls;
         $second = $resolver->resolveActivityMethods(MemoContract::class);
 
-        self::assertSame($premier, $second);
+        self::assertSame($first, $second);
         self::assertSame(
-            $appresLePremier,
+            $afterTheFirst,
             $pool->getItemCalls,
-            'une donnée dérivée du code ne change pas dans le processus : le second appel doit être servi de mémoire',
+            'data derived from code does not change within the process: the second call must be served from memory',
         );
     }
 
-    public function testSansPoolLeResultatResteLeMeme(): void
+    public function testWithoutAPoolTheResultStaysTheSame(): void
     {
         $resolver = new ActivityContractResolver();
 
         self::assertSame(
-            ['faire' => 'memo.faire'],
+            ['do' => 'memo.do'],
             $resolver->resolveActivityMethods(MemoContract::class),
         );
         self::assertSame(
-            ['faire' => 'memo.faire'],
+            ['do' => 'memo.do'],
             $resolver->resolveActivityMethods(MemoContract::class),
         );
     }
