@@ -73,8 +73,16 @@ another reason, or in a change that says so.
 |---|---|
 | `documentation/audit/` | 22 files, French, landed by #271 — and unknown to `INDEX.md`, `LIFECYCLE.md` and `HUGO.md` |
 | `documentation/journal/inbox/` | 8 entries, French, in a directory WA001 already required to be English |
-| `.worktrees/prises/` | 18 open prise files — 17 French, plus this branch's, which is not — and `PRISES.md` itself |
+| `.worktrees/prises/` | the open prise files written before this agreement, and `PRISES.md` itself — released or translated as each slice closes |
+| `hugo-docs/` | 12 maintainer-facing files (the README, `hugo.toml` comments, `import-design.py` and its output strings, layout and asset comments) — added 2026-09-14; the French landing canvases and layouts stay, they are the product |
+| `openspec/` | 11 whole-file French records under `changes/`, most of them archived — see the rule below |
 | Commit history | French throughout; frozen by the paragraph above |
+
+**OpenSpec records.** An archived change under `openspec/changes/archive/` is a point-in-time
+record, like a commit message: it stays as written. A change still under `openspec/changes/` and
+every file under `openspec/specs/` is working material and follows the table above; it is
+translated when the change is next touched, and before it is archived. This is the one rule; the
+prise files that said otherwise are superseded by it.
 
 The pull requests, issues and comments dated 3 September 2026 and later were translated on
 4 September 2026, before this agreement was written. They are the starting point, not part of the
@@ -89,10 +97,12 @@ debt.
 - `documentation/audit/` is the first thing this agreement judges, and it judges it
   non-conforming — in language and in placement. Deciding what happens to it is a follow-up, not a
   silent grandfathering.
-- Nothing here is enforced by CI today. A guard is possible — a check on the language of a pull
-  request body, or on new files under the paths above — and it is deliberately not part of this
-  agreement: the rule is worth stating before it is worth automating, and WA005 is the reminder that
-  an unenforced rule is still a rule people can follow.
+- Two guards enforce a narrow slice of this in CI, added after the agreement: a French accented
+  letter fails the QA job in the shipped templates (`tests/unit/TheShippedTemplatesSpeakEnglishTest.php`)
+  and in `README.md`, `UPGRADE.md` and every package README
+  (`tests/unit/TheRootDocumentsSpeakEnglishTest.php`). They miss French written without accents;
+  the rest of this agreement — pull-request bodies, comments, commit messages — is still a rule
+  people follow, and the pull-request template restates it where an author reads it.
 
 ## References
 
