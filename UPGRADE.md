@@ -75,24 +75,24 @@ Rector can do nothing: rewriting a `$container->get('durable.event_store.dbal')`
 requires knowing where the object is used, which no rule can guess. The table above is the
 procedure.
 
-### `WorkflowHistorySourceInterface` gagne `hasSideEffectForSlot()`
+### `WorkflowHistorySourceInterface` gains `hasSideEffectForSlot()`
 
-**Qui est concerné** : uniquement qui **implémente** `WorkflowHistorySourceInterface` — c'est-à-dire
-qui écrit un backend. Une application qui appelle `sideEffect()` n'a rien à changer ; elle gagne le
-correctif sans rien faire.
+**Who is affected**: only whoever **implements** `WorkflowHistorySourceInterface` — that is, whoever
+writes a backend. An application that calls `sideEffect()` has nothing to change; it gets the fix for
+free.
 
-**Ce qui était cassé.** `findSideEffectForSlot()` rend `mixed` et signalait « rien d'enregistré » par
-`null`. Une closure qui rend légitimement `null` était donc indistinguable d'un slot vide : elle
-était **ré-exécutée à chaque passe de rejeu**, et le journal grossissait d'un `SideEffectRecorded`
-par passe. C'est la garantie même que `sideEffect()` existe pour offrir. Les valeurs `false`, `0`,
-`''` et `[]` n'étaient pas touchées — la comparaison était un `!==` strict.
+**What was broken.** `findSideEffectForSlot()` returns `mixed` and signalled "nothing recorded" with
+`null`. A closure that legitimately returns `null` was therefore indistinguishable from an empty
+slot: it was **re-executed on every replay pass**, and the journal grew by one `SideEffectRecorded`
+per pass. That is the very guarantee `sideEffect()` exists to offer. The values `false`, `0`, `''`
+and `[]` were not affected — the comparison was a strict `!==`.
 
-**Ce qu'il faut écrire.** Une méthode qui répond *le slot existe-t-il*, sans regarder ce qu'il porte.
-Rector ne peut rien ici : la réponse dépend de la façon dont votre backend range ses slots, et lui
-en faire deviner une produirait un adaptateur qui compile et ment. Les deux implémentations livrées
-donnent les deux formes attendues.
+**What to write.** A method that answers *does the slot exist*, without looking at what it carries.
+Rector can do nothing here: the answer depends on how your backend stores its slots, and having it
+guess one would produce an adapter that compiles and lies. The two shipped implementations show the
+two expected shapes.
 
-Sur un journal parcouru :
+On a journal that is walked:
 
 ```php
 public function hasSideEffectForSlot(int $slot): bool
@@ -111,8 +111,8 @@ public function hasSideEffectForSlot(int $slot): bool
 }
 ```
 
-Sur un tableau indexé par slot — et c'est `array_key_exists()`, jamais `isset()`, qui rouvrirait
-exactement le trou que ce correctif ferme :
+On an array indexed by slot — and it is `array_key_exists()`, never `isset()`, which would reopen
+exactly the hole this fix closes:
 
 ```php
 public function hasSideEffectForSlot(int $slot): bool
@@ -121,50 +121,48 @@ public function hasSideEffectForSlot(int $slot): bool
 }
 ```
 
-`findSideEffectForSlot()` ne change pas de signature et garde son comportement : elle rend la valeur,
-et rend `null` aussi bien pour un slot absent que pour un slot portant `null`. C'est désormais écrit
-dans son contrat, et c'est `hasSideEffectForSlot()` qui décide s'il faut exécuter la closure.
+`findSideEffectForSlot()` keeps its signature and its behaviour: it returns the value, and returns
+`null` both for an absent slot and for a slot carrying `null`. That is now written in its contract,
+and `hasSideEffectForSlot()` is what decides whether the closure runs.
 
 
-### `version()` cesse de basculer une exécution en vol
+### `version()` no longer switches an in-flight execution
 
-**Qui est concerné** : toute application qui appelle `version()`. Rien à écrire ; le comportement
-change, en mieux, et il faut savoir en quoi.
+**Who is affected**: every application that calls `version()`. Nothing to write; the behaviour
+changes, for the better, and you should know how.
 
-`version()` décide de rendre l'ancien comportement quand l'exécution est encore en train de
-rejouer. Ce signal se déduisait des quatre types de slot qui savent dire leur présence — activité,
-minuteur, workflow enfant, opération Nexus — et laissait les effets de bord de côté, pour la raison
-même que le correctif ci-dessus vient de lever : leur présence ne se lisait pas sans lire leur
-valeur.
+`version()` decides to return the old behaviour while the execution is still replaying. That signal
+was deduced from the four slot kinds able to state their presence — activity, timer, child workflow,
+Nexus operation — and left side effects aside, for the very reason the fix above just removed: their
+presence could not be read without reading their value.
 
-Conséquence : une exécution dont le travail restant devant elle n'était fait que d'effets de bord
-était vue comme arrivée au bout de son historique. Elle prenait la branche **neuve** au milieu d'un
-rejeu et y écrivait son marqueur de version — dans une histoire écrite avant que le point de
-changement existe. `hasSideEffectForSlot()` étant désormais au port, ce cas rejoint les autres.
+Consequence: an execution whose remaining work ahead consisted only of side effects was seen as
+having reached the end of its history. It took the **new** branch in the middle of a replay and wrote
+its version marker there — into a history written before the change point existed. With
+`hasSideEffectForSlot()` now on the port, that case joins the others.
 
-Une exécution qui a déjà écrit un marqueur de version garde le sien : `versionForChangeId()` est
-consulté en premier, et rien de ce commit ne le touche.
+An execution that has already written a version marker keeps it: `versionForChangeId()` is consulted
+first, and nothing in this change touches it.
 
-### Le profileur ne s'enregistre plus hors debug
+### The profiler is no longer registered outside debug
 
-**Qui est concerné** : une application qui tirait `durable.execution_trace` du conteneur en
-production, ou qui injectait `WorkflowExecutionObserverInterface` en s'attendant à la trace.
+**Who is affected**: an application that pulled `durable.execution_trace` out of the container in
+production, or that injected `WorkflowExecutionObserverInterface` expecting the trace.
 
-Le collecteur, sa trace, son écouteur de remise à zéro et son middleware Messenger n'étaient posés
-sous aucune condition. L'observateur qu'ils installent est injecté dans `ExecutionRuntime`,
-`ExecutionEngine` et `ActivityMessageProcessor` : il passait donc sur le chemin chaud de chaque
-exécution en production, pour alimenter une page que personne n'y sert. Et sa trace n'était vidée
-que par un écouteur `kernel.request`, que `messenger:consume` ne déclenche jamais — un worker
-l'accumulait tant qu'il vivait.
+The collector, its trace, its reset listener and its Messenger middleware were registered under no
+condition. The observer they install is injected into `ExecutionRuntime`, `ExecutionEngine` and
+`ActivityMessageProcessor`: it therefore sat on the hot path of every execution in production, to
+feed a page nobody serves there. And its trace was only emptied by a `kernel.request` listener, which
+`messenger:consume` never triggers — a worker accumulated it for as long as it lived.
 
-Hors `kernel.debug`, `WorkflowExecutionObserverInterface` pointe désormais
-`Gplanchat\Durable\Debug\NullWorkflowExecutionObserver`. Le contrat d'observation est intact ;
-c'est son implémentation qui ne fait plus rien. En debug, rien ne change, sinon que la trace porte
-un tag `kernel.reset` et se vide donc aussi entre deux messages d'un worker.
+Outside `kernel.debug`, `WorkflowExecutionObserverInterface` now points at
+`Gplanchat\Durable\Debug\NullWorkflowExecutionObserver`. The observation contract is intact; its
+implementation is what no longer does anything. In debug, nothing changes, except that the trace
+carries a `kernel.reset` tag and is therefore also emptied between two messages of a worker.
 
-Une application qui veut observer les exécutions en production n'a pas à ressusciter le profileur :
-elle implémente `WorkflowExecutionObserverInterface` et aliase l'interface sur son propre service —
-ce que le profileur faisait, en moins cher et sans accumuler une timeline pour l'écran de personne.
+An application that wants to observe executions in production does not have to resurrect the
+profiler: it implements `WorkflowExecutionObserverInterface` and aliases the interface to its own
+service — what the profiler did, cheaper, and without accumulating a timeline for nobody's screen.
 
 ## 0.1.0-alpha8
 
