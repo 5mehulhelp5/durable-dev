@@ -13,12 +13,19 @@ use PHPUnit\Framework\TestCase;
  * screen. Both audiences were being spoken to in French.
  *
  * A French accented letter is the cheapest signal that a line was written in the wrong language.
- * It does not catch French written without accents — no regex does — but it catches the drift that
- * actually happens, and it costs one pass over a handful of files.
+ * It does not catch French written without accents, so a short list of French function words
+ * backs it up; together they catch the drift that actually happens, and cost one pass over a
+ * handful of files.
  */
 final class TheShippedTemplatesSpeakEnglishTest extends TestCase
 {
     private const ACCENTED = '/[àâäçéèêëîïôöùûüœÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŒ]/u';
+
+    /**
+     * French written without accents slips past the letter check. These function words do not
+     * occur in English prose or in code, so one of them on a line is the same signal.
+     */
+    private const FUNCTION_WORDS = '/\b(le|la|les|des|une|est|sont|dans|pour|avec|sans|tous|toutes|aussi|donc|mais|ou|où|pas|très|cette|ces|leur|leurs|notre|votre|chez|vers|depuis|jamais|toujours|encore|déjà|entre|selon|sinon|puis|alors|ainsi|afin|lorsque|quand)\b/iu';
 
     /**
      * @return iterable<string, array{string}>
@@ -46,7 +53,7 @@ final class TheShippedTemplatesSpeakEnglishTest extends TestCase
     {
         $offenders = [];
         foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $number => $line) {
-            if (1 === preg_match(self::ACCENTED, $line)) {
+            if (1 === preg_match(self::ACCENTED, $line) || 1 === preg_match(self::FUNCTION_WORDS, $line)) {
                 $offenders[] = ($number + 1) . ': ' . trim($line);
             }
         }

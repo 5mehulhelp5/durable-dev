@@ -7,9 +7,9 @@ namespace unit\DurableBundle\Fixtures;
 use Gplanchat\Durable\Attribute\AsActivity;
 use Gplanchat\Durable\Attribute\AsActivityMethod;
 
-#[AsActivity(name: 'premier')]
-interface PremierContract
+#[AsActivity(name: 'first')]
+interface FirstContract
 {
-    #[AsActivityMethod(name: 'faire')]
-    public function faire(string $quoi): string;
+    #[AsActivityMethod(name: 'perform')]
+    public function perform(string $what): string;
 }

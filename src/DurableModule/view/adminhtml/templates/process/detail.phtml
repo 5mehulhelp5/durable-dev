@@ -79,7 +79,7 @@ $timeline = $block->getTimeline();
                     <div class="durable-frieze-row">
                         <span class="durable-frieze-name" title="<?= $escaper->escapeHtmlAttr($action->label) ?>"><?= $escaper->escapeHtml($action->label) ?></span>
                         <div class="durable-frieze-track">
-                            <?php /* Un segment par intervalle : survoler la longue portion nomme l'attente. */ ?>
+                            <?php /* One segment per interval: hovering the long stretch names the wait. */ ?>
                             <?php foreach ($action->segments as $segment): ?>
                                 <span class="durable-frieze-bar <?= $escaper->escapeHtmlAttr($action->kind->value) ?><?= $segment->waiting ? ' waiting' : '' ?><?= $segment->failed ? ' failed' : '' ?>"
                                       style="left: <?= $escaper->escapeHtmlAttr($block->scale($segment->offset)) ?>%; width: <?= $escaper->escapeHtmlAttr($block->scale($segment->duration)) ?>%"

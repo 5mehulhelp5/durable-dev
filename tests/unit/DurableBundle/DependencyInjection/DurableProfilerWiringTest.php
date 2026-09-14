@@ -16,59 +16,59 @@ use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
- * Ce que le profileur coûte quand personne ne le regarde.
+ * What the profiler costs when nobody is looking at it.
  *
- * L'observateur est injecté dans `ExecutionRuntime`, `ExecutionEngine` et
- * `ActivityMessageProcessor` : il est sur le chemin chaud de l'exécution, pas sur celui de la page
- * de debug. Et sa trace n'est vidée que par un écouteur `kernel.request` — or `messenger:consume`
- * n'a pas de requête, donc dans un worker elle grossit tant que le processus vit.
+ * The observer is injected into `ExecutionRuntime`, `ExecutionEngine` and
+ * `ActivityMessageProcessor`: it is on the hot path of the execution, not on that of the debug
+ * page. And its trace is only emptied by a `kernel.request` listener — but `messenger:consume`
+ * has no request, so in a worker it grows as long as the process lives.
  *
- * Les deux moitiés se traitent ensemble : le tag `kernel.reset` borne le worker de debug, et
- * l'absence pure et simple du profileur borne la production.
+ * The two halves are handled together: the `kernel.reset` tag bounds the debug worker, and the
+ * plain absence of the profiler bounds production.
  */
 final class DurableProfilerWiringTest extends TestCase
 {
-    private const DSN = 'temporal://127.0.0.1:7233?namespace=demo-boutique&tls=0';
+    private const DSN = 'temporal://127.0.0.1:7233?namespace=demo-shop&tls=0';
 
-    public function testLaTraceEstReinitialisableEntreDeuxMessagesDUnWorker(): void
+    public function testTheTraceIsResettableBetweenTwoMessagesOfAWorker(): void
     {
         $definition = $this->load(debug: true)->getDefinition('durable.execution_trace');
 
         self::assertArrayHasKey(
             'kernel.reset',
             $definition->getTags(),
-            "sans ce tag, services_resetter ignore la trace et un worker l'accumule sans borne",
+            'without this tag, services_resetter ignores the trace and a worker accumulates it without bound',
         );
         self::assertSame(
             'reset',
             $definition->getTag('kernel.reset')[0]['method'] ?? null,
-            'et le resetter a besoin du nom de la méthode',
+            'and the resetter needs the method name',
         );
     }
 
-    public function testHorsDebugAucunCollecteurNEstEnregistre(): void
+    public function testOutsideDebugNoCollectorIsRegistered(): void
     {
         $container = $this->load(debug: false);
 
         self::assertFalse(
             $container->has('durable.execution_trace'),
-            'la trace de profil n\'a rien à faire en production',
+            'the profile trace has no business in production',
         );
 
         foreach ($container->getDefinitions() as $id => $definition) {
             self::assertArrayNotHasKey(
                 'data_collector',
                 $definition->getTags(),
-                \sprintf('%s ne doit pas collecter hors debug', $id),
+                \sprintf('%s must not collect outside debug', $id),
             );
         }
     }
 
     /**
-     * Le contrat d'observation reste satisfait : les trois services du chemin chaud le reçoivent
-     * en injection, et un conteneur qui ne le fournirait pas ne compilerait plus.
+     * The observation contract stays satisfied: the three hot-path services receive it by
+     * injection, and a container that did not provide it would no longer compile.
      */
-    public function testHorsDebugLObservateurEstUnObjetNul(): void
+    public function testOutsideDebugTheObserverIsANullObject(): void
     {
         $container = $this->load(debug: false);
 
@@ -81,7 +81,7 @@ final class DurableProfilerWiringTest extends TestCase
         );
     }
 
-    public function testEnDebugLObservateurEstBienLaTrace(): void
+    public function testInDebugTheObserverIsTheTrace(): void
     {
         $container = $this->load(debug: true);
 
@@ -92,14 +92,14 @@ final class DurableProfilerWiringTest extends TestCase
     }
 
     /**
-     * Retirer le profileur de la production ne suffit pas : il faut que plus rien ne le réclame.
+     * Removing the profiler from production is not enough: nothing may claim it any more.
      *
-     * `TemporalWorkflowResumeDispatcher` recevait `durable.execution_trace` par une référence nue.
-     * Le service n'étant plus enregistré hors debug, le conteneur d'une application de production
-     * configurée en Temporal natif ne compilait plus — et aucun test ne le voyait, tous chargeant
-     * une configuration vide, donc sans jamais construire cette branche.
+     * `TemporalWorkflowResumeDispatcher` received `durable.execution_trace` through a bare
+     * reference. The service being no longer registered outside debug, the container of a
+     * production application configured for native Temporal no longer compiled — and no test saw
+     * it, all of them loading an empty configuration, hence never building that branch.
      */
-    public function testHorsDebugUneApplicationTemporaleCompileEncore(): void
+    public function testOutsideDebugATemporalApplicationStillCompiles(): void
     {
         $container = $this->load(debug: false, config: ['temporal' => ['dsn' => self::DSN]]);
 
@@ -111,17 +111,17 @@ final class DurableProfilerWiringTest extends TestCase
         self::assertSame(
             ContainerInterface::NULL_ON_INVALID_REFERENCE,
             $trace->getInvalidBehavior(),
-            'une référence nue vers un service absent hors debug fait échouer la compilation',
+            'a bare reference to a service absent outside debug fails the compilation',
         );
 
         self::assertNotContains(
             'durable.execution_trace',
-            self::servicesManquants($container),
-            'le conteneur de production ne doit plus réclamer un service que le debug seul enregistre',
+            self::missingServices($container),
+            'the production container must no longer claim a service that debug alone registers',
         );
     }
 
-    public function testEnDebugLeMemeConteneurRecoitLaVraieTrace(): void
+    public function testInDebugTheSameContainerReceivesTheRealTrace(): void
     {
         $container = $this->load(debug: true, config: ['temporal' => ['dsn' => self::DSN]]);
 
@@ -133,23 +133,23 @@ final class DurableProfilerWiringTest extends TestCase
     }
 
     /**
-     * `UPGRADE.md` prescrit cette échappatoire aux applications qui veulent observer en
-     * production : implémenter le contrat, aliaser l'interface. Elle ne fonctionnait pas — le
-     * `setAlias()` de l'extension écrasait celui de l'application, dont les définitions sont
-     * pourtant déjà là quand l'extension se charge.
+     * `UPGRADE.md` prescribes this escape hatch to applications that want to observe in
+     * production: implement the contract, alias the interface. It did not work — the extension's
+     * `setAlias()` overwrote the application's, whose definitions are nevertheless already there
+     * when the extension loads.
      */
-    #[DataProvider('environnements')]
-    public function testUnAliasDeLApplicationNEstPasEcrase(bool $debug): void
+    #[DataProvider('environments')]
+    public function testAnAliasOfTheApplicationIsNotOverwritten(bool $debug): void
     {
         $container = new ContainerBuilder();
         $container->setParameter('kernel.debug', $debug);
-        $container->register('app.observateur', \stdClass::class);
-        $container->setAlias(WorkflowExecutionObserverInterface::class, 'app.observateur');
+        $container->register('app.observer', \stdClass::class);
+        $container->setAlias(WorkflowExecutionObserverInterface::class, 'app.observer');
 
         (new DurableExtension())->load([[]], $container);
 
         self::assertSame(
-            'app.observateur',
+            'app.observer',
             (string) $container->getAlias(WorkflowExecutionObserverInterface::class),
         );
     }
@@ -157,43 +157,43 @@ final class DurableProfilerWiringTest extends TestCase
     /**
      * @return iterable<string, array{bool}>
      */
-    public static function environnements(): iterable
+    public static function environments(): iterable
     {
         yield 'debug' => [true];
         yield 'production' => [false];
     }
 
     /**
-     * Les identifiants qu'un conteneur réclame sans les avoir.
+     * The identifiers a container claims without having them.
      *
-     * Le bundle seul ne compile pas : il référence légitimement des services que FrameworkBundle
-     * fournit (`messenger.default_bus`, …). On déclare donc chaque manquant en synthétique et on
-     * recommence, jusqu'à ce que la passe amont passe — ce qui reste est la liste exacte de ce
-     * que le bundle attend de l'extérieur. Un service **à nous** dans cette liste est un bug.
+     * The bundle alone does not compile: it legitimately references services FrameworkBundle
+     * provides (`messenger.default_bus`, …). So every missing one is declared synthetic and the
+     * pass is run again, until the upstream pass goes through — what remains is the exact list of
+     * what the bundle expects from outside. A service **of ours** in that list is a bug.
      *
      * @return list<string>
      */
-    private static function servicesManquants(ContainerBuilder $container): array
+    private static function missingServices(ContainerBuilder $container): array
     {
-        $manquants = [];
-        $passe = new CheckExceptionOnInvalidReferenceBehaviorPass();
+        $missing = [];
+        $pass = new CheckExceptionOnInvalidReferenceBehaviorPass();
 
         for ($i = 0; $i < 100; ++$i) {
             try {
-                $passe->process($container);
+                $pass->process($container);
 
-                return $manquants;
+                return $missing;
             } catch (ServiceNotFoundException $e) {
                 $id = $e->getId();
-                if (null === $id || \in_array($id, $manquants, true)) {
+                if (null === $id || \in_array($id, $missing, true)) {
                     throw $e;
                 }
-                $manquants[] = $id;
+                $missing[] = $id;
                 $container->register($id, \stdClass::class)->setSynthetic(true);
             }
         }
 
-        self::fail('la passe de vérification ne converge pas');
+        self::fail('the verification pass does not converge');
     }
 
     /**

@@ -1,135 +1,134 @@
 #!/usr/bin/env bash
 #
-# Contrôle du registre des prises : `.worktrees/prises/<branche>.md`.
+# Check of the claim registry: `.worktrees/prises/<branch>.md`.
 #
-# Deux fois le 2026-08-27, le registre a menti sans que rien ne rougisse — une prise déjà refermée
-# qui traînait dans une branche, puis une prise vivante emportée par un rebasage plus vieux qu'elle.
-# Les deux fois, c'est une session qui l'a dit à l'autre. Ce script est ce qui remplace cette
-# chance.
+# Twice on 2026-08-27, the registry lied without anything turning red — a claim already released
+# that lingered in a branch, then a live claim swept away by a rebase older than it. Both times, one
+# session told the other. This script is what replaces that luck.
 #
-# **Le critère est la PR, pas la branche.** Un premier jet comparait les prises aux branches
-# distantes vivantes : il rougissait sur le cas normal, puisqu'une prise se pose *avant* que la
-# branche existe. Un contrôle qui rougit sur le cas normal se fait désarmer dans la semaine, et on
-# se retrouve avec moins que rien — un check mort plus la croyance qu'il surveille quelque chose.
+# **The criterion is the PR, not the branch.** A first draft compared claims to live remote
+# branches: it turned red on the normal case, since a claim is placed *before* the branch exists. A
+# check that turns red on the normal case gets disarmed within the week, and we end up with less
+# than nothing — a dead check plus the belief that it watches something.
 #
-# **La PR ne suffit pas non plus.** Une branche survit à sa PR : un chantier qui avance par tranches
-# rouvre la même branche pour la suivante, et entre les deux elle n'a que des PR fermées. Le
-# 2026-08-27, ce script a déclaré périmée `docs/roadmap-integrations-php`, qui portait trois commits
-# non fusionnés et un worktree monté. Retirer cette prise aurait libéré une branche en cours
-# d'usage — l'accident même que le registre existe pour empêcher.
+# **The PR is not enough either.** A branch outlives its PR: a change that advances slice by slice
+# reopens the same branch for the next one, and between the two it only has closed PRs. On
+# 2026-08-27, this script declared `docs/roadmap-integrations-php` stale, while it carried three
+# unmerged commits and a mounted worktree. Removing that claim would have freed a branch in use —
+# the very accident the registry exists to prevent.
 #
-# Le verdict demande donc les deux : plus aucune PR vivante, **et** plus rien à fusionner.
+# So the verdict asks for both: no live PR left, **and** nothing left to merge.
 #
-# **Les deux ne suffisaient toujours pas.** Le 2026-08-28, une session voisine a montré que ce
-# critère est vrai *par intermittence* pour toute branche de chantier réutilisée : entre la fusion
-# d'une tranche et le premier commit de la suivante, les PR sont toutes fermées, la branche n'a rien
-# de plus que `main` — GitHub l'a parfois même supprimée — et le travail continue. La fenêtre
-# s'ouvre à **chaque** frontière de tranche, et une prise vivante y a été retirée puis reposée.
+# **Both were still not enough.** On 2026-08-28, a neighbouring session showed that this criterion
+# is true *intermittently* for any reused change branch: between the merge of one slice and the
+# first commit of the next, the PRs are all closed, the branch has nothing beyond `main` — GitHub
+# has sometimes even deleted it — and the work goes on. The window opens at **every** slice
+# boundary, and a live claim was removed then put back because of it.
 #
-# Alors le chantier fait foi avant la branche : pour une prise `change/<nom>`, une tâche non cochée
-# dans `openspec/changes/<nom>/tasks.md` suffit à la tenir vivante. Le registre n'a pas à deviner
-# ce que le chantier écrit noir sur blanc.
+# So the change is authoritative before the branch: for a claim `change/<name>`, an unchecked task
+# in `openspec/changes/<name>/tasks.md` is enough to keep it alive. The registry does not have to
+# guess what the change writes in black and white.
 #
-#   | PR de la branche  | chantier / branche              | verdict                                  |
+#   | PRs of the branch | change / branch                 | verdict                                  |
 #   |-------------------|---------------------------------|------------------------------------------|
-#   | aucune            | —                               | normal — la prise précède la PR           |
-#   | une ouverte       | —                               | normal — le travail est en cours          |
-#   | fermées seulement | chantier avec tâches à faire    | normal — entre deux tranches              |
-#   | fermées seulement | branche en avance sur `main`    | normal — réutilisée, tranche suivante     |
-#   | fermées seulement | branche absente                 | **périmée** — la branche a été supprimée  |
-#   | fermées seulement | rien de plus que `main`         | **périmée** — le retrait a été oublié     |
+#   | none              | —                               | normal — the claim precedes the PR        |
+#   | one open          | —                               | normal — work in progress                 |
+#   | closed only       | change with tasks left          | normal — between two slices               |
+#   | closed only       | branch ahead of `main`          | normal — reused, next slice               |
+#   | closed only       | branch missing                  | **stale** — the branch was deleted        |
+#   | closed only       | nothing beyond `main`           | **stale** — the removal was forgotten     |
 #
-# Usage : bin/prises-check.sh [dépôt]      (défaut : gplanchat/durable-dev)
+# Usage: bin/prises-check.sh [repository]      (default: gplanchat/durable-dev)
 set -uo pipefail
 
 REPO="${1:-gplanchat/durable-dev}"
 OWNER="${REPO%%/*}"
-RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PRISES="$RACINE/.worktrees/prises"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PRISES="$ROOT/.worktrees/prises"
 
 if [ ! -d "$PRISES" ]; then
-    echo "::error::$PRISES n'existe pas — le registre a disparu ou le script est mal placé"
+    echo "::error::$PRISES does not exist — the registry is gone or the script is misplaced"
     exit 1
 fi
 
-perimees=0
-malformees=0
-vivantes=0
+stale=0
+malformed=0
+live=0
 
-while IFS= read -r fichier; do
-    branche="${fichier#"$PRISES"/}"
-    branche="${branche%.md}"
+while IFS= read -r file; do
+    branch="${file#"$PRISES"/}"
+    branch="${branch%.md}"
 
-    # Le chemin *est* le nom de la branche : un titre qui dit autre chose rend le registre
-    # illisible pour qui le lit à l'œil plutôt qu'avec ce script.
-    titre="$(head -n1 "$fichier" | sed 's/^# *//')"
-    if [ "$titre" != "$branche" ]; then
-        echo "::error file=.worktrees/prises/$branche.md::le titre dit « $titre », le chemin dit « $branche »"
-        malformees=$((malformees + 1))
+    # The path *is* the branch name: a title that says otherwise makes the registry unreadable
+    # for whoever reads it by eye rather than with this script.
+    title="$(head -n1 "$file" | sed 's/^# *//')"
+    if [ "$title" != "$branch" ]; then
+        echo "::error file=.worktrees/prises/$branch.md::the title says \"$title\", the path says \"$branch\""
+        malformed=$((malformed + 1))
         continue
     fi
 
-    reponse="$(gh api "repos/$REPO/pulls?head=$OWNER:$branche&state=all&per_page=100" --jq '.[].state' 2>&1)"
+    answer="$(gh api "repos/$REPO/pulls?head=$OWNER:$branch&state=all&per_page=100" --jq '.[].state' 2>&1)"
     if [ $? -ne 0 ]; then
-        # Un contrôle qui passe quand il n'a pas pu vérifier ne contrôle rien.
-        echo "::error::interrogation des PR impossible pour « $branche » : $reponse"
+        # A check that passes when it could not verify checks nothing.
+        echo "::error::cannot query the PRs of \"$branch\": $answer"
         exit 1
     fi
 
-    if [ -z "$reponse" ]; then
-        vivantes=$((vivantes + 1))
-        echo "  ok        $branche — aucune PR, la prise précède le travail"
+    if [ -z "$answer" ]; then
+        live=$((live + 1))
+        echo "  ok        $branch — no PR, the claim precedes the work"
         continue
     fi
 
-    if grep -qx 'open' <<<"$reponse"; then
-        vivantes=$((vivantes + 1))
-        echo "  ok        $branche — PR ouverte"
+    if grep -qx 'open' <<<"$answer"; then
+        live=$((live + 1))
+        echo "  ok        $branch — open PR"
         continue
     fi
 
-    # Le chantier fait foi avant la branche, et c'est le cœur de ce contrôle.
+    # The change is authoritative before the branch, and this is the heart of this check.
     #
-    # Une branche `change/<nom>` vit plusieurs tranches. Entre la fusion de l'une et le premier
-    # commit de la suivante, les trois conditions du verdict « périmée » sont réunies — plus aucune
-    # PR ouverte, rien devant `main`, la branche parfois même supprimée — alors que le travail
-    # continue. La fenêtre n'est pas rare : elle s'ouvre à **chaque** frontière de tranche, et une
-    # session a déjà retiré une prise vivante à cause d'elle.
+    # A `change/<name>` branch lives through several slices. Between the merge of one and the
+    # first commit of the next, the three conditions of the "stale" verdict are met — no open PR
+    # left, nothing ahead of `main`, the branch sometimes even deleted — while the work goes on.
+    # The window is not rare: it opens at **every** slice boundary, and a session has already
+    # removed a live claim because of it.
     #
-    # Le registre n'a pas à deviner : l'état du chantier est écrit dans son `tasks.md`. Une tâche
-    # non cochée est une prise à tenir, quoi que raconte la branche.
-    if [[ "$branche" == change/* ]]; then
-        taches="$RACINE/openspec/changes/${branche#change/}/tasks.md"
-        if [ -f "$taches" ] && grep -q '^- \[ \]' "$taches"; then
-            reste="$(grep -c '^- \[ \]' "$taches")"
-            vivantes=$((vivantes + 1))
-            echo "  ok        $branche — PR fermée, mais le chantier a $reste tâche(s) à faire"
+    # The registry does not have to guess: the state of the change is written in its `tasks.md`.
+    # An unchecked task is a claim to keep, whatever the branch says.
+    if [[ "$branch" == change/* ]]; then
+        tasks="$ROOT/openspec/changes/${branch#change/}/tasks.md"
+        if [ -f "$tasks" ] && grep -q '^- \[ \]' "$tasks"; then
+            left="$(grep -c '^- \[ \]' "$tasks")"
+            live=$((live + 1))
+            echo "  ok        $branch — PR closed, but the change has $left task(s) left"
             continue
         fi
     fi
 
-    # Plus aucune PR vivante. Reste la seconde question, celle qui manquait : la branche
-    # a-t-elle encore quelque chose à donner ? `ahead_by` compte ce qu'elle porte et que `main`
-    # n'a pas. Une branche absente fait 404, et c'est un verdict, pas une panne.
-    avance="$(gh api "repos/$REPO/compare/main...$branche" --jq '.ahead_by' 2>/dev/null)"
+    # No live PR left. Remains the second question, the one that was missing: does the branch
+    # still have something to give? `ahead_by` counts what it carries that `main` does not. A
+    # missing branch gives a 404, and that is a verdict, not an outage.
+    ahead="$(gh api "repos/$REPO/compare/main...$branch" --jq '.ahead_by' 2>/dev/null)"
 
-    if [ -n "$avance" ] && [ "$avance" -gt 0 ] 2>/dev/null; then
-        vivantes=$((vivantes + 1))
-        echo "  ok        $branche — PR fermée, mais $avance commit(s) non fusionné(s) : branche réutilisée"
+    if [ -n "$ahead" ] && [ "$ahead" -gt 0 ] 2>/dev/null; then
+        live=$((live + 1))
+        echo "  ok        $branch — PR closed, but $ahead unmerged commit(s): reused branch"
         continue
     fi
 
-    numeros="$(gh api "repos/$REPO/pulls?head=$OWNER:$branche&state=all&per_page=100" --jq '[.[] | "#\(.number)"] | join(", ")')"
-    if [ -z "$avance" ]; then
-        motif="la branche n'existe plus sur le distant"
+    numbers="$(gh api "repos/$REPO/pulls?head=$OWNER:$branch&state=all&per_page=100" --jq '[.[] | "#\(.number)"] | join(", ")')"
+    if [ -z "$ahead" ]; then
+        reason="the branch no longer exists on the remote"
     else
-        motif="$numeros fermée(s), et la branche n'a rien que \`main\` n'ait déjà"
+        reason="$numbers closed, and the branch has nothing \`main\` does not already have"
     fi
-    echo "::error file=.worktrees/prises/$branche.md::prise périmée — $motif. Retirer sa prise fait partie de la fusion."
-    perimees=$((perimees + 1))
+    echo "::error file=.worktrees/prises/$branch.md::stale claim — $reason. Removing its claim is part of the merge."
+    stale=$((stale + 1))
 done < <(find "$PRISES" -name '*.md' | sort)
 
 echo
-echo "registre : $vivantes prise(s) en cours, $perimees périmée(s), $malformees malformée(s)"
+echo "registry: $live claim(s) in progress, $stale stale, $malformed malformed"
 
-[ $((perimees + malformees)) -eq 0 ]
+[ $((stale + malformed)) -eq 0 ]

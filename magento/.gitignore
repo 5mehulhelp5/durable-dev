@@ -1,50 +1,45 @@
-# Ce dossier est un **banc**, pas une application : seul l'overlay est au dépôt.
+# This directory is a **bench**, not an application: only the overlay is in the repository.
 #
-# Une distribution Magento installée pèse 769 Mo, dont 626 pour `vendor/`. Une
-# fois `vendor/` exclu par le `.gitignore` de la racine, il reste encore
-# **10 178 fichiers** que composer a écrits — `dev/` en apporte 7 256 à lui
-# seul. Rien de tout cela n'est du code de ce dépôt, et le suivre reviendrait à
-# versionner Mage-OS.
+# An installed Magento distribution weighs 769 MB, 626 of them for `vendor/`. Once
+# `vendor/` is excluded by the root `.gitignore`, there are still **10,178 files**
+# that composer wrote — `dev/` alone brings 7,256. None of that is code of this
+# repository, and tracking it would amount to versioning Mage-OS.
 #
-# On inverse donc la règle : tout est ignoré, et l'overlay se ré-autorise
-# nommément. Un fichier que composer ajoutera demain restera dehors sans que
-# personne ait à y penser — c'est ce qu'une liste d'exclusions ne sait pas
-# faire.
+# So the rule is inverted: everything is ignored, and the overlay re-allows itself
+# by name. A file composer adds tomorrow stays out without anyone having to think
+# about it — which is what an exclusion list cannot do.
 #
-# Ce que l'overlay contient, et pourquoi il est au dépôt :
-#   composer.json / composer.lock  les dépôts de chemin vers src/, et l'épingle
-#                                  Mage-OS qui rend l'installation reproductible
-#   compose.yaml                   MySQL, OpenSearch, Redis, Temporal, son UI
-#   check-php-extensions.sh        ce que l'hôte doit avoir avant d'essayer
-#   auth.json.sample               Mage-OS n'en demande pas ; l'échantillon dit
-#                                  quoi mettre pour une distribution qui, elle,
-#                                  en demande
-#   .env.example                   les variables que compose.yaml attend
-#   README.md                      comment amorcer, et sur quoi c'est épinglé
-#   probe-lock.php                 la sonde du §1.4 : le verrou est-il partagé
-#                                  entre processus ? Elle se rejoue sur un autre
-#                                  hôte, dont le `lock.provider` peut différer
-#   probe-queue.php                la sonde du §1.3 : que laisse un consommateur
-#                                  qui meurt au milieu d'un message ?
-#   probe-resume.php               la sonde du §5.3 : une commande tuée au milieu
-#                                  reprend-elle sans re-débiter la carte ?
-#   probe-order.php                la sonde du §5.2 : une commande passée
-#                                  démarre-t-elle une exécution sur la grappe ?
-#   probe-cases.php                la sonde de l'écran d'observation : une exécution
-#                                  qui contient tous les cas que la page doit savoir
-#                                  montrer — échec, minuteur, enfant, reprise
-#   app/code/Gplanchat/DurableProbe le module du banc. Il porte la
-#                                  **démonstration** — `PlaceOrderWorkflow`,
-#                                  `durable:demo` — et les sujets de file des
-#                                  sondes. Rien de tout cela n'a sa place dans le
-#                                  paquet publié : un module d'intégration ne
-#                                  doit pas faire porter à un projet des
-#                                  workflows qui ne sont pas les siens.
+# What the overlay contains, and why it is in the repository:
+#   composer.json / composer.lock  the path repositories towards src/, and the
+#                                  Mage-OS pin that makes the install reproducible
+#   compose.yaml                   MySQL, OpenSearch, Redis, Temporal, its UI
+#   check-php-extensions.sh        what the host must have before trying
+#   auth.json.sample               Mage-OS does not ask for one; the sample says
+#                                  what to put for a distribution that does
+#   .env.example                   the variables compose.yaml expects
+#   README.md                      how to bootstrap, and what it is pinned on
+#   probe-lock.php                 the §1.4 probe: is the lock shared between
+#                                  processes? It replays on another host, whose
+#                                  `lock.provider` may differ
+#   probe-queue.php                the §1.3 probe: what does a consumer that dies
+#                                  in the middle of a message leave behind?
+#   probe-resume.php               the §5.3 probe: does a command killed midway
+#                                  resume without charging the card again?
+#   probe-order.php                the §5.2 probe: does a placed order start an
+#                                  execution on the cluster?
+#   probe-cases.php                the observation screen probe: an execution that
+#                                  holds every case the page must know how to
+#                                  show — failure, timer, child, resume
+#   app/code/Gplanchat/DurableProbe the bench module. It carries the
+#                                  **demonstration** — `PlaceOrderWorkflow`,
+#                                  `durable:demo` — and the queue topics of the
+#                                  probes. None of that belongs in the published
+#                                  package: an integration module must not make a
+#                                  project carry workflows that are not its own.
 #
-# `sylius/` fait l'inverse — liste d'exclusions — parce que là-bas le squelette
-# applicatif **est** du code du projet : 220 fichiers écrits ici. Ici il y en a
-# six, et dix mille qui ne le sont pas.
-
+# `sylius/` does the opposite — an exclusion list — because over there the
+# application skeleton **is** project code: 220 files written here. Here there are
+# six, and ten thousand that are not.
 *
 !.gitignore
 !composer.json
@@ -60,8 +55,8 @@
 !probe-order.php
 !probe-cases.php
 
-# Le module de sonde, et lui seul : `app/etc/env.php` et le reste de `app/`
-# restent dehors. Chaque niveau se ré-autorise, parce que `*` exclut à tous.
+# The probe module, and it alone: `app/etc/env.php` and the rest of `app/`
+# stay out. Every level re-allows itself, because `*` excludes at all of them.
 !app/
 !app/code/
 !app/code/Gplanchat/

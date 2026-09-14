@@ -13,12 +13,19 @@ use PHPUnit\Framework\TestCase;
  * something. `UPGRADE.md` was translated once (#303) and three French sections were merged on top of
  * it within the week — nothing in the definition of done stopped it.
  *
- * Same signal as {@see TheShippedTemplatesSpeakEnglishTest}: a French accented letter. It misses
- * French written without accents, and it catches the drift that actually happens.
+ * Same signals as {@see TheShippedTemplatesSpeakEnglishTest}: a French accented letter, and a
+ * French function word for the lines written without accents. The scripts under `bin/` ride along:
+ * their `::error` lines end up in CI output, which is read by the same strangers.
  */
 final class TheRootDocumentsSpeakEnglishTest extends TestCase
 {
     private const ACCENTED = '/[àâäçéèêëîïôöùûüœÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŒ]/u';
+
+    /**
+     * French written without accents slips past the letter check. These function words do not
+     * occur in English prose or in code, so one of them on a line is the same signal.
+     */
+    private const FUNCTION_WORDS = '/\b(le|la|les|des|une|est|sont|dans|pour|avec|sans|tous|toutes|aussi|donc|mais|ou|où|pas|très|cette|ces|leur|leurs|notre|votre|chez|vers|depuis|jamais|toujours|encore|déjà|entre|selon|sinon|puis|alors|ainsi|afin|lorsque|quand)\b/iu';
 
     /**
      * @return iterable<string, array{string}>
@@ -27,7 +34,7 @@ final class TheRootDocumentsSpeakEnglishTest extends TestCase
     {
         $root = \dirname(__DIR__, 2);
 
-        foreach (array_merge(['README.md', 'UPGRADE.md'], glob('src/*/README.md') ?: [], glob('src/Bridge/*/README.md') ?: []) as $relative) {
+        foreach (array_merge(['README.md', 'UPGRADE.md'], glob('src/*/README.md') ?: [], glob('src/Bridge/*/README.md') ?: [], glob('bin/*.sh') ?: []) as $relative) {
             yield $relative => [$root . '/' . $relative];
         }
     }
@@ -37,7 +44,7 @@ final class TheRootDocumentsSpeakEnglishTest extends TestCase
     {
         $offenders = [];
         foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $number => $line) {
-            if (1 === preg_match(self::ACCENTED, $line)) {
+            if (1 === preg_match(self::ACCENTED, $line) || 1 === preg_match(self::FUNCTION_WORDS, $line)) {
                 $offenders[] = ($number + 1) . ': ' . trim($line);
             }
         }

@@ -9,52 +9,52 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Les quatre façons dont un aller-retour JSON naïf trahit — chacune constatée en exécution avant
- * d'être écrite ici.
+ * The four ways a naive JSON round trip betrays — each one observed at runtime before being
+ * written here.
  *
- * Une barrière de stockage se juge sur ce qu'elle fait des entrées hostiles, pas sur ce qu'elle
- * fait des entrées ordinaires. Trois de ces cas passaient à travers.
+ * A storage barrier is judged on what it does with hostile inputs, not on what it does with
+ * ordinary ones. Three of these cases went straight through.
  */
 final class RecordedDetailsStorableTest extends TestCase
 {
     /**
-     * `json_encode` appelle le `jsonSerialize()` de la charge utile : du code métier, qui peut
-     * lever. Aucun drapeau ne couvre ce cas, et l'exception remonterait jusqu'à `collect()`,
-     * c'est-à-dire `kernel.response` — la requête tombe, alors que le défaut d'origine ne
-     * cassait que l'écriture du profil sur `kernel.terminate`.
+     * `json_encode` calls the payload's `jsonSerialize()`: business code, which may throw. No flag
+     * covers that case, and the exception would climb up to `collect()`, that is `kernel.response`
+     * — the request falls, whereas the original defect only broke the profile write on
+     * `kernel.terminate`.
      */
-    public function testUneChargeUtileDontLaSerialisationLeveNeFaitPasTomberLAppelant(): void
+    public function testAPayloadWhoseSerialisationThrowsDoesNotBringTheCallerDown(): void
     {
-        $piege = new class implements \JsonSerializable {
+        $trap = new class implements \JsonSerializable {
             public function jsonSerialize(): mixed
             {
-                throw new \RuntimeException('du code métier, dans le profileur');
+                throw new \RuntimeException('business code, inside the profiler');
             }
         };
 
-        self::assertNull(RecordedDetails::storable(['payload' => $piege]));
+        self::assertNull(RecordedDetails::storable(['payload' => $trap]));
     }
 
     /**
-     * Au-delà de 512 niveaux, `json_decode` rend `null` là où l'encodage avait produit du texte.
-     * La valeur disparaît — c'est assumé — mais l'appelant doit pouvoir ranger le résultat dans
-     * une propriété typée sans lever, d'où l'application clé par clé côté collecteur.
+     * Beyond 512 levels, `json_decode` returns `null` where encoding had produced text. The value
+     * disappears — that is accepted — but the caller must be able to put the result in a typed
+     * property without throwing, hence the key-by-key application on the collector side.
      */
-    public function testUneImbricationPlusProfondeQueJsonNeLeTientRendNull(): void
+    public function testNestingDeeperThanJsonHoldsYieldsNull(): void
     {
-        $profond = 'fond';
+        $deep = 'bottom';
         for ($i = 0; $i < 600; ++$i) {
-            $profond = [$profond];
+            $deep = [$deep];
         }
 
-        self::assertNull(RecordedDetails::storable($profond));
+        self::assertNull(RecordedDetails::storable($deep));
     }
 
     /**
-     * Les bornes de la frise se déclarent `float`. Sans `JSON_PRESERVE_ZERO_FRACTION`, une durée
-     * de trois secondes tout rondes revient en `int` et le type déclaré ment.
+     * The frieze bounds are declared `float`. Without `JSON_PRESERVE_ZERO_FRACTION`, a duration of
+     * exactly three seconds comes back as `int` and the declared type lies.
      */
-    public function testUnFlottantDeValeurEntiereResteUnFlottant(): void
+    public function testAnIntegerValuedFloatStaysAFloat(): void
     {
         $storable = RecordedDetails::storable(['spanSec' => 3.0, 'tMin' => 0.0]);
 
@@ -63,39 +63,39 @@ final class RecordedDetailsStorableTest extends TestCase
         self::assertIsFloat($storable['tMin']);
     }
 
-    #[DataProvider('chargesUtilesOrdinaires')]
-    public function testCeQuiEtaitLisibleLeResteALIdentique(mixed $valeur): void
+    #[DataProvider('ordinaryPayloads')]
+    public function testWhatWasReadableStaysIdentical(mixed $value): void
     {
-        self::assertSame($valeur, RecordedDetails::storable($valeur));
+        self::assertSame($value, RecordedDetails::storable($value));
     }
 
     /**
      * @return iterable<string, array{mixed}>
      */
-    public static function chargesUtilesOrdinaires(): iterable
+    public static function ordinaryPayloads(): iterable
     {
-        yield 'chaîne' => ['bonjour'];
-        yield 'entier' => [42];
-        yield 'flottant' => [1.5];
-        yield 'booléen' => [true];
+        yield 'string' => ['hello'];
+        yield 'integer' => [42];
+        yield 'float' => [1.5];
+        yield 'boolean' => [true];
         yield 'null' => [null];
-        yield 'liste' => [[1, 2, 3]];
-        yield 'tableau associatif' => [['a' => 1, 'b' => ['c' => 'd']]];
+        yield 'list' => [[1, 2, 3]];
+        yield 'associative array' => [['a' => 1, 'b' => ['c' => 'd']]];
     }
 
     /**
-     * Une référence récursive, elle, survit : `JSON_PARTIAL_OUTPUT_ON_ERROR` la coupe et rend le
-     * reste. Le cas est ici pour qu'on cesse de le croire cassé.
+     * A recursive reference, on the other hand, survives: `JSON_PARTIAL_OUTPUT_ON_ERROR` cuts it
+     * and returns the rest. The case is here so we stop believing it broken.
      */
-    public function testUneReferenceRecursiveEstTronqueeEtNonPerdue(): void
+    public function testARecursiveReferenceIsTruncatedNotLost(): void
     {
-        $objet = new \stdClass();
-        $objet->nom = 'boucle';
-        $objet->soi = $objet;
+        $object = new \stdClass();
+        $object->name = 'loop';
+        $object->self = $object;
 
-        $storable = RecordedDetails::storable(['payload' => $objet]);
+        $storable = RecordedDetails::storable(['payload' => $object]);
 
         self::assertIsArray($storable);
-        self::assertSame('boucle', $storable['payload']['nom']);
+        self::assertSame('loop', $storable['payload']['name']);
     }
 }

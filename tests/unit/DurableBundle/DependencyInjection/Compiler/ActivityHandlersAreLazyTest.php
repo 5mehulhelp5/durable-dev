@@ -9,29 +9,29 @@ use Gplanchat\Durable\Bundle\DependencyInjection\DurableExtension;
 use Gplanchat\Durable\Bundle\DurableBundle;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use unit\DurableBundle\Fixtures\CompteurDInstances;
-use unit\DurableBundle\Fixtures\PremierHandler;
+use unit\DurableBundle\Fixtures\FirstHandler;
+use unit\DurableBundle\Fixtures\InstanceCounter;
 use unit\DurableBundle\Fixtures\SecondHandler;
 
 /**
- * Exécuter une activité ne doit construire que son gestionnaire.
+ * Executing an activity must build only its handler.
  *
- * L'exécuteur recevait ses gestionnaires sous forme de callables `[Reference, '__invoke']`. Pour
- * bâtir ce tableau, le conteneur doit résoudre chaque référence : il instancie donc **tous** les
- * gestionnaires de l'application — et leurs dépendances, connexions et clients HTTP compris — pour
- * en appeler un seul.
+ * The executor received its handlers as `[Reference, '__invoke']` callables. To build that array,
+ * the container must resolve every reference: it therefore instantiates **all** the handlers of
+ * the application — and their dependencies, connections and HTTP clients included — to call a
+ * single one.
  *
- * Ce que ça coûte ne se voit pas en développement, où les gestionnaires sont légers. Ça se voit sur
- * un worker qui traite une activité par message, avec vingt contrats déclarés.
+ * What that costs does not show in development, where handlers are light. It shows on a worker
+ * that handles one activity per message, with twenty declared contracts.
  */
 final class ActivityHandlersAreLazyTest extends TestCase
 {
     protected function setUp(): void
     {
-        CompteurDInstances::reset();
+        InstanceCounter::reset();
     }
 
-    public function testUneSeuleActiviteExecuteeNeConstruitQueSonGestionnaire(): void
+    public function testASingleExecutedActivityBuildsOnlyItsHandler(): void
     {
         $container = $this->compile();
 
@@ -40,28 +40,28 @@ final class ActivityHandlersAreLazyTest extends TestCase
 
         self::assertSame(
             0,
-            CompteurDInstances::total(),
-            'obtenir l\'exécuteur ne doit construire aucun gestionnaire',
+            InstanceCounter::total(),
+            'getting the executor must build no handler',
         );
 
-        $executor->execute('premier.faire', ['quoi' => 'ceci']);
+        $executor->execute('first.perform', ['what' => 'this']);
 
-        self::assertSame(['premier'], CompteurDInstances::construits());
+        self::assertSame(['first'], InstanceCounter::built());
     }
 
-    public function testLesDeuxGestionnairesRestentJoignables(): void
+    public function testBothHandlersStayReachable(): void
     {
         $container = $this->compile();
 
         /** @var ActivityExecutor $executor */
         $executor = $container->get(ActivityExecutor::class);
 
-        self::assertSame('premier:ceci', $executor->execute('premier.faire', ['quoi' => 'ceci']));
-        self::assertSame('second:cela', $executor->execute('second.faire', ['quoi' => 'cela']));
-        self::assertSame(['premier', 'second'], CompteurDInstances::construits());
+        self::assertSame('first:this', $executor->execute('first.perform', ['what' => 'this']));
+        self::assertSame('second:that', $executor->execute('second.perform', ['what' => 'that']));
+        self::assertSame(['first', 'second'], InstanceCounter::built());
     }
 
-    public function testUneActiviteInconnueEchoueToujoursClairement(): void
+    public function testAnUnknownActivityStillFailsClearly(): void
     {
         $container = $this->compile();
 
@@ -69,9 +69,9 @@ final class ActivityHandlersAreLazyTest extends TestCase
         $executor = $container->get(ActivityExecutor::class);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/inconnue/');
+        $this->expectExceptionMessageMatches('/unknown/');
 
-        $executor->execute('inconnue', []);
+        $executor->execute('unknown', []);
     }
 
     private function compile(): ContainerBuilder
@@ -81,7 +81,7 @@ final class ActivityHandlersAreLazyTest extends TestCase
         (new DurableExtension())->load([[]], $container);
         $container->register('messenger.default_bus', \stdClass::class)->setPublic(true);
 
-        foreach ([PremierHandler::class, SecondHandler::class] as $class) {
+        foreach ([FirstHandler::class, SecondHandler::class] as $class) {
             $container->register($class, $class)->setAutoconfigured(true)->setPublic(false);
         }
 
