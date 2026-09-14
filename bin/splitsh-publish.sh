@@ -30,12 +30,12 @@ SPLITS=(
     "src/Bridge/Dbal/|durable-bridge-dbal"
     "src/Bridge/Illuminate/|durable-bridge-illuminate"
     "src/DurableLaravel/|durable-laravel"
-    # Le satellite porte déjà un `main` : le split de mars 2026, quand ce préfixe tenait un tout
-    # autre module (`Api`, `Model`, une commande de consommation). Il est un ancêtre du split
-    # d'aujourd'hui — même préfixe, même histoire amont — donc la première poussée avance sans
-    # forcer. Si elle est refusée, c'est que l'histoire amont a bougé entre-temps : la sortie est le
-    # `workflow_dispatch` avec `force`, qui archive la tête sous `refs/heads/archive/` avant de la
-    # remplacer, et non une suppression du dépôt.
+    # The satellite already carries a `main`: the March 2026 split, when this prefix held a
+    # completely different module (`Api`, `Model`, a consumer command). It is an ancestor of
+    # today's split — same prefix, same upstream history — so the first push advances without
+    # forcing. If it is refused, the upstream history moved in between: the way out is the
+    # `workflow_dispatch` with `force`, which archives the head under `refs/heads/archive/` before
+    # replacing it, not a deletion of the repository.
     "src/DurableModule/|durable-magento"
     "src/DurablePhpstan/|durable-phpstan"
     "src/DurableRector/|durable-rector"
