@@ -10,12 +10,12 @@ use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Les tables du journal doivent être **déclarables** à l'outillage Doctrine, pas seulement
- * créables par le pont.
+ * The journal tables must be **declarable** to the Doctrine tooling, not only creatable by the
+ * bridge.
  *
- * Une table que `doctrine:migrations:diff` ne voit pas dans le schéma attendu est une table
- * orpheline : la migration générée la supprime. Le journal d'exécutions durables est exactement
- * ce qu'on ne veut pas voir disparaître dans une migration que personne n'a relue de près.
+ * A table `doctrine:migrations:diff` does not see in the expected schema is an orphan table: the
+ * generated migration drops it. The journal of durable executions is exactly what we do not want
+ * to see vanish in a migration nobody read closely.
  *
  * @see DUR030
  */
@@ -28,7 +28,7 @@ final class DurableSchemaDeclarationTest extends TestCase
         'durable_workflow_runs',
     ];
 
-    public function testLesTablesSontDeclareesDansUnSchemaVide(): void
+    public function testTheTablesAreDeclaredInAnEmptySchema(): void
     {
         $connection = self::connection();
         $schema = new Schema();
@@ -36,33 +36,33 @@ final class DurableSchemaDeclarationTest extends TestCase
         (new DurableSchema($connection))->configureSchema($schema, $connection, static fn(): bool => true);
 
         foreach (self::TABLES as $table) {
-            self::assertTrue($schema->hasTable($table), \sprintf('%s doit être déclarée', $table));
+            self::assertTrue($schema->hasTable($table), \sprintf('%s must be declared', $table));
         }
     }
 
     /**
-     * Le schéma que Doctrine construit porte déjà les tables des entités, et peut porter les
-     * nôtres si une migration précédente les a créées. Redéclarer une table présente lèverait.
+     * The schema Doctrine builds already carries the entity tables, and may carry ours if a
+     * previous migration created them. Redeclaring a present table would throw.
      */
-    public function testUneTableDejaPresenteDansLeSchemaNEstPasRedeclaree(): void
+    public function testATableAlreadyPresentInTheSchemaIsNotRedeclared(): void
     {
         $connection = self::connection();
         $schema = new Schema();
-        $dejaLa = $schema->createTable('durable_events');
-        $dejaLa->addColumn('id', 'bigint');
+        $alreadyThere = $schema->createTable('durable_events');
+        $alreadyThere->addColumn('id', 'bigint');
 
         (new DurableSchema($connection))->configureSchema($schema, $connection, static fn(): bool => true);
 
         self::assertTrue($schema->hasTable('durable_events'));
-        self::assertTrue($schema->hasTable('durable_workflow_runs'), 'les autres sont déclarées quand même');
+        self::assertTrue($schema->hasTable('durable_workflow_runs'), 'the others are declared all the same');
     }
 
     /**
-     * Le journal peut vivre sur une autre connexion que celle de l'ORM. Y déclarer nos tables
-     * ferait créer, dans la base de l'application, des tables qui n'y sont pas — et supprimer,
-     * dans la base du journal, celles qui y sont.
+     * The journal may live on another connection than the ORM's. Declaring our tables there would
+     * create, in the application database, tables that are not there — and drop, in the journal
+     * database, those that are.
      */
-    public function testRienNEstDeclareQuandCeNEstPasLaMemeBase(): void
+    public function testNothingIsDeclaredWhenItIsNotTheSameDatabase(): void
     {
         $schema = new Schema();
 
@@ -72,10 +72,10 @@ final class DurableSchemaDeclarationTest extends TestCase
             static fn(): bool => false,
         );
 
-        self::assertSame([], $schema->getTables(), 'aucune table ne doit rejoindre le schéma d\'une autre base');
+        self::assertSame([], $schema->getTables(), 'no table may join the schema of another database');
     }
 
-    public function testLaMemeBaseSurUneAutreConnexionEstDeclaree(): void
+    public function testTheSameDatabaseOnAnotherConnectionIsDeclared(): void
     {
         $schema = new Schema();
 
@@ -89,10 +89,10 @@ final class DurableSchemaDeclarationTest extends TestCase
     }
 
     /**
-     * Quand les migrations tiennent le schéma, le DDL paresseux du pont n'a plus lieu d'être :
-     * il écrirait derrière le dos de l'outil qui en a désormais la charge.
+     * When migrations hold the schema, the bridge's lazy DDL has no reason to exist any more: it
+     * would write behind the back of the tool now in charge of it.
      */
-    public function testAutoSetupDesactiveNeCreeAucuneTable(): void
+    public function testDisabledAutoSetupCreatesNoTable(): void
     {
         $connection = self::connection();
 
@@ -101,7 +101,7 @@ final class DurableSchemaDeclarationTest extends TestCase
         self::assertSame([], $connection->createSchemaManager()->listTableNames());
     }
 
-    public function testAutoSetupActifCreeLesTables(): void
+    public function testEnabledAutoSetupCreatesTheTables(): void
     {
         $connection = self::connection();
 

@@ -14,13 +14,13 @@ use Gplanchat\Durable\Bundle\SchemaListener\DurableSchemaListener;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Le chemin de production de la déclaration : l'écouteur, branché sur `postGenerateSchema`, avec
- * la vraie sonde « même base ».
+ * The production path of the declaration: the listener, hooked on `postGenerateSchema`, with the
+ * real "same database" probe.
  *
- * Les tests de `DurableSchema` passent la sonde en paramètre et prouvent donc la forme du schéma,
- * jamais la décision de déclarer. C'est cette décision qui rouvre ou ferme le constat : une sonde
- * qui répond toujours `false` laisse `doctrine:migrations:diff` regénérer ses `DROP TABLE` dès que
- * le journal a sa propre connexion.
+ * The `DurableSchema` tests pass the probe as a parameter and therefore prove the shape of the
+ * schema, never the decision to declare. That decision is what reopens or closes the finding: a
+ * probe that always answers `false` lets `doctrine:migrations:diff` regenerate its `DROP TABLE`
+ * as soon as the journal has its own connection.
  */
 final class DurableSchemaListenerTest extends TestCase
 {
@@ -32,59 +32,59 @@ final class DurableSchemaListenerTest extends TestCase
     ];
 
     /** @var list<string> */
-    private array $fichiers = [];
+    private array $files = [];
 
     protected function tearDown(): void
     {
-        foreach ($this->fichiers as $fichier) {
-            @unlink($fichier);
+        foreach ($this->files as $file) {
+            @unlink($file);
         }
-        $this->fichiers = [];
+        $this->files = [];
     }
 
-    public function testLaMemeConnexionDeclareLesTables(): void
+    public function testTheSameConnectionDeclaresTheTables(): void
     {
-        $connection = self::enMemoire();
+        $connection = self::inMemory();
         $schema = new Schema();
 
         (new DurableSchemaListener(new DurableSchema($connection)))
-            ->postGenerateSchema($this->evenement($connection, $schema));
+            ->postGenerateSchema($this->event($connection, $schema));
 
         foreach (self::TABLES as $table) {
-            self::assertTrue($schema->hasTable($table), \sprintf('%s doit être déclarée', $table));
+            self::assertTrue($schema->hasTable($table), \sprintf('%s must be declared', $table));
         }
     }
 
     /**
-     * Deux objets `Connection` distincts sur le même fichier : c'est le cas que la sonde existe
-     * pour trancher, et celui qu'une sonde câblée sur `false` traitait comme une autre base.
+     * Two distinct `Connection` objects on the same file: this is the case the probe exists to
+     * settle, and the one a probe wired to `false` treated as another database.
      */
-    public function testDeuxConnexionsSurLaMemeBaseDeclarentLesTables(): void
+    public function testTwoConnectionsOnTheSameDatabaseDeclareTheTables(): void
     {
-        $fichier = $this->fichier();
-        $journal = self::surFichier($fichier);
-        $orm = self::surFichier($fichier);
+        $file = $this->file();
+        $journal = self::onFile($file);
+        $orm = self::onFile($file);
         $schema = new Schema();
 
         (new DurableSchemaListener(new DurableSchema($journal)))
-            ->postGenerateSchema($this->evenement($orm, $schema));
+            ->postGenerateSchema($this->event($orm, $schema));
 
-        self::assertCount(\count(self::TABLES), $schema->getTables(), 'la sonde doit reconnaître la même base');
+        self::assertCount(\count(self::TABLES), $schema->getTables(), 'the probe must recognise the same database');
     }
 
-    public function testDeuxBasesDistinctesNeDeclarentRien(): void
+    public function testTwoDistinctDatabasesDeclareNothing(): void
     {
-        $journal = self::surFichier($this->fichier());
-        $orm = self::surFichier($this->fichier());
+        $journal = self::onFile($this->file());
+        $orm = self::onFile($this->file());
         $schema = new Schema();
 
         (new DurableSchemaListener(new DurableSchema($journal)))
-            ->postGenerateSchema($this->evenement($orm, $schema));
+            ->postGenerateSchema($this->event($orm, $schema));
 
-        self::assertSame([], $schema->getTables(), 'aucune table ne doit rejoindre le schéma d\'une autre base');
+        self::assertSame([], $schema->getTables(), 'no table may join the schema of another database');
     }
 
-    private function evenement(Connection $connection, Schema $schema): GenerateSchemaEventArgs
+    private function event(Connection $connection, Schema $schema): GenerateSchemaEventArgs
     {
         $em = $this->createMock(EntityManagerInterface::class);
         $em->method('getConnection')->willReturn($connection);
@@ -92,21 +92,21 @@ final class DurableSchemaListenerTest extends TestCase
         return new GenerateSchemaEventArgs($em, $schema);
     }
 
-    private static function enMemoire(): Connection
+    private static function inMemory(): Connection
     {
         return DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
     }
 
-    private static function surFichier(string $chemin): Connection
+    private static function onFile(string $path): Connection
     {
-        return DriverManager::getConnection(['driver' => 'pdo_sqlite', 'path' => $chemin]);
+        return DriverManager::getConnection(['driver' => 'pdo_sqlite', 'path' => $path]);
     }
 
-    private function fichier(): string
+    private function file(): string
     {
-        $chemin = \sprintf('%s/durable-schema-%s.sqlite', sys_get_temp_dir(), bin2hex(random_bytes(6)));
-        $this->fichiers[] = $chemin;
+        $path = \sprintf('%s/durable-schema-%s.sqlite', sys_get_temp_dir(), bin2hex(random_bytes(6)));
+        $this->files[] = $path;
 
-        return $chemin;
+        return $path;
     }
 }
