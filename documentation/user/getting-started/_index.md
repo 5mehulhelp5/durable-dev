@@ -152,24 +152,27 @@ when@dev:
 
 ### Tag workflows
 
-Any class annotated with `#[AsWorkflow]` in your workflow namespace is auto-registered when you tag the folder:
+Nothing to write. A class carrying `#[AsWorkflow]` is registered as soon as it is a service, which
+with the default `autoconfigure: true` of a Symfony application it already is.
+
+Earlier versions required tagging the folder by hand:
 
 ```yaml
-# config/services.yaml
+# config/services.yaml — no longer needed
 App\Workflow\:
     resource: '../src/Workflow/'
     exclude: '../src/Workflow/Activity/'
     tags: [durable.workflow]
 ```
 
-The `exclude` matters. The tag is not a filter: every service it matches is handed to the workflow
-registry, which requires exactly one `#[AsWorkflowMethod]` and throws otherwise. Tag a folder that
-also holds your activity handlers and the container stops building, with an error naming a class you
-never meant to register. Keep the tagged folder to workflows, or exclude what is not one.
+The tag still works, so an application that writes it keeps working; it is simply redundant. If
+you do keep it, the `exclude` still matters: the tag is not a filter, every service it matches is
+handed to the workflow registry, which requires exactly one `#[AsWorkflowMethod]` and throws
+otherwise.
 
 ### Register activity implementations
 
-Nothing to write. A class carrying `#[AsActivityHandler]` is picked up by the bundle's autoconfiguration as soon as it is a service, which, with the default `autoconfigure: true` of a Symfony application, it already is. This is where workflows above differ: those still need the tag.
+Nothing to write. A class carrying `#[AsActivityHandler]` is picked up by the bundle's autoconfiguration as soon as it is a service, which, with the default `autoconfigure: true` of a Symfony application, it already is.
 
 ---
 

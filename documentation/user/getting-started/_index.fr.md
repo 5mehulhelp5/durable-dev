@@ -152,24 +152,27 @@ when@dev:
 
 ### Marquer les workflows
 
-Toute classe portant `#[AsWorkflow]` dans votre espace de noms de workflows est enregistrée automatiquement dès que vous marquez le dossier :
+Rien à écrire. Une classe portant `#[AsWorkflow]` est enregistrée dès qu'elle est un service — ce
+qu'avec l'`autoconfigure: true` par défaut d'une application Symfony elle est déjà.
+
+Les versions précédentes demandaient de marquer le dossier à la main :
 
 ```yaml
-# config/services.yaml
+# config/services.yaml — désormais inutile
 App\Workflow\:
     resource: '../src/Workflow/'
     exclude: '../src/Workflow/Activity/'
     tags: [durable.workflow]
 ```
 
-L'`exclude` compte. La balise ne filtre rien : chaque service qu'elle attrape est passé au registre
-des workflows, qui exige exactement un `#[AsWorkflowMethod]` et lève sinon. Baliser un dossier qui
-porte aussi vos gestionnaires d'activité, et le conteneur cesse de se construire sur une erreur
-nommant une classe que vous n'enregistriez pas exprès. Au dossier balisé, ses seuls workflows.
+La balise fonctionne toujours : une application qui l'écrit continue de marcher, elle fait
+simplement double emploi. Si vous la gardez, l'`exclude` compte encore : la balise ne filtre rien,
+chaque service qu'elle attrape est passé au registre des workflows, qui exige exactement un
+`#[AsWorkflowMethod]` et lève sinon.
 
 ### Déclarer les implémentations d'activité
 
-Rien à écrire. Une classe portant `#[AsActivityHandler]` est ramassée par l'autoconfiguration du bundle dès qu'elle est un service, ce qu'avec l'`autoconfigure: true` par défaut d'une application Symfony elle est déjà. C'est là que les workflows ci-dessus diffèrent : eux ont encore besoin de la balise.
+Rien à écrire. Une classe portant `#[AsActivityHandler]` est ramassée par l'autoconfiguration du bundle dès qu'elle est un service, ce qu'avec l'`autoconfigure: true` par défaut d'une application Symfony elle est déjà.
 
 ---
 
