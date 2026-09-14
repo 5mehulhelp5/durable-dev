@@ -14,25 +14,26 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Une charge utile de workflow est de la donnée métier : n'importe quoi peut s'y trouver.
+ * A workflow payload is business data: anything can be in there.
  *
- * Le profileur, lui, doit être **stockable** — le `Profiler` sérialise le profil entier pour
- * l'écrire. Une valeur qui ne survit pas à `serialize()` dans une charge utile ne casse donc pas
- * le panneau Durable : elle casse le profil de la requête, panneaux des autres bundles compris.
+ * The profiler, for its part, must be **storable** — the `Profiler` serialises the whole profile
+ * to write it. A value that does not survive `serialize()` inside a payload therefore does not
+ * break the Durable panel: it breaks the profile of the request, the other bundles' panels
+ * included.
  *
- * D'où le contrat de ces cas : ce que le collecteur range doit toujours pouvoir être sérialisé,
- * quoi qu'on lui donne à observer.
+ * Hence the contract of these cases: what the collector stores must always be serialisable,
+ * whatever it is given to observe.
  */
 final class DurableDataCollectorSerialisationTest extends TestCase
 {
     /**
      * @return iterable<string, array{0: mixed}>
      */
-    public static function valeursQuiNeSeSerialisentPas(): iterable
+    public static function valuesThatDoNotSerialise(): iterable
     {
         yield 'closure' => [static fn(): int => 1];
-        yield 'ressource' => [fopen('php://memory', 'rb')];
-        yield 'objet anonyme portant une closure' => [new class {
+        yield 'resource' => [fopen('php://memory', 'rb')];
+        yield 'anonymous object carrying a closure' => [new class {
             public \Closure $callback;
 
             public function __construct()
@@ -42,65 +43,65 @@ final class DurableDataCollectorSerialisationTest extends TestCase
         }];
     }
 
-    #[DataProvider('valeursQuiNeSeSerialisentPas')]
-    public function testLeProfilResteStockableQuoiQueLaChargeUtilePorte(mixed $valeur): void
+    #[DataProvider('valuesThatDoNotSerialise')]
+    public function testTheProfileStaysStorableWhateverThePayloadCarries(mixed $value): void
     {
-        $collector = self::collectorAyantObserve(['commande' => 'X-1', 'hostile' => $valeur]);
+        $collector = self::collectorHavingObserved(['order' => 'X-1', 'hostile' => $value]);
 
-        $serialise = serialize($collector);
+        $serialised = serialize($collector);
 
-        self::assertIsString($serialise);
-        self::assertInstanceOf(DurableDataCollector::class, unserialize($serialise));
+        self::assertIsString($serialised);
+        self::assertInstanceOf(DurableDataCollector::class, unserialize($serialised));
     }
 
     /**
-     * Le reste de la charge utile est ce que l'exploitant est venu lire ; une valeur qui ne se
-     * rend pas ne doit pas l'emporter avec elle.
+     * The rest of the payload is what the operator came to read; a value that cannot be rendered
+     * must not take it away with it.
      */
-    public function testCeQuiEstLisibleDansLaChargeUtileEstConserve(): void
+    public function testWhatIsReadableInThePayloadIsKept(): void
     {
-        $collector = self::collectorAyantObserve([
-            'commande' => 'X-1',
-            'montant' => 1250,
+        $collector = self::collectorHavingObserved([
+            'order' => 'X-1',
+            'amount' => 1250,
             'hostile' => static fn(): int => 1,
         ]);
 
-        $rendu = json_encode(unserialize(serialize($collector))->getTimeline());
+        $rendered = json_encode(unserialize(serialize($collector))->getTimeline());
 
-        self::assertStringContainsString('X-1', (string) $rendu);
-        self::assertStringContainsString('1250', (string) $rendu);
+        self::assertStringContainsString('X-1', (string) $rendered);
+        self::assertStringContainsString('1250', (string) $rendered);
     }
 
     /**
-     * Le journal peut porter des octets qui ne sont pas du texte valide. `json_encode` rend alors
-     * `false`, et le gabarit affiche un vide là où il y avait une charge utile.
+     * The journal may carry bytes that are not valid text. `json_encode` then returns `false`,
+     * and the template shows a blank where there was a payload.
      */
-    public function testUneChargeUtileBinaireResteAffichable(): void
+    public function testABinaryPayloadStaysDisplayable(): void
     {
-        $collector = self::collectorAyantObserve(['blob' => "\xB1\x31\xFE"]);
+        $collector = self::collectorHavingObserved(['blob' => "\xB1\x31\xFE"]);
 
-        $rendu = json_encode(unserialize(serialize($collector))->getTimeline());
+        $rendered = json_encode(unserialize(serialize($collector))->getTimeline());
 
-        self::assertIsString($rendu, 'une charge utile binaire ne doit pas rendre le panneau vide');
+        self::assertIsString($rendered, 'a binary payload must not leave the panel blank');
     }
 
     /**
-     * La barrière ne doit rien déformer de ce qui passait déjà : le gabarit lit des clés précises,
-     * et un aller-retour JSON qui transformerait une liste en objet les casserait en silence.
+     * The barrier must not distort anything that already went through: the template reads precise
+     * keys, and a JSON round trip that turned a list into an object would break them silently.
      */
-    public function testUneChargeUtileOrdinaireTraverseSansEtreDeformee(): void
+    public function testAnOrdinaryPayloadGoesThroughUndistorted(): void
     {
         $payload = [
-            'commande' => 'X-1',
-            'montant' => 1250,
-            'remise' => 0.15,
+            'order' => 'X-1',
+            'amount' => 1250,
+            'discount' => 0.15,
             'urgent' => false,
-            'lignes' => ['a', 'b'],
-            'client' => ['id' => 7, 'nom' => 'Dupont'],
+            'lines' => ['a', 'b'],
+            'customer' => ['id' => 7, 'name' => 'Smith'],
             'note' => null,
         ];
 
-        $timeline = self::collectorAyantObserve($payload)->getTimeline();
+        $timeline = self::collectorHavingObserved($payload)->getTimeline();
 
         self::assertSame($payload, $timeline[0]['payload'] ?? null);
     }
@@ -108,10 +109,10 @@ final class DurableDataCollectorSerialisationTest extends TestCase
     /**
      * @param array<string, mixed> $payload
      */
-    private static function collectorAyantObserve(array $payload): DurableDataCollector
+    private static function collectorHavingObserved(array $payload): DurableDataCollector
     {
         $trace = new DurableExecutionTrace();
-        $trace->onWorkflowDispatchRequested('exec-1', 'Commande', $payload, false, 'async');
+        $trace->onWorkflowDispatchRequested('exec-1', 'Order', $payload, false, 'async');
 
         $collector = new DurableDataCollector($trace, new InMemoryWorkflowMetadataStore(), new InMemoryEventStore());
         $collector->collect(new Request(), new Response());
