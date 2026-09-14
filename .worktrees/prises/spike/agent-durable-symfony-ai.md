@@ -1,11 +1,11 @@
 # spike/agent-durable-symfony-ai
 
-- **Chantier** : prototype d'agent durable — rendre `Runner::run()` de Symfony AI rejouable en le pilotant depuis du code workflow, via deux adaptateurs (`ModelClientInterface`, `ToolExecutorInterface` — la couture basse n'est pas `PlatformInterface`, cf. §8 du 2026-08-31). Vérifie les quatre questions du §7 de `documentation/journal/inbox/2026-08-31.md`.
-- **Entrées** : `symfony/` (app d'exemple) uniquement — pas de package, pas de bundle, pas d'ADR.
-- **État** : in review, PR #393 (opened 2026-09-12, `main` merged in the same day). The entry
+- **Scope**: a durable-agent prototype — make Symfony AI's `Runner::run()` replayable by driving it from workflow code, through two adapters (`ModelClientInterface`, `ToolExecutorInterface` — the low seam is not `PlatformInterface`, see §8 of 2026-08-31). Checks the four questions of §7 in `documentation/journal/inbox/2026-08-31.md`.
+- **Entries**: `symfony/` (the sample application) only — no package, no bundle, no ADR.
+- **State**: in review, PR #393 (opened 2026-09-12, `main` merged in the same day). The entry
   `documentation/user/use-cases/durable-agent.md` is back on the branch with a launch path on
-  `http://localhost:8012`; the `_index` row returns at merge time. `symfony/ai` épinglé v0.13.0 — qui est la
-  dernière version publiée, pas un vieux pin. La raison est que `symfony/ai` est en 0.x, sans
-  promesse de compatibilité entre mineures : les coutures utilisées (`ModelClientInterface`,
-  `ResultConverterInterface`, `ToolExecutorInterface`, `ToolboxInterface`) sont toutes publiques,
-  et `Runner` — qui est `@internal` — n'est jamais touché.
+  `http://localhost:8012`; the `_index` row returns at merge time. `symfony/ai` pinned to v0.13.0 —
+  which is the latest published version, not an old pin. The reason is that `symfony/ai` is 0.x,
+  with no compatibility promise between minors: the seams used (`ModelClientInterface`,
+  `ResultConverterInterface`, `ToolExecutorInterface`, `ToolboxInterface`) are all public, and
+  `Runner` — which is `@internal` — is never touched.
