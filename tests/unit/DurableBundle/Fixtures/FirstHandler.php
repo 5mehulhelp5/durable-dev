@@ -6,16 +6,16 @@ namespace unit\DurableBundle\Fixtures;
 
 use Gplanchat\Durable\Attribute\AsActivityHandler;
 
-#[AsActivityHandler(contract: SecondContract::class)]
-final class SecondHandler implements SecondContract
+#[AsActivityHandler(contract: FirstContract::class)]
+final class FirstHandler implements FirstContract
 {
     public function __construct()
     {
-        InstanceCounter::note('second');
+        InstanceCounter::note('first');
     }
 
     public function perform(string $what): string
     {
-        return 'second:' . $what;
+        return 'first:' . $what;
     }
 }

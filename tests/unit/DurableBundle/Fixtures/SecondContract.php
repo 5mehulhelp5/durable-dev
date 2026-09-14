@@ -10,6 +10,6 @@ use Gplanchat\Durable\Attribute\AsActivityMethod;
 #[AsActivity(name: 'second')]
 interface SecondContract
 {
-    #[AsActivityMethod(name: 'faire')]
-    public function faire(string $quoi): string;
+    #[AsActivityMethod(name: 'perform')]
+    public function perform(string $what): string;
 }
