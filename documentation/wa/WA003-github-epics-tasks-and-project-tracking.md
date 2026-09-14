@@ -22,8 +22,21 @@ Titles remain **clear and scoped** (product area, feature); prefixes are **manda
 
 ### Labels
 
-- Use **consistent** labels for **type** (`task`, `story`, …) and **domain** or **theme** (`pwa`, `docs`, `genai`, …) as defined by maintainers for the repository.
-- When work belongs to a named programme or epic family, use **labels** such as `epic-078`, `epic-082` (or the repository’s equivalent) so filters and views stay usable.
+- Use **consistent** labels for **type** and **area**. Since 2026-09-11 this repository has them:
+  `epic` and `task` for the kind; `core`, `bundle`, `plugin`, `bridges`, `hosts`,
+  `ci-publication`, `docs`, `process`, `agentic` for the area; `cleanup` for dead code and
+  hygiene; `human-decision` for an item that touches a supervised path or settles a design and
+  therefore does not run unattended; a dated batch label such as `audit-2026-09` for the findings
+  of one audit.
+- When work belongs to a named programme or epic family, use a **batch label** (the repository's
+  equivalent of `epic-078`) so filters and views stay usable.
+
+### Who the prefixes bind
+
+The `[EPIC]` / `[Task]` / `[Story]` prefixes bind **maintainer-filed** issues. An issue filed from
+outside keeps the title its author gave it — the `[area] …` form the first external reports used is
+fine — and the trust gate labels it; a maintainer who adopts it links it to its epic with a comment
+rather than by retitling it.
 
 ### Parent / child linkage
 
@@ -57,6 +70,10 @@ Adapt fields if a template is mandated by the repository (e.g. GitHub issue form
 ### Planning document hygiene
 
 - When a planning document lists work items and GitHub issues are created from it, **update** that document with **Issue #** identifiers as issues are filed so the plan and GitHub stay aligned.
+- **Re-audit at every milestone exit.** An audit that produced the issues of a milestone is re-run
+  when the milestone closes: the same prior-findings table (fixed / open / partial, one verified
+  anchor each), and the delta filed as issues. Between 3 and 11 September 2026 six blockers were
+  fixed and no engine finding moved, and nobody counted; the rule exists so that someone does.
 
 ### Scope
 
