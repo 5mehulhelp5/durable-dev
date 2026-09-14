@@ -8,10 +8,10 @@ use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 
 /**
- * Un workflow sans dépendance : rien à autowirer, donc rien qui puisse piéger.
+ * A workflow with no dependency: nothing to autowire, hence nothing that could trap.
  */
-#[AsWorkflow('SansRien')]
-final class WorkflowSansRien
+#[AsWorkflow('WithoutDependencies')]
+final class WorkflowWithoutDependencies
 {
     #[AsWorkflowMethod]
     public function run(): string

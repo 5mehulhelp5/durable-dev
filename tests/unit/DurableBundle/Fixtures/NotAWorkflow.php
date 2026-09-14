@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace unit\DurableBundle\Fixtures;
 
 /**
- * Ne porte pas l'attribut : ne doit pas rejoindre le registre.
+ * Carries no attribute: must not reach the registry.
  */
-final class PasUnWorkflow
+final class NotAWorkflow
 {
     public function run(): string
     {
-        return 'non';
+        return 'no';
     }
 }

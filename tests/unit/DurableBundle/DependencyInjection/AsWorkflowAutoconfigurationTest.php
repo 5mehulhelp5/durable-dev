@@ -9,49 +9,49 @@ use Gplanchat\Durable\Bundle\DurableBundle;
 use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use unit\DurableBundle\Fixtures\PasUnWorkflow;
-use unit\DurableBundle\Fixtures\WorkflowAvecEnvironnement;
-use unit\DurableBundle\Fixtures\WorkflowSansRien;
+use unit\DurableBundle\Fixtures\NotAWorkflow;
+use unit\DurableBundle\Fixtures\WorkflowWithEnvironment;
+use unit\DurableBundle\Fixtures\WorkflowWithoutDependencies;
 
 /**
- * Trois attributs sur quatre s'autoconfigurent. Le quatrième — celui qui déclare un workflow —
- * demandait une balise écrite à la main, par répertoire, dans le `services.yaml` de l'application.
+ * Three attributes out of four autoconfigure themselves. The fourth — the one that declares a
+ * workflow — required a hand-written tag, per directory, in the application's `services.yaml`.
  *
- * L'issue #255 annonce un piège : un workflow est instancié par réflexion par
- * `WorkflowDefinitionLoader`, jamais par le conteneur, et son constructeur reçoit un
- * `WorkflowEnvironment` qui n'est pas un service. Baliser sans plus ferait donc, dit-elle, échouer
- * la compilation sur une classe que le conteneur ne construira jamais.
+ * Issue #255 announces a trap: a workflow is instantiated by reflection by `WorkflowDefinitionLoader`,
+ * never by the container, and its constructor receives a `WorkflowEnvironment` that is not a
+ * service. Tagging alone would therefore, it says, fail compilation on a class the container will
+ * never build.
  *
- * Ces cas l'éprouvent au lieu de le supposer : ils compilent réellement le conteneur.
+ * These cases test it instead of assuming it: they really compile the container.
  */
 final class AsWorkflowAutoconfigurationTest extends TestCase
 {
-    public function testUnWorkflowAttributeEstEnregistreSansBaliseEcriteALaMain(): void
+    public function testAWorkflowWithTheAttributeIsRegisteredWithoutAHandWrittenTag(): void
     {
-        $container = $this->compileWith([WorkflowSansRien::class]);
+        $container = $this->compileWith([WorkflowWithoutDependencies::class]);
 
         self::assertContains(
-            WorkflowSansRien::class,
+            WorkflowWithoutDependencies::class,
             $this->registeredClasses($container),
-            "l'attribut doit suffire, comme il suffit déjà pour les trois autres",
+            'the attribute must be enough, as it already is for the other three',
         );
     }
 
     /**
-     * Le cœur de la question. Si le piège de #255 mordait, cet appel lèverait à la compilation.
+     * The heart of the matter. If the trap of #255 bit, this call would throw at compile time.
      */
-    public function testUnWorkflowQuiRecoitLEnvironnementCompileQuandMeme(): void
+    public function testAWorkflowReceivingTheEnvironmentStillCompiles(): void
     {
-        $container = $this->compileWith([WorkflowAvecEnvironnement::class]);
+        $container = $this->compileWith([WorkflowWithEnvironment::class]);
 
-        self::assertContains(WorkflowAvecEnvironnement::class, $this->registeredClasses($container));
+        self::assertContains(WorkflowWithEnvironment::class, $this->registeredClasses($container));
     }
 
-    public function testUneClasseSansAttributNeRejointPasLeRegistre(): void
+    public function testAClassWithoutTheAttributeDoesNotReachTheRegistry(): void
     {
-        $container = $this->compileWith([PasUnWorkflow::class]);
+        $container = $this->compileWith([NotAWorkflow::class]);
 
-        self::assertNotContains(PasUnWorkflow::class, $this->registeredClasses($container));
+        self::assertNotContains(NotAWorkflow::class, $this->registeredClasses($container));
     }
 
     /**
@@ -63,8 +63,8 @@ final class AsWorkflowAutoconfigurationTest extends TestCase
         $container->setParameter('kernel.debug', false);
         (new DurableExtension())->load([[]], $container);
 
-        // Ce que FrameworkExtension pose et que ce conteneur synthétique n'a pas : le bus par
-        // défaut, référencé par le dispatcher de reprise.
+        // What FrameworkExtension provides and this synthetic container lacks: the default bus,
+        // referenced by the resume dispatcher.
         $container->register('messenger.default_bus', \stdClass::class)->setPublic(true);
 
         foreach ($classes as $class) {
