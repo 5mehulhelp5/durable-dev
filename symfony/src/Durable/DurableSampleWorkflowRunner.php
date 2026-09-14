@@ -33,8 +33,7 @@ final class DurableSampleWorkflowRunner
         #[Autowire(service: 'messenger.receiver_locator')]
         private readonly ContainerInterface $receiverLocator,
         private readonly ?WorkflowClientInterface $workflowClient = null,
-    ) {
-    }
+    ) {}
 
     public function hasWorkflow(string $workflowType): bool
     {
@@ -129,7 +128,7 @@ final class DurableSampleWorkflowRunner
         if ('complete' === $phase) {
             $result = WorkflowQueryEvaluator::lastExecutionResult($this->eventStore, $executionId);
             if (null === $result) {
-                throw new \RuntimeException('Phase complete sans ExecutionCompleted.');
+                throw new \RuntimeException('Phase complete without ExecutionCompleted.');
             }
 
             return ['executionId' => $executionId, 'result' => $result];
@@ -173,7 +172,7 @@ final class DurableSampleWorkflowRunner
         if ('complete' === $phase) {
             $result = WorkflowQueryEvaluator::lastExecutionResult($this->eventStore, $executionId);
             if (null === $result) {
-                throw new \RuntimeException('Phase complete sans ExecutionCompleted.');
+                throw new \RuntimeException('Phase complete without ExecutionCompleted.');
             }
 
             return ['executionId' => $executionId, 'result' => $result];
