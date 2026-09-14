@@ -104,6 +104,7 @@ Durable uses **Symfony Messenger** to route internal messages. Add the transport
 framework:
     messenger:
         transports:
+            sync:               'sync://'
             durable_workflows:  '%env(MESSENGER_DURABLE_WORKFLOW_DSN)%'
             durable_activities: '%env(MESSENGER_DURABLE_ACTIVITY_DSN)%'
 

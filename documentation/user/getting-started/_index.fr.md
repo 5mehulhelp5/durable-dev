@@ -104,6 +104,7 @@ Durable s'appuie sur **Symfony Messenger** pour router ses messages internes. Aj
 framework:
     messenger:
         transports:
+            sync:               'sync://'
             durable_workflows:  '%env(MESSENGER_DURABLE_WORKFLOW_DSN)%'
             durable_activities: '%env(MESSENGER_DURABLE_ACTIVITY_DSN)%'
 
