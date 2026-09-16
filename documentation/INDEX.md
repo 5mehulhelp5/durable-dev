@@ -92,12 +92,27 @@ This repository documents the **Durable** component (durable execution orchestra
 
 - [Work journal](journal/README.md)
 - [Document lifecycle](LIFECYCLE.md)
-- [Hugo user guide](HUGO.md) (built from `documentation/user/` only; ADRs/WAs are not mirrored)
-- [User documentation source (Markdown)](user/) — content published by Hugo as the end-user site
-  - [Getting started](user/getting-started/) — installation, Symfony bundle config, first workflow
-  - [Backends](user/backends/) — In-Memory vs Temporal: Docker Compose setup, DSN format
-  - [Concepts](user/concepts/) — workflows, activities, replay, backends
-  - [Creating a workflow](user/workflows/) — `WorkflowEnvironment`, attributes, signals, queries, updates
-  - [Creating activities](user/activities/) — `ActivityMethod`, `ActivityOptions`, DI, serialization
-  - [Testing workflows](user/testing/) — `DurableTestCase`, `ActivitySpy`, `WorkflowTestEnvironment`, `DurableBundleTestTrait`
-  - [Configuration reference](user/configuration/) — every `durable.yaml` key explained
+- [Hugo user guide](HUGO.md) — built from `documentation/user/` and `documentation/blog/`; ADRs, WAs and OSTs are not mirrored
+- [Blog](blog/) — dated posts, mounted under `/posts/` on the site
+- [Audit of 3 September 2026](audit/) — twenty review reports and their synthesis, French, a point-in-time record (WA006 lists it as debt); every open finding has a GitHub issue under the `audit-2026-09` label
+- [OpenSpec](../openspec/) — the design record of a change while it is being built: `changes/<name>/{proposal,tasks,specs}`, archived under `changes/archive/` once landed; `specs/` holds the live requirements
+- [User documentation source (Markdown)](user/) — content published by Hugo as the end-user site, 19 sections:
+  - [Why Durable](user/why/) — the problem it solves, what it replaces, and when you do not need it
+  - [Packages](user/packages/) — what to install and when
+  - [Getting started](user/getting-started/) — installation, Symfony configuration, a first workflow, the worker
+  - [Backends](user/backends/) — in memory, SQL (DBAL or Illuminate) or Temporal, and what each supports
+  - [gRPC in your container image](user/container-images/) — the `php-grpc` images, and how to add `ext-grpc` to yours
+  - [The dashboard](user/dashboard/) — the run list and the run history, the same panels on every host
+  - [Durable and the Temporal PHP SDK](user/comparison/) — what maps to what, and the Rector set that migrates a project
+  - [Concepts](user/concepts/) — workflows, activities, replay and backends in plain language
+  - [Creating a workflow](user/workflows/) — `WorkflowEnvironment`, signals, queries, updates, child workflows
+  - [Failures and retries](user/failures/) — what the journal records, and why an activity stopped retrying
+  - [Cancellation](user/cancellation/) — raising cancellation inside the workflow so it can compensate
+  - [Changing a running workflow](user/deploying/) — declared change points, so a deploy does not break an execution in flight
+  - [Nexus operations](user/nexus/) — calling an operation another team serves, and serving one
+  - [Creating activities](user/activities/) — activity contracts, dependency injection, the typed stub
+  - [Options and value objects](user/options/) — retry limits, timeouts, cron schedules, search attributes
+  - [Configuration reference](user/configuration/) — every `durable.yaml` key
+  - [Testing workflows](user/testing/) — unit tests with no server, and the suite that runs against a real one
+  - [Use cases](user/use-cases/) — one whole thing built end to end: the four-application Nexus demonstration
+  - [Glossary](user/glossary/) — the dozen words this guide uses in a precise sense
