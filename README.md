@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**Durable** is a PHP library for **durable execution**: long-running workflows coordinated with **Temporal**, with a **cursor-based event journal**, **activities** for side effects, and **replay** so workflow code stays deterministic.
+**Durable** is a PHP library for **durable execution**: long-running workflows that survive the death of their process, on **Temporal**, on a **SQL database** (Doctrine DBAL or Illuminate) or **in memory** — with a **cursor-based event journal**, **activities** for side effects, and **replay** so workflow code stays deterministic.
 
 This monorepo contains:
 
@@ -14,11 +14,15 @@ This monorepo contains:
 | `gplanchat/durable-bridge-dbal` | [`src/Bridge/Dbal/`](src/Bridge/Dbal/) | Doctrine DBAL journal + stores: durable execution on one SQL database, no cluster (**DUR030**) |
 | `gplanchat/durable-bridge-illuminate` | [`src/Bridge/Illuminate/`](src/Bridge/Illuminate/) | Illuminate (Laravel) journal + stores on the connection Laravel already owns (**DUR030**) |
 | `gplanchat/durable-laravel` | [`src/DurableLaravel/`](src/DurableLaravel/) | Laravel integration: binds the four storage ports from one published config file, work rides the application's queue |
+| `gplanchat/durable-magento` | [`src/DurableModule/`](src/DurableModule/) | Magento 2 / Mage-OS module: `durable:worker`, a read-only admin grid and process history, memory and Temporal backends (**DUR046**) |
 | `gplanchat/durable-plugin` | [`src/DurablePlugin/`](src/DurablePlugin/) | Sylius 2 admin plugin: workflow dashboard, backend-neutral (**DUR037**) |
 | `gplanchat/durable-phpstan` | [`src/DurablePhpstan/`](src/DurablePhpstan/) | PHPStan extension: resolves stub calls against their typed contract |
 | `gplanchat/durable-rector` | [`src/DurableRector/`](src/DurableRector/) | Rector rules migrating a project off the official Temporal PHP SDK |
+| *in-tree only* | [`src/DurableDemoContracts/`](src/DurableDemoContracts/) | The Nexus contracts the four demo applications share; deliberately not published |
 | Sample app | [`symfony/`](symfony/) | Example Symfony application using the bundle + Temporal |
 | Sylius shop | [`sylius/`](sylius/) | Sylius 2.2 Standard — where the admin dashboard is rendered for real |
+| Laravel bench | [`laravel/`](laravel/) | Laravel 12 mockup serving the `delivery` operation of the Nexus demonstration |
+| Magento bench | [`magento/`](magento/) | Mage-OS 2.2 bench with the `DurableProbe` module and its probes |
 
 ### Booting the Sylius shop
 
