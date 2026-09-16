@@ -15,15 +15,21 @@ deciding; the [home page](/) makes the same case interactively.
 | [Packages](packages/) | the library, the bundle, the Temporal driver: what to install and when |
 | [Getting started](getting-started/) | installation, Symfony configuration, a first workflow, worker commands |
 | [Concepts](concepts/) | workflows, activities, replay and backends in plain language |
-| [Backends](backends/) | in-memory versus Temporal, and what each one supports |
+| [Backends](backends/) | in memory, SQL (DBAL or Illuminate) or Temporal, and what each one supports |
+| [gRPC in your container image](container-images/) | the `php-grpc` images, and how to add `ext-grpc` to yours |
+| [The dashboard](dashboard/) | the run list and the run history, the same panels on every host |
+| [Durable and the Temporal PHP SDK](comparison/) | what maps to what, and the Rector set that migrates a project |
 | [Creating a workflow](workflows/) | `WorkflowEnvironment`, signals, queries, updates, child workflows |
 | [Creating activities](activities/) | activity contracts, dependency injection, the typed stub |
 | [Failures and retries](failures/) | what the journal records, and why an activity stopped retrying |
 | [Cancellation](cancellation/) | raising cancellation inside the workflow so it can compensate |
+| [Changing a running workflow](deploying/) | declared change points, so a deploy does not break an execution in flight |
 | [Nexus operations](nexus/) | calling an operation another team serves, and serving one |
 | [Options and value objects](options/) | retry limits, timeouts, cron schedules, search attributes |
 | [Testing workflows](testing/) | unit tests with no server, and the suite that runs against a real one |
 | [Configuration reference](configuration/) | every `durable.yaml` key |
+| [Use cases](use-cases/) | one whole thing built end to end: the four-application Nexus demonstration |
+| [Glossary](glossary/) | the dozen words this guide uses in a precise sense |
 
 Architecture decision records (**DUR**) and working agreements (**WA**) live in the repository for
 contributors, under `documentation/adr/` and `documentation/wa/`.
