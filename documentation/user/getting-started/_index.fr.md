@@ -87,7 +87,9 @@ durable:
             - App\Workflow\Activity\GreetingActivities   # listez ici vos interfaces d'activité
 ```
 
-Basculez sur Temporal à l'exécution en définissant `DURABLE_DSN` dans votre environnement :
+Activez Temporal pour un environnement en lui donnant le DSN. Le DSN est lu à la compilation du
+conteneur : un environnement qui a cette ligne est un environnement Temporal, même avec un
+`DURABLE_DSN` vide.
 
 ```yaml
 when@dev:
@@ -98,31 +100,30 @@ when@dev:
 
 ### `config/packages/messenger.yaml`
 
-Durable s'appuie sur **Symfony Messenger** pour router ses messages internes. Ajoutez les transports et le routage :
+Durable s'appuie sur **Symfony Messenger** pour router ses messages internes. Sous Temporal, le
+bundle enregistre lui-même les workers `durable_workflows` et `durable_activities` ; les deux
+transports Messenger du même nom, et leur routage, n'appartiennent qu'aux environnements sans
+cluster — ici `test`. Un environnement qui a un DSN et les déclare refuse de compiler.
 
 ```yaml
 framework:
     messenger:
         transports:
-            sync:               'sync://'
-            durable_workflows:  '%env(MESSENGER_DURABLE_WORKFLOW_DSN)%'
-            durable_activities: '%env(MESSENGER_DURABLE_ACTIVITY_DSN)%'
-
+            sync: 'sync://'
         routing:
-            Gplanchat\Durable\Transport\ResumeWorkflowMessage:        durable_workflows
-            Gplanchat\Durable\Transport\ActivityMessage:              durable_activities
-            Gplanchat\Durable\Transport\FireWorkflowTimersMessage:    durable_workflows
             Gplanchat\Durable\Transport\DeliverWorkflowSignalMessage: sync
             Gplanchat\Durable\Transport\DeliverWorkflowUpdateMessage: sync
-```
 
-Pour les tests et le développement local, pointez les deux DSN sur `in-memory://` :
-
-```yaml
-# .env.test
-MESSENGER_DURABLE_WORKFLOW_DSN=in-memory://
-MESSENGER_DURABLE_ACTIVITY_DSN=in-memory://
-DURABLE_DSN=
+when@test:
+    framework:
+        messenger:
+            transports:
+                durable_workflows:  'in-memory://'
+                durable_activities: 'in-memory://'
+            routing:
+                Gplanchat\Durable\Transport\ResumeWorkflowMessage:     durable_workflows
+                Gplanchat\Durable\Transport\ActivityMessage:           durable_activities
+                Gplanchat\Durable\Transport\FireWorkflowTimersMessage: durable_workflows
 ```
 
 Pour Temporal (`dev` / `prod`) :
@@ -131,11 +132,6 @@ Pour Temporal (`dev` / `prod`) :
 # .env.dev (ou .env.local)
 DURABLE_DSN=temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durable-journal&activity_task_queue=durable-activities&tls=0
 ```
-
-Quand Temporal est actif, le bundle enregistre lui-même `durable_workflows` et `durable_activities`
-comme workers Temporal. Ne déclarez les deux transports ci-dessus que là où il n'y a pas de cluster,
-sous `when@test:` par exemple, avec leur routage : dans un environnement qui a un `DURABLE_DSN`, un
-transport du même nom fait refuser la compilation du conteneur.
 
 ---
 
@@ -326,9 +322,14 @@ durable:
         connection: doctrine.dbal.default_connection
 ```
 
-```dotenv
-MESSENGER_DURABLE_WORKFLOW_DSN=doctrine://default
-MESSENGER_DURABLE_ACTIVITY_DSN=doctrine://default
+Les deux files quittent `when@test:` pour cet environnement, sur Doctrine, avec le même routage :
+
+```yaml
+framework:
+    messenger:
+        transports:
+            durable_workflows:  'doctrine://default?queue_name=durable_workflows'
+            durable_activities: 'doctrine://default?queue_name=durable_activities'
 ```
 
 La règle derrière les deux profils : **une exécution survit exactement à ce à quoi survivent son

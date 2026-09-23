@@ -82,11 +82,11 @@ The Temporal backend delegates workflow orchestration to a real **Temporal** clu
 2. Starting a workflow calls `StartWorkflowExecution` gRPC on Temporal.
 3. **Workflow tasks** are polled by the `durable_workflows` worker.
 4. **Activity tasks** are polled by the `durable_activities` worker.
+5. Each workflow task replays history via the fiber-based `WorkflowTaskRunner` and sends back commands to Temporal.
 
 The bundle registers these workers itself, from `durable.temporal.dsn`: `messenger:consume` finds
 them by name, and `messenger.yaml` declares no Temporal transport. A third one, `durable_nexus`,
 exists when the application [serves a Nexus operation](../nexus/).
-5. Each workflow task replays history via the fiber-based `WorkflowTaskRunner` and sends back commands to Temporal.
 
 ### Prerequisites
 
@@ -150,7 +150,8 @@ durable:
 
 Nothing goes in `messenger.yaml` for Temporal. If it still declares `durable_workflows` or
 `durable_activities` under this backend, the container refuses to compile and names the transport
-to remove: those names belong to the bundle's workers.
+to remove: those names belong to the bundle's workers. The exception is `durable.temporal.journal:
+false`: workflows then run locally, and those two transports stay the application's.
 
 ### Temporal UI
 

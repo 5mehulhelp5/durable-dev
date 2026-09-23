@@ -88,12 +88,12 @@ communique en **gRPC**, via `ext-grpc`.
 2. Démarrer un workflow appelle le gRPC `StartWorkflowExecution` sur Temporal.
 3. Les **tâches de workflow** sont récupérées par le worker `durable_workflows`.
 4. Les **tâches d'activité** sont récupérées par le worker `durable_activities`.
+5. Chaque tâche de workflow rejoue l'historique via le `WorkflowTaskRunner` à fibres et renvoie ses
+   commandes à Temporal.
 
 Le bundle enregistre lui-même ces workers à partir de `durable.temporal.dsn` : `messenger:consume`
 les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Temporal. Un troisième,
 `durable_nexus`, existe quand l'application [sert une opération Nexus](../nexus/).
-5. Chaque tâche de workflow rejoue l'historique via le `WorkflowTaskRunner` à fibres et renvoie ses
-   commandes à Temporal.
 
 ### Prérequis
 
@@ -159,7 +159,9 @@ durable:
 
 Rien ne va dans `messenger.yaml` pour Temporal. S'il déclare encore `durable_workflows` ou
 `durable_activities` avec ce backend, le conteneur refuse de compiler et nomme le transport à
-retirer : ces noms appartiennent aux workers du bundle.
+retirer : ces noms appartiennent aux workers du bundle. L'exception est
+`durable.temporal.journal: false` : les workflows tournent alors en local, et ces deux transports
+restent ceux de l'application.
 
 ### L'interface Temporal
 
