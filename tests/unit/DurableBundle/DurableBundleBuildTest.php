@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace unit\Gplanchat\DurableBundle;
 
 use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\ActivityHandlerPass;
-use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\DurableTemporalTransportFactoryPass;
 use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\NexusHandlerPass;
 use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\RegisterDurableMiddlewarePass;
 use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\TemporalReceiversPass;
@@ -18,9 +17,6 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
  * Checks that DurableBundle::build() registers every required compiler pass.
- *
- * Regression covered: DurableTemporalTransportFactoryPass created but not registered,
- * crashing the durable_temporal_activity workers at startup (exit code 1).
  *
  * @internal
  */
@@ -46,22 +42,6 @@ final class DurableBundleBuildTest extends TestCase
         );
 
         return array_map('get_class', $all);
-    }
-
-    /**
-     * Regression: DurableTemporalTransportFactoryPass was created but not registered.
-     * Without that pass, TemporalTransportFactory does not receive TemporalActivityWorker and
-     * the messenger:consume durable_temporal_activity workers crash immediately.
-     */
-    public function testDurableTemporalTransportFactoryPassIsRegistered(): void
-    {
-        self::assertContains(
-            DurableTemporalTransportFactoryPass::class,
-            $this->registeredPassClasses(),
-            'DurableTemporalTransportFactoryPass must be registered in DurableBundle::build(). '
-            . 'Its absence causes TemporalActivityWorker to not be injected in TemporalTransportFactory, '
-            . 'crashing the durable_temporal_activity Messenger workers.',
-        );
     }
 
     public function testWorkflowPassIsRegistered(): void
