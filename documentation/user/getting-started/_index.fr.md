@@ -132,20 +132,10 @@ Pour Temporal (`dev` / `prod`) :
 DURABLE_DSN=temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durable-journal&activity_task_queue=durable-activities&tls=0
 ```
 
-Quand Temporal est actif, ajoutez les transports du worker (`when@dev:` / `when@prod:`) :
-
-```yaml
-when@dev:
-    framework:
-        messenger:
-            transports:
-                durable_temporal_journal:
-                    dsn: '%env(DURABLE_DSN)%'
-                durable_temporal_activity:
-                    dsn: '%env(DURABLE_DSN)%'
-                    options:
-                        purpose: activity_worker
-```
+Quand Temporal est actif, le bundle enregistre lui-même `durable_workflows` et `durable_activities`
+comme workers Temporal. Ne déclarez les deux transports ci-dessus que là où il n'y a pas de cluster,
+sous `when@test:` par exemple, avec leur routage : dans un environnement qui a un `DURABLE_DSN`, un
+transport du même nom fait refuser la compilation du conteneur.
 
 ---
 
@@ -350,27 +340,29 @@ avec le processus, précisément la panne que l'exécution durable existe pour s
 
 ## Démarrer les workers Temporal (production / mode dev)
 
-Quand `DURABLE_DSN` pointe vers un serveur Temporal, lancez les consommateurs Messenger dans des
-processus séparés. **Ce sont les commandes Symfony** ; les autres hôtes interrogent le même cluster
+Quand `DURABLE_DSN` pointe vers un serveur Temporal, lancez les workers enregistrés par le bundle dans
+des processus séparés. **Ce sont les commandes Symfony** ; les autres hôtes interrogent le même cluster
 avec les leurs : `php artisan durable:temporal-worker` sous Laravel,
 `bin/magento durable:worker --role=journal` et `--role=activity` sous Magento :
 
 ```bash
 # Worker des tâches de workflow (interroge Temporal pour les tâches de workflow)
-php bin/console messenger:consume durable_temporal_journal
+php bin/console messenger:consume durable_workflows
 
 # Worker d'activités (interroge Temporal pour les tâches d'activité)
-php bin/console messenger:consume durable_temporal_activity
+php bin/console messenger:consume durable_activities
 ```
+
+Une application qui [sert une opération Nexus](../nexus/) en lance un troisième, `durable_nexus`.
 
 En développement local avec `symfony serve`, ajoutez ceci à `.symfony.local.yaml` :
 
 ```yaml
 workers:
-    journal:
-        cmd: ['symfony', 'console', 'messenger:consume', 'durable_temporal_journal', '--time-limit=3600']
-    activity:
-        cmd: ['symfony', 'console', 'messenger:consume', 'durable_temporal_activity', '--time-limit=3600']
+    workflows:
+        cmd: ['symfony', 'console', 'messenger:consume', 'durable_workflows', '--time-limit=3600']
+    activities:
+        cmd: ['symfony', 'console', 'messenger:consume', 'durable_activities', '--time-limit=3600']
 ```
 
 ---

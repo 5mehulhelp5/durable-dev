@@ -132,20 +132,10 @@ For Temporal (`dev`/`prod`):
 DURABLE_DSN=temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durable-journal&activity_task_queue=durable-activities&tls=0
 ```
 
-When Temporal is active, add the worker transports (`when@dev:` / `when@prod:`):
-
-```yaml
-when@dev:
-    framework:
-        messenger:
-            transports:
-                durable_temporal_journal:
-                    dsn: '%env(DURABLE_DSN)%'
-                durable_temporal_activity:
-                    dsn: '%env(DURABLE_DSN)%'
-                    options:
-                        purpose: activity_worker
-```
+When Temporal is active, the bundle registers `durable_workflows` and `durable_activities` itself,
+as the Temporal workers. Declare the two transports above only where there is no cluster, under
+`when@test:` for instance, and leave their routing with them: in an environment with a
+`DURABLE_DSN`, a transport of the same name makes the container refuse to compile.
 
 ---
 
@@ -350,27 +340,29 @@ process, the very failure durable execution exists to remove.
 
 ## Start Temporal workers (production / dev mode)
 
-When `DURABLE_DSN` points to a Temporal server, start the Messenger consumers in separate processes.
+When `DURABLE_DSN` points to a Temporal server, start the workers the bundle registered, in separate processes.
 **These are the Symfony commands**; the other hosts poll the same cluster with their own:
 `php artisan durable:temporal-worker` on Laravel, `bin/magento durable:worker --role=journal` and
 `--role=activity` on Magento.
 
 ```bash
 # Workflow task worker (polls Temporal for workflow tasks)
-php bin/console messenger:consume durable_temporal_journal
+php bin/console messenger:consume durable_workflows
 
 # Activity worker (polls Temporal for activity tasks)
-php bin/console messenger:consume durable_temporal_activity
+php bin/console messenger:consume durable_activities
 ```
+
+An application that [serves a Nexus operation](../nexus/) starts a third one, `durable_nexus`.
 
 For local development with `symfony serve`, add to `.symfony.local.yaml`:
 
 ```yaml
 workers:
-    journal:
-        cmd: ['symfony', 'console', 'messenger:consume', 'durable_temporal_journal', '--time-limit=3600']
-    activity:
-        cmd: ['symfony', 'console', 'messenger:consume', 'durable_temporal_activity', '--time-limit=3600']
+    workflows:
+        cmd: ['symfony', 'console', 'messenger:consume', 'durable_workflows', '--time-limit=3600']
+    activities:
+        cmd: ['symfony', 'console', 'messenger:consume', 'durable_activities', '--time-limit=3600']
 ```
 
 ---
