@@ -19,6 +19,9 @@ workers:
     durable_activities_2:
         cmd: ['symfony', 'console', 'messenger:consume', 'durable_activities', '-vv']
         watch: ['config', 'src', 'templates', 'vendor/composer/installed.json']
+    durable_nexus_1:
+        cmd: ['symfony', 'console', 'messenger:consume', 'durable_nexus', '-vv']
+        watch: ['config', 'src', 'templates', 'vendor/composer/installed.json']
     docker_compose:
         cmd: ['docker', 'compose', 'up']
         watch: ['compose.yaml', 'compose.override.yaml', 'docker-compose.yaml', 'docker-compose.override.yaml']

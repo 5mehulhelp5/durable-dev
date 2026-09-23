@@ -31,7 +31,6 @@ final class TemporalReceiversPassTest extends TestCase
     {
         // No handler, no durable_nexus worker: the name is not the bundle's to claim.
         $container = $this->containerWithWorkers();
-        $container->register('durable.temporal.nexus_receiver', \stdClass::class);
         $container->register('messenger.transport.durable_nexus', \stdClass::class);
 
         (new TemporalReceiversPass())->process($container);
@@ -61,6 +60,20 @@ final class TemporalReceiversPassTest extends TestCase
         (new TemporalReceiversPass())->process($container);
     }
 
+    public function testWithoutTheJournalTheFormerJournalTransportIsNotPointedAtDurableWorkflows(): void
+    {
+        // `journal: false`: only the Nexus worker is the bundle's, and durable_workflows is the
+        // application's own local queue — sending the reader there would be wrong advice.
+        $container = new ContainerBuilder();
+        $container->register('durable.temporal.nexus_receiver', \stdClass::class);
+        $container->register('messenger.transport.durable_temporal_journal', \stdClass::class);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/"durable_temporal_journal" is no longer supported.*durable\.temporal\.journal: false/');
+
+        (new TemporalReceiversPass())->process($container);
+    }
+
     public function testWithoutTemporalNothingIsChecked(): void
     {
         $container = new ContainerBuilder();
@@ -78,6 +91,8 @@ final class TemporalReceiversPassTest extends TestCase
             ->addTag('messenger.receiver', ['alias' => 'durable_workflows']);
         $container->register('durable.temporal.activities_receiver', \stdClass::class)
             ->addTag('messenger.receiver', ['alias' => 'durable_activities']);
+        // Built whenever a DSN is set; tagged only once a Nexus handler exists.
+        $container->register('durable.temporal.nexus_receiver', \stdClass::class);
 
         return $container;
     }

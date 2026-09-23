@@ -54,6 +54,7 @@ final class DurableMessengerDrain
                 $receiverLocator,
                 $messageBus,
                 $hadMessage,
+                static fn(): bool => null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId),
             );
 
             if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
@@ -104,6 +105,7 @@ final class DurableMessengerDrain
                 $receiverLocator,
                 $messageBus,
                 $hadMessage,
+                static fn(): bool => null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId),
             );
 
             if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
@@ -143,9 +145,15 @@ final class DurableMessengerDrain
         ContainerInterface $receiverLocator,
         MessageBusInterface $messageBus,
         bool &$hadMessage,
+        \Closure $settled,
     ): bool {
         $worked = false;
         foreach (self::CORE_TRANSPORTS as $transportName) {
+            // Under Temporal each get() is a long-poll: once the workflow task completed the
+            // execution, polling the activity queue would only wait for nothing.
+            if ($settled()) {
+                return $worked;
+            }
             $receiver = self::transport($receiverLocator, $transportName);
             foreach ($receiver->get() as $envelope) {
                 try {
