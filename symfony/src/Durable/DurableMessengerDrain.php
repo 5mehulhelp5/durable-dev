@@ -20,17 +20,13 @@ use Symfony\Component\Messenger\Transport\TransportInterface;
  * Every envelope returned by {@see TransportInterface::get()} must be {@see TransportInterface::ack() acked}
  * (Symfony worker behaviour) — otherwise the in-memory transports would hand back the same message on every turn.
  *
- * With the **native Temporal backend** ({@see WorkflowTaskRunner} + {@see TemporalHistoryCursor}), activities
- * go through {@code durable_temporal_activity} (gRPC poll): {@code durable_temporal_journal} and
- * {@code durable_temporal_activity} must be consumed too, like {@code messenger:consume}.
+ * With the **native Temporal backend**, the same two names are the bundle's Temporal workers: their
+ * {@see TransportInterface::get()} long-polls a task and handles it, and hands back no envelope.
  */
 final class DurableMessengerDrain
 {
     /** @var list<string> */
     private const CORE_TRANSPORTS = ['durable_workflows', 'durable_activities'];
-
-    /** @var list<string> */
-    private const TEMPORAL_MIRROR_TRANSPORTS = ['durable_temporal_journal', 'durable_temporal_activity'];
 
     /** Max wall-clock time (seconds): workflows using {@see WorkflowEnvironment::delay} rely on delayed Messenger messages. */
     private const MAX_DRAIN_SECONDS = 120.0;
@@ -59,12 +55,6 @@ final class DurableMessengerDrain
                 $messageBus,
                 $hadMessage,
             );
-
-            if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
-                return true;
-            }
-
-            self::pollTemporalMirrorTransportsIfRegistered($receiverLocator, $eventStore, $executionId);
 
             if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
                 return true;
@@ -115,12 +105,6 @@ final class DurableMessengerDrain
                 $messageBus,
                 $hadMessage,
             );
-
-            if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
-                return 'complete';
-            }
-
-            self::pollTemporalMirrorTransportsIfRegistered($receiverLocator, $eventStore, $executionId);
 
             if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
                 return 'complete';
@@ -177,36 +161,6 @@ final class DurableMessengerDrain
         }
 
         return $worked;
-    }
-
-    /**
-     * Polls Temporal (journal + activity): no Messenger envelope, the side effect is in {@see TransportInterface::get()}.
-     *
-     * Checks workflow completion BETWEEN each transport to avoid a pointless long-poll on the activity
-     * transport if the journal has just produced {@see ExecutionCompleted}.
-     */
-    private static function pollTemporalMirrorTransportsIfRegistered(
-        ContainerInterface $receiverLocator,
-        EventStoreInterface $eventStore,
-        string $executionId,
-    ): void {
-        foreach (self::TEMPORAL_MIRROR_TRANSPORTS as $transportName) {
-            if (null !== WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
-                return;
-            }
-            if (!self::receiverHasTransport($receiverLocator, $transportName)) {
-                continue;
-            }
-            $receiver = self::transport($receiverLocator, $transportName);
-            foreach ($receiver->get() as $envelope) {
-                // The current Temporal transports return an empty iterable; the useful effect is the gRPC poll in get().
-            }
-        }
-    }
-
-    private static function receiverHasTransport(ContainerInterface $receiverLocator, string $transportName): bool
-    {
-        return $receiverLocator->has($transportName);
     }
 
     private static function transport(ContainerInterface $receiverLocator, string $transportName): TransportInterface
