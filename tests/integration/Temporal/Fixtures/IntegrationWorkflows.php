@@ -31,6 +31,11 @@ final class IntegrationWorkflows
         $executor->register('double', static fn(array $p): int => ((int) ($p['value'] ?? 0)) * 2);
         $executor->register('append', static fn(array $p): string => ((string) ($p['text'] ?? '')) . '!');
         $executor->register('refund', static fn(array $p): string => 'refunded:' . ($p['order'] ?? '?'));
+        $executor->register('sleep', static function (array $p): int {
+            sleep((int) ($p['seconds'] ?? 0));
+
+            return (int) ($p['seconds'] ?? 0);
+        });
         $executor->register('boom', static function (array $p): never {
             throw new \DomainException('activity exploded');
         });
@@ -128,6 +133,13 @@ final class IntegrationWorkflows
             timeouts: self::attemptTimeout(),
         ))->boom()));
 
+        // One attempt with a one-second start-to-close timeout on a three-second activity: the
+        // server times it out, and the workflow must fail rather than wait forever (#544).
+        $registry->registerFactory('TimesOutOnItsActivity', static fn(array $input) => static fn(WorkflowEnvironment $env): mixed => $env->await($env->activityStub(IntegrationActivities::class, new ActivityOptions(
+            RetryLimit::once(),
+            timeouts: ActivityTimeouts::attempt(Duration::seconds(1)),
+        ))->sleep(3)));
+
         $registry->registerFactory('UnboundedRetry', static fn(array $input) => static fn(WorkflowEnvironment $env): mixed => $env->await($env->activityStub(IntegrationActivities::class, self::options())->boom()));
 
         $registry->registerFactory('NonRetryable', static fn(array $input) => static fn(WorkflowEnvironment $env): mixed => $env->await($env->activityStub(IntegrationActivities::class, new ActivityOptions(
@@ -175,6 +187,35 @@ final class IntegrationWorkflows
                 $env->childWorkflowStub(DoublerWorkflow::class)->run((int) ($input['value'] ?? 0)),
             )];
         });
+
+        // One attempt: an activity whose heartbeats never arrive fails on its heartbeat timeout
+        // instead of being retried until the test gives up (#518).
+        $registry->registerFactory('HeartbeatsThroughItsTimeout', static fn(array $input) => static fn(WorkflowEnvironment $env): array => [
+            'beats' => $env->await($env->activityStub(HeartbeatActivities::class, self::heartbeatOptions())->heartbeatFor((int) ($input['seconds'] ?? 30))),
+        ]);
+
+        // The deadline cancels the activity it outlives: the server records the request and hands
+        // it to the activity's next heartbeat (#518). The run then stays open for a few heartbeats:
+        // once it closes, a heartbeat hears "not found", not "cancel requested".
+        $registry->registerFactory('CancelsItsHeartbeatingActivity', static fn(array $input) => static function (WorkflowEnvironment $env) use ($input): array {
+            try {
+                $env->await($env->activityStub(HeartbeatActivities::class, self::heartbeatOptions())->heartbeatUntilCancelled((string) ($input['marker'] ?? '')), Duration::seconds(3));
+            } catch (DeadlineExceededException) {
+                $env->sleep(Duration::seconds(10));
+
+                return ['deadline' => true];
+            }
+
+            return ['deadline' => false];
+        });
+    }
+
+    private static function heartbeatOptions(): ActivityOptions
+    {
+        return new ActivityOptions(
+            RetryLimit::once(),
+            timeouts: ActivityTimeouts::attempt(Duration::seconds(60))->withHeartbeat(Duration::seconds(5)),
+        );
     }
 
     /** Exposed for {@see DoublerWorkflow}, which lives outside this class. */

@@ -24,6 +24,55 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### `WorkflowRunCatalogInterface` gains `findRun()`
+
+**Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`, that is, whoever
+writes a run catalog. Pages that read the catalog have nothing to change. Rector cannot write the
+method for you, because only the implementer knows where the run is stored.
+
+**Why.** A run page links to a run by its id alone (#264). Before this method, the only way to get
+a `WorkflowRunDescription` was `listRuns()`, so the page had to go through the list page by page
+until the id appeared, and could not reach an old run.
+
+**What to write.** Return the run whose `runId` is the one given, described exactly as
+`listRuns()` would describe it, or `null` when the catalog does not know it:
+
+```php
+public function findRun(string $executionId): ?WorkflowRunDescription
+{
+    $row = $this->rows->find($executionId);
+
+    return null === $row ? null : $this->describe($row); // the mapping listRuns() uses
+}
+```
+
+`WorkflowRunCatalogConformanceTestCase` checks that every listed run is found again with the same
+facts, and that an unknown id gives `null`. Name the parameter `$executionId`, as the port does: a
+caller passing it by name (`findRun(executionId: …)`) fails on a catalog that names it otherwise.
+
+### The bundle's services live under `durable.*` ids; their class ids are aliases
+
+**Who is affected**: an application compiler pass that calls `getDefinition()` or `hasDefinition()`
+on one of the bundle's class or interface ids: `ExecutionEngine`, `ExecutionRuntime`,
+`WorkflowRegistry`, `ActivityExecutor`, `WorkflowResumeDispatcher`, the Durable handlers and
+commands, `DurableDataCollector`, the Temporal client, RPCs and task runner, and the others listed
+in #342. Those ids are now aliases of `durable.*` definitions, with the visibility they had, so
+autowiring, `->get()` and `decorates:` are unchanged. In the pass:
+
+```php
+$container->getDefinition(ExecutionEngine::class); // throws: the id is an alias
+$container->findDefinition(ExecutionEngine::class); // follows the alias to durable.engine
+
+$container->hasDefinition(SetupCommand::class);    // always false now
+$container->has(SetupCommand::class);              // true when the command is registered
+```
+
+### DBAL without a Temporal DSN no longer registers `durable.event_store.inner`
+
+**Who is affected**: an application on the `dbal` backend, with no `temporal.dsn`, that decorates the
+private `durable.event_store.inner`. That in-memory store had no reader there, and it is no longer
+registered, so the decoration fails to compile. Decorate `EventStoreInterface` instead (#342).
+
 ### A worker refuses to reset an in-memory Durable transport
 
 **Who is affected**: anyone running `durable:worker` or `messenger:consume` on a Durable transport
@@ -631,6 +680,38 @@ the class from the bench if you ran it; no Rector rule, since the class is no lo
 **Who is affected**: code that called it on the `durable.execution_trace` service. Nothing in
 Durable did. Filter `getTimeline()` by `executionId` instead:
 `array_values(array_filter($trace->getTimeline(), fn(array $e): bool => ($e['executionId'] ?? '') === $id))`.
+
+### `await()` takes an optional `label` for a condition
+
+**Who is affected**: nobody has to change anything. `WorkflowEnvironment` is `final`, so the new
+trailing parameter breaks no implementer. A condition awaited with `label: 'signal approve'` shows
+`waiting on signal approve` in the run list instead of `waiting on condition at <file>:<line>`. The
+label is display text: nothing records it while the run waits, it appears in the failure message of an
+uncaught deadline, and replay never compares it. A label on a timer or an activity is refused with
+an `InvalidArgumentException` (#324).
+
+### Replay: on Temporal, a failed activity reports the attempt the server ran
+
+**Who is affected**: workflows on the Temporal backend that catch a `DurableActivityFailedException`
+and put `$e->attempt()`, or the exception's message (which names the attempt), into the payload of a
+later activity, child workflow or Nexus operation. Everyone else has nothing to do. The journal
+backends always reported the real attempt; Temporal said `1` (#547).
+
+A run of that workflow that is in flight when you upgrade was recorded with `attempt 1` in that
+payload. Replayed with the new reading, it schedules the real attempt, and the worker refuses the
+task: `Replay divergence at activity slot N … history recorded "…attempt-1…", code scheduled
+"…attempt-3…"`. Either drain those runs before deploying, or keep the old reading for the runs that
+started before the change:
+
+```php
+} catch (DurableActivityFailedException $e) {
+    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', ChangePoint::DEFAULT_VERSION, 1)
+        ? 1                  // started before the upgrade: the history recorded attempt 1
+        : $e->attempt();
+
+    return $env->await($activities->greet('attempt-' . $attempt));
+}
+```
 
 ## 0.1.0-alpha8
 

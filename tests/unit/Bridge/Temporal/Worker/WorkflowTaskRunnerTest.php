@@ -12,19 +12,27 @@ use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Exception\DeadlineExceededException;
+use Gplanchat\Durable\Exception\DurableActivityFailedException;
+use Gplanchat\Durable\Exception\WorkflowTaskFailure;
+use Gplanchat\Durable\Versioning\ChangePoint;
 use Gplanchat\Durable\WorkflowEnvironment;
 use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Temporal\Api\Common\V1\ActivityType;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Common\V1\WorkflowType;
 use Temporal\Api\Enums\V1\CommandType;
 use Temporal\Api\Enums\V1\EventType;
+use Temporal\Api\Enums\V1\TimeoutType;
 use Temporal\Api\Failure\V1\Failure;
+use Temporal\Api\Failure\V1\TimeoutFailureInfo;
 use Temporal\Api\History\V1\ActivityTaskCompletedEventAttributes;
 use Temporal\Api\History\V1\ActivityTaskFailedEventAttributes;
 use Temporal\Api\History\V1\ActivityTaskScheduledEventAttributes;
+use Temporal\Api\History\V1\ActivityTaskStartedEventAttributes;
+use Temporal\Api\History\V1\ActivityTaskTimedOutEventAttributes;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\TimerFiredEventAttributes;
@@ -325,6 +333,49 @@ final class WorkflowTaskRunnerTest extends TestCase
         // The exception from the failed activity propagates up → FailWorkflowExecution command
         self::assertCount(1, $result->commands);
         self::assertSame(CommandType::COMMAND_TYPE_FAIL_WORKFLOW_EXECUTION, $result->commands[0]->getCommandType());
+    }
+
+    /**
+     * A run left stuck by #544: its activity timed out, the next workflow task completed with no
+     * command because the timeout went unread, and the run waited. Replayed now, its next workflow
+     * task fails it: the history is the same, only the reading of TIMED_OUT changed.
+     */
+    public function testARunStuckOnAnUnreadActivityTimeoutFailsOnItsNextTask(): void
+    {
+        $registry = new WorkflowRegistry();
+        $registry->registerFactory(
+            'TimingOutWorkflow',
+            static fn(array $payload)
+            => static function (WorkflowEnvironment $env): string {
+                return $env->await($env->activityStub(SuiteActivities::class)->doWork());
+            },
+        );
+
+        $timedOut = self::makeEvent(7, EventType::EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT);
+        $timedOut->setActivityTaskTimedOutEventAttributes(new ActivityTaskTimedOutEventAttributes([
+            'scheduled_event_id' => 5,
+            'failure' => new Failure(['timeout_failure_info' => new TimeoutFailureInfo(['timeout_type' => TimeoutType::TIMEOUT_TYPE_HEARTBEAT])]),
+        ]));
+
+        $result = $this->makeRunner($registry)->run(self::buildPoll('token-stuck', 'wf-stuck', 'TimingOutWorkflow', [
+            self::makeStarted(1),
+            self::makeEvent(2, EventType::EVENT_TYPE_WORKFLOW_TASK_SCHEDULED),
+            self::makeEvent(3, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED),
+            self::makeEvent(4, EventType::EVENT_TYPE_WORKFLOW_TASK_COMPLETED),
+            self::makeActivityScheduled(5, 'slot-0'),
+            self::makeEvent(6, EventType::EVENT_TYPE_ACTIVITY_TASK_STARTED),
+            $timedOut,
+            // The task the bug completed with no command.
+            self::makeEvent(8, EventType::EVENT_TYPE_WORKFLOW_TASK_SCHEDULED),
+            self::makeEvent(9, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED),
+            self::makeEvent(10, EventType::EVENT_TYPE_WORKFLOW_TASK_COMPLETED),
+            self::makeEvent(11, EventType::EVENT_TYPE_WORKFLOW_TASK_SCHEDULED),
+            self::makeEvent(12, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED),
+        ]));
+
+        self::assertCount(1, $result->commands);
+        self::assertSame(CommandType::COMMAND_TYPE_FAIL_WORKFLOW_EXECUTION, $result->commands[0]->getCommandType());
+        self::assertStringContainsString('Activity heartbeat timeout exceeded.', (string) $result->commands[0]->getFailWorkflowExecutionCommandAttributes()?->getFailure()?->getMessage());
     }
 
     public function testWorkflowWithParallelActivitiesEmitsMultipleScheduleCommands(): void
@@ -628,5 +679,96 @@ final class WorkflowTaskRunnerTest extends TestCase
 
         // Workflow is suspended waiting for signal → no commands emitted
         self::assertEmpty($result->commands, 'No commands when workflow is suspended waiting for signal');
+    }
+
+    /**
+     * #547: the attempt a failed activity reports is now the one the server ran. A workflow that
+     * copies it into a later payload, in a run recorded under the old reading (attempt 1), diverges
+     * on replay; UPGRADE.md says to drain such runs or branch on versionForChangeId. Kept to pin
+     * that the divergence is loud, not a silently different payload.
+     */
+    public function testAnAttemptCopiedIntoAPayloadDivergesOnARunRecordedUnderTheOldReading(): void
+    {
+        $this->expectException(WorkflowTaskFailure::class);
+        $this->expectExceptionMessageMatches('/Replay divergence at activity slot 1 .*attempt-1.*attempt-3/s');
+
+        $this->replayRetriedThenFailed('attempt-1', static fn(DurableActivityFailedException $e, WorkflowEnvironment $env): string => 'attempt-' . $e->attempt());
+    }
+
+    /**
+     * #547: a workflow that does not put the attempt into a payload replays such a run unchanged.
+     */
+    public function testAPlainReplayOfARetriedThenFailedActivityDoesNotDiverge(): void
+    {
+        $result = $this->replayRetriedThenFailed('x', static fn(DurableActivityFailedException $e, WorkflowEnvironment $env): string => 'x');
+
+        self::assertSame([], array_map(static fn($c): int => $c->getCommandType(), array_filter(
+            $result->commands,
+            static fn($c): bool => CommandType::COMMAND_TYPE_FAIL_WORKFLOW_EXECUTION === $c->getCommandType(),
+        )));
+    }
+
+    /**
+     * #547: UPGRADE.md's way out for such a run, a change point that keeps the old reading for an
+     * execution that started before it, replays the old history without diverging.
+     */
+    public function testTheVersionedWayOutReplaysARunRecordedUnderTheOldReading(): void
+    {
+        $result = $this->replayRetriedThenFailed('attempt-1', static fn(DurableActivityFailedException $e, WorkflowEnvironment $env): string => 'attempt-' . (
+            ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', ChangePoint::DEFAULT_VERSION, 1) ? 1 : $e->attempt()
+        ));
+
+        self::assertSame([], array_filter($result->commands, static fn($c): bool => CommandType::COMMAND_TYPE_FAIL_WORKFLOW_EXECUTION === $c->getCommandType()));
+    }
+
+    /**
+     * double(2) ran three attempts and failed; the workflow caught it and scheduled greet(...),
+     * recorded with `$recordedName`.
+     *
+     * @param \Closure(DurableActivityFailedException, WorkflowEnvironment): string $name
+     */
+    private function replayRetriedThenFailed(string $recordedName, \Closure $name): \Gplanchat\Bridge\Temporal\Worker\WorkflowTaskResult
+    {
+        $registry = new WorkflowRegistry();
+        $registry->registerFactory('Probe', static fn(array $payload) => static function (WorkflowEnvironment $env) use ($name): string {
+            $stub = $env->activityStub(SuiteActivities::class);
+
+            try {
+                return (string) $env->await($stub->double(2));
+            } catch (DurableActivityFailedException $e) {
+                return $env->await($stub->greet($name($e, $env)));
+            }
+        });
+
+        $started = self::makeEvent(3, EventType::EVENT_TYPE_ACTIVITY_TASK_STARTED);
+        $started->setActivityTaskStartedEventAttributes(new ActivityTaskStartedEventAttributes(['scheduled_event_id' => 2, 'attempt' => 3]));
+        $failed = self::makeActivityFailed(4, 2, 'boom');
+        $failed->getActivityTaskFailedEventAttributes()?->setStartedEventId(3);
+
+        return $this->makeRunner($registry)->run(self::buildPoll('token-attempt', 'wf-attempt', 'Probe', [
+            self::makeStarted(1),
+            self::scheduledWithInput(2, 'act-1', 'double', ['value' => 2]),
+            $started,
+            $failed,
+            self::scheduledWithInput(5, 'act-2', 'greet', ['name' => $recordedName]),
+            self::makeEvent(6, EventType::EVENT_TYPE_WORKFLOW_TASK_SCHEDULED),
+            self::makeEvent(7, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED),
+        ]));
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     */
+    private static function scheduledWithInput(int $id, string $activityId, string $type, array $arguments): HistoryEvent
+    {
+        $e = self::makeActivityScheduled($id, $activityId);
+        $attr = $e->getActivityTaskScheduledEventAttributes();
+        \assert(null !== $attr);
+        $attr->setActivityType(new ActivityType(['name' => $type]));
+        $input = new Payloads();
+        $input->setPayloads([JsonPlainPayload::encode(['payload' => $arguments])]);
+        $attr->setInput($input);
+
+        return $e;
     }
 }

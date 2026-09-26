@@ -107,6 +107,37 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringContainsString('SendWelcomeEmail', $page);
     }
 
+    /**
+     * #264: the list is a page of its own, full width, and each run links to its own address.
+     */
+    public function testTheListPageIsTheListAloneAndLinksEachRunToItsAddress(): void
+    {
+        $model = (new RunDashboard(new RenderingCatalog()))->listing();
+        $model['pagination']['previous'] = null;
+
+        $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model);
+
+        self::assertStringContainsString('<div class="col-12">', $page);
+        self::assertStringContainsString('href="/gplanchat_durable_plugin_admin_run_show?runId=run-1&amp;status=all', $page);
+        self::assertStringNotContainsString('Run details', $page);
+    }
+
+    public function testTheRunPageIsTheRunAloneWithAWayBackToItsList(): void
+    {
+        $model = (new RunDashboard(new RenderingCatalog()))->run('run-1');
+
+        $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', [
+            'backend' => $model['backend'],
+            'selectedRun' => $model['run'],
+            'list' => ['status' => 'failed', 'cursor' => '', 'back' => ''],
+        ]);
+
+        self::assertStringContainsString('SendWelcomeEmail', $page);
+        self::assertStringContainsString('href="/gplanchat_durable_plugin_admin_run_index?status=failed">Back to the runs</a>', $page);
+        self::assertStringNotContainsString('On this page', $page, 'no counters: they count a list');
+        self::assertStringNotContainsString('>Runs<', $page);
+    }
+
     public function testAPageAfterTheFirstLeadsBack(): void
     {
         // #383: the controller hands the way back; the page must offer it, stack included.
@@ -216,6 +247,20 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('waiting for a worker', $this->render());
     }
 
+    public function testASuspendedRunSaysWhatItWaitsOn(): void
+    {
+        // #324: the catalogue records the wait and the core words it; the list is where an
+        // operator asks why a run is not moving.
+        $page = $this->render(waitingOn: 'timer due at 2026-09-24T10:00:00+00:00');
+
+        self::assertStringContainsString('waiting on timer due at 2026-09-24T10:00:00+00:00', $page);
+    }
+
+    public function testARunWithNoRecordedWaitSaysNothingOfTheKind(): void
+    {
+        self::assertStringNotContainsString('waiting on', $this->render());
+    }
+
     public function testTheWholePageSpeaksFrenchWhenTheAdminDoes(): void
     {
         $page = $this->render(waiting: true, locale: 'fr');
@@ -255,9 +300,9 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
     }
 
     /** @param array{cursor: string, back: string}|null $previous what the controller hands for the way back */
-    private function render(bool $ephemeral = false, bool $badPayload = false, bool $waiting = false, string $locale = 'en', ?array $previous = null, bool $secrets = false): string
+    private function render(bool $ephemeral = false, bool $badPayload = false, bool $waiting = false, string $locale = 'en', ?array $previous = null, bool $secrets = false, ?string $waitingOn = null): string
     {
-        $catalog = new RenderingCatalog($ephemeral, $badPayload, $waiting, $secrets);
+        $catalog = new RenderingCatalog($ephemeral, $badPayload, $waiting, $secrets, waitingOn: $waitingOn);
         $model = (new RunDashboard($catalog))->build();
         $model['pagination']['previous'] = $previous;
 
@@ -278,7 +323,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         ]);
 
         $twig = new Environment(new ChainLoader([$plugin, $sylius]), ['strict_variables' => true]);
-        $twig->addFunction(new TwigFunction('path', static fn(string $route, array $parameters = []): string => '/admin/durable/dashboard?' . http_build_query($parameters)));
+        $twig->addFunction(new TwigFunction('path', static fn(string $route, array $parameters = []): string => '/' . $route . '?' . http_build_query($parameters)));
 
         $translator = new Translator($locale);
         $translator->addLoader('xlf', new XliffFileLoader());
@@ -298,6 +343,7 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         private readonly bool $badPayload = false,
         private readonly bool $waiting = false,
         private readonly bool $secrets = false,
+        private readonly ?string $waitingOn = null,
     ) {}
 
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage
@@ -307,8 +353,13 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         }
 
         return new WorkflowRunPage([
-            new WorkflowRunDescription('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Running, new \DateTimeImmutable('@1700000000'), waitingForWorkerSince: $this->waiting ? new \DateTimeImmutable('@1700000000') : null),
+            new WorkflowRunDescription('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Running, new \DateTimeImmutable('@1700000000'), waitingForWorkerSince: $this->waiting ? new \DateTimeImmutable('@1700000000') : null, waitingOn: $this->waitingOn),
         ], tellsWaitingForWorker: $this->waiting);
+    }
+
+    public function findRun(string $executionId): ?WorkflowRunDescription
+    {
+        return array_values(array_filter($this->listRuns()->runs, static fn(WorkflowRunDescription $run): bool => $run->runId === $executionId))[0] ?? null;
     }
 
     public function readHistory(WorkflowRunDescription $run): array
