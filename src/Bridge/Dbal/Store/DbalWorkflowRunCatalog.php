@@ -43,6 +43,11 @@ final class DbalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         private readonly ?JournalRunHistoryReader $history = null,
     ) {}
 
+    public function canFilterRuns(): bool
+    {
+        return true;
+    }
+
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         $this->schema->ensure();

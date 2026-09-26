@@ -347,6 +347,11 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         private readonly ?string $waitingOn = null,
     ) {}
 
+    public function canFilterRuns(): bool
+    {
+        return true;
+    }
+
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         if ($this->ephemeral) {

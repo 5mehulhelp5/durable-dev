@@ -127,6 +127,11 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
 
     // -- read side: WorkflowRunCatalogInterface --------------------------------------------------
 
+    public function canFilterRuns(): bool
+    {
+        return true;
+    }
+
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         $this->schema->ensure();

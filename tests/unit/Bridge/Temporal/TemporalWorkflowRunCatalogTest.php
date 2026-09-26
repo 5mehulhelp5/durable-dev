@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\Exception\RunFilterUnavailableException;
 use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use PHPUnit\Framework\TestCase;
@@ -325,6 +326,34 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         self::assertSame("DurableWorkflowName = 'App.Order\\'Workflow'", $queries[0]);
         self::assertSame('(' . $this->filterQuery(WorkflowRunStatus::Running) . ") AND (DurableWorkflowName = 'App.OrderWorkflow') AND (DurableExecutionId STARTS_WITH 'ord%2E')", $queries[1]);
         self::assertSame("DurableExecutionId STARTS_WITH '" . str_repeat('a', 300) . "'", $queries[2], 'a prefix is never hashed');
+    }
+
+    /**
+     * #558: with the switch off, no run carries the attributes the filters read. Answering an
+     * unfiltered page, or an empty one, would both be lies: the catalog says it cannot filter, and
+     * refuses a filter before calling the server.
+     */
+    public function testWithoutSearchAttributesTheCatalogCannotFilterAndSaysSo(): void
+    {
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->expects($this->never())->method('ListWorkflowExecutions');
+        $catalog = new TemporalWorkflowRunCatalog($client, $this->connection());
+
+        self::assertFalse($catalog->canFilterRuns());
+        self::assertTrue((new TemporalWorkflowRunCatalog($client, new TemporalConnection('localhost:7233', 'durable-test', searchAttributes: true)))->canFilterRuns());
+
+        $this->expectException(RunFilterUnavailableException::class);
+        $this->expectExceptionMessage('durable.temporal.search_attributes');
+
+        $catalog->listRuns(filter: new WorkflowRunFilter(executionIdPrefix: 'ord'));
+    }
+
+    public function testAnEmptyFilterIsNoFilterEvenWithoutSearchAttributes(): void
+    {
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->expects($this->once())->method('ListWorkflowExecutions')->willReturn(new ListWorkflowExecutionsResponse());
+
+        (new TemporalWorkflowRunCatalog($client, $this->connection()))->listRuns(filter: new WorkflowRunFilter('', ''));
     }
 
     private function filterQuery(WorkflowRunStatus $status): string
