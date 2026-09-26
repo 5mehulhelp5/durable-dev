@@ -75,7 +75,9 @@ paging until a run shows up.
   field is no filter, and the value object already turns an empty string into `null`.
 - Add `canFilterRuns(): bool`, and return `true` when `listRuns()` honours the filter. When it
   cannot, return `false` and throw `RunFilterUnavailableException` for a non-empty filter. Never
-  ignore the filter, and never answer an empty page.
+  ignore the filter, and never answer an empty page in place of the refusal.
+- A filtered page may come back shorter than `$limit`, even empty, with a `nextCursor`: only a
+  `null` cursor means the end.
 
 ```php
 use Gplanchat\Durable\Exception\RunFilterUnavailableException;
