@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Bridge\Temporal;
 
 use Google\Protobuf\Timestamp;
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
+use Gplanchat\Bridge\Temporal\DurableSearchAttributes;
 use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
@@ -329,6 +330,50 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
     }
 
     /**
+     * #557: a visibility store on SQLite (the dev server's) matches STARTS_WITH without case, one on
+     * PostgreSQL with it. The catalog keeps only the runs whose attribute does start with the
+     * prefix, so case counts whatever the store.
+     */
+    public function testAPrefixKeepsCaseWhateverTheVisibilityStore(): void
+    {
+        $response = new ListWorkflowExecutionsResponse();
+        $response->setExecutions([
+            self::carrying($this->info('durable-ord-1', '11111111-1111-1111-1111-111111111111', 'App\\Order', 'q', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 20), 'ord-1'),
+            self::carrying($this->info('durable-ORD-2', '22222222-2222-2222-2222-222222222222', 'App\\Order', 'q', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 10), 'ORD-2'),
+        ]);
+        $catalog = new TemporalWorkflowRunCatalog($this->client($response), new TemporalConnection('localhost:7233', 'durable-test', searchAttributes: true));
+
+        $runs = $catalog->listRuns(filter: new WorkflowRunFilter(executionIdPrefix: 'ord'))->runs;
+
+        self::assertSame(['11111111-1111-1111-1111-111111111111'], array_map(static fn($run): string => $run->runId, $runs));
+    }
+
+    /**
+     * #557: the runs dropped for their case are asked for again, only as many as are missing, and
+     * at most five times: past that the page comes back short, with a cursor to go on.
+     */
+    public function testAPrefixedPageAsksAgainForWhatItDroppedAFewTimesAtMost(): void
+    {
+        $sizes = [];
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->method('ListWorkflowExecutions')->willReturnCallback(function (ListWorkflowExecutionsRequest $request) use (&$sizes): ListWorkflowExecutionsResponse {
+            $sizes[] = $request->getPageSize();
+            $response = new ListWorkflowExecutionsResponse();
+            $response->setExecutions([self::carrying($this->info('durable-ORD', bin2hex(random_bytes(4)) . '-1111-1111-1111-111111111111', 'App\\Order', 'q', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 10), 'ORD')]);
+            $response->setNextPageToken('more');
+
+            return $response;
+        });
+        $catalog = new TemporalWorkflowRunCatalog($client, new TemporalConnection('localhost:7233', 'durable-test', searchAttributes: true));
+
+        $page = $catalog->listRuns(limit: 3, filter: new WorkflowRunFilter(executionIdPrefix: 'ord'));
+
+        self::assertSame([3, 3, 3, 3, 3], $sizes);
+        self::assertSame([], $page->runs);
+        self::assertNotNull($page->nextCursor, 'a short page still says there is more');
+    }
+
+    /**
      * #558: with the switch off, no run carries the attributes the filters read. Answering an
      * unfiltered page, or an empty one, would both be lies: the catalog says it cannot filter, and
      * refuses a filter before calling the server.
@@ -368,6 +413,16 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         (new TemporalWorkflowRunCatalog($client, $this->connection()))->listRuns($status);
 
         return $queries[0];
+    }
+
+    private static function carrying(WorkflowExecutionInfo $info, string $executionId): WorkflowExecutionInfo
+    {
+        $attributes = new \Temporal\Api\Common\V1\SearchAttributes();
+        $fields = $attributes->getIndexedFields();
+        $fields[DurableSearchAttributes::EXECUTION_ID] = JsonPlainPayload::encode(DurableSearchAttributes::value($executionId));
+        $info->setSearchAttributes($attributes);
+
+        return $info;
     }
 
     private function info(string $workflowId, string $runId, string $type, string $taskQueue, int $status, int $startedAt): WorkflowExecutionInfo
