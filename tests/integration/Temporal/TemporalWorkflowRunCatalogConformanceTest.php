@@ -44,7 +44,7 @@ use Temporal\Api\Workflowservice\V1\StartWorkflowExecutionRequest;
  * @see DUR041
  * @see DUR037
  */
-final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConformanceTestCase
+class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConformanceTestCase
 {
     use FreshNamespace;
 
@@ -55,8 +55,14 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
 
     protected function setUp(): void
     {
-        $this->connection = self::freshNamespaceConnection();
+        $this->connection = self::freshNamespaceConnection($this->searchAttributes());
         $this->client = WorkflowServiceClientFactory::create($this->connection);
+    }
+
+    /** Whether this host writes Durable's search attributes (#558), hence whether it can filter. */
+    protected function searchAttributes(): bool
+    {
+        return true;
     }
 
     protected function catalogUnderTest(): WorkflowRunCatalogInterface
