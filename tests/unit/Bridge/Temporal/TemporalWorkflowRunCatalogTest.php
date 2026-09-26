@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Memo;
@@ -298,6 +299,32 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         $this->expectExceptionCode(14);
 
         (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order/42');
+    }
+
+    /**
+     * #558: the filters read Durable's search attributes, spelled by the function that wrote them.
+     * They come from outside, so a quote cannot end the literal; the name loses its backslashes as
+     * the writer did, and the prefix is normalized but never hashed, so it stays a prefix. The status
+     * clause is parenthesised, since it may be a `NOT IN`.
+     */
+    public function testTheFiltersQueryDurablesSearchAttributes(): void
+    {
+        $queries = [];
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->method('ListWorkflowExecutions')->willReturnCallback(static function (ListWorkflowExecutionsRequest $request) use (&$queries): ListWorkflowExecutionsResponse {
+            $queries[] = $request->getQuery();
+
+            return new ListWorkflowExecutionsResponse();
+        });
+        $catalog = new TemporalWorkflowRunCatalog($client, new TemporalConnection('localhost:7233', 'durable-test', searchAttributes: true));
+
+        $catalog->listRuns(filter: new WorkflowRunFilter(workflowName: "App\\Order'Workflow"));
+        $catalog->listRuns(WorkflowRunStatus::Running, filter: new WorkflowRunFilter('App\\OrderWorkflow', 'ord.'));
+        $catalog->listRuns(filter: new WorkflowRunFilter(executionIdPrefix: str_repeat('a', 300)));
+
+        self::assertSame("DurableWorkflowName = 'App.Order\\'Workflow'", $queries[0]);
+        self::assertSame('(' . $this->filterQuery(WorkflowRunStatus::Running) . ") AND (DurableWorkflowName = 'App.OrderWorkflow') AND (DurableExecutionId STARTS_WITH 'ord%2E')", $queries[1]);
+        self::assertSame("DurableExecutionId STARTS_WITH '" . str_repeat('a', 300) . "'", $queries[2], 'a prefix is never hashed');
     }
 
     private function filterQuery(WorkflowRunStatus $status): string
