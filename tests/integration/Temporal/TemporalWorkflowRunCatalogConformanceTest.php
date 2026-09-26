@@ -65,6 +65,11 @@ class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConfor
         return true;
     }
 
+    protected function expectsToFilterRuns(): bool
+    {
+        return $this->searchAttributes();
+    }
+
     protected function catalogUnderTest(): WorkflowRunCatalogInterface
     {
         return new TemporalWorkflowRunCatalog($this->client, $this->connection, new TemporalHistoryCursor($this->client, $this->connection));

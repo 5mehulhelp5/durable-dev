@@ -92,7 +92,9 @@ public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = nu
 }
 ```
 
-`WorkflowRunCatalogConformanceTestCase` follows `canFilterRuns()`. When it is `true`, the suite checks
+`WorkflowRunCatalogConformanceTestCase` expects a catalog to filter. If yours cannot, override
+`expectsToFilterRuns()` to return `false`: the suite checks that `canFilterRuns()` agrees with it.
+It also follows `canFilterRuns()`. When it is `true`, the suite checks
 both filters, their case and the literal characters. When it is `false`, it checks that a filter is
 refused and that an empty one is not.
 
