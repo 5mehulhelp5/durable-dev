@@ -9,6 +9,7 @@ use Gplanchat\Durable\Observation\RunDashboard;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
 use Gplanchat\Durable\Observation\WorkflowRunEventKind;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
@@ -420,7 +421,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         );
     }
 
-    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage
+    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         ++$this->listings;
         $this->askedStatus = $status;

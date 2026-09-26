@@ -9,6 +9,7 @@ use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\RunPageCursor;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunPickupProjectionInterface;
 use Gplanchat\Durable\Observation\WorkflowRunProjectionInterface;
@@ -112,9 +113,21 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
             ->update(['status' => $status->value, 'ended_at' => self::now()]);
     }
 
+    /**
+     * A comparison that tells `A` from `a`, whatever the column's collation. SQLite and PostgreSQL
+     * compare strings byte for byte already; MySQL's and MariaDB's default collations fold case and
+     * accents, so both sides are compared as bytes there (#557).
+     */
+    private function exactly(string $expression): string
+    {
+        return \in_array($this->connection->getDriverName(), ['mysql', 'mariadb'], true)
+            ? 'CAST(' . $expression . ' AS BINARY)'
+            : $expression;
+    }
+
     // -- read side: WorkflowRunCatalogInterface --------------------------------------------------
 
-    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage
+    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         $this->schema->ensure();
         $limit = max(1, $limit);
@@ -123,6 +136,18 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
 
         if (null !== $status) {
             $query->where('status', $status->value);
+        }
+
+        if (null !== $filter?->workflowName) {
+            $query->whereRaw($this->exactly($this->connection->getQueryGrammar()->wrap('workflow_type')) . ' = ' . $this->exactly('?'), [$filter->workflowName]);
+        }
+
+        if (null !== $filter?->executionIdPrefix) {
+            // Not a LIKE: its wildcards and its case folding differ from one database to the next.
+            $query->whereRaw(
+                $this->exactly('substr(' . $this->connection->getQueryGrammar()->wrap('execution_id') . ', 1, ?)') . ' = ' . $this->exactly('?'),
+                [$filter->executionIdPrefixLength(), $filter->executionIdPrefix],
+            );
         }
 
         $position = RunPageCursor::decode($cursor);
