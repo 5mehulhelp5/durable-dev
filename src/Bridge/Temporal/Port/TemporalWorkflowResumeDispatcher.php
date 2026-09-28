@@ -8,6 +8,7 @@ use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
 use Gplanchat\Durable\Debug\WorkflowDispatchObserverInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 
 /**
@@ -56,4 +57,9 @@ final class TemporalWorkflowResumeDispatcher implements WorkflowResumeDispatcher
      * completion. There is no application-level message to dispatch.
      */
     public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
+
+    /**
+     * No-op, for the same reason: the server owns delivery.
+     */
+    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
 }

@@ -68,7 +68,6 @@ durable:
 
         # in_memory runs activities inside the workflow task; messenger routes them to transport_name.
         type:                 in_memory # One of "in_memory"; "messenger"
-        table_name:           durable_activity_outbox # Deprecated (Since gplanchat/durable-bundle 0.1.0-beta1: The "durable.activity_transport.table_name" option is read nowhere: no outbox table exists. Remove it.)
 
         # The Messenger transport activities go to when type is messenger.
         transport_name:       durable_activities
@@ -213,7 +212,6 @@ Le schéma nomme le fil et le chiffrement :
 | `task_queue` | non | L'ancienne écriture de `journal_task_queue`, lue quand celle-ci est absente. |
 | `workflow_task_queue` | non (défaut `durable-workflows`) | File des tâches de workflow de l'application. |
 | `nexus_task_queue` | non (défaut : la file des tâches de workflow) | File des tâches Nexus que sert cette application. |
-| `workflow_type` | non (défaut `DurableJournal`) | Type de workflow du journal. |
 | `identity` | non (défaut `durable-temporal-bridge-php`) | Identité que ce worker annonce au serveur. |
 | `tls` | non | `tls=1` est l'ancienne écriture des schémas `+tls` et `+https` ; toujours acceptée. |
 | `ca` | non, TLS seulement | Chemin du fichier PEM de l'autorité qui signe le certificat du serveur. Sans lui, le magasin du système fait foi. |
@@ -262,7 +260,6 @@ d'activité.
 |-----|---------|--------|-------------|
 | `type` | `in_memory`, `messenger` | **`in_memory`** | `in_memory` exécute les activités **de façon synchrone dans le gestionnaire de tâche de workflow**, c'est ce que vous obtenez quand la clé est absente. `messenger` route les messages d'activité par Symfony Messenger vers le transport configuré. |
 | `transport_name` | chaîne | `durable_activities` | Nom du transport Messenger employé quand `type: messenger`. Doit correspondre à un transport défini dans `messenger.yaml`. |
-| `table_name` | chaîne | `durable_activity_outbox` | **Dépréciée**, lue nulle part : aucune table d'outbox n'existe. Retirez-la. |
 
 **Le défaut est celui que vous ne voulez probablement pas en production.** Définir `durable_activities`
 dans `messenger.yaml` ne le sélectionne pas : sans `type: messenger`, le transport reste vide et

@@ -25,7 +25,7 @@ PHP namespace: **`Gplanchat\Bridge\Temporal`**.
 
 | Class | Role |
 |--------|------|
-| `TemporalJournalEventStore` | Implements `Gplanchat\Durable\Store\EventStoreInterface` |
+| `Store\TemporalReadThroughEventStore` | Implements `Gplanchat\Durable\Store\EventStoreInterface`: reads a run's history from the server when the local store has none; `TemporalRuntimeAssembly::readThroughEventStore()` builds it |
 | `TemporalJournalTransport` | Symfony Messenger **receive-only** receiver: each `get()` long-polls a workflow task, replays the execution from the server's history and answers the task. The bundle registers it as `durable_workflows` |
 | `TemporalActivityWorkerTransport` | **Receive-only** receiver: each `get()` long-polls an activity task, runs the handler and reports the outcome. The bundle registers it as `durable_activities` |
 | `TemporalNexusWorkerTransport` | **Receive-only** receiver: each `get()` long-polls a Nexus task and serves the operation the application declared. The bundle registers it as `durable_nexus` once a handler exists |
@@ -39,7 +39,7 @@ PHP namespace: **`Gplanchat\Bridge\Temporal`**.
 temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durable-journal
 ```
 
-It goes once, in `durable.temporal.dsn`. Schemes: `temporal://` (gRPC), `temporal+tls://` (gRPC over TLS), `temporal+http://` and `temporal+https://` (the server JSON gateway, port 7243 by default). Query parameters: `namespace`, `task_queue` or `journal_task_queue`, `workflow_type`, `workflow_task_queue`, `activity_task_queue`, `nexus_task_queue`, `identity`, `tls` (bool, the older spelling of `+tls`), `transport` (`auto` by default: ext-grpc when loaded, curl otherwise; `grpc`, `grpc-curl`, `guzzle`, `http` to force one). Over TLS, `ca`, `cert` and `key` name PEM files (the CA that signs the server, and a client certificate for mTLS, `cert` and `key` together), and `api_key` is sent as `authorization: Bearer …` with the `temporal-namespace` header Temporal Cloud routes by. Any other key is refused, by name, and so is `ca`/`cert`/`key`/`api_key` without TLS. Over a PSR-18 client handed to the JSON gateway, TLS is that client's configuration: `ca`/`cert`/`key` are refused there.
+It goes once, in `durable.temporal.dsn`. Schemes: `temporal://` (gRPC), `temporal+tls://` (gRPC over TLS), `temporal+http://` and `temporal+https://` (the server JSON gateway, port 7243 by default). Query parameters: `namespace`, `task_queue` or `journal_task_queue`, `workflow_task_queue`, `activity_task_queue`, `nexus_task_queue`, `identity`, `tls` (bool, the older spelling of `+tls`), `transport` (`auto` by default: ext-grpc when loaded, curl otherwise; `grpc`, `grpc-curl`, `guzzle`, `http` to force one). Over TLS, `ca`, `cert` and `key` name PEM files (the CA that signs the server, and a client certificate for mTLS, `cert` and `key` together), and `api_key` is sent as `authorization: Bearer …` with the `temporal-namespace` header Temporal Cloud routes by. Any other key is refused, by name, and so is `ca`/`cert`/`key`/`api_key` without TLS. Over a PSR-18 client handed to the JSON gateway, TLS is that client's configuration: `ca`/`cert`/`key` are refused there.
 
 ## Workers
 

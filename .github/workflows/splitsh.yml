@@ -22,7 +22,7 @@ on:
     workflow_dispatch:
         inputs:
             force:
-                description: "Force-push: realign satellites whose main diverged from the computed split (rewrites published history; previous heads are archived under refs/heads/archive/)"
+                description: "Force-push: realign satellites whose main diverged from the computed split (rewrites published history; previous heads are archived under refs/archive/)"
                 type: boolean
                 default: false
 

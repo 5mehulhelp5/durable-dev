@@ -233,6 +233,20 @@ final class WorkflowTaskRunnerTest extends TestCase
         self::assertEmpty($result->commands);
     }
 
+    /**
+     * #594: a task that names no workflow type is a protocol error. It used to fall back to the
+     * journal workflow's type, `DurableJournal`, which no worker registers any more.
+     */
+    public function testATaskThatNamesNoWorkflowTypeIsRefused(): void
+    {
+        $runner = $this->makeRunner(new WorkflowRegistry());
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/no workflow type/');
+
+        $runner->run(self::buildPoll('token-1', 'wf-1', '', [self::makeStarted(1)]));
+    }
+
     public function testWorkflowCompletesImmediately(): void
     {
         $registry = new WorkflowRegistry();

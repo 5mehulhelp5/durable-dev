@@ -109,6 +109,8 @@
                         {% endif %}
                     </div>
 
+                    {# With the Sylius grid, its filters and its list take over (#383, slice B). #}
+                    {% if resources is not defined %}
                     <div class="card">
                         <div class="card-body">
                             <form class="row g-2 align-items-end" method="get" action="{{ path('gplanchat_durable_plugin_admin_run_index') }}">
@@ -126,6 +128,7 @@
                             </form>
                         </div>
                     </div>
+                    {% endif %}
 
                 {% endif %}
 
@@ -133,7 +136,7 @@
                     {# The list page carries `runs`, the run page `selectedRun`; the single page
                        `RunDashboard::build()` serves carries both, side by side (#264). #}
                     <div class="row g-3">
-                        {% if runs is defined %}
+                        {% if runs is defined and resources is not defined %}
                         <div class="{{ selectedRun is defined ? 'col-xl-4' : 'col-12' }}">
                             <div class="card">
                                 <div class="card-header"><h3 class="card-title">{{ 'runs.title'|trans({}, 'durable') }}</h3></div>

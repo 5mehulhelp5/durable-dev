@@ -870,6 +870,71 @@ jobs:
                   docker compose logs temporal-ui --tail 40
                   exit 1
 
+            # #353: the DSN's TLS options (#516) against a server that demands them. `start-dev` serves
+            # plain gRPC only, so nginx terminates TLS in front of it: it presents a certificate only
+            # `ca=` verifies, requires the client certificate `cert=`/`key=`, and answers 401 without
+            # the `api_key=` bearer. A green run proves the client sent all four. The CA, the
+            # certificates and the key are throwaway: generated here, valid one day, never stored.
+            - name: TLS — throwaway CA, server and client certificates
+              run: |
+                  set -euo pipefail
+                  d="$RUNNER_TEMP/durable-tls"; mkdir -p "$d"; cd "$d"
+                  openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=durable-ci-ca' -keyout ca.key -out ca.crt
+                  openssl req -newkey rsa:2048 -nodes -subj '/CN=localhost' -keyout server.key -out server.csr
+                  printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth\n' > server.ext
+                  openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 1 -extfile server.ext -out server.crt
+                  openssl req -newkey rsa:2048 -nodes -subj '/CN=durable-ci-client' -keyout client.key -out client.csr
+                  printf 'extendedKeyUsage=clientAuth\n' > client.ext
+                  openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 1 -extfile client.ext -out client.crt
+                  chmod 644 ./*.key
+
+            - name: TLS — a dev server behind an nginx gRPC terminator (mTLS + API key)
+              run: |
+                  set -euo pipefail
+                  d="$RUNNER_TEMP/durable-tls"
+                  cat > "$d/nginx.conf" <<'NGINX'
+                  events {}
+                  http {
+                      server {
+                          listen 7443 ssl;
+                          http2 on;
+                          ssl_certificate /tls/server.crt;
+                          ssl_certificate_key /tls/server.key;
+                          ssl_client_certificate /tls/ca.crt;
+                          ssl_verify_client on;
+                          grpc_read_timeout 120s;
+                          grpc_send_timeout 120s;
+                          location / {
+                              if ($http_authorization != "Bearer durable-ci-throwaway-key") {
+                                  return 401;
+                              }
+                              grpc_pass grpc://temporal-tls-dev:7233;
+                          }
+                      }
+                  }
+                  NGINX
+                  docker network create durable-tls
+                  docker run -d --name temporal-tls-dev --network durable-tls temporalio/temporal:1.9.1 \
+                    server start-dev --ip 0.0.0.0 --port 7233 --headless
+                  docker run -d --name temporal-tls-proxy --network durable-tls -p 7443:7443 \
+                    -v "$d:/tls:ro" -v "$d/nginx.conf:/etc/nginx/nginx.conf:ro" nginx:1.27-alpine
+                  timeout 60 bash -c 'until docker exec temporal-tls-dev temporal operator namespace describe default >/dev/null 2>&1; do sleep 1; done'
+                  timeout 30 bash -c 'until nc -z 127.0.0.1 7443; do sleep 1; done'
+
+            - name: PHPUnit — the Temporal integration tests through a TLS DSN
+              working-directory: symfony
+              run: |
+                  d="$RUNNER_TEMP/durable-tls"
+                  export DURABLE_DSN="temporal://localhost:7443?namespace=default&journal_task_queue=durable-journal&activity_task_queue=durable-activities&tls=1&ca=$d/ca.crt&cert=$d/client.crt&key=$d/client.key&api_key=durable-ci-throwaway-key"
+                  php bin/phpunit --testdox --fail-on-skipped --display-skipped tests/Integration/Temporal/
+
+            - name: Stop the TLS server
+              if: always()
+              run: |
+                  docker logs --tail 40 temporal-tls-proxy || true
+                  docker rm -f temporal-tls-proxy temporal-tls-dev || true
+                  docker network rm durable-tls || true
+
             - name: Stop the containers
               if: always()
               working-directory: symfony

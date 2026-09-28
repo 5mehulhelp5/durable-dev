@@ -10,6 +10,7 @@ use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\LaravelWorkflowResumeDispatcher;
 use Gplanchat\Durable\Laravel\Queue\ResumeWorkflowJob;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Illuminate\Container\Container;
 use PHPUnit\Framework\TestCase;
 use unit\DurableLaravel\Fixtures\FakeQueue;
@@ -42,6 +43,31 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         self::assertSame('exec-1', $job->message->executionId);
         self::assertSame('approve', $job->message->pendingUpdates[0]['name']);
         self::assertSame('durable', $queue->pushed[0]['queue']);
+    }
+
+    public function testAnAnnouncingResumeIsQueuedAndNamesItsActivity(): void
+    {
+        $queue = new FakeQueue();
+
+        (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore()))
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
+
+        self::assertCount(1, $queue->pushed);
+        self::assertEquals(AwaitedFact::activity('act-1'), $queue->pushed[0]['job']->message->awaited);
+    }
+
+    /**
+     * On a `sync` connection the job runs inline, before the append: nothing is queued early, and
+     * the resume after the append does the work (DUR050, choice 2).
+     */
+    public function testAnAnnouncingResumeOnASyncConnectionIsNotQueued(): void
+    {
+        $queue = new FakeQueue();
+
+        (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore(), runsInline: true))
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
+
+        self::assertSame([], $queue->pushed);
     }
 
     public function testANewRunSavesItsMetadataBeforeItIsQueued(): void
