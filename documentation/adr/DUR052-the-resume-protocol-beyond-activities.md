@@ -45,7 +45,10 @@ left four other pairs with the same gap. Read one by one, they are not alike:
    - an activity: a terminal outcome for that activity id;
    - a child: that child's outcome in the parent's journal;
    - a signal: a `WorkflowSignalReceived` with that request id;
-   - timers: a `TimerCompleted` for each named timer id.
+   - timers: a `TimerCompleted` or a `TimerCancelled` for each named timer id. A named timer can
+     be cancelled before it fires, for instance by a signal-driven pass between a crash and the
+     redelivery, and a wait that accepted only `TimerCompleted` would then never end. The
+     activity wait already counts `ActivityCancelled`, for the same reason.
 3. **A child reports to its parent in the protocol's order.** The resume naming the child is sent,
    the outcome is appended to the parent unless the parent already holds it, the plain resume is
    sent, and the parent link is removed last. A redelivered child resume then finds the link and
@@ -60,6 +63,9 @@ left four other pairs with the same gap. Read one by one, they are not alike:
    computing that set separately. `FireWorkflowTimersHandler` sends the resume naming the due
    timers first, then fires them, then sends the plain resume. It never sends a resume when no
    timer is due: an early timer message on the in-memory transport would otherwise spin.
+   `checkTimers()` reads the clock after the send, so it fires the named timers and possibly
+   others that fell due in between; the plain resume after it covers those. It fires fewer only
+   when a concurrent pass cancelled one, which the timer fact accepts.
 6. **Everything else follows DUR050**: the second send after the append, and no early send where
    the resume runs inline.
 
