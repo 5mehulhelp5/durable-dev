@@ -6,4 +6,4 @@
 - **Entries**: a middleware under `src/DurableBundle/Messenger/`, its registration in
   `src/DurableBundle/DependencyInjection/Loader/MessengerServices.php`, tests, the container snapshot,
   `documentation/user/failures/_index.md` and `_index.fr.md`.
-- **State**: taken by bob, reviewer sirius.
+- **State**: in review — PR #626, bob. Reviewer: sirius.
