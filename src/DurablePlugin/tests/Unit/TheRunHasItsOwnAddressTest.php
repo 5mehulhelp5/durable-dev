@@ -78,7 +78,8 @@ final class TheRunHasItsOwnAddressTest extends TestCase
     }
 
     /**
-     * Read as text: the plugin does not require `symfony/yaml` (#520).
+     * Read as text: the path and its requirement are what a pasted run URL relies on, and a text
+     * read pins them without booting a router. `TheRoutesWorkWithoutSyliusTest` boots one.
      */
     public function testTheRunRouteTakesAnyExecutionId(): void
     {
