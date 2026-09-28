@@ -16,6 +16,7 @@ use Gplanchat\Durable\ChildWorkflowOptions;
 use Gplanchat\Durable\ContinueAsNewOptions;
 use Gplanchat\Durable\Duration as DurableDuration;
 use Gplanchat\Durable\Event\ActivityScheduled;
+use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Failure\FailureEnvelope;
 use Gplanchat\Durable\Failure\WorkflowFailureClassifier;
 use Gplanchat\Durable\Nexus\NexusEndpoint;
@@ -29,6 +30,7 @@ use Gplanchat\Durable\Versioning\ChangePoint;
 use Temporal\Api\Command\V1\Command;
 use Temporal\Api\Command\V1\CompleteWorkflowExecutionCommandAttributes;
 use Temporal\Api\Command\V1\FailWorkflowExecutionCommandAttributes;
+use Temporal\Api\Command\V1\ModifyWorkflowPropertiesCommandAttributes;
 use Temporal\Api\Command\V1\RequestCancelActivityTaskCommandAttributes;
 use Temporal\Api\Command\V1\RequestCancelNexusOperationCommandAttributes;
 use Temporal\Api\Command\V1\ScheduleActivityTaskCommandAttributes;
@@ -56,6 +58,9 @@ final class TemporalWorkflowCommandBuffer implements WorkflowCommandBufferInterf
     /** @var list<Command> */
     private array $commands = [];
 
+    /** @var list<ActivityScheduled|TimerScheduled> what this task scheduled, for the wait's wording (#514) */
+    private array $waitJournal = [];
+
     public function __construct(
         private readonly TemporalConnection $connection,
         private readonly string $executionId,
@@ -69,6 +74,7 @@ final class TemporalWorkflowCommandBuffer implements WorkflowCommandBufferInterf
     public function scheduleActivity(string $activityId, string $activityName, array $payload, ?ActivityOptions $options): void
     {
         $taskQueueName = ((null !== $options ? $options->taskQueue : null) ?? $this->connection->activityTaskQueue)->name();
+        $this->waitJournal[] = new ActivityScheduled($this->executionId, $activityId, $activityName, []);
 
         $attrs = new ScheduleActivityTaskCommandAttributes();
         $attrs->setActivityId($activityId);
@@ -134,6 +140,11 @@ final class TemporalWorkflowCommandBuffer implements WorkflowCommandBufferInterf
 
     public function startTimer(string $timerId, DurableDuration $delay, string $summary): void
     {
+        // From this task's start, the clock later tasks read the deadline back from; the worker's own
+        // only without a history. No summary: the command does not carry it, so a later task could
+        // not word the same wait alike.
+        $this->waitJournal[] = new TimerScheduled($this->executionId, $timerId, ($this->history?->taskStartedAt() ?? microtime(true)) + $delay->toSeconds());
+
         $attrs = new StartTimerCommandAttributes();
         $attrs->setTimerId($timerId);
         // The server wants a duration, and it gets one: no more deadline subtraction, no more
@@ -348,6 +359,14 @@ final class TemporalWorkflowCommandBuffer implements WorkflowCommandBufferInterf
     }
 
     /**
+     * @return list<ActivityScheduled|TimerScheduled>
+     */
+    public function waitJournal(): array
+    {
+        return $this->waitJournal;
+    }
+
+    /**
      * Returns buffered commands without clearing.
      *
      * @return list<Command>
@@ -418,6 +437,26 @@ final class TemporalWorkflowCommandBuffer implements WorkflowCommandBufferInterf
         $cmd = new Command();
         $cmd->setCommandType(CommandType::COMMAND_TYPE_CANCEL_WORKFLOW_EXECUTION);
         $cmd->setCancelWorkflowExecutionCommandAttributes($attrs);
+        $this->commands[] = $cmd;
+    }
+
+    /**
+     * COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES: what the run waits on, in the memo the run list reads
+     * (#514). `null` clears it: a stale wait sends the operator to the wrong place.
+     */
+    public function recordWait(?string $waitingOn): void
+    {
+        // Every suspending task would otherwise add a history event, a signal-driven run above all.
+        if (null !== $this->history && $this->history->recordedWait() === $waitingOn) {
+            return;
+        }
+
+        $memo = new Memo();
+        $memo->getFields()[JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON] = JsonPlainPayload::encode($waitingOn);
+
+        $cmd = new Command();
+        $cmd->setCommandType(CommandType::COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES);
+        $cmd->setModifyWorkflowPropertiesCommandAttributes(new ModifyWorkflowPropertiesCommandAttributes(['upserted_memo' => $memo]));
         $this->commands[] = $cmd;
     }
 

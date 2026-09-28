@@ -92,6 +92,49 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         self::assertSame('wf-1', $this->catalog($this->responseWith($info))->listRuns()->runs[0]->executionId);
     }
 
+    /**
+     * #514: on Temporal the worker writes what a suspended run waits on in the `durableWaitingOn`
+     * memo; the run list reads it back, as it reads the SQL column.
+     */
+    public function testARunningRunTellsWhatItWaitsOnFromTheMemo(): void
+    {
+        $info = $this->waitingOn($this->info('wf-1', 'run-1', 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 1_700_000_200), 'activity charge');
+
+        self::assertSame('activity charge', $this->catalog($this->responseWith($info))->listRuns()->runs[0]->waitingOn);
+    }
+
+    /**
+     * The worker upserts the wait beside the execution id, and the server merges memo keys: a run
+     * keeps both.
+     */
+    public function testTheWaitAndTheExecutionIdAreReadFromTheSameMemo(): void
+    {
+        $info = $this->withExecutionId($this->info('durable-order-42', 'run-1', 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 1_700_000_200), 'order/42');
+        $info->getMemo()?->getFields()->offsetSet(JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON, JsonPlainPayload::encode('activity charge'));
+
+        $run = $this->catalog($this->responseWith($info))->listRuns()->runs[0];
+
+        self::assertSame('order/42', $run->executionId);
+        self::assertSame('activity charge', $run->waitingOn);
+    }
+
+    public function testAnEndedRunWaitsForNothingWhateverTheMemoStillSays(): void
+    {
+        $info = $this->waitingOn($this->info('wf-1', 'run-1', 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_COMPLETED, 1_700_000_200), 'activity charge');
+
+        self::assertNull($this->catalog($this->responseWith($info))->listRuns()->runs[0]->waitingOn, 'the memo outlives the run');
+    }
+
+    public function testAWaitThatDoesNotDecodeIsAbsent(): void
+    {
+        $info = $this->info('wf-1', 'run-1', 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 1_700_000_200);
+        $memo = new Memo();
+        $memo->getFields()[JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON] = new Payload(['data' => '{not json']);
+        $info->setMemo($memo);
+
+        self::assertNull($this->catalog($this->responseWith($info))->listRuns()->runs[0]->waitingOn);
+    }
+
     public function testARunStartedWithoutTheMemoIsNamedByItsWorkflowId(): void
     {
         $run = $this->catalog($this->responseWith(
@@ -451,6 +494,15 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
     {
         $memo = new Memo();
         $memo->getFields()[JournalExecutionIdResolver::MEMO_KEY_DURABLE_EXECUTION_ID] = JsonPlainPayload::encode($executionId);
+        $info->setMemo($memo);
+
+        return $info;
+    }
+
+    private function waitingOn(WorkflowExecutionInfo $info, string $waitingOn): WorkflowExecutionInfo
+    {
+        $memo = new Memo();
+        $memo->getFields()[JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON] = JsonPlainPayload::encode($waitingOn);
         $info->setMemo($memo);
 
         return $info;

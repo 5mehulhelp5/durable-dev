@@ -305,6 +305,10 @@ plutôt que de ne rien faire en silence.
 |-----|------|--------|-------------|
 | `enabled` | booléen | `%kernel.debug%` | Enregistre la trace d'exécution, le panneau du profileur web et l'observateur sur le chemin critique de l'exécution. Désactivé, l'observateur est un objet nul. |
 
+Le panneau affiche ce qu'attend chaque exécution tracée, lu dans le catalogue des exécutions. Sur
+Temporal, cela coûte un appel `DescribeWorkflowExecution` par exécution de la requête profilée, deux
+pour une exécution que Durable n'a pas démarrée.
+
 ---
 
 ## `max_activity_retries`

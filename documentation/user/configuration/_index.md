@@ -298,6 +298,10 @@ declared bus is refused at compile time rather than silently doing nothing.
 |-----|------|---------|-------------|
 | `enabled` | bool | `%kernel.debug%` | Registers the execution trace, the web profiler panel and the observer on the execution's hot path. Off, the observer is a null object. |
 
+The panel shows what each traced execution waits on, read from the run catalog. On Temporal that is
+one `DescribeWorkflowExecution` call per execution in the profiled request, two for a run Durable did
+not start.
+
 ---
 
 ## `max_activity_retries`
