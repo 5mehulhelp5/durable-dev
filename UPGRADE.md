@@ -24,6 +24,30 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### `NullEventStore` is gone; a backend refuses by name what it cannot honour
+
+**Who is affected**: an application that built a `Gplanchat\Durable\Store\NullEventStore` itself,
+or that implements `WorkflowCommandBufferInterface`. An application that only runs workflows has
+nothing to change.
+
+**What changed** (DUR051):
+- `NullEventStore` answered an empty history, which is what a run that has not started looks like.
+  A workflow given it would run its activities again instead of failing. It is replaced by
+  `NoLocalJournalEventStore`, which refuses every call with
+  `Gplanchat\Durable\Exception\UnsupportedByBackendException`.
+- On Temporal, the command buffer's `completeChildWorkflow()` and `failChildWorkflow()` now refuse
+  in the same way, instead of doing nothing. No path of the component reaches them there.
+
+**What to write.** There is no Rector rule for this, on purpose: renaming the class would turn a
+sink into a store that throws on its first write, and only you know which of the two you meant.
+- If you wanted a store that keeps nothing between processes, use `InMemoryEventStore`.
+- If you wanted the guarantee that nothing is ever read or written locally, use
+  `new NoLocalJournalEventStore('<your backend>')`.
+
+A command buffer of your own should refuse what its backend cannot honour, by throwing
+`UnsupportedByBackendException::forMethod($backend, __FUNCTION__, $whatToUseInstead)`, rather
+than accepting the call and dropping it.
+
 ### On Temporal, the dashboards link a run by its execution id, not the server's run id
 
 **Who is affected**: an application on the Temporal backend with links to its run pages saved
