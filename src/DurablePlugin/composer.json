@@ -18,6 +18,7 @@
         "gplanchat/durable-bundle": "self.version",
         "knplabs/knp-menu": "^3.5",
         "php": ">=8.2",
+        "sylius/grid-bundle": "^1.13",
         "symfony/config": "^6.4 || ^7.0 || ^8.0",
         "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
         "symfony/http-foundation": "^6.4 || ^7.0 || ^8.0",
