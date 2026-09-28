@@ -135,6 +135,10 @@ The routes are, under the admin prefix (`/admin/…` by default, set by `SYLIUS_
 - `/<admin prefix>/durable/dashboard`: the former single page. It redirects to the run named by
   `?run=`, or else to the list.
 
+An application without Sylius can import the routes too: they sit under `/admin/…`, and the pages
+answer 404, since the Sylius admin they are drawn in is absent. With SecurityBundle, a visitor
+without `ROLE_ADMINISTRATION_ACCESS` is refused first.
+
 ## Development notes
 
 - Menu entry registration listens to `sylius.menu.admin.main`.

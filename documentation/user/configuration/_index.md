@@ -309,7 +309,11 @@ durable:
     max_activity_retries: 3
 ```
 
-Ceiling on automatic retries, applied to every activity: an activity's own `RetryLimit` can only be stricter. A negative value is refused. `0` means **no ceiling**, and since an activity with no `RetryLimit` retries indefinitely (Temporal's default), leaving both unset means a failing activity never fails the workflow. Set a bound per activity with `RetryLimit::ofAttempts()` or `RetryLimit::once()`; see [Options and value objects](../options/#retrylimit).
+Ceiling on automatic retries, applied to every activity on the `in_memory` and `dbal` backends: an activity's own `RetryLimit` can only be stricter. A negative value is refused. `0` means **no ceiling**, and since an activity with no `RetryLimit` retries indefinitely (Temporal's default), leaving both unset means a failing activity never fails the workflow. Set a bound per activity with `RetryLimit::ofAttempts()` or `RetryLimit::once()`; see [Options and value objects](../options/#retrylimit). On the `temporal` backend no host reads it: the cluster retries from each activity's own `RetryLimit`.
+
+On Laravel, the same key in `config/durable.php`; on Magento, the `maxActivityRetries` argument of
+`RuntimeFactory` in `di.xml`, which only the in-process `MagentoRuntime::run()` reads (see
+[the host table](#host-table)).
 
 ---
 
@@ -373,6 +377,38 @@ when@test:
         child_workflow:
             async_messenger: false
 ```
+
+---
+
+## The same settings on Laravel and Magento {#host-table}
+
+One row per setting. The last column is a **proposal** under review (#357): *same* (the setting
+exists on each host that can use it), *host-specific* (with the reason), or *to add*. Magento
+reaches two journals only, in memory and Temporal, so the SQL rows do not apply there.
+
+| Symfony (`durable.yaml`) | Laravel (`config/durable.php`) | Magento (`env.php`, `di.xml`) | Proposal |
+|---|---|---|---|
+| `backend` | `backend` (`illuminate`, `temporal`, `memory`) | a DSN means Temporal, none means in memory: the `temporalDsn` argument in `di.xml`, else `durable/temporal/dsn` in `env.php` | same; the SQL value is named after each host's connection |
+| `dbal.connection` | `connection` | — | same |
+| `dbal.auto_setup` | — (the bridge ships migrations) | — | host-specific: Laravel creates tables with `php artisan migrate` |
+| `dbal.lock_factory`, `dbal.allow_local_lock` | `lock.store` | — | host-specific: Symfony Lock and Laravel's cache locks are different services |
+| `dbal.lock_ttl` | `lock.ttl` | — | same |
+| — | `lock.backoff`, `lock.max_deferrals`, `lock.wait` | — | host-specific: Laravel hands a resume whose turn is taken back to the queue; the Symfony worker blocks until the lock frees |
+| `event_store.table_name`, `workflow_metadata.table_name`, `child_workflow.parent_link_store.table_name` | `tables.events`, `tables.metadata`, `tables.parent_links`, `tables.runs` | — | to add: the runs table name on Symfony |
+| `temporal.dsn` | `temporal.dsn` | `temporalDsn` argument, which wins over `durable/temporal/dsn` | same |
+| `temporal.search_attributes` | `temporal.search_attributes` | `durable/temporal/search_attributes` | same |
+| `temporal.guzzle_client`, `temporal.psr18_client`, `temporal.psr17_factory` | the same three keys | `guzzle`, `jsonGateway` arguments | same |
+| `backend: dbal` with a `temporal.dsn` (serve Nexus from a SQL journal) | — (`nexus.handlers` requires `backend: temporal`) | — | to add on Laravel |
+| `activity_transport.type`, `activity_transport.transport_name` | `queue.connection`, `queue.name` | — (activities run in the process, or on Temporal's task queue) | host-specific: each host's own queue |
+| `messenger.buses` | — | — | host-specific: Messenger only |
+| `profiler.enabled` | — | — | host-specific: the Symfony web profiler |
+| `max_activity_retries` | `max_activity_retries` | `maxActivityRetries` argument, read by `MagentoRuntime::run()` only; Temporal workers ignore it | same on Symfony and Laravel; host-specific on Magento, whose workers leave retries to the cluster. On Temporal, no host reads it |
+| — | — | `budgetSeconds` argument | host-specific: bounds `MagentoRuntime::run()`, the one host call that runs a workflow to its end in the calling process |
+| `activity_contracts.cache`, `activity_contracts.contracts` | — | — | to add on Laravel and Magento |
+| `child_workflow.async_messenger` | — | — | host-specific: Messenger only |
+| workflows: `#[AsWorkflow]` on a service | `workflows` | `workflowClasses` argument | host-specific: neither container autoconfigures by attribute |
+| activity handlers: `#[AsActivityHandler]` on a service | — (the application registers them on `RegistryActivityExecutor` itself) | `activityHandlers` argument | to add on Laravel: a key beside `workflows` |
+| Nexus handlers: `#[AsNexusServiceHandler]` on a service | `nexus.handlers` | — | host-specific: Magento serves no Nexus operation |
 
 ---
 

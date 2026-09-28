@@ -372,6 +372,23 @@ Ce qui ne se déclare **pas**, c'est le contrat : la fabrique lit les interfaces
 gestionnaire et garde celles qui portent `#[AsActivityMethod]`. Une déclaration de moins à écrire de
 travers, et les noms d'activité restent ceux des attributs.
 
+Deux autres arguments de la même fabrique bornent une exécution, et `di.xml` est le seul endroit où
+les régler :
+
+```xml
+<argument name="maxActivityRetries" xsi:type="number">3</argument>
+<argument name="budgetSeconds" xsi:type="number">30</argument>
+```
+
+- `maxActivityRetries` est le plafond de tentatives des activités que `MagentoRuntime::run()` exécute
+  dans le processus appelant, le [`max_activity_retries`](../configuration/#max_activity_retries) du
+  bundle Symfony. `0`, la valeur par défaut, ne plafonne rien. Les workers Temporal ne le lisent
+  jamais : là, c'est la grappe qui relance, d'après la `RetryLimit` propre à l'activité.
+- `budgetSeconds` borne `MagentoRuntime::run()`, qui mène un workflow à son terme dans le processus
+  appelant : au-delà, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. Par défaut
+  `10`. Il existe à cause du premier : sans plafond, une activité qui échoue sans cesse occuperait
+  ce processus pour toujours. Les workers et `workflowClient()` ne lisent ni l'un ni l'autre.
+
 **Deux backends, et c'est Composer qui l'impose.** Magento atteint la mémoire et Temporal, et le
 module déclare un `conflict` sur les deux ponts SQL : `Magento\Framework\App\ResourceConnection`
 n'est ni une connexion Doctrine DBAL ni celle d'Illuminate. Lequel des deux vous obtenez se décide
