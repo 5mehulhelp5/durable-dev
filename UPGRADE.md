@@ -960,6 +960,28 @@ resume is sent before the outcome and again after it.
 **What to do.** Delete the line. Left in place, the container build fails with an
 `InvalidConfigurationException` naming the unrecognized option.
 
+### `WorkflowRunCatalogInterface::canFilterRuns()` takes the filter it is asked about
+
+**Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`.
+
+**Why.** A catalog may apply one filter and not another. Temporal Server before 1.23.0 rejects
+`STARTS_WITH`, so on such a server the Temporal catalog takes a workflow name but not an
+execution-id prefix (#523). It reads the server's version once, through `GetSystemInfo`, which
+`WorkflowServiceClientInterface` now declares.
+
+**What to write.** Add the optional parameter, and answer for the filter given: with none, whether
+you can filter at all.
+
+```php
+public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
+{
+    return true; // a catalog that applies every filter
+}
+```
+
+`RunDashboard` asks about each part, applies the ones you accept, and tells the page which inputs
+to offer. The conformance suite checks each filter case against your answer for that filter.
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract
