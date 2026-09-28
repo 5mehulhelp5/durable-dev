@@ -7,4 +7,5 @@
 - **Entries**: `src/Durable/Port/WorkflowHistorySourceInterface.php`, `src/Durable/Port/History/`,
   `src/Durable/Store/EventStoreHistorySource.php`, `src/Bridge/Temporal/Worker/TemporalExecutionHistory.php`,
   `src/Durable/ExecutionContext.php` and the other callers, `UPGRADE.md`, their tests.
-- **State**: in progress — durable-50 (lane A).
+- **State**: in progress — bob, taken over from durable-50 (gone; its commit is archived under
+  `archive/history-source-value-objects`), started again from main. Reviewer: sirius.
