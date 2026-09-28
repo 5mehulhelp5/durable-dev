@@ -14,6 +14,7 @@ use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryChildWorkflowParentLinkStore;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
@@ -33,11 +34,11 @@ final class AnEarlyResumeWaitsForItsOutcomeTest extends TestCase
         [$store, $metadata, $handler] = $this->handler();
 
         try {
-            $handler(new ResumeWorkflowMessage('exec-1', [], 'act-1'));
+            $handler(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')));
             self::fail('an early resume must not conclude');
         } catch (ResumeArrivedBeforeItsOutcome $e) {
             self::assertSame('exec-1', $e->executionId);
-            self::assertSame('act-1', $e->activityId);
+            self::assertEquals(AwaitedFact::activity('act-1'), $e->awaited);
         }
 
         self::assertSame([], iterator_to_array($store->readStream('exec-1'), false), 'the workflow did not run');
@@ -49,7 +50,7 @@ final class AnEarlyResumeWaitsForItsOutcomeTest extends TestCase
         [$store, $metadata, $handler] = $this->handler();
         $store->append(new ActivityCompleted('exec-1', 'act-1', 'ch_1'));
 
-        $handler(new ResumeWorkflowMessage('exec-1', [], 'act-1'));
+        $handler(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')));
 
         self::assertTrue($metadata->get('exec-1')['completed'] ?? false);
     }
@@ -66,7 +67,21 @@ final class AnEarlyResumeWaitsForItsOutcomeTest extends TestCase
 
         self::assertInstanceOf(ResumeWorkflowMessage::class, $message);
         self::assertSame('exec-1', $message->executionId);
-        self::assertNull($message->awaitedActivityId);
+        self::assertNull($message->awaited);
+    }
+
+    /**
+     * Between DUR050 and DUR052 the message carried the activity id as `awaitedActivityId`; such a
+     * message reads back as an activity fact.
+     */
+    public function testAMessageSerializedWithAnAwaitedActivityIdReadsAsAnActivityFact(): void
+    {
+        $old = 'O:49:"Gplanchat\Durable\Transport\ResumeWorkflowMessage":3:{s:11:"executionId";s:6:"exec-1";s:14:"pendingUpdates";a:0:{}s:17:"awaitedActivityId";s:5:"act-1";}';
+
+        $message = unserialize($old);
+
+        self::assertInstanceOf(ResumeWorkflowMessage::class, $message);
+        self::assertEquals(AwaitedFact::activity('act-1'), $message->awaited);
     }
 
     /**

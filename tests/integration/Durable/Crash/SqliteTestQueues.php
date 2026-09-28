@@ -9,6 +9,7 @@ use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
 use Gplanchat\Durable\Transport\ActivityTransportInterface;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 
 /**
@@ -40,7 +41,7 @@ final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResu
 
     public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
     {
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], $activityId));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], AwaitedFact::activity($activityId)));
     }
 
     public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void

@@ -9,6 +9,7 @@ use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Bundle\Messenger\MessengerWorkflowResumeDispatcher;
 use Gplanchat\Durable\Bundle\Messenger\NewWorkflowRunStamp;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
@@ -64,7 +65,7 @@ final class MessengerWorkflowResumeDispatcherTest extends TestCase
         self::assertNull($bus->sent[0]->last(DispatchAfterCurrentBusStamp::class));
         $message = $bus->sent[0]->getMessage();
         self::assertInstanceOf(ResumeWorkflowMessage::class, $message);
-        self::assertSame('act-1', $message->awaitedActivityId);
+        self::assertEquals(AwaitedFact::activity('act-1'), $message->awaited);
     }
 
     /**

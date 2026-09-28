@@ -10,6 +10,7 @@ use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\ResumeDeferral;
 use Gplanchat\Durable\Laravel\Queue\ResumeWorkflowJob;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\NullStore;
@@ -65,7 +66,7 @@ final class OneResumeAtATimeTest extends TestCase
         $app->make(WorkflowMetadataStore::class)->save('exec-early', GreetingWorkflow::class, []);
 
         $queue = new FakeQueue();
-        (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-early', [], 'act-1')))->handle(
+        (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-early', [], AwaitedFact::activity('act-1'))))->handle(
             $app->make(ResumeWorkflowHandler::class),
             new ResumeLock(new ArrayStore()),
             new FakeQueueFactory($queue),
@@ -73,7 +74,7 @@ final class OneResumeAtATimeTest extends TestCase
         );
 
         self::assertCount(1, $queue->pushed);
-        self::assertSame('act-1', $queue->pushed[0]['job']->message->awaitedActivityId);
+        self::assertEquals(AwaitedFact::activity('act-1'), $queue->pushed[0]['job']->message->awaited);
         self::assertSame(1, $queue->pushed[0]['job']->deferrals);
     }
 
@@ -88,7 +89,7 @@ final class OneResumeAtATimeTest extends TestCase
         $app->make(WorkflowMetadataStore::class)->save('exec-late', GreetingWorkflow::class, []);
 
         $queue = new FakeQueue();
-        (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-late', [], 'act-1'), 50))->handle(
+        (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-late', [], AwaitedFact::activity('act-1')), 50))->handle(
             $app->make(ResumeWorkflowHandler::class),
             new ResumeLock(new ArrayStore()),
             new FakeQueueFactory($queue),
