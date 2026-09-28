@@ -69,13 +69,16 @@ trait FreshNamespace
 
         // Durable writes these on every start, and a server refuses a start that names an
         // attribute the namespace has no mapping for (#558).
-        $transportClient->unary('/temporal.api.operatorservice.v1.OperatorService/AddSearchAttributes', new AddSearchAttributesRequest([
+        // Through the same wait: on an older server (1.20) the operator service reads the namespace
+        // from a cache that learns of it seconds after DescribeNamespace does. And 1.20 keeps these
+        // attributes cluster-wide, so "already exists" (6) is the state wanted, not a failure (#523).
+        self::awaitNamespace($namespace, 'still unknown to the operator service', static fn() => self::alreadyExistsIsFine(static fn() => $transportClient->unary('/temporal.api.operatorservice.v1.OperatorService/AddSearchAttributes', new AddSearchAttributesRequest([
             'namespace' => $namespace,
             'search_attributes' => [
                 DurableSearchAttributes::WORKFLOW_NAME => IndexedValueType::INDEXED_VALUE_TYPE_KEYWORD,
                 DurableSearchAttributes::EXECUTION_ID => IndexedValueType::INDEXED_VALUE_TYPE_KEYWORD,
             ],
-        ]), AddSearchAttributesResponse::class, [], 10_000);
+        ]), AddSearchAttributesResponse::class, [], 10_000)));
         // Listed at once, usable a couple of seconds later: until then a query naming the attribute
         // fails as a start would, without starting anything.
         self::awaitNamespace($namespace, 'has no usable Durable search attributes', static fn() => $transportClient->unary($service . 'ListWorkflowExecutions', new ListWorkflowExecutionsRequest([
@@ -85,6 +88,17 @@ trait FreshNamespace
         ]), ListWorkflowExecutionsResponse::class, [], 5_000));
 
         return $connection;
+    }
+
+    private static function alreadyExistsIsFine(callable $call): void
+    {
+        try {
+            $call();
+        } catch (\RuntimeException $failure) {
+            if (6 !== $failure->getCode()) {
+                throw $failure;
+            }
+        }
     }
 
     private static function awaitNamespace(string $namespace, string $state, callable $probe): void
