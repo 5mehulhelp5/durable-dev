@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The run grid's column labels: the admin's table header translates them in this domain. -->
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+    <file source-language="en" target-language="fr" datatype="plaintext" original="file.ext">
+        <body>
+            <trans-unit id="durable.grid.execution"><source>durable.grid.execution</source><target>Exécution</target></trans-unit>
+            <trans-unit id="durable.grid.workflow"><source>durable.grid.workflow</source><target>Workflow</target></trans-unit>
+            <trans-unit id="durable.grid.status"><source>durable.grid.status</source><target>Issue</target></trans-unit>
+            <trans-unit id="durable.grid.started_at"><source>durable.grid.started_at</source><target>Démarrée</target></trans-unit>
+            <trans-unit id="durable.grid.notes"><source>durable.grid.notes</source><target>Notes</target></trans-unit>
+        </body>
+    </file>
+</xliff>
