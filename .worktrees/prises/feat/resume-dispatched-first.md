@@ -7,5 +7,8 @@
   PR); `src/Durable/Worker/ActivityMessageProcessor.php`; `src/Durable/Handler/ResumeWorkflowHandler.php`;
   `src/DurableBundle/DependencyInjection/Configuration.php` (the dead `activity_transport.table_name`
   node); the kill-between-the-two-steps test.
-- **Careful**: #505 (the DBAL journal's optimistic concurrency) builds on this; #331 is next, DUR051.
-- **State**: taken by anna, 2026-09-28. Reviewer: sirius (jack if sirius is loaded).
+- **Careful**: #505 (the DBAL journal's optimistic concurrency) builds on this. The other append-then-send
+  pairs (signals, updates, child-to-parent, timers) are #584, not this prise.
+- **State**: anna. DUR050 draft is #582: the user's three choices recorded, waiting for the user's approval
+  of the text. The independent fix, a failed send is not a failed activity, is #583. The protocol
+  itself starts once #582 is approved. Reviewer: sirius.
