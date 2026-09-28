@@ -52,6 +52,17 @@ public function dispatchResumeAnnouncing(string $executionId, string $activityId
 
 A dispatcher whose backend owns delivery (as Temporal's does) implements it as a no-op.
 
+### `durable.activity_transport.table_name` is removed
+
+**Who is affected**: a Symfony application whose `durable.yaml` still sets it. It has been deprecated
+since 0.1.0-beta1, and nothing ever read it.
+
+**Why.** It named an outbox that was never built, and DUR050 (#328) chose not to build one: the
+resume is sent before the outcome and again after it.
+
+**What to do.** Delete the line. Left in place, the container build fails with an
+`InvalidConfigurationException` naming the unrecognized option.
+
 ### On Temporal, the dashboards link a run by its execution id, not the server's run id
 
 **Who is affected**: an application on the Temporal backend with links to its run pages saved

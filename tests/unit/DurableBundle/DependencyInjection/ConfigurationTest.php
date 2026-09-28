@@ -68,24 +68,14 @@ final class ConfigurationTest extends TestCase
         self::assertSame([\Countable::class], $config['activity_contracts']['contracts']);
     }
 
-    public function testTheOutboxTableNameIsDeprecated(): void
+    public function testTheOutboxTableNameIsRefused(): void
     {
-        // Read nowhere: the outbox it names does not exist until #328 decides it.
-        $deprecations = [];
-        set_error_handler(static function (int $level, string $message) use (&$deprecations): bool {
-            $deprecations[] = $message;
+        // Deprecated in beta1 because no outbox ever existed; DUR050 (#328) chose not to build one,
+        // so the option is gone rather than read. Setting it is a configuration error.
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('table_name');
 
-            return true;
-        }, \E_USER_DEPRECATED);
-
-        try {
-            $this->process(['activity_transport' => ['table_name' => 'outbox']]);
-        } finally {
-            restore_error_handler();
-        }
-
-        self::assertCount(1, $deprecations);
-        self::assertStringContainsString('durable.activity_transport.table_name', $deprecations[0]);
+        $this->process(['activity_transport' => ['table_name' => 'outbox']]);
     }
 
     /**
