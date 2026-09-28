@@ -41,7 +41,8 @@ default, a projection), and code that builds `ActivityMessageProcessor` itself.
   provider wires `ActivityAttemptLock` (the resume lock's cache store and TTL). A host that builds the
   processor for several workers passes its own shared-lock implementation. A copy whose attempt
   another worker holds throws `Gplanchat\Durable\Exception\ActivityAttemptDeferred`: the bundle
-  turns it into a recoverable Messenger failure retried after 10 s, and `RunActivityJob` queues the
+  turns it into a recoverable Messenger failure, retried after 10 s where Messenger takes a retry
+  delay and after the transport's retry strategy on 6.4, and `RunActivityJob` queues the
   same attempt again 10 s out. A host that calls `process()` itself catches it and redelivers later.
 
 No Rector rule: nothing is renamed, and the new argument is optional.

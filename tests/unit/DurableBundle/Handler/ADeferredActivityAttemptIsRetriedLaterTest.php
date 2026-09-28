@@ -42,7 +42,11 @@ final class ADeferredActivityAttemptIsRetriedLaterTest extends TestCase
             $handler(new ActivityMessage('exec-1', 'act-1', 'charge', []));
             self::fail('the copy must be retried, not acknowledged');
         } catch (RecoverableMessageHandlingException $e) {
-            self::assertSame(10_000, $e->getRetryDelay());
+            self::assertInstanceOf(\Gplanchat\Durable\Exception\ActivityAttemptDeferred::class, $e->getPrevious());
+            if ((new \ReflectionClass($e))->hasMethod('getRetryDelay')) {
+                // Messenger 7.2 and later; on 6.4 the transport's retry strategy spaces the retries.
+                self::assertSame(10_000, $e->getRetryDelay());
+            }
         }
     }
 }
