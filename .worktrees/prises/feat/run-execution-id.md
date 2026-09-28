@@ -17,6 +17,6 @@
   - the plugin, `symfony/`, `src/DurableModule/`;
   - the conformance suite.
 - **State**: anna, taken over from jane on 2026-09-28. Slices a and b merged in #564, c in #567, d in
-  #570; #514 is closed. Left: the magento-boot check on a run id with a slash. The job has no DSN,
-  so a run the admin can read needs Temporal there: waiting for the user to choose between (A)
-  Temporal in the job, (B) a not-found page for a slashed id on the memory backend, or (C) B then A.
+  #570; #514 is closed. Left: the magento-boot check (the user chose Temporal in the job). Ready on
+  the local branch `ci/magento-boot-run-page` (worktree `.worktrees/anna-magento-boot`), handed to
+  durable-30, who pushes workflow changes.
