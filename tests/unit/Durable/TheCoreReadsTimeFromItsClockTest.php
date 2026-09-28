@@ -135,4 +135,24 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         }
         self::assertSame([1_700_000_060.0], $scheduledAt);
     }
+
+    public function testAWaitUntilAnInstantIsCountedFromTheRuntimesClock(): void
+    {
+        $store = new InMemoryEventStore();
+        $runner = new InMemoryWorkflowRunner($store, new InMemoryActivityTransport(), new RegistryActivityExecutor(), clock: new FrozenClock(1_700_000_000.0));
+
+        $runner->run('exec-1', static function (WorkflowEnvironment $wf): string {
+            $wf->sleep(new \DateTimeImmutable('@1700000060'));
+
+            return 'done';
+        });
+
+        $scheduledAt = [];
+        foreach ($store->readStream('exec-1') as $event) {
+            if ($event instanceof TimerScheduled) {
+                $scheduledAt[] = $event->scheduledAt();
+            }
+        }
+        self::assertSame([1_700_000_060.0], $scheduledAt);
+    }
 }

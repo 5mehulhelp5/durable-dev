@@ -14,6 +14,7 @@ use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\FrozenClock;
 
 /**
  * The dashboard's view model, built on the port and on nothing else.
@@ -394,7 +395,7 @@ final class RunDashboardTest extends TestCase
             $this->describedRun('sleeping', 'App\\OrderWorkflow', WorkflowRunStatus::Running),
         ], tellsWaitingForWorker: true);
 
-        $view = (new RunDashboard($catalog, static fn(): \DateTimeImmutable => $dispatched->modify('+42 seconds')))->build();
+        $view = (new RunDashboard($catalog, new FrozenClock((float) $dispatched->format('U') + 42.0)))->build();
 
         self::assertSame($dispatched, $view['runs'][0]['waitingForWorkerSince']);
         self::assertSame('waiting for a worker · 42 s', $view['runs'][0]['waitingForWorker']);

@@ -21,6 +21,8 @@ return static function (ContainerConfigurator $container): void {
         ->arg('$catalog', service(WorkflowRunCatalogInterface::class)->nullOnInvalid())
         // The redactor the profiler and diagnose use, the application's if it aliased its own.
         ->arg('$redactor', service(PayloadRedactorInterface::class)->nullOnInvalid())
+        // FrameworkBundle's PSR-20 clock when there is one; the core's system clock otherwise.
+        ->arg('$clock', service('clock')->nullOnInvalid())
     ;
 
     $services
