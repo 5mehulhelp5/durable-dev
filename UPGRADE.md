@@ -56,6 +56,50 @@ shows them, but a filtered one doesn't. A value longer than the 255 characters T
 keeps at most its first 189 bytes and ends with a hash of the whole: an exact filter still finds it, a
 prefix filter only within those bytes.
 
+### `WorkflowRunCatalogInterface::listRuns()` takes a filter, and the port gains `canFilterRuns()`
+
+**Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`. Code that calls
+`listRuns()` keeps working, since the new parameter is optional. Code that passes a filter checks
+`canFilterRuns()` first, and offers no filter when it is `false`. Rector cannot write the filter for
+you, because only the implementer knows how the runs are stored.
+
+**Why.** The run list filters by workflow name and by execution-id prefix (#558, #557), without
+paging until a run shows up.
+
+**What to write.**
+
+- Add `?WorkflowRunFilter $filter = null` as the fourth parameter of `listRuns()`, and honour both of
+  its fields. Compare the whole `workflowName` and the start of the execution id with
+  `executionIdPrefix`. Take every character literally (`%` and `_` included, so not a bare SQL
+  `LIKE`) and keep case: MySQL's default collations fold it, so compare as bytes there. A `null`
+  field is no filter, and the value object already turns an empty string into `null`.
+- Add `canFilterRuns(): bool`, and return `true` when `listRuns()` honours the filter. When it
+  cannot, return `false` and throw `RunFilterUnavailableException` for a non-empty filter. Never
+  ignore the filter, and never answer an empty page in place of the refusal.
+- A filtered page may come back shorter than `$limit`, even empty, with a `nextCursor`: only a
+  `null` cursor means the end.
+
+```php
+use Gplanchat\Durable\Exception\RunFilterUnavailableException;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
+
+public function canFilterRuns(): bool
+{
+    return true;
+}
+
+public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
+{
+    // … narrow by $filter?->workflowName and $filter?->executionIdPrefix as well as by $status
+}
+```
+
+`WorkflowRunCatalogConformanceTestCase` expects a catalog to filter. If yours cannot, override
+`expectsToFilterRuns()` to return `false`: the suite checks that `canFilterRuns()` agrees with it.
+It also follows `canFilterRuns()`. When it is `true`, the suite checks
+both filters, their case and the literal characters. When it is `false`, it checks that a filter is
+refused and that an empty one is not.
+
 ### `WorkflowRunCatalogInterface` gains `findRun()`
 
 **Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`, that is, whoever

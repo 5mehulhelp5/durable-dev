@@ -30,7 +30,7 @@ trait FreshNamespace
 {
     private const NAMESPACE_READY_TIMEOUT_SECONDS = 30.0;
 
-    private static function freshNamespaceConnection(): TemporalConnection
+    private static function freshNamespaceConnection(bool $searchAttributes = true): TemporalConnection
     {
         $address = getenv('DURABLE_TEMPORAL_ADDRESS');
         if (false === $address || '' === $address) {
@@ -52,8 +52,9 @@ trait FreshNamespace
             workflowTaskQueue: $queue,
             activityTaskQueue: $queue,
             transport: $transport,
-            // The conformance namespaces register them below, so the suite runs as an enabled host.
-            searchAttributes: true,
+            // The conformance namespaces register them below, so the suite runs as an enabled host
+            // unless it asks otherwise.
+            searchAttributes: $searchAttributes,
         );
 
         $transportClient = WorkflowServiceClientFactory::createTransport($connection);

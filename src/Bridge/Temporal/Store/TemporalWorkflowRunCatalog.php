@@ -6,15 +6,18 @@ namespace Gplanchat\Bridge\Temporal\Store;
 
 use Google\Protobuf\Timestamp;
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
+use Gplanchat\Bridge\Temporal\DurableSearchAttributes;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalGrpcTimeouts;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\Exception\RunFilterUnavailableException;
 use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
@@ -40,6 +43,9 @@ final class TemporalWorkflowRunCatalog implements WorkflowRunCatalogInterface
 {
     private const BACKEND = 'Temporal';
 
+    /** Server round trips a prefixed page may take to fill up (#557). */
+    private const MAX_FILL_ROUNDS = 5;
+
     private const GRPC_NOT_FOUND = 5;
 
     public function __construct(
@@ -48,31 +54,55 @@ final class TemporalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         private readonly ?TemporalHistoryCursor $historyCursor = null,
     ) {}
 
-    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage
+    /**
+     * The filters read Durable's search attributes, which only a host with the switch on writes.
+     */
+    public function canFilterRuns(): bool
     {
+        return $this->connection->searchAttributes;
+    }
+
+    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
+    {
+        if (null !== $filter && !$filter->isEmpty() && !$this->canFilterRuns()) {
+            throw new RunFilterUnavailableException('Filtering Temporal runs reads Durable\'s search attributes: register them on the namespace, then turn durable.temporal.search_attributes on.');
+        }
         $request = new ListWorkflowExecutionsRequest();
         $request->setNamespace($this->connection->namespace->name());
-        $request->setPageSize(max(1, $limit));
-        if (null !== $status) {
-            $request->setQuery(self::visibilityQuery($status));
+        $clauses = null === $status ? [] : [self::visibilityQuery($status)];
+        // Durable's search attributes, spelled as written (#558): no WorkflowType holding a `\` matches.
+        if (null !== $filter?->workflowName) {
+            $clauses[] = DurableSearchAttributes::WORKFLOW_NAME . ' = ' . DurableSearchAttributes::literal(DurableSearchAttributes::value($filter->workflowName));
         }
-        if (null !== $cursor && '' !== $cursor) {
-            $request->setNextPageToken(self::decodeCursor($cursor));
+        if (null !== $filter?->executionIdPrefix) {
+            $clauses[] = DurableSearchAttributes::EXECUTION_ID . ' STARTS_WITH ' . DurableSearchAttributes::literal(DurableSearchAttributes::normalized($filter->executionIdPrefix));
         }
-
-        $response = $this->client->ListWorkflowExecutions(
-            $request,
-            [],
-            ['timeout' => TemporalGrpcTimeouts::SHORT_US],
-        );
-
+        if ([] !== $clauses) {
+            // Each clause in parentheses once there are two: the status one may be a `NOT IN`.
+            $request->setQuery(1 === \count($clauses) ? $clauses[0] : '(' . implode(') AND (', $clauses) . ')');
+        }
+        // A visibility store on SQLite (the dev server's) matches STARTS_WITH without case, one on
+        // PostgreSQL with it: what the server returns is confirmed here, so case counts on all. The
+        // runs it drops are asked for again, exactly as many as are missing, so every confirmed run
+        // fits and the server's token stays exact. ponytail: bounded, past MAX_FILL_ROUNDS a page
+        // comes back short, its cursor still valid; raise the bound if case-only neighbours abound.
+        $prefix = null === $filter?->executionIdPrefix ? null : DurableSearchAttributes::normalized($filter->executionIdPrefix);
+        $wanted = max(1, $limit);
+        $token = null === $cursor ? '' : self::decodeCursor($cursor);
         $runs = [];
-        foreach ($response->getExecutions() as $info) {
-            $run = self::describe($info);
-            if (null !== $run) {
-                $runs[] = $run;
+        $rounds = 0;
+        do {
+            $request->setPageSize($wanted - \count($runs));
+            $request->setNextPageToken($token);
+            $response = $this->client->ListWorkflowExecutions($request, [], ['timeout' => TemporalGrpcTimeouts::SHORT_US]);
+            foreach ($response->getExecutions() as $info) {
+                $run = self::describe($info);
+                if (null !== $run && (null === $prefix || str_starts_with(self::executionIdAttribute($info), $prefix))) {
+                    $runs[] = $run;
+                }
             }
-        }
+            $token = (string) $response->getNextPageToken();
+        } while (null !== $prefix && \count($runs) < $wanted && '' !== $token && ++$rounds < self::MAX_FILL_ROUNDS);
 
         // The server already orders by descending start date, but the response of a custom
         // visibility query does not guarantee it: we re-sort, as the view used to do.
@@ -80,8 +110,6 @@ final class TemporalWorkflowRunCatalog implements WorkflowRunCatalogInterface
             $runs,
             static fn(WorkflowRunDescription $left, WorkflowRunDescription $right): int => ($right->startedAt?->getTimestamp() ?? 0) <=> ($left->startedAt?->getTimestamp() ?? 0),
         );
-
-        $token = (string) $response->getNextPageToken();
 
         return new WorkflowRunPage($runs, '' === $token ? null : base64_encode($token));
     }
@@ -172,6 +200,17 @@ final class TemporalWorkflowRunCatalog implements WorkflowRunCatalogInterface
             \sprintf('Connected to Temporal namespace "%s".', $this->connection->namespace->name()),
             $checkedAt,
         );
+    }
+
+    private static function executionIdAttribute(WorkflowExecutionInfo $info): string
+    {
+        $fields = $info->getSearchAttributes()?->getIndexedFields();
+        if (null === $fields || !$fields->offsetExists(DurableSearchAttributes::EXECUTION_ID)) {
+            return '';
+        }
+        $value = json_decode($fields->offsetGet(DurableSearchAttributes::EXECUTION_ID)->getData(), true);
+
+        return \is_string($value) ? $value : '';
     }
 
     private static function describe(WorkflowExecutionInfo $info): ?WorkflowRunDescription
