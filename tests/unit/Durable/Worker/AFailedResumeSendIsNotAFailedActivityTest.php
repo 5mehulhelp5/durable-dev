@@ -54,6 +54,39 @@ final class AFailedResumeSendIsNotAFailedActivityTest extends TestCase
     }
 
     /**
+     * The redelivery the fix relies on meets the #319 guard first: the outcome is journalled, so the
+     * attempt is not run again. The guard must still send the resume the first delivery lost, or
+     * the run waits forever with its result in the journal (at-least-once, #328).
+     */
+    public function testTheRedeliverySendsTheResumeTheFirstDeliveryLost(): void
+    {
+        $store = new InMemoryEventStore();
+        $executor = new RegistryActivityExecutor();
+        $executor->register('charge', static fn(): string => 'ch_1');
+        $down = true;
+        $sent = 0;
+        $resumes = $this->createStub(WorkflowResumeDispatcher::class);
+        $resumes->method('dispatchResume')->willReturnCallback(static function () use (&$down, &$sent): void {
+            if ($down) {
+                throw new \RuntimeException('broker down');
+            }
+            ++$sent;
+        });
+        $processor = new ActivityMessageProcessor($store, new InMemoryActivityTransport(), $executor, $resumes, $this->createStub(ActivityHeartbeatSenderInterface::class));
+        $message = new ActivityMessage('exec-1', 'act-1', 'charge', []);
+
+        try {
+            $processor->process($message);
+        } catch (\RuntimeException) {
+        }
+        $down = false;
+        $processor->process($message);
+
+        self::assertSame(1, $sent, 'the redelivery sends the resume the first delivery lost');
+        self::assertSame(1, $this->eventsOf($store, ActivityCompleted::class), 'without running the attempt again');
+    }
+
+    /**
      * @return array{InMemoryEventStore, InMemoryActivityTransport, ActivityMessageProcessor}
      */
     private function processor(bool $cancelled): array
