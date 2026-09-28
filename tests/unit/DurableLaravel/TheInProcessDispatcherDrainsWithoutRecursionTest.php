@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Laravel;
 use Gplanchat\Durable\Laravel\Queue\InProcessWorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
+use Gplanchat\Durable\Transport\FireWorkflowTimersMessage;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use PHPUnit\Framework\TestCase;
@@ -81,6 +82,32 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
         self::assertSame(['resume exec-1', 'resume exec-2'], $this->ran, 'the second dispatch still drains');
     }
 
+    public function testATimerDueWithinTheBudgetFiresInTheSameCall(): void
+    {
+        $dispatcher = $this->dispatcher(fire: function (FireWorkflowTimersMessage $message): void {
+            $this->ran[] = 'fire ' . $message->executionId;
+        });
+
+        $dispatcher->dispatchTimerFire('exec-1', 50);
+
+        self::assertSame(['fire exec-1'], $this->ran);
+    }
+
+    /**
+     * A timer due past the budget is not waited for: the run stays suspended, as it does on a
+     * signal, and the next dispatch fires what has come due.
+     */
+    public function testATimerDuePastTheBudgetIsLeftForALaterDrain(): void
+    {
+        $dispatcher = $this->dispatcher(fire: function (FireWorkflowTimersMessage $message): void {
+            $this->ran[] = 'fire ' . $message->executionId;
+        }, budget: 0.05);
+
+        $dispatcher->dispatchTimerFire('exec-1', 60_000);
+
+        self::assertSame([], $this->ran);
+    }
+
     private function enter(string $what): void
     {
         $this->ran[] = $what;
@@ -90,6 +117,7 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
     private function dispatcher(
         ?\Closure $resume = null,
         ?\Closure $activity = null,
+        ?\Closure $fire = null,
         ?InMemoryActivityTransport $activities = null,
         float $budget = 2.0,
     ): InProcessWorkflowResumeDispatcher {
@@ -100,6 +128,7 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
             $activities ?? new InMemoryActivityTransport(),
             static fn(): \Closure => $resume ?? $none,
             static fn(): \Closure => $activity ?? $none,
+            static fn(): \Closure => $fire ?? $none,
             $budget,
         );
     }
