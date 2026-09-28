@@ -20,4 +20,9 @@ final class InMemoryEventStoreConformanceTest extends EventStoreConformanceTestC
     {
         return new InMemoryEventStore();
     }
+
+    protected function expectsFencedPasses(): bool
+    {
+        return true;
+    }
 }
