@@ -24,7 +24,7 @@ final class TheWorkerRecordsTheWaitTest extends TestCase
     public function testASuspendingTaskWritesTheWaitInTheMemo(): void
     {
         $buffer = $this->buffer();
-        $lifecycle = new TemporalWorkflowLifecycle($buffer, describeWait: static fn(Awaitable $pending): ?string => 'timer due at 2026-09-24T10:00:00+00:00');
+        $lifecycle = new TemporalWorkflowLifecycle($buffer, describeWait: static fn(Awaitable $pending): string => 'timer due at 2026-09-24T10:00:00+00:00');
 
         $lifecycle->onSuspended('exec-1', (new Deferred())->awaitable());
 

@@ -100,7 +100,7 @@ final class TheWorkerWordsTheWaitTest extends TestCase
         $connection = new TemporalConnection('localhost:7233', 'test-namespace');
         $runner = new WorkflowTaskRunner(new TemporalHistoryCursor($this->createMock(WorkflowServiceClientInterface::class), 'test-namespace'), $registry, $connection);
 
-        return array_values($runner->run($poll)->commands);
+        return $runner->run($poll)->commands;
     }
 
     /**
