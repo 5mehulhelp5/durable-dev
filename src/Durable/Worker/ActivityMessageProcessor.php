@@ -9,11 +9,15 @@ use Gplanchat\Durable\ActivityExecutor;
 use Gplanchat\Durable\Debug\WorkflowExecutionObserverInterface;
 use Gplanchat\Durable\Event\ActivityCancelled;
 use Gplanchat\Durable\Event\ActivityCompleted;
+use Gplanchat\Durable\Event\ActivityRetryQueued;
 use Gplanchat\Durable\Event\ActivityTaskFailed;
 use Gplanchat\Durable\Event\ActivityTaskStarted;
+use Gplanchat\Durable\Exception\ActivityAttemptDeferred;
 use Gplanchat\Durable\Failure\ActivityFailureEventFactory;
 use Gplanchat\Durable\Failure\ActivityRetryState;
+use Gplanchat\Durable\Port\ActivityAttemptClaimInterface;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
+use Gplanchat\Durable\Port\NoActivityAttemptClaim;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\ActivityEventJournal;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -37,6 +41,7 @@ final class ActivityMessageProcessor
         private readonly ActivityHeartbeatSenderInterface $heartbeatSender,
         private readonly int $maxRetries = 0,
         private readonly ?WorkflowExecutionObserverInterface $workflowExecutionObserver = null,
+        private readonly ActivityAttemptClaimInterface $attemptClaim = new NoActivityAttemptClaim(),
     ) {}
 
     /**
@@ -45,6 +50,22 @@ final class ActivityMessageProcessor
      *                         null otherwise — it is already journalled either way
      */
     public function process(ActivityMessage $message): ?\Throwable
+    {
+        // A copy of an attempt another worker holds: not now, and not never, since a holder that
+        // died keeps its claim until the lock TTL. The host delivers it again later (#590).
+        $release = $this->attemptClaim->claim($message->executionId, $message->activityId, $message->attempt);
+        if (null === $release) {
+            throw new ActivityAttemptDeferred($message->executionId, $message->activityId, $message->attempt);
+        }
+
+        try {
+            return $this->processClaimed($message);
+        } finally {
+            $release();
+        }
+    }
+
+    private function processClaimed(ActivityMessage $message): ?\Throwable
     {
         // A redelivery of an attempt that already ran is answered by the journal, not run again:
         // re-running a failed attempt would also queue its retry a second time (#319). An outcome
@@ -66,6 +87,14 @@ final class ActivityMessageProcessor
             $message->activityId,
             $message->attempt,
         )) {
+            // Queueing the retry may be what failed and caused this redelivery: the journal says
+            // whether it went out, as Temporal's dispatch task does (#590).
+            if (!$this->activityTransport instanceof NoopActivityTransport
+                && ActivityEventJournal::nextAttemptIsDue($this->eventStore, $message->executionId, $message->activityId, $message->attempt)
+            ) {
+                $this->enqueueNextAttempt($message);
+            }
+
             return null;
         }
 
@@ -215,10 +244,7 @@ final class ActivityMessageProcessor
             }
 
             if ($shouldRetry) {
-                $delay = $options?->retryDelayBeforeAttempt($message->attempt + 1);
-                $this->activityTransport->enqueue(
-                    $message->retryingIn(null !== $delay && !$delay->isZero() ? $delay : null),
-                );
+                $this->enqueueNextAttempt($message);
             } else {
                 $this->appendActivityFailure($message, $e, $retryState);
 
@@ -227,6 +253,15 @@ final class ActivityMessageProcessor
         }
 
         return null;
+    }
+
+    private function enqueueNextAttempt(ActivityMessage $message): void
+    {
+        $delay = $message->options?->retryDelayBeforeAttempt($message->attempt + 1);
+        $this->activityTransport->enqueue(
+            $message->retryingIn(null !== $delay && !$delay->isZero() ? $delay : null),
+        );
+        $this->eventStore->append(new ActivityRetryQueued($message->executionId, $message->activityId, $message->attempt + 1));
     }
 
     private function appendActivityFailure(ActivityMessage $message, \Throwable $e, ActivityRetryState $retryState): void

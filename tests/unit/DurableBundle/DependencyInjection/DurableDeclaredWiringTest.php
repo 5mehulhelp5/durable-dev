@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\DurableBundle\DependencyInjection;
 
+use Gplanchat\Bridge\Dbal\Messenger\LockActivityAttemptClaim;
 use Gplanchat\Bridge\Dbal\Messenger\SingleResumeLockMiddleware;
 use Gplanchat\Durable\Activity\ActivityContractResolver;
 use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\RequireLockFactoryPass;
@@ -133,6 +134,30 @@ final class DurableDeclaredWiringTest extends TestCase
         $this->expectExceptionMessageMatches('/per-process \(`FlockStore`\)/');
 
         $container->get('durable.dbal.single_resume_lock');
+    }
+
+    /**
+     * The DBAL journal has no server to refuse a second start of one attempt: the processor claims
+     * it through the resume lock's factory and TTL (#590).
+     */
+    public function testOnDbalTheProcessorClaimsEachAttempt(): void
+    {
+        $container = $this->load(['backend' => 'dbal', 'dbal' => ['lock_ttl' => 45.0]]);
+
+        self::assertEquals(new Reference('durable.dbal.activity_attempt_claim'), $container->getDefinition('durable.activity_message_processor')->getArgument(7));
+        self::assertEquals([new Reference('lock.factory'), 45.0], $container->getDefinition('durable.dbal.activity_attempt_claim')->getArguments());
+    }
+
+    public function testAnEnvLockStoreIsCheckedForTheAttemptClaimToo(): void
+    {
+        $container = $this->containerWithLockStore('%env(LOCK_DSN)%');
+        $container->register('durable.dbal.activity_attempt_claim', LockActivityAttemptClaim::class)
+            ->setArguments([new Reference('lock.factory'), 300.0])
+            ->setPublic(true);
+
+        (new RequireLockFactoryPass())->process($container);
+
+        self::assertEquals(new Reference('durable.dbal.checked_lock_factory'), $container->getDefinition('durable.dbal.activity_attempt_claim')->getArgument(0));
     }
 
     /**

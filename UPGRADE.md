@@ -24,6 +24,29 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
+
+**Who is affected**: code that reads journal events by type (a custom mapper, a `match` without a
+default, a projection), and code that builds `ActivityMessageProcessor` itself.
+
+- When an attempt fails and will retry, the worker now appends
+  `Gplanchat\Durable\Event\ActivityRetryQueued` once the transport took the next attempt: the
+  counterpart of Temporal's dispatch task. A redelivered failure without it queues the retry again;
+  before, the retry was lost when the broker refused it. Handle or skip the new type where events
+  are read by type. Journals recorded before have none, and read as before.
+- `ActivityMessageProcessor` takes an eighth, optional argument,
+  `Gplanchat\Durable\Port\ActivityAttemptClaimInterface`: one worker per activity attempt. It
+  defaults to `NoActivityAttemptClaim`, right for one process. The Symfony bundle wires
+  `LockActivityAttemptClaim` on a DBAL journal (the resume lock's factory and TTL) and the Laravel
+  provider wires `ActivityAttemptLock` (the resume lock's cache store and TTL). A host that builds the
+  processor for several workers passes its own shared-lock implementation. A copy whose attempt
+  another worker holds throws `Gplanchat\Durable\Exception\ActivityAttemptDeferred`: the bundle
+  turns it into a recoverable Messenger failure, retried on the transport's retry strategy whatever
+  `max_retries` says, and `RunActivityJob` queues the
+  same attempt again 10 s out. A host that calls `process()` itself catches it and redelivers later.
+
+No Rector rule: nothing is renamed, and the new argument is optional.
+
 ### Temporal: the journal workflow's leftovers are gone (#594)
 
 **Who is affected**: code that used `Gplanchat\Bridge\Temporal\Journal\JournalStateResolver`,
