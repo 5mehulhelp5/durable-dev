@@ -17,7 +17,6 @@
   - the plugin, `symfony/`, `src/DurableModule/`;
   - the conformance suite.
 - **State**: taken over by anna from jane on 2026-09-28, at durable-30's request. Slices a and b
-  merged in #564. Slice c is #567, merged with main at `5e98d8cb` and waiting on jack's re-check.
-  Slice d is next, starting from jane's unpushed WIP `0e0d7c84` (`feat/temporal-records-the-wait`),
-  and closes #514. Then comes the magento-boot check on a run id with a slash, prepared as a diff for
-  durable-30. Reviewer: jack.
+  merged in #564, slice c in #567. Slice d is #570 (`feat/temporal-records-the-wait-anna`, jane's
+  WIP `0e0d7c84` cherry-picked), in review by jack; it closes #514. Next: the magento-boot check on
+  a run id with a slash, prepared as a diff for durable-30.
