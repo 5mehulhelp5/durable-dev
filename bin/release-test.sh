@@ -15,7 +15,9 @@ check() { # $1 description · $2 command that must succeed
     if eval "$2"; then echo "  ok        $1"; else echo "  FAIL      $1"; failures=$((failures + 1)); fi
 }
 
-g() { git -c user.name=t -c user.email=t@t -c init.defaultBranch=main "$@"; }
+# An identity for every git call, release.sh's `git tag -a` included: a CI runner has none.
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
+g() { git -c init.defaultBranch=main "$@"; }
 
 # A stub `gh`: records every call, one line of arguments per call.
 mkdir -p "$TMP/bin"
