@@ -146,7 +146,7 @@
                                     {% else %}
                                         {% for run in runs %}
                                             <a class="durable-run-row {% if selectedRun|default(null) and selectedRun.executionId == run.executionId %}active{% endif %}"
-                                               href="{{ path('gplanchat_durable_plugin_admin_run_show', { runId: run.executionId, status: status, cursor: pagination.cursor, back: pagination.back|default('') }) }}">
+                                               href="{{ path('gplanchat_durable_plugin_admin_run_show', { runId: run.executionId, status: status, cursor: pagination.cursor }) }}">
                                                 <div class="d-flex justify-content-between align-items-center gap-2">
                                                     <strong>{{ run.workflowName }}</strong>
                                                     <span class="badge durable-status {% if run.status == 'running' %}bg-blue-lt text-blue{% elseif run.status == 'completed' %}bg-green-lt text-green{% elseif run.status == 'failed' %}bg-red-lt text-red{% else %}bg-secondary-lt text-secondary{% endif %}">{{ ('status.' ~ run.status)|trans({}, 'durable')|upper }}</span>
@@ -166,14 +166,14 @@
                                         {% endfor %}
                                     {% endif %}
 
-                                    {% set previous = pagination.previous|default(null) %}
-                                    {% if previous or pagination.hasNext %}
+                                    {# Forward only, with the first page as the way back (#383). #}
+                                    {% if not (pagination.isFirstPage ?? true) or pagination.hasNext %}
                                         <div class="mt-3 d-flex gap-2">
-                                            {% if previous %}
-                                                <a class="btn btn-outline-secondary btn-sm" href="{{ path('gplanchat_durable_plugin_admin_run_index', { status: status, cursor: previous.cursor, back: previous.back }) }}">{{ 'pagination.previous'|trans({}, 'durable') }}</a>
+                                            {% if not (pagination.isFirstPage ?? true) %}
+                                                <a class="btn btn-outline-secondary btn-sm" href="{{ path('gplanchat_durable_plugin_admin_run_index', { status: status }) }}">{{ 'pagination.first'|trans({}, 'durable') }}</a>
                                             {% endif %}
                                             {% if pagination.hasNext %}
-                                                <a class="btn btn-outline-primary btn-sm" href="{{ path('gplanchat_durable_plugin_admin_run_index', { status: status, cursor: pagination.nextCursor, back: pagination.nextBack|default('') }) }}">{{ 'pagination.next'|trans({}, 'durable') }}</a>
+                                                <a class="btn btn-outline-primary btn-sm" href="{{ path('gplanchat_durable_plugin_admin_run_index', { status: status, cursor: pagination.nextCursor }) }}">{{ 'pagination.next'|trans({}, 'durable') }}</a>
                                             {% endif %}
                                         </div>
                                     {% endif %}

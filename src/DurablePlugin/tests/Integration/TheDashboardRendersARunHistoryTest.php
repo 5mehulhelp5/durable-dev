@@ -114,7 +114,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
     public function testTheListPageIsTheListAloneAndLinksEachRunToItsAddress(): void
     {
         $model = (new RunDashboard(new RenderingCatalog()))->listing();
-        $model['pagination']['previous'] = null;
+        $model['pagination']['isFirstPage'] = true;
 
         $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model);
 
@@ -130,7 +130,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
     public function testARunLinksByTheIdTheApplicationStartedItWith(): void
     {
         $model = (new RunDashboard(new RenderingCatalog(executionId: 'order/42')))->listing();
-        $model['pagination']['previous'] = null;
+        $model['pagination']['isFirstPage'] = true;
 
         $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model);
 
@@ -159,18 +159,22 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('>Runs<', $page);
     }
 
-    public function testAPageAfterTheFirstLeadsBack(): void
+    public function testAPageAfterTheFirstLeadsBackToTheFirstPage(): void
     {
-        // #383: the controller hands the way back; the page must offer it, stack included.
-        $page = $this->render(previous: ['cursor' => 'c1', 'back' => 'WyIiXQ']);
+        // #383: the list pages forward only; the way back is the first page, with the status kept.
+        $page = $this->render(firstPage: false);
 
-        self::assertStringContainsString('Previous page', $page);
-        self::assertStringContainsString('cursor=c1&amp;back=WyIiXQ', $page);
+        self::assertStringContainsString('First page', $page);
+        self::assertStringNotContainsString('Previous page', $page);
+        self::assertStringNotContainsString('back=', $page);
     }
 
     public function testTheFirstPageOffersNoWayBack(): void
     {
-        self::assertStringNotContainsString('Previous page', $this->render());
+        $page = $this->render();
+
+        self::assertStringNotContainsString('First page', $page);
+        self::assertStringNotContainsString('Previous page', $page);
     }
 
     public function testAnEphemeralJournalIsNeitherAFailureNorASuccess(): void
@@ -320,12 +324,12 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertSame(array_keys($catalogue('en')), array_keys($catalogue('fr')));
     }
 
-    /** @param array{cursor: string, back: string}|null $previous what the controller hands for the way back */
-    private function render(bool $ephemeral = false, bool $badPayload = false, bool $waiting = false, string $locale = 'en', ?array $previous = null, bool $secrets = false, ?string $waitingOn = null): string
+    /** @param bool $firstPage what the controller says of the page: the first, or one after it */
+    private function render(bool $ephemeral = false, bool $badPayload = false, bool $waiting = false, string $locale = 'en', bool $firstPage = true, bool $secrets = false, ?string $waitingOn = null): string
     {
         $catalog = new RenderingCatalog($ephemeral, $badPayload, $waiting, $secrets, waitingOn: $waitingOn);
         $model = (new RunDashboard($catalog))->build();
-        $model['pagination']['previous'] = $previous;
+        $model['pagination']['isFirstPage'] = $firstPage;
 
         return $this->twig($locale)->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model);
     }
