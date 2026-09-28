@@ -19,16 +19,20 @@ state is quoted from the Restate documentation. Durable's side is read from
 `WorkflowCommandBufferInterface`, `WorkflowHistorySourceInterface`, `ExecutionContext` and
 `WorkflowFiberDriver`.
 
-The test applied to every gap is OST002's: does the backend **refuse by name** (DUR051), or does it
-**silently do something else**? Only the second kind closes an option.
+The test applied to every gap is OST002's: does the backend **refuse by name**, or does it
+**silently do something else**? Only the second kind closes an option. The settled ground for it is
+the user documentation's principle that a missing capability "fails explicitly rather than being
+silently ignored", and DUR036's Nexus refusal. DUR051, still proposed, generalises that refusal to
+every port method; "refused by name" below means that shape.
 
 ---
 
 ## 1. Two corrections to OST001
 
 - **`ext-grpc` is not the differentiator any more.** The Temporal bridge already runs without it:
-  `Http\CurlGrpcTransport` (curl, HTTP/2), `Http\GuzzleGrpcTransport`, and the JSON gateway, with a
-  CI job that proves it. What Restate changes is **the direction of control**: the server calls the
+  `Http\CurlGrpcTransport` (curl, HTTP/2), `Http\GuzzleGrpcTransport`, and the JSON gateway. The CI
+  job "Sans ext-grpc" checks the extension is absent, then runs the `integration,temporal` suites
+  over gRPC on curl. What Restate changes is **the direction of control**: the server calls the
   application over HTTP for every step. There is no long-lived poller, and in request/response mode
   (HTTP/1.1) each step is an ordinary PHP-FPM request.
 - **A PHP SDK now exists.** [`qcodr/restate-sdk-php`](https://github.com/qcodr/restate-sdk-php),
@@ -53,7 +57,7 @@ Failures carry `Failure.metadata` (v6), a string map for Durable's failure envel
 
 ## 3. What would be lost, and refused by name
 
-| Capability | Why | Under DUR051 |
+| Capability | Why | Refusal |
 |---|---|---|
 | Activity heartbeats | Nothing in the protocol. In request/response mode nothing can reach a request already running. | `ActivityHeartbeatSenderInterface` refuses. |
 | Nexus | No equivalent. | Refused, as on the journal backend (DUR036). |
@@ -65,7 +69,9 @@ Failures carry `Failure.metadata` (v6), a string map for Durable's failure envel
 ### 4.1 Workflow cancellation: the one candidate for a silent change
 
 Durable delivers a workflow's cancellation **at the await it is suspended on**.
-`WorkflowFiberDriver` cancels what that await was waiting for (`cancelPending()`), records
+`WorkflowFiberDriver` cancels what that await was waiting for, and nothing else:
+`cancelPending()` calls `AwaitableCancellation::cancelUnsettled()`, which walks only the awaitable
+the fiber is suspended on and its composite members. It then records
 `WorkflowCancellationDelivered` with those targets, and throws `WorkflowCancelledFailure` into the
 fiber there. An activity that was started but not awaited keeps running; the workflow decides.
 

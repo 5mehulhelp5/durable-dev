@@ -157,7 +157,7 @@ Durable's differentiator remains: **Symfony-native, no RoadRunner, no official S
 ## 7. Hypotheses to validate
 
 1. ~~Does the `TaskHubSidecarService` vocabulary cover all of `WorkflowCommandBufferInterface`?~~ **Answered, and the option closed on it** — see [OST002](OST002-durable-task-backend-feasibility.md).
-2. Does Restate's protocol churn fast enough to make a third-party SDK unsustainable? v1 → v7 across roughly 18 months is the raw signal; what matters is how many versions a given server accepts at once. (Ask upstream for the support window, or read the server's accepted-version range directly.)
+2. Does Restate's protocol churn fast enough to make a third-party SDK unsustainable? v1 → v7 across roughly 18 months is the raw signal; what matters is how many versions a given server accepts at once. (Ask upstream for the support window, or read the server's accepted-version range directly.) **Partly answered**: the server accepts v5 to v7 for new deployments; see [OST005](OST005-restate-backend-feasibility.md) §4.5.
 3. ~~Is `ext-grpc` actually the adoption blocker it is assumed to be?~~ **Moot**: the Temporal bridge runs without it over curl. The question that now orders the tree is whether a long-lived worker process is the blocker. See [OST005](OST005-restate-backend-feasibility.md) §1.
 4. ~~Is a durable-execution backend without per-operation cancellation and without workflow updates worth shipping?~~ **Answered: no** — [OST002](OST002-durable-task-backend-feasibility.md) §6.
 
@@ -180,7 +180,7 @@ it needs no second server at all.
 
 §5 has shipped: the DBAL event store is `gplanchat/durable-bridge-dbal` ([DUR030](../adr/DUR030-dbal-backend-simplified-durable-execution.md)). It needed no protocol at all, which is why it went first.
 
-Nothing in §3 is actionable without §7.3. DUR005 states that a third backend requires a new ADR; this study is its input, not its substitute.
+Nothing in §3 is actionable without §7.3, now the long-lived-worker question (OST005 §1). DUR005 states that a third backend requires a new ADR; this study is its input, not its substitute.
 
 ## References
 
