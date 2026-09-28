@@ -9,4 +9,4 @@
   `src/Bridge/Temporal/TemporalJournalEventStore.php`, `src/Bridge/Temporal/Journal/HistoryPageMerger.php`,
   their docblock mentions and README row, `tests/unit/DurableModule/RuntimeFactoryTest.php`,
   `tests/integration/Temporal/TemporalJournalEventStoreConformanceTest.php`, `UPGRADE.md`.
-- **State**: taken by bob, reviewer sirius.
+- **State**: in review — PR #589, bob. Reviewer: sirius.
