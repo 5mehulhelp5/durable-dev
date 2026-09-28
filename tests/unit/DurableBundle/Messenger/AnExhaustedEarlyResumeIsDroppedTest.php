@@ -8,6 +8,7 @@ use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\RegisterDurableMiddlew
 use Gplanchat\Durable\Bundle\DependencyInjection\DurableExtension;
 use Gplanchat\Durable\Bundle\Messenger\EarlyResumeMiddleware;
 use Gplanchat\Durable\Exception\ResumeArrivedBeforeItsOutcome;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
@@ -31,14 +32,14 @@ final class AnExhaustedEarlyResumeIsDroppedTest extends TestCase
     {
         $this->expectException(RecoverableMessageHandlingException::class);
 
-        $this->bus(new RecordingLogger())->dispatch(new Envelope(new ResumeWorkflowMessage('exec-1', [], 'act-1')));
+        $this->bus(new RecordingLogger())->dispatch(new Envelope(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1'))));
     }
 
     public function testPastTheCeilingItIsAcknowledgedWithAnInfoLog(): void
     {
         $logger = new RecordingLogger();
 
-        $this->bus($logger)->dispatch(new Envelope(new ResumeWorkflowMessage('exec-1', [], 'act-1'), [new RedeliveryStamp(EarlyResumeMiddleware::MAX_RETRIES)]));
+        $this->bus($logger)->dispatch(new Envelope(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')), [new RedeliveryStamp(EarlyResumeMiddleware::MAX_RETRIES)]));
 
         self::assertCount(1, $logger->records);
         self::assertSame('info', $logger->records[0][0]);
@@ -56,7 +57,7 @@ final class AnExhaustedEarlyResumeIsDroppedTest extends TestCase
 
         $this->expectException(HandlerFailedException::class);
 
-        $bus->dispatch(new Envelope(new ResumeWorkflowMessage('exec-1', [], 'act-1'), [new RedeliveryStamp(EarlyResumeMiddleware::MAX_RETRIES)]));
+        $bus->dispatch(new Envelope(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')), [new RedeliveryStamp(EarlyResumeMiddleware::MAX_RETRIES)]));
     }
 
     public function testTheBundleInstallsItWhereResumesRideMessenger(): void
@@ -82,7 +83,7 @@ final class AnExhaustedEarlyResumeIsDroppedTest extends TestCase
         return new MessageBus([
             new EarlyResumeMiddleware($logger),
             new HandleMessageMiddleware(new HandlersLocator([
-                ResumeWorkflowMessage::class => [static fn(ResumeWorkflowMessage $m): never => throw new ResumeArrivedBeforeItsOutcome($m->executionId, 'act-1')],
+                ResumeWorkflowMessage::class => [static fn(ResumeWorkflowMessage $m): never => throw new ResumeArrivedBeforeItsOutcome($m->executionId, AwaitedFact::activity('act-1'))],
             ])),
         ]);
     }

@@ -112,8 +112,9 @@ régler.
   l'exécuter. Une copie qui trouve la réservation prise est réessayée plus tard, selon le
   `retry_strategy` du transport. Elle trouve alors la tentative journalisée, ou, si le détenteur est
   mort, l'exécute une fois la réservation expirée.
-- **Une reprise arrivée avant son résultat.** Un worker envoie la reprise avant de journaliser le
-  résultat, puis une autre après. La reprise en avance attend en échouant, et elle est réessayée. Au
+- **Une reprise arrivée avant son fait.** Un worker envoie la reprise avant de journaliser ce qu'elle
+  annonce (le résultat d'une activité, un signal, le résultat d'un enfant, un minuteur échu), puis une
+  autre après. La reprise en avance attend en échouant, et elle est réessayée. Au
   bout de dix nouvelles livraisons, elle est acquittée, et une ligne `info` sur le canal `messenger`
   l'indique : *« dropped an early resume of execution … the resume sent after its append carries the
   run »*. Ce n'est pas une exécution perdue : rien d'elle n'atteint le `failure_transport`.

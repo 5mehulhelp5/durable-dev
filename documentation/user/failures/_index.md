@@ -109,8 +109,8 @@ settle:
 - **An activity attempt another worker is running.** Durable claims each attempt before it runs. A
   copy that finds the claim taken is retried later, on the transport's `retry_strategy`. It either
   finds the attempt journalled or, if the holder died, runs it once the claim expires.
-- **A resume that arrived before its outcome.** A worker sends the resume before it journals the
-  outcome, and sends another one after. The early resume waits by failing, and is retried. After
+- **A resume that arrived before its fact.** A worker sends the resume before it journals what it
+  announces (an activity's outcome, a signal, a child's outcome, a fired timer), and another after. The early resume waits by failing, and is retried. After
   ten redeliveries it is acknowledged, and an `info` line on the `messenger` channel says
   *"dropped an early resume of execution … the resume sent after its append carries the run"*. It is
   not a lost run: nothing about it reaches `failure_transport`.
