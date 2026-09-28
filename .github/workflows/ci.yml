@@ -940,6 +940,79 @@ jobs:
               working-directory: symfony
               run: docker compose down -v
 
+    temporal-oldest-server:
+        # The oldest Temporal server Durable supports (#523): 1.20, the first whose SQL visibility
+        # takes custom search attributes. Every other Temporal job runs a current server (the CLI
+        # dev server embeds 1.32), and a query only a newer server accepts passed them all (#508).
+        # On PostgreSQL, 1.20 needs the postgres12 plugin: the legacy `postgresql` one only offers
+        # standard visibility, which cannot filter on custom search attributes.
+        name: Temporal 1.20 (run catalogue + visibility queries)
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP (ext-grpc required)
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.2'
+                  extensions: mbstring, sqlite3, pdo_sqlite, grpc
+                  coverage: none
+
+            - name: Cache Composer downloads
+              uses: actions/cache@v6
+              with:
+                  path: ~/.cache/composer
+                  key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock', '**/composer.json') }}
+                  restore-keys: composer-${{ runner.os }}-
+
+            - name: Install Composer dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Start PostgreSQL and Temporal 1.20
+              run: |
+                  docker network create oldest
+                  docker run -d --name oldest-pg --network oldest -e POSTGRES_USER=temporal -e POSTGRES_PASSWORD=temporal postgres:13
+                  timeout 60 bash -c 'until docker exec oldest-pg pg_isready -U temporal >/dev/null 2>&1; do sleep 1; done'
+                  docker run -d --name oldest-temporal --network oldest -p 7233:7233 \
+                    -e DB=postgres12 -e DB_PORT=5432 -e POSTGRES_USER=temporal -e POSTGRES_PWD=temporal -e POSTGRES_SEEDS=oldest-pg \
+                    temporalio/auto-setup:1.20
+                  timeout 300 bash -c 'until docker logs oldest-temporal 2>&1 | grep -q "Search attributes have been added"; do sleep 2; done'
+
+            # SearchAttributesTest runs in `durable-test`, which the dev server of the other jobs
+            # creates at start. tctl, because the `temporal` CLI shipped in this image ignores
+            # --address on its operator commands. 1.20 keeps these attributes cluster-wide, and
+            # its operator service learns of a new namespace late: hence the retry.
+            - name: The durable-test namespace and its search attributes
+              run: |
+                  TCTL="docker exec oldest-temporal tctl --address oldest-temporal:7233 --namespace durable-test"
+                  $TCTL namespace register
+                  timeout 60 bash -c "until $TCTL namespace describe >/dev/null 2>&1; do sleep 1; done"
+                  timeout 90 bash -c "until $TCTL admin cluster get-search-attributes 2>/dev/null | grep -q DurableAmount; do
+                    docker exec oldest-temporal sh -c 'yes | tctl --address oldest-temporal:7233 --namespace durable-test admin cluster add-search-attributes --name DurableOrderId --type Keyword --name DurableAmount --type Int --name DurableWorkflowName --type Keyword --name DurableExecutionId --type Keyword' >/dev/null 2>&1 || true
+                    sleep 2
+                  done"
+
+            # --fail-on-skipped: a missing variable or server turns the job red instead of green.
+            - name: PHPUnit — the run catalogue and the visibility queries on 1.20
+              env:
+                  DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
+              run: >-
+                  vendor/bin/phpunit --fail-on-skipped --display-skipped
+                  tests/integration/Temporal/TemporalWorkflowRunCatalogConformanceTest.php
+                  tests/integration/Temporal/TemporalWorkflowRunCatalogWithoutSearchAttributesConformanceTest.php
+                  tests/integration/Temporal/TemporalRunCatalogFailedFilterTest.php
+                  tests/integration/Temporal/SearchAttributesTest.php
+                  tests/integration/Temporal/ContinueAsNewKeepsTheExecutionIdTest.php
+
+            - name: Server logs
+              if: failure()
+              run: docker logs oldest-temporal 2>&1 | tail -200
+
+            - name: Stop the containers
+              if: always()
+              run: docker rm -f oldest-temporal oldest-pg
+
     no-grpc:
         # Ce que ce job prouve et qu'aucun autre ne peut : le pont Temporal se charge, s'installe
         # et parle au serveur **sans** `ext-grpc`. Tous les autres jobs installent l'extension ;
@@ -1098,7 +1171,7 @@ jobs:
         # job names can move without touching the protection. A skipped job is not a failure.
         name: ci-ok
         if: always()
-        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, no-grpc, grpc-integration, manifests]
+        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, no-grpc, grpc-integration, manifests]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
