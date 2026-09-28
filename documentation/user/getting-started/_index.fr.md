@@ -34,15 +34,24 @@ configuration et son worker :
 Les concepts, l'API de workflow et l'API d'activité sont identiques sur les quatre ; seul le câblage
 ci-dessous est celui de Symfony.
 
+Chaque bloc ci-dessous commence par deux lignes `composer config`. Durable est en alpha, et chaque
+paquet exige les autres à sa propre version exacte : un `@alpha` sur la ligne `require` ne les
+atteint pas, donc un projet resté sur le plancher `stable` par défaut refuse l'installation tant
+qu'il n'accepte pas l'alpha.
+
 ### La bibliothèque seule (sans framework)
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable
 ```
 
 ### L'intégration Symfony
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer config extra.symfony.allow-contrib true
 composer require gplanchat/durable-bundle
 ```
@@ -360,6 +369,8 @@ configure aussi l'ORM, d'où `doctrine/orm` ; ou retirez la section `orm:` de
 `config/packages/doctrine.yaml` si vous n'utilisez pas l'ORM.
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal doctrine/doctrine-bundle doctrine/orm symfony/doctrine-messenger
 ```
 
