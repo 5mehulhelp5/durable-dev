@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace integration\Temporal;
 
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
+use Gplanchat\Bridge\Temporal\DurableSearchAttributes;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
+use Gplanchat\Bridge\Temporal\Worker\TemporalPolicyMapper;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
+use Gplanchat\Durable\SearchAttributes;
 use Gplanchat\Durable\Testing\WorkflowRunCatalogConformanceTestCase;
 use Temporal\Api\Command\V1\CancelWorkflowExecutionCommandAttributes;
 use Temporal\Api\Command\V1\Command;
@@ -41,7 +44,7 @@ use Temporal\Api\Workflowservice\V1\StartWorkflowExecutionRequest;
  * @see DUR041
  * @see DUR037
  */
-final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConformanceTestCase
+class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConformanceTestCase
 {
     use FreshNamespace;
 
@@ -52,8 +55,19 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
 
     protected function setUp(): void
     {
-        $this->connection = self::freshNamespaceConnection();
+        $this->connection = self::freshNamespaceConnection($this->searchAttributes());
         $this->client = WorkflowServiceClientFactory::create($this->connection);
+    }
+
+    /** Whether this host writes Durable's search attributes (#558), hence whether it can filter. */
+    protected function searchAttributes(): bool
+    {
+        return true;
+    }
+
+    protected function expectsToFilterRuns(): bool
+    {
+        return $this->searchAttributes();
     }
 
     protected function catalogUnderTest(): WorkflowRunCatalogInterface
@@ -63,7 +77,7 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
 
     protected function startRun(string $executionId, string $workflowType): void
     {
-        $this->client->StartWorkflowExecution(new StartWorkflowExecutionRequest([
+        $request = new StartWorkflowExecutionRequest([
             'namespace' => $this->namespace(),
             // As Durable starts a run: its own workflow id, and the execution id in the memo (#514).
             'workflow_id' => WorkflowClient::workflowIdOf($executionId),
@@ -71,7 +85,10 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
             'task_queue' => new TaskQueue(['name' => self::queueOf($executionId)]),
             'request_id' => bin2hex(random_bytes(16)),
             'memo' => self::memoOf($executionId),
-        ]));
+        ]);
+        // And its search attributes, which the filters read (#558).
+        TemporalPolicyMapper::applySearchAttributes(DurableSearchAttributes::of($this->connection, $executionId, $workflowType, SearchAttributes::none()), $request);
+        $this->client->StartWorkflowExecution($request);
 
         $this->awaitListed($executionId, WorkflowRunStatus::Running);
     }
@@ -96,7 +113,7 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
             'namespace' => $this->namespace(),
             'task_token' => $task->getTaskToken(),
             'identity' => $this->connection->identity,
-            'commands' => [self::closingCommand($outcome, $executionId)],
+            'commands' => [$this->closingCommand($outcome, $executionId)],
         ]));
 
         // A continue-as-new opens its successor under the same workflow id (DUR037 §5).
@@ -111,8 +128,16 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
         return $memo;
     }
 
-    private static function closingCommand(WorkflowRunStatus $outcome, string $executionId): Command
+    private function closingCommand(WorkflowRunStatus $outcome, string $executionId): Command
     {
+        // The server carries no search attribute over to the successor.
+        $successor = new ContinueAsNewWorkflowExecutionCommandAttributes([
+            'workflow_type' => new WorkflowType(['name' => 'conformance-successor']),
+            'task_queue' => new TaskQueue(['name' => self::queueOf($executionId)]),
+            'memo' => self::memoOf($executionId),
+        ]);
+        TemporalPolicyMapper::applySearchAttributes(DurableSearchAttributes::of($this->connection, $executionId, 'conformance-successor', SearchAttributes::none()), $successor);
+
         $command = new Command();
         match ($outcome) {
             WorkflowRunStatus::Completed => $command
@@ -128,11 +153,7 @@ final class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
                 ->setCancelWorkflowExecutionCommandAttributes(new CancelWorkflowExecutionCommandAttributes()),
             WorkflowRunStatus::ContinuedAsNew => $command
                 ->setCommandType(CommandType::COMMAND_TYPE_CONTINUE_AS_NEW_WORKFLOW_EXECUTION)
-                ->setContinueAsNewWorkflowExecutionCommandAttributes(new ContinueAsNewWorkflowExecutionCommandAttributes([
-                    'workflow_type' => new WorkflowType(['name' => 'conformance-successor']),
-                    'task_queue' => new TaskQueue(['name' => self::queueOf($executionId)]),
-                    'memo' => self::memoOf($executionId),
-                ])),
+                ->setContinueAsNewWorkflowExecutionCommandAttributes($successor),
             WorkflowRunStatus::Running => self::fail('a run cannot be ended as running'),
         };
 
