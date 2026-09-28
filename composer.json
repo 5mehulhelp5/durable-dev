@@ -53,7 +53,8 @@
         "gplanchat/durable-bridge-temporal": "@dev",
         "gplanchat/durable-bridge-dbal": "@dev",
         "gplanchat/durable-bridge-illuminate": "@dev",
-        "gplanchat/durable-laravel": "@dev"
+        "gplanchat/durable-laravel": "@dev",
+        "roadrunner-php/roadrunner-api-dto": "^1.17"
     },
     "require-dev": {
         "doctrine/orm": "^3.0",
@@ -80,8 +81,6 @@
             "Gplanchat\\Bridge\\Dbal\\": "src/Bridge/Dbal/",
             "Gplanchat\\Bridge\\Illuminate\\": "src/Bridge/Illuminate/",
             "Gplanchat\\Durable\\Laravel\\": "src/DurableLaravel/",
-            "Temporal\\Api\\": "src/Bridge/Temporal/Api/",
-            "GPBMetadata\\Temporal\\": "src/Bridge/Temporal/Generated/GPBMetadata/Temporal/",
             "Gplanchat\\DurableModule\\": "src/DurableModule/",
             "Gplanchat\\Durable\\Demo\\Contracts\\": "src/DurableDemoContracts/"
         }

@@ -62,9 +62,5 @@
             <directory>src/DurableModule</directory>
             <directory>src/DurablePhpstan</directory>
         </include>
-        <exclude>
-            <directory>src/Bridge/Temporal/Api</directory>
-            <directory>src/Bridge/Temporal/Generated</directory>
-        </exclude>
     </source>
 </phpunit>

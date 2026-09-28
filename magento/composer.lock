@@ -2281,26 +2281,31 @@
         },
         {
             "name": "gplanchat/durable-bridge-temporal",
-            "version": "0.1.0",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../src/Bridge/Temporal",
-                "reference": "9513c180d10e928a22e80c4f0591f637f831d44e"
+                "reference": "fe0951c6311456b88597d338f371109faf10f1dc"
             },
             "require": {
+                "ext-filter": "*",
                 "google/common-protos": "^4.9",
                 "google/protobuf": "^4.31",
-                "gplanchat/durable": "^0.1",
+                "gplanchat/durable": "self.version",
                 "grpc/grpc": "^1.57",
                 "php": ">=8.2",
-                "symfony/config": "^6.4 || ^7.4",
-                "symfony/console": "^6.4 || ^7.4",
-                "symfony/dependency-injection": "^6.4 || ^7.4",
-                "symfony/http-kernel": "^6.4 || ^7.4",
-                "symfony/messenger": "^6.4 || ^7.4"
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
+                "roadrunner-php/roadrunner-api-dto": "^1.17",
+                "symfony/config": "^6.4 || ^7.0 || ^8.0",
+                "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
+                "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
+                "symfony/messenger": "^6.4 || ^7.0 || ^8.0"
             },
             "suggest": {
-                "ext-grpc": "Required for Temporal gRPC client and worker poll"
+                "ext-curl": "For transport=grpc-curl or transport=http, and the automatic fallback when ext-grpc is not loaded: the same RPCs over HTTP/2",
+                "ext-grpc": "For transport=grpc (the default): the generated stub over the gRPC extension",
+                "guzzlehttp/guzzle": "For transport=guzzle (7.14 or newer, cURL handler): gRPC over the application's Guzzle client",
+                "psr/http-client": "For transport=http over the application's PSR-18 client (with a PSR-17 factory: psr/http-factory)"
             },
             "type": "library",
             "extra": {
@@ -2310,9 +2315,7 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Gplanchat\\Bridge\\Temporal\\": "./",
-                    "Temporal\\Api\\": "Api/",
-                    "GPBMetadata\\Temporal\\": "Generated/GPBMetadata/Temporal/"
+                    "Gplanchat\\Bridge\\Temporal\\": "./"
                 }
             },
             "license": [
@@ -2324,7 +2327,17 @@
                     "email": "gregory@gyroscops.com"
                 }
             ],
-            "description": "Temporal journal EventStore + worker (gRPC only, no Temporal PHP SDK) for gplanchat/durable",
+            "description": "Temporal journal EventStore + worker (gRPC, no Temporal PHP SDK) for gplanchat/durable",
+            "keywords": [
+                "durable-execution",
+                "grpc",
+                "long-running",
+                "nexus",
+                "orchestration",
+                "temporal",
+                "temporalio",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": false,
                 "relative": true
@@ -21694,6 +21707,73 @@
                 }
             ],
             "time": "2025-08-19T18:57:03+00:00"
+        },
+        {
+            "name": "roadrunner-php/roadrunner-api-dto",
+            "version": "v1.17.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/roadrunner-php/roadrunner-api-dto.git",
+                "reference": "2f66cf73b4378a5a9fa538cc85a7ed0543999761"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/roadrunner-php/roadrunner-api-dto/zipball/2f66cf73b4378a5a9fa538cc85a7ed0543999761",
+                "reference": "2f66cf73b4378a5a9fa538cc85a7ed0543999761",
+                "shasum": ""
+            },
+            "require": {
+                "google/protobuf": "^4.31.1||^5.34.0",
+                "php": "^8.1"
+            },
+            "conflict": {
+                "temporal/sdk": "<2.9.0"
+            },
+            "suggest": {
+                "google/common-protos": "Required for Temporal API"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Temporal\\": "generated/Temporal",
+                    "RoadRunner\\": "generated/RoadRunner",
+                    "GPBMetadata\\": "generated/GPBMetadata"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Pavel Butchnev (butschster)",
+                    "email": "pavel.buchnev@spiralscout.com"
+                },
+                {
+                    "name": "Aleksei Gagarin (roxblnfk)",
+                    "email": "alexey.gagarin@spiralscout.com"
+                },
+                {
+                    "name": "RoadRunner Community",
+                    "homepage": "https://github.com/roadrunner-server/roadrunner/graphs/contributors"
+                }
+            ],
+            "description": "RoadRunner PHP API",
+            "homepage": "https://roadrunner.dev",
+            "support": {
+                "chat": "https://discord.gg/V6EK4he",
+                "docs": "https://docs.roadrunner.dev",
+                "forum": "https://forum.roadrunner.dev",
+                "issues": "https://github.com/roadrunner-server/roadrunner/issues",
+                "source": "https://github.com/roadrunner-php/roadrunner-api-dto/tree/v1.17.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/roadrunner-server",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-16T11:44:04+00:00"
         },
         {
             "name": "sabberworm/php-css-parser",
