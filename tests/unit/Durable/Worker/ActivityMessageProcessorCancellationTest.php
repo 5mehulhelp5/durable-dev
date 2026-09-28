@@ -11,6 +11,7 @@ use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Worker\ActivityMessageProcessor;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +40,7 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
                 $this->resumed[] = $executionId;
             }
 
-            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
 
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
         };
@@ -109,7 +110,7 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
                 $this->resumed[] = $executionId;
             }
 
-            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
 
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
         };

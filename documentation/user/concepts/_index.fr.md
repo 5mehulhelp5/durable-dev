@@ -357,13 +357,15 @@ Temporal et une reprise une tâche de workflow.
 
 ### Une reprise est livrée au moins une fois
 
-Sur Symfony et Laravel, un worker d'activité envoie la reprise **avant** de journaliser le résultat de
-l'activité, puis de nouveau après. Un worker qui meurt entre les deux laisse une reprise derrière lui,
-et non un résultat que personne ne reprend. Une reprise peut donc arriver **plus d'une fois**, et
-**avant** le résultat qu'elle annonce. Celle qui arrive en avance attend ce résultat par les nouvelles
-tentatives de la file. Une seconde livraison rejoue le journal et ne change rien. Temporal livre
-lui-même les tâches de workflow, et ce contrat ne s'y applique pas. Le raisonnement est consigné dans
-DUR050.
+Sur Symfony et Laravel, qui journalise un fait qu'un workflow attend envoie la reprise **avant**
+l'écriture, puis de nouveau après : le résultat d'une activité, celui d'un enfant rapporté à son
+parent, un signal livré, un minuteur échu. Un worker qui meurt entre les deux laisse une reprise
+derrière lui, et non un fait que personne ne reprend. Une reprise peut donc arriver **plus d'une
+fois**, et **avant** le fait qu'elle annonce. Celle qui arrive en avance attend ce fait par les
+nouvelles tentatives de la file. Une seconde livraison rejoue le journal et ne change rien. Un signal
+livré deux fois n'est journalisé qu'une fois : il porte l'identifiant de requête de sa livraison.
+Temporal livre lui-même les tâches de workflow, et ce contrat ne s'y applique pas. Le raisonnement est
+consigné dans DUR050 et DUR052.
 
 Pour la configuration, voir [Premiers pas](../getting-started/) et
 [Référence de configuration](../configuration/).

@@ -10,6 +10,7 @@ use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\LaravelWorkflowResumeDispatcher;
 use Gplanchat\Durable\Laravel\Queue\ResumeWorkflowJob;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Illuminate\Container\Container;
 use PHPUnit\Framework\TestCase;
 use unit\DurableLaravel\Fixtures\FakeQueue;
@@ -49,10 +50,10 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $queue = new FakeQueue();
 
         (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore()))
-            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
 
         self::assertCount(1, $queue->pushed);
-        self::assertSame('act-1', $queue->pushed[0]['job']->message->awaitedActivityId);
+        self::assertEquals(AwaitedFact::activity('act-1'), $queue->pushed[0]['job']->message->awaited);
     }
 
     /**
@@ -64,7 +65,7 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $queue = new FakeQueue();
 
         (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore(), runsInline: true))
-            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
 
         self::assertSame([], $queue->pushed);
     }

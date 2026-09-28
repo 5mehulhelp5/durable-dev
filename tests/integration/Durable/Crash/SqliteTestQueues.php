@@ -6,9 +6,12 @@ namespace integration\Durable\Crash;
 
 use Doctrine\DBAL\Connection;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
+use Gplanchat\Durable\Port\WorkflowTimerDispatcher;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
 use Gplanchat\Durable\Transport\ActivityTransportInterface;
+use Gplanchat\Durable\Transport\AwaitedFact;
+use Gplanchat\Durable\Transport\FireWorkflowTimersMessage;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 
 /**
@@ -19,7 +22,7 @@ use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
  * it: a process killed in between leaves it for the next one, as a real transport leaves an
  * unacknowledged message. Test support, not a transport: no locking, one consumer at a time.
  */
-final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResumeDispatcher
+final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResumeDispatcher, WorkflowTimerDispatcher
 {
     public function __construct(
         private readonly Connection $connection,
@@ -38,15 +41,21 @@ final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResu
         $this->push('resumes', new ResumeWorkflowMessage($executionId, $pendingUpdates));
     }
 
-    public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
     {
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], $activityId));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], $fact));
     }
 
     public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
     {
         $this->metadata->save($executionId, $workflowType, $payload);
         $this->push('resumes', new ResumeWorkflowMessage($executionId));
+    }
+
+    /** The bench fires timers by hand: the delay is not honoured, the `timer` step comes later. */
+    public function dispatchTimerFire(string $executionId, int $delayMs = 0): void
+    {
+        $this->push('timers', new FireWorkflowTimersMessage($executionId));
     }
 
     /**
