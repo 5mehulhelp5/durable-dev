@@ -98,9 +98,11 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
   SQLite) accepte des attributs de recherche personnalisés. Sur PostgreSQL, il faut pour cela le
   greffon de persistance `postgres12` (`DB=postgres12` avec l'image `auto-setup`). L'ancien
   greffon `postgresql` n'offre que la visibilité standard, qui ne sait pas filtrer sur des
-  attributs personnalisés : les filtres de la liste des exécutions y échouent. L'intégration
-  continue exécute les suites de la liste des exécutions et des requêtes de visibilité contre
-  `temporalio/auto-setup:1.20` sur PostgreSQL, en plus d'un serveur récent.
+  attributs personnalisés : les filtres de la liste des exécutions y échouent.
+- Le filtre de la liste des exécutions par **préfixe d'identifiant d'exécution** demande un
+  **serveur 1.23 ou plus récent** : les serveurs plus anciens, 1.22 compris, refusent le
+  `STARTS_WITH` qu'il envoie dans une requête de visibilité. Le filtre exact par nom de workflow
+  fonctionne dès la 1.20.
 
 ### Installer `ext-grpc`
 

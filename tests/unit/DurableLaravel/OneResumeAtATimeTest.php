@@ -10,6 +10,7 @@ use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\ResumeDeferral;
 use Gplanchat\Durable\Laravel\Queue\ResumeWorkflowJob;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\NullStore;
@@ -51,6 +52,51 @@ final class OneResumeAtATimeTest extends TestCase
         self::assertCount(1, $queue->pushed);
         self::assertSame(2, $queue->pushed[0]['delay']);
         self::assertSame(1, $queue->pushed[0]['job']->deferrals);
+    }
+
+    /**
+     * DUR050: a resume sent before its activity's outcome must not fail the job. With queue:work's
+     * default of one try, every such resume would land in failed_jobs: it is put back instead,
+     * as a resume whose turn is taken is.
+     */
+    public function testAResumeBeforeItsOutcomeIsPutBackRatherThanFailed(): void
+    {
+        $app = $this->container([GreetingWorkflow::class]);
+        (new DurableServiceProvider($app))->register();
+        $app->make(WorkflowMetadataStore::class)->save('exec-early', GreetingWorkflow::class, []);
+
+        $queue = new FakeQueue();
+        (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-early', [], AwaitedFact::activity('act-1'))))->handle(
+            $app->make(ResumeWorkflowHandler::class),
+            new ResumeLock(new ArrayStore()),
+            new FakeQueueFactory($queue),
+            new ResumeDeferral(2),
+        );
+
+        self::assertCount(1, $queue->pushed);
+        self::assertEquals(AwaitedFact::activity('act-1'), $queue->pushed[0]['job']->message->awaited);
+        self::assertSame(1, $queue->pushed[0]['job']->deferrals);
+    }
+
+    /**
+     * Out of deferrals, an early resume is dropped rather than failed: the activity worker sends
+     * another one after the append, and blaming the lock would send an operator the wrong way.
+     */
+    public function testAnEarlyResumeOutOfDeferralsIsDroppedQuietly(): void
+    {
+        $app = $this->container([GreetingWorkflow::class]);
+        (new DurableServiceProvider($app))->register();
+        $app->make(WorkflowMetadataStore::class)->save('exec-late', GreetingWorkflow::class, []);
+
+        $queue = new FakeQueue();
+        (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-late', [], AwaitedFact::activity('act-1')), 50))->handle(
+            $app->make(ResumeWorkflowHandler::class),
+            new ResumeLock(new ArrayStore()),
+            new FakeQueueFactory($queue),
+            new ResumeDeferral(),
+        );
+
+        self::assertSame([], $queue->pushed);
     }
 
     public function testAFreeTurnReplaysAndQueuesNothing(): void

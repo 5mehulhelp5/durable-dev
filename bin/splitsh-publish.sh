@@ -34,7 +34,7 @@ SPLITS=(
     # completely different module (`Api`, `Model`, a consumer command). It is an ancestor of
     # today's split — same prefix, same upstream history — so the first push advances without
     # forcing. If it is refused, the upstream history moved in between: the way out is the
-    # `workflow_dispatch` with `force`, which archives the head under `refs/heads/archive/` before
+    # `workflow_dispatch` with `force`, which archives the head under `refs/archive/` before
     # replacing it, not a deletion of the repository.
     "src/DurableModule/|durable-magento"
     "src/DurablePhpstan/|durable-phpstan"
@@ -74,8 +74,12 @@ remote_tag_sha() {
 }
 
 # A force-push rewrites refs/heads/main of an already published repository. Park the head it is
-# about to drop under refs/heads/archive/ first: the operation stays undoable, and the only copy of
+# about to drop under refs/archive/ first: the operation stays undoable, and the only copy of
 # a satellite commit the current prefix no longer reproduces is not lost.
+#
+# refs/archive/ and not refs/heads/archive/: Packagist indexes every branch, so an archive branch was
+# an installable `dev-archive/pre-force-…` version of the package (#350). A ref outside refs/heads/
+# and refs/tags/ keeps the commit and is no version at all.
 #
 # The head must be fetched before it can be pushed anywhere: `git push <url> <sha>:<ref>` needs the
 # object *locally*, and the heads worth archiving are exactly the ones the current prefix does not
@@ -102,8 +106,8 @@ archive_remote_head() {
     fi
     head="$(git rev-parse FETCH_HEAD)"
 
-    echo "[branch] Archiving $ORG/$repo $head -> refs/heads/archive/pre-force-${head:0:12}"
-    if ! git_push_satellite "$repo" "$head:refs/heads/archive/pre-force-${head:0:12}"; then
+    echo "[branch] Archiving $ORG/$repo $head -> refs/archive/pre-force-${head:0:12}"
+    if ! git_push_satellite "$repo" "$head:refs/archive/pre-force-${head:0:12}"; then
         echo "::error::could not archive $ORG/$repo $head" >&2
         return 1
     fi

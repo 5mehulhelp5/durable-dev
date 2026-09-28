@@ -68,7 +68,6 @@ durable:
 
         # in_memory runs activities inside the workflow task; messenger routes them to transport_name.
         type:                 in_memory # One of "in_memory"; "messenger"
-        table_name:           durable_activity_outbox # Deprecated (Since gplanchat/durable-bundle 0.1.0-beta1: The "durable.activity_transport.table_name" option is read nowhere: no outbox table exists. Remove it.)
 
         # The Messenger transport activities go to when type is messenger.
         transport_name:       durable_activities
@@ -255,7 +254,6 @@ How the bundle dispatches activity messages from workflow tasks to activity hand
 |-----|--------|---------|-------------|
 | `type` | `in_memory`, `messenger` | **`in_memory`** | `in_memory` executes activities **synchronously within the workflow task handler**, which is what you get when the key is absent. `messenger` routes activity messages via Symfony Messenger to the configured transport. |
 | `transport_name` | string | `durable_activities` | Name of the Messenger transport used when `type: messenger`. Must match a transport defined in `messenger.yaml`. |
-| `table_name` | string | `durable_activity_outbox` | **Deprecated**, read nowhere: no outbox table exists. Remove it. |
 
 **The default is the one you probably do not want in production.** Defining `durable_activities` in
 `messenger.yaml` does not select it: without `type: messenger` the transport stays empty and the
