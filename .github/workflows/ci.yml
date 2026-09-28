@@ -787,7 +787,7 @@ jobs:
         name: Sans ext-grpc (curl + passerelle JSON)
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
             - name: Setup PHP (sans grpc, exprès)
               uses: shivammathur/setup-php@v2
