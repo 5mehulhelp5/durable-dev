@@ -151,7 +151,7 @@ final class TemporalWorkflowCancellationTest extends TestCase
 
         self::assertTrue($replayed->cancellationAlreadyDelivered());
         $slot = $replayed->findActivitySlotResult(0);
-        self::assertInstanceOf(WorkflowCancelledFailure::class, $slot['failed'] ?? null);
+        self::assertInstanceOf(WorkflowCancelledFailure::class, $slot?->failed);
     }
 
     public function testADeliveryOnAConditionCountsAsDeliveredAndIsPlacedInTheHistory(): void

@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Bridge\Temporal\Worker;
 
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
+use Gplanchat\Durable\Port\History\SlotOutcome;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Enums\V1\EventType;
@@ -155,9 +156,9 @@ final class TemporalExecutionHistoryTest extends TestCase
         ]);
 
         $slot = $history->findActivitySlotResult(0);
-        self::assertNotNull($slot);
-        self::assertSame('hello', $slot['result']);
-        self::assertNull($slot['failed']);
+        self::assertInstanceOf(SlotOutcome::class, $slot);
+        self::assertSame('hello', $slot->result);
+        self::assertNull($slot->failed);
     }
 
     public function testActivitySlotResultReturnedWhenFailed(): void
@@ -170,9 +171,9 @@ final class TemporalExecutionHistoryTest extends TestCase
 
         $slot = $history->findActivitySlotResult(0);
         self::assertNotNull($slot);
-        self::assertNull($slot['result']);
-        self::assertInstanceOf(\Throwable::class, $slot['failed']);
-        self::assertStringContainsString('Something went wrong', $slot['failed']->getMessage());
+        self::assertNull($slot->result);
+        self::assertInstanceOf(\Throwable::class, $slot->failed);
+        self::assertStringContainsString('Something went wrong', $slot->failed->getMessage());
     }
 
     public function testParallelActivitiesSlotsAreOrderedBySchedule(): void
@@ -189,9 +190,9 @@ final class TemporalExecutionHistoryTest extends TestCase
         $slot1 = $history->findActivitySlotResult(1);
 
         self::assertNotNull($slot0);
-        self::assertSame('result-A', $slot0['result']);
+        self::assertSame('result-A', $slot0->result);
         self::assertNotNull($slot1);
-        self::assertSame('result-B', $slot1['result']);
+        self::assertSame('result-B', $slot1->result);
     }
 
     public function testTimerSlotNullWhenStartedButNotFired(): void
