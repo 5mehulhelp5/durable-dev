@@ -18,9 +18,7 @@ declare(strict_types=1);
  */
 
 $finder = (new PhpCsFixer\Finder())
-    ->in([__DIR__ . '/src', __DIR__ . '/tests'])
-    // Protobuf stubs: rewritten by every `protoc`, so reformatting them would not survive.
-    ->exclude(['Bridge/Temporal/Api', 'Bridge/Temporal/Generated']);
+    ->in([__DIR__ . '/src', __DIR__ . '/tests']);
 
 return (new PhpCsFixer\Config())
     ->setFinder($finder)
