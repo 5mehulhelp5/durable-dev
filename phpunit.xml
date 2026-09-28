@@ -9,6 +9,11 @@
          beStrictAboutTestsThatDoNotTestAnything="true"
          displayDetailsOnSkippedTests="true"
 >
+    <php>
+        <!-- A CLI php.ini often says -1: a runaway test then eats the machine until the OOM killer
+             takes the IDE down with it. See tests/unit/TheSuiteHasAMemoryCeilingTest.php. -->
+        <ini name="memory_limit" value="2G"/>
+    </php>
     <testsuites>
         <testsuite name="unit">
             <directory>tests/unit</directory>
