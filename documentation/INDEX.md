@@ -66,6 +66,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | DUR047 | Laravel: a Tier 1 host that measured before it wired | [adr/DUR047-laravel-the-host-that-measured-before-it-wired.md](adr/DUR047-laravel-the-host-that-measured-before-it-wired.md) |
 | DUR048 | Audience measurement without a consent banner | [adr/DUR048-audience-measurement-without-a-banner.md](adr/DUR048-audience-measurement-without-a-banner.md) |
 | DUR049 | One projection, two chromes: presentation is decided beside the model | [adr/DUR049-one-projection-two-chromes.md](adr/DUR049-one-projection-two-chromes.md) |
+| DUR050 | The resume is dispatched first, and a resume that arrives early waits (proposed) | [adr/DUR050-the-resume-is-dispatched-first.md](adr/DUR050-the-resume-is-dispatched-first.md) |
 
 ## Working agreements (WA)
 
