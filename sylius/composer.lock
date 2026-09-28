@@ -3889,20 +3889,20 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Durable",
-                "reference": "fbf41ee943e176704562b50cefb8bbfcc20ba2a1"
+                "reference": "68b84b432beae47c836b579e9c813457d563a47c"
             },
             "require": {
                 "php": ">=8.2",
                 "psr/cache": "^3.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^11.0"
+                "phpunit/phpunit": "^11.5"
             },
             "suggest": {
                 "gplanchat/durable-bridge-dbal": "SQL backend: durable execution on one database, no cluster (DUR030)",
                 "gplanchat/durable-bridge-temporal": "Temporal gRPC backend (requires ext-grpc)",
                 "gplanchat/durable-phpstan": "Optional PHPStan extension: resolves ActivityStub and ChildWorkflowStub calls from their typed contract (DUR038)",
-                "phpunit/phpunit": "Required by the shipped test helpers (Testing\\DurableTestCase, Testing\\WorkflowTestEnvironment) and the conformance suites (Testing\\EventStoreConformanceTestCase, DUR041)"
+                "phpunit/phpunit": "Required by the Testing\\ helpers: DurableTestCase, ActivitySpy and the store conformance test cases."
             },
             "type": "library",
             "extra": {
@@ -3925,6 +3925,16 @@
                 }
             ],
             "description": "PHP library for durable execution: workflows, activities, event journal, and transports (HttpKernel integration lives in the bundle).",
+            "keywords": [
+                "activity",
+                "durable-execution",
+                "event-sourcing",
+                "fiber",
+                "long-running",
+                "orchestration",
+                "saga",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -3936,10 +3946,10 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Bridge/Dbal",
-                "reference": "269036995865f9558eb7f59d2b73f495ddae3516"
+                "reference": "74193a200bcb5ae0230cd7732b0de2e387969360"
             },
             "require": {
-                "doctrine/dbal": "^3.7 || ^4.0",
+                "doctrine/dbal": "^3.8.2 || ^4.0",
                 "gplanchat/durable": "self.version",
                 "php": ">=8.2",
                 "symfony/lock": "^6.4 || ^7.0 || ^8.0",
@@ -3966,6 +3976,15 @@
                 }
             ],
             "description": "Doctrine DBAL journal, metadata and parent-link stores for gplanchat/durable — durable execution on a single SQL database, no orchestrator cluster",
+            "keywords": [
+                "doctrine",
+                "doctrine-dbal",
+                "durable-execution",
+                "event-store",
+                "long-running",
+                "orchestration",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -3977,19 +3996,26 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Bridge/Temporal",
-                "reference": "86199f26705baaca45decac9c54daba3406e0f3d"
+                "reference": "aa6528c656240b9b75a1211c22066cf0a469d47f"
             },
             "require": {
-                "ext-grpc": "*",
+                "ext-filter": "*",
                 "google/common-protos": "^4.9",
                 "google/protobuf": "^4.31",
                 "gplanchat/durable": "self.version",
                 "grpc/grpc": "^1.57",
                 "php": ">=8.2",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
                 "symfony/config": "^6.4 || ^7.0 || ^8.0",
                 "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
                 "symfony/messenger": "^6.4 || ^7.0 || ^8.0"
+            },
+            "suggest": {
+                "ext-curl": "For transport=grpc-curl or transport=http, and the automatic fallback when ext-grpc is not loaded: the same RPCs over HTTP/2",
+                "ext-grpc": "For transport=grpc (the default): the generated stub over the gRPC extension",
+                "guzzlehttp/guzzle": "For transport=guzzle (7.14 or newer, cURL handler): gRPC over the application's Guzzle client",
+                "psr/http-client": "For transport=http over the application's PSR-18 client (with a PSR-17 factory: psr/http-factory)"
             },
             "type": "library",
             "extra": {
@@ -4013,7 +4039,17 @@
                     "email": "gregory@gyroscops.com"
                 }
             ],
-            "description": "Temporal journal EventStore + worker (gRPC only, no Temporal PHP SDK) for gplanchat/durable",
+            "description": "Temporal journal EventStore + worker (gRPC, no Temporal PHP SDK) for gplanchat/durable",
+            "keywords": [
+                "durable-execution",
+                "grpc",
+                "long-running",
+                "nexus",
+                "orchestration",
+                "temporal",
+                "temporalio",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -4025,7 +4061,7 @@
             "dist": {
                 "type": "path",
                 "url": "../src/DurableBundle",
-                "reference": "6fe58d8bb99c8afc5cff1d1fb098d93af725d540"
+                "reference": "c2e1e4f2f17a308b71f414df28677a2059f70a40"
             },
             "require": {
                 "gplanchat/durable": "self.version",
@@ -4035,18 +4071,17 @@
                 "symfony/console": "^6.4 || ^7.0 || ^8.0",
                 "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
                 "symfony/event-dispatcher": "^6.4 || ^7.0 || ^8.0",
-                "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-foundation": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
                 "symfony/messenger": "^6.4 || ^7.0 || ^8.0",
-                "symfony/service-contracts": "^3.0",
-                "symfony/uid": "^6.4 || ^7.0 || ^8.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^11.0"
+                "symfony/service-contracts": "^3.0"
             },
             "suggest": {
+                "doctrine/orm": "Declares the DBAL journal tables to doctrine:schema:update and doctrine:migrations:diff, which would otherwise generate DROP TABLE for them (SchemaListener\\DurableSchemaListener)",
+                "gplanchat/durable-bridge-dbal": "SQL backend: DurableExtension wires its journal, stores and resume lock when event_store.type is dbal",
+                "gplanchat/durable-bridge-temporal": "Temporal backend: DurableExtension wires its client, stores and worker transports when durable.temporal.dsn is set",
                 "phpunit/phpunit": "Required by the shipped test helper (Testing\\DurableBundleTestTrait)",
+                "symfony/framework-bundle": "Required by consumers of the shipped test helper (Testing\\DurableBundleTestTrait), whose static::getContainer() resolves against a KernelTestCase",
                 "symfony/web-profiler-bundle": "Web Debug Toolbar and profiler: Durable panel (workflows / activities)"
             },
             "type": "symfony-bundle",
@@ -4070,6 +4105,16 @@
                 }
             ],
             "description": "Symfony bundle for gplanchat/durable: extension, autoconfiguration of workflows and activities.",
+            "keywords": [
+                "durable-execution",
+                "long-running",
+                "messenger",
+                "orchestration",
+                "saga",
+                "symfony",
+                "symfony-bundle",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -4114,30 +4159,31 @@
             "dist": {
                 "type": "path",
                 "url": "../src/DurablePlugin",
-                "reference": "2bddbc47577c6135200778cff1f94888440a194b"
+                "reference": "c094066510c5556320a90371c42d23bab9f43867"
             },
             "require": {
                 "gplanchat/durable": "self.version",
                 "gplanchat/durable-bundle": "self.version",
                 "knplabs/knp-menu": "^3.5",
                 "php": ">=8.2",
+                "sylius/grid-bundle": "^1.13",
                 "symfony/config": "^6.4 || ^7.0 || ^8.0",
                 "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
-                "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-foundation": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
                 "symfony/routing": "^6.4 || ^7.0 || ^8.0",
                 "symfony/security-bundle": "^6.4 || ^7.0 || ^8.0",
-                "symfony/twig-bundle": "^6.4 || ^7.0 || ^8.0"
+                "symfony/security-http": "^6.4 || ^7.0 || ^8.0",
+                "symfony/twig-bundle": "^6.4 || ^7.0 || ^8.0",
+                "twig/twig": "^3.10"
             },
             "require-dev": {
-                "phpunit/phpunit": "^11.5",
-                "twig/twig": "^3.10"
+                "phpunit/phpunit": "^11.5"
             },
             "suggest": {
                 "sylius/admin-bundle": "Registers the dashboard entry in the Sylius admin menu (sylius.menu.admin.main)"
             },
-            "type": "symfony-bundle",
+            "type": "sylius-plugin",
             "extra": {
                 "branch-alias": {
                     "dev-main": "0.1.x-dev"
@@ -4146,7 +4192,10 @@
             "autoload": {
                 "psr-4": {
                     "Gplanchat\\Durable\\Plugin\\": "./"
-                }
+                },
+                "exclude-from-classmap": [
+                    "/tests/"
+                ]
             },
             "license": [
                 "MIT"
@@ -4158,6 +4207,16 @@
                 }
             ],
             "description": "Sylius-oriented dashboard plugin for durable workflow tracking.",
+            "keywords": [
+                "dashboard",
+                "durable-execution",
+                "long-running",
+                "orchestration",
+                "sylius",
+                "sylius-plugin",
+                "symfony",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -19263,6 +19322,6 @@
     "platform": {
         "php": "^8.3"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.9.0"
 }

@@ -208,7 +208,6 @@ The scheme names the wire and the encryption:
 | `task_queue` | no | The older spelling of `journal_task_queue`, read when that one is absent. |
 | `workflow_task_queue` | no (default `durable-workflows`) | Task queue for the application's workflow tasks. |
 | `nexus_task_queue` | no (default: the workflow task queue) | Task queue for the Nexus tasks this application serves. |
-| `workflow_type` | no (default `DurableJournal`) | Workflow type of the journal. |
 | `identity` | no (default `durable-temporal-bridge-php`) | Identity this worker reports to the server. |
 | `tls` | no | `tls=1` is the older spelling of the `+tls` and `+https` schemes; still accepted. |
 | `ca` | no, TLS only | Path to the PEM file of the CA that signs the server certificate. Without it, the system store is trusted. |

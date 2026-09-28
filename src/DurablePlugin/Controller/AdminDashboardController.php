@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gplanchat\Durable\Plugin\Controller;
 
 use Gplanchat\Durable\Observation\RunDashboard;
+use Gplanchat\Durable\Plugin\Grid\RunGridViews;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,6 +22,8 @@ final class AdminDashboardController
 {
     public function __construct(
         private readonly Environment $twig,
+        /** The run list as a Sylius grid (#383); absent without sylius/grid-bundle. */
+        private readonly ?RunGridViews $grid = null,
     ) {}
 
     #[IsGranted('ROLE_ADMINISTRATION_ACCESS')]
@@ -30,7 +33,10 @@ final class AdminDashboardController
         ['status' => $status, 'cursor' => $cursor, 'back' => $encodedBack] = self::listPosition($request);
         $back = self::decodeBack($encodedBack);
 
-        $model = $view->listing('' === $status ? 'all' : $status, '' === $cursor ? null : $cursor);
+        $grid = $this->grid?->view($request->query->all());
+        $model = null === $grid
+            ? $view->listing('' === $status ? 'all' : $status, '' === $cursor ? null : $cursor)
+            : ['resources' => $grid['resources']] + $grid['page']->model;
         // The catalog pages forward only (Temporal's visibility has no reverse cursor), so the way
         // back is the stack of cursors the operator came through, '' standing for the first page.
         // ponytail: the stack grows with each page in the URL; cap it if operators page that deep.

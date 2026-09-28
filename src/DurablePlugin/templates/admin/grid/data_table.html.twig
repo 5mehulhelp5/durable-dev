@@ -1,0 +1,50 @@
+{#
+    The run grid's table (#383, slice B): the admin's own table macros for the header and the rows,
+    and a footer paged by the catalog's cursor instead of Pagerfanta (the user's decision).
+
+    "No runs" only when the page is empty and nothing comes after it: a filtered page on Temporal can
+    come back empty with a cursor (#557), and then the way on is the next link, not a dead end.
+#}
+{% import '@SyliusAdmin/shared/helper/table.html.twig' as table %}
+{% set context = hookable_metadata.context %}
+{% if context.resources is defined %}
+    {% set resources = context.resources %}
+    {% set pagination = context.pagination %}
+    {% set filters = context.filters|default({}) %}
+    {# What every link of the list keeps: the filters its cursors were produced with. #}
+    {% set position = {status: context.status, workflowName: filters.workflowName|default(null), executionIdPrefix: filters.executionIdPrefix|default(null)}|filter(v => v is not null and v != '' and v != 'all') %}
+    {% set previous = pagination.previous|default(null) %}
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">{{ 'runs.title'|trans({}, 'durable') }}</h3></div>
+        {% if resources.data|length > 0 %}
+            <div class="table-responsive">
+                <table class="table card-table table-vcenter datatable" {{ sylius_test_html_attribute('grid-table') }}>
+                    <thead>
+                    <tr>
+                        {{ table.headers(resources, resources.definition, app.request.attributes) }}
+                    </tr>
+                    </thead>
+                    <tbody {{ sylius_test_html_attribute('grid-table-body') }}>
+                    {% for row in resources.data %}
+                        {{ table.row(resources, resources.definition, row) }}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% elseif resources.data.theEnd %}
+            <div class="card-body">
+                <p class="text-secondary mb-0">{{ 'runs.empty'|trans({}, 'durable') }}</p>
+            </div>
+        {% endif %}
+        {% if previous or pagination.hasNext %}
+            <div class="card-footer d-flex gap-2">
+                {% if previous %}
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ path('gplanchat_durable_plugin_admin_run_index', position|merge({cursor: previous.cursor, back: previous.back})|filter(v => v != '')) }}">{{ 'pagination.previous'|trans({}, 'durable') }}</a>
+                {% endif %}
+                {% if pagination.hasNext %}
+                    <a class="btn btn-outline-primary btn-sm ms-auto" href="{{ path('gplanchat_durable_plugin_admin_run_index', position|merge({cursor: pagination.nextCursor, back: pagination.nextBack|default('')})) }}">{{ 'pagination.next'|trans({}, 'durable') }}</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+{% endif %}

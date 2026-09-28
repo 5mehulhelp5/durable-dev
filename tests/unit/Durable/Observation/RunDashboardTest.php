@@ -114,6 +114,27 @@ final class RunDashboardTest extends TestCase
         self::assertSame('next-token', $view['pagination']['nextCursor']);
     }
 
+    public function testTheListFilterReachesACatalogThatFilters(): void
+    {
+        // #383, slice B: the page offers the name and id-prefix filters the catalog can apply.
+        $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Failed)]);
+        $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow', 'ord'));
+
+        self::assertEquals(new WorkflowRunFilter('App\\OrderWorkflow', 'ord'), $catalog->askedFilter);
+        self::assertSame(['available' => true, 'workflowName' => 'App\\OrderWorkflow', 'executionIdPrefix' => 'ord'], $view['filters']);
+    }
+
+    public function testACatalogThatCannotFilterIsNeverHandedAFilter(): void
+    {
+        // Temporal without its search attributes: the filter would be refused. The page says the
+        // filters are unavailable and lists every run, rather than failing.
+        $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Failed)], filters: false);
+        $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow'));
+
+        self::assertNull($catalog->askedFilter);
+        self::assertSame(['available' => false, 'workflowName' => null, 'executionIdPrefix' => null], $view['filters']);
+    }
+
     public function testAnUnknownStatusFilterIsIgnoredRatherThanRefused(): void
     {
         $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Running)]);
@@ -408,6 +429,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
 {
     public ?WorkflowRunStatus $askedStatus = null;
     public ?string $askedCursor = null;
+    public ?WorkflowRunFilter $askedFilter = null;
     public int $historyReads = 0;
     public int $listings = 0;
     public int $finds = 0;
@@ -423,6 +445,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         private readonly bool $reachable = true,
         private readonly bool $ephemeral = false,
         private readonly bool $tellsWaitingForWorker = false,
+        private readonly bool $filters = true,
     ) {}
 
     public function checkHealth(): BackendHealth
@@ -438,7 +461,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
 
     public function canFilterRuns(): bool
     {
-        return true;
+        return $this->filters;
     }
 
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
@@ -446,6 +469,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         ++$this->listings;
         $this->askedStatus = $status;
         $this->askedCursor = $cursor;
+        $this->askedFilter = $filter;
 
         return new WorkflowRunPage($this->runs, $this->nextCursor, $this->tellsWaitingForWorker);
     }

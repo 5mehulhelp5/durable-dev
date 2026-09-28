@@ -212,7 +212,6 @@ Le schéma nomme le fil et le chiffrement :
 | `task_queue` | non | L'ancienne écriture de `journal_task_queue`, lue quand celle-ci est absente. |
 | `workflow_task_queue` | non (défaut `durable-workflows`) | File des tâches de workflow de l'application. |
 | `nexus_task_queue` | non (défaut : la file des tâches de workflow) | File des tâches Nexus que sert cette application. |
-| `workflow_type` | non (défaut `DurableJournal`) | Type de workflow du journal. |
 | `identity` | non (défaut `durable-temporal-bridge-php`) | Identité que ce worker annonce au serveur. |
 | `tls` | non | `tls=1` est l'ancienne écriture des schémas `+tls` et `+https` ; toujours acceptée. |
 | `ca` | non, TLS seulement | Chemin du fichier PEM de l'autorité qui signe le certificat du serveur. Sans lui, le magasin du système fait foi. |

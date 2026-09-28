@@ -1,0 +1,2 @@
+{# A fact the backend does not have stays absent, not empty (the listing omits the key). #}
+{% if data is not null %}{{ data|date('Y-m-d H:i:s', false) }}{% endif %}

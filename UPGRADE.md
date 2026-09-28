@@ -24,44 +24,29 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
-### `WorkflowResumeDispatcher` gains `dispatchResumeAnnouncing()`
+### Temporal: the journal workflow's leftovers are gone (#594)
 
-**Who is affected**: only whoever **implements** `WorkflowResumeDispatcher`. The bundle's, the Laravel
-provider's, the Temporal bridge's and the null dispatcher are updated. Code that calls the port is
-not affected. Rector cannot write the method for you: only the implementer knows how its queue
-delivers.
+**Who is affected**: code that used `Gplanchat\Bridge\Temporal\Journal\JournalStateResolver`,
+`TemporalConnection::journalWorkflowId()`, `TemporalConnection::$workflowType`,
+`TemporalConnection::$signalAppend`, `TemporalConnection::DEFAULT_WORKFLOW_TYPE` or
+`TemporalConnection::DEFAULT_SIGNAL_APPEND`, and every DSN that sets `workflow_type`.
 
-**Why.** The activity worker now sends the resume before it appends the activity's outcome, and
-again after it (DUR050, #328). The first send has to leave at once, carrying the id of the activity
-whose outcome it announces; a resume that arrives before that outcome waits for it.
+**Why.** They served the `DurableJournal` workflow, which recorded Durable's events as signals.
+Nothing has started or read that workflow since #356: each run is a Temporal workflow of its own
+type, and Temporal's history is the journal.
 
-**What to write.** Send a `ResumeWorkflowMessage` naming the activity, immediately, and nothing
-where your transport runs the resume inline (a `sync` route): there it would always run before
-the outcome, and the resume sent after the append does the work.
+**What to do.**
 
-```php
-use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
-
-public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
-{
-    if (!$this->runsInline) {
-        $this->send(new ResumeWorkflowMessage($executionId, [], $activityId)); // not deferred
-    }
-}
-```
-
-A dispatcher whose backend owns delivery (as Temporal's does) implements it as a no-op.
-
-### `durable.activity_transport.table_name` is removed
-
-**Who is affected**: a Symfony application whose `durable.yaml` still sets it. It has been deprecated
-since 0.1.0-beta1, and nothing ever read it.
-
-**Why.** It named an outbox that was never built, and DUR050 (#328) chose not to build one: the
-resume is sent before the outcome and again after it.
-
-**What to do.** Delete the line. Left in place, the container build fails with an
-`InvalidConfigurationException` naming the unrecognized option.
+- Remove `workflow_type` from `durable.temporal.dsn` (Symfony), from `temporal.dsn` in
+  `config/durable.php` (Laravel) and from `durable/temporal/dsn` in `env.php` (Magento). A DSN that
+  still sets it is refused with a message that names this entry.
+- Code that builds `TemporalConnection` directly: drop the `workflowType:` and `signalAppend:`
+  arguments. They were the fourth and fifth parameters, so a call that
+  passes the following arguments by position now shifts: pass them by name.
+- No Rector rule: the DSN key lives in configuration, which Rector does not read, and the hosts
+  build `TemporalConnection` from the DSN, so a hand-written constructor call is rare.
+- Nothing replaces `JournalStateResolver` or `journalWorkflowId()`. A `durable-journal-*` workflow
+  left on a cluster from before #356 can be read with the Temporal CLI or UI.
 
 ### Magento reads the cluster's history through; `TemporalJournalEventStore` is gone (#356, #372)
 
@@ -910,6 +895,45 @@ started before the change:
     return $env->await($activities->greet('attempt-' . $attempt));
 }
 ```
+
+### `WorkflowResumeDispatcher` gains `dispatchResumeAnnouncing()`
+
+**Who is affected**: only whoever **implements** `WorkflowResumeDispatcher`. The bundle's, the Laravel
+provider's, the Temporal bridge's and the null dispatcher are updated. Code that calls the port is
+not affected. Rector cannot write the method for you: only the implementer knows how its queue
+delivers.
+
+**Why.** The activity worker now sends the resume before it appends the activity's outcome, and
+again after it (DUR050, #328). The first send has to leave at once, carrying the id of the activity
+whose outcome it announces; a resume that arrives before that outcome waits for it.
+
+**What to write.** Send a `ResumeWorkflowMessage` naming the activity, immediately, and nothing
+where your transport runs the resume inline (a `sync` route): there it would always run before
+the outcome, and the resume sent after the append does the work.
+
+```php
+use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
+
+public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+{
+    if (!$this->runsInline) {
+        $this->send(new ResumeWorkflowMessage($executionId, [], $activityId)); // not deferred
+    }
+}
+```
+
+A dispatcher whose backend owns delivery (as Temporal's does) implements it as a no-op.
+
+### `durable.activity_transport.table_name` is removed
+
+**Who is affected**: a Symfony application whose `durable.yaml` still sets it. It has been deprecated
+since 0.1.0-beta1, and nothing ever read it.
+
+**Why.** It named an outbox that was never built, and DUR050 (#328) chose not to build one: the
+resume is sent before the outcome and again after it.
+
+**What to do.** Delete the line. Left in place, the container build fails with an
+`InvalidConfigurationException` naming the unrecognized option.
 
 ## 0.1.0-alpha8
 

@@ -22,6 +22,9 @@ parameters:
         # application, which always ships illuminate/console; it is here, and here only, that it
         # cannot be analysed.
         - src/DurableLaravel/Console
+        # sylius/grid-bundle is the Sylius bench's, not the root graph's: the plugin's one class that
+        # names it is analysed there, by the bench CI (the user's decision on #383).
+        - src/DurablePlugin/Grid/SyliusRunGrid.php
         - src/Bridge/Temporal/Api
         - src/Bridge/Temporal/Generated
         # Code written wrong on purpose: the PHPStan rule tests feed it to the rules.
