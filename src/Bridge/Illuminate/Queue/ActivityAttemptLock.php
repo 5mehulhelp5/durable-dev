@@ -12,7 +12,8 @@ use Illuminate\Contracts\Cache\LockProvider;
  *
  * Temporal refuses a second start of an attempt on the server; a journal backend has none, and two
  * copies of one job delivered at once both passed the journal guards (#590). A copy that finds the
- * attempt held does nothing: the holder journals it. A worker that dies holding the claim frees it
+ * attempt held is deferred, not dropped: the holder
+ * journals it, or dies and its claim expires. A worker that dies holding the claim frees it
  * when the TTL expires, and the retried job then runs the attempt.
  *
  * ponytail: the claim is not refreshed while the activity runs, so an attempt longer than the TTL

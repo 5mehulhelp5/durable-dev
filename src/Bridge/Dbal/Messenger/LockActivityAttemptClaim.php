@@ -12,7 +12,8 @@ use Symfony\Component\Lock\LockFactory;
  *
  * Temporal refuses a second start of an attempt on the server; the DBAL backend has none, and two
  * copies of one message delivered at once both passed the journal guards (#590). A copy that finds
- * the attempt held does nothing: the holder journals it. The TTL is the resume lock's
+ * the attempt held is deferred, not dropped: the holder
+ * journals it, or dies and its claim expires. The TTL is the resume lock's
  * (`durable.dbal.lock_ttl`): a worker that dies holding the claim frees it when it expires, and the
  * redelivered message then runs the attempt.
  *

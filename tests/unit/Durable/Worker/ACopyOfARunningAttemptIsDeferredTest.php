@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable\Worker;
 
+use Gplanchat\Durable\Exception\ActivityAttemptDeferred;
 use Gplanchat\Durable\Port\ActivityAttemptClaimInterface;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
@@ -18,10 +19,14 @@ use PHPUnit\Framework\TestCase;
  * Two copies of one attempt delivered at the same moment both passed the journal guards and both
  * ran. Temporal refuses the second start server-side; here a claim per (execution, activity,
  * attempt) stands in for it (#590).
+ *
+ * The refusal means "not now", not "never": a holder that died keeps its claim until the lock TTL,
+ * and a copy dropped meanwhile would lose the attempt for good. The copy is handed back to its host
+ * to be retried later.
  */
-final class ACopyOfARunningAttemptIsDroppedTest extends TestCase
+final class ACopyOfARunningAttemptIsDeferredTest extends TestCase
 {
-    public function testACopyWhoseAttemptIsClaimedElsewhereDoesNothing(): void
+    public function testACopyWhoseAttemptIsClaimedElsewhereIsDeferred(): void
     {
         $runs = 0;
         $store = new InMemoryEventStore();
@@ -32,7 +37,12 @@ final class ACopyOfARunningAttemptIsDroppedTest extends TestCase
             }
         });
 
-        self::assertNull($processor->process(new ActivityMessage('exec-1', 'act-1', 'charge', [])));
+        try {
+            $processor->process(new ActivityMessage('exec-1', 'act-1', 'charge', []));
+            self::fail('the copy must go back to its host, to be retried later');
+        } catch (ActivityAttemptDeferred $deferred) {
+            self::assertSame(['exec-1', 'act-1', 1], [$deferred->executionId, $deferred->activityId, $deferred->attempt]);
+        }
 
         self::assertSame(0, $runs, 'the worker holding the attempt runs it');
         self::assertSame([], iterator_to_array($store->readStream('exec-1'), false), 'and journals it');
