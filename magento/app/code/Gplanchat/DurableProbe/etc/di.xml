@@ -39,6 +39,7 @@
             <argument name="commands" xsi:type="array">
                 <item name="durable_demo" xsi:type="object">Gplanchat\DurableProbe\Console\Command\RunDemoCommand</item>
                 <item name="durable_demo_nexus" xsi:type="object">Gplanchat\DurableProbe\Console\Command\RunNexusDemoCommand</item>
+                <item name="durable_demo_start" xsi:type="object">Gplanchat\DurableProbe\Console\Command\StartDemoCommand</item>
             </argument>
         </arguments>
     </type>
