@@ -88,7 +88,7 @@ class TemporalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConfor
         ]);
         // And its search attributes, which the filters read (#558).
         TemporalPolicyMapper::applySearchAttributes(DurableSearchAttributes::of($this->connection, $executionId, $workflowType, SearchAttributes::none()), $request);
-        $this->client->StartWorkflowExecution($request);
+        self::startOnceMapped(fn() => $this->client->StartWorkflowExecution($request));
 
         $this->awaitListed($executionId, WorkflowRunStatus::Running);
     }

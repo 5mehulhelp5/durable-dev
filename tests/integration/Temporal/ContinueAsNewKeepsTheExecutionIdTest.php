@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace integration\Temporal;
 
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
+use Gplanchat\Bridge\Temporal\DurableSearchAttributes;
 use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
+use Gplanchat\Bridge\Temporal\Worker\TemporalPolicyMapper;
 use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\SearchAttributes;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Memo;
 use Temporal\Api\Common\V1\WorkflowExecution;
@@ -45,14 +48,18 @@ final class ContinueAsNewKeepsTheExecutionIdTest extends TestCase
         $queue = new TaskQueue(['name' => 'continue-as-new-memo']);
         $memo = new Memo();
         $memo->getFields()[JournalExecutionIdResolver::MEMO_KEY_DURABLE_EXECUTION_ID] = JsonPlainPayload::encode('order/42');
-        $this->client->StartWorkflowExecution(new StartWorkflowExecutionRequest([
+        $start = new StartWorkflowExecutionRequest([
             'namespace' => $namespace,
             'workflow_id' => 'durable-order-42',
             'workflow_type' => new WorkflowType(['name' => 'App\\OrderWorkflow']),
             'task_queue' => $queue,
             'request_id' => bin2hex(random_bytes(16)),
             'memo' => $memo,
-        ]));
+        ]);
+        // As Durable starts it, search attributes included: the continue-as-new below writes them
+        // too, and a start the server accepts proves their mapping is in place for it (#650).
+        TemporalPolicyMapper::applySearchAttributes(DurableSearchAttributes::of($this->connection, 'order/42', 'App\\OrderWorkflow', SearchAttributes::none()), $start);
+        self::startOnceMapped(fn() => $this->client->StartWorkflowExecution($start));
 
         $task = $this->client->PollWorkflowTaskQueue(new PollWorkflowTaskQueueRequest([
             'namespace' => $namespace,
