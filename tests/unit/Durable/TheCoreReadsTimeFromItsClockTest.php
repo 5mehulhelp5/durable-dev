@@ -155,4 +155,11 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         }
         self::assertSame([1_700_000_060.0], $scheduledAt);
     }
+
+    public function testARunnerHandedNoClockReadsTheSystemClock(): void
+    {
+        $runner = new InMemoryWorkflowRunner(new InMemoryEventStore(), new InMemoryActivityTransport(), new RegistryActivityExecutor(), clock: null);
+
+        self::assertSame('done', $runner->run('exec-1', static fn(WorkflowEnvironment $wf): string => 'done'));
+    }
 }
