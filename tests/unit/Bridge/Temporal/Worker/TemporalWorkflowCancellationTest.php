@@ -192,7 +192,7 @@ final class TemporalWorkflowCancellationTest extends TestCase
         $history = TemporalExecutionHistory::fromEvents([
             $this->markerRecorded(11, $marker->getMarkerName(), $marker->getDetails()),
         ]);
-        self::assertSame(['value' => 7], $history->findSideEffectForSlot(0));
+        self::assertSame(['value' => 7], $history->findSideEffectForSlot(0)?->result);
     }
 
     public function testWithoutCancelRequestTheRunProceeds(): void
