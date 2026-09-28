@@ -17,6 +17,7 @@ use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Command\V1\Command;
 use Temporal\Api\Common\V1\ActivityType;
+use Temporal\Api\Common\V1\Memo;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Common\V1\WorkflowType;
@@ -27,6 +28,7 @@ use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\TimerStartedEventAttributes;
 use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
+use Temporal\Api\History\V1\WorkflowPropertiesModifiedEventAttributes;
 use Temporal\Api\Workflowservice\V1\PollWorkflowTaskQueueResponse;
 use unit\Durable\Fixtures\SuiteActivities;
 
@@ -62,6 +64,13 @@ final class TheWorkerWordsTheWaitTest extends TestCase
     public function testAConditionIsNamedByItsLabel(): void
     {
         self::assertSame('the stock comes back', self::waitIn($this->task('ConditionWorkflow', [self::started(1)])));
+    }
+
+    public function testTheSameWaitIsNotWrittenTwiceAndTheModifiedEventReplays(): void
+    {
+        $commands = $this->task('ActivityWorkflow', [self::started(1), self::activityScheduled(5, 'greet'), self::waitRecorded(6, 'activity greet')]);
+
+        self::assertSame([], $commands, 'an unchanged wait costs no history event, and the replay schedules nothing again');
     }
 
     /**
@@ -131,6 +140,15 @@ final class TheWorkerWordsTheWaitTest extends TestCase
         return self::event($id, EventType::EVENT_TYPE_TIMER_STARTED)
             ->setEventTime(new Timestamp(['seconds' => $at]))
             ->setTimerStartedEventAttributes(new TimerStartedEventAttributes(['timer_id' => 'timer-1', 'start_to_fire_timeout' => new ProtobufDuration(['seconds' => $seconds])]));
+    }
+
+    private static function waitRecorded(int $id, string $waitingOn): HistoryEvent
+    {
+        $memo = new Memo();
+        $memo->getFields()[JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON] = JsonPlainPayload::encode($waitingOn);
+
+        return self::event($id, EventType::EVENT_TYPE_WORKFLOW_PROPERTIES_MODIFIED)
+            ->setWorkflowPropertiesModifiedEventAttributes(new WorkflowPropertiesModifiedEventAttributes(['upserted_memo' => $memo]));
     }
 
     private static function event(int $id, int $type): HistoryEvent
