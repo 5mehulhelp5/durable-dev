@@ -7,18 +7,29 @@ namespace integration\Temporal;
 use Google\Protobuf\Duration;
 use Gplanchat\Bridge\Temporal\DurableSearchAttributes;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
+use Gplanchat\Bridge\Temporal\Worker\TemporalPolicyMapper;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
+use Gplanchat\Durable\SearchAttributes;
+use Temporal\Api\Common\V1\WorkflowExecution;
+use Temporal\Api\Common\V1\WorkflowType;
 use Temporal\Api\Enums\V1\IndexedValueType;
 use Temporal\Api\Operatorservice\V1\AddSearchAttributesRequest;
 use Temporal\Api\Operatorservice\V1\AddSearchAttributesResponse;
 use Temporal\Api\Operatorservice\V1\ListSearchAttributesRequest;
 use Temporal\Api\Operatorservice\V1\ListSearchAttributesResponse;
+use Temporal\Api\Taskqueue\V1\TaskQueue;
+use Temporal\Api\Workflowservice\V1\DeleteWorkflowExecutionRequest;
+use Temporal\Api\Workflowservice\V1\DeleteWorkflowExecutionResponse;
 use Temporal\Api\Workflowservice\V1\DescribeNamespaceRequest;
 use Temporal\Api\Workflowservice\V1\DescribeNamespaceResponse;
 use Temporal\Api\Workflowservice\V1\ListWorkflowExecutionsRequest;
 use Temporal\Api\Workflowservice\V1\ListWorkflowExecutionsResponse;
 use Temporal\Api\Workflowservice\V1\RegisterNamespaceRequest;
 use Temporal\Api\Workflowservice\V1\RegisterNamespaceResponse;
+use Temporal\Api\Workflowservice\V1\StartWorkflowExecutionRequest;
+use Temporal\Api\Workflowservice\V1\StartWorkflowExecutionResponse;
+use Temporal\Api\Workflowservice\V1\TerminateWorkflowExecutionRequest;
+use Temporal\Api\Workflowservice\V1\TerminateWorkflowExecutionResponse;
 
 /**
  * A namespace of its own for each test: the conformance suites assert exact sets ("an empty catalog
@@ -94,6 +105,52 @@ trait FreshNamespace
             'page_size' => 1,
             'query' => DurableSearchAttributes::EXECUTION_ID . " = 'probe' AND " . DurableSearchAttributes::WORKFLOW_NAME . " = 'probe'",
         ]), ListWorkflowExecutionsResponse::class, [], 5_000));
+
+        if (!$searchAttributes) {
+            return $connection;
+        }
+
+        // A query that names them can pass while a start that sets them is still refused: on 1.20
+        // the start is checked against a mapping another component caches (#650). So the start
+        // itself is the probe, on a queue no worker polls, and it leaves nothing behind: the
+        // conformance suites assert exact sets on this namespace.
+        $probeId = 'durable-namespace-probe';
+        $probe = new StartWorkflowExecutionRequest([
+            'namespace' => $namespace,
+            'workflow_id' => $probeId,
+            'workflow_type' => new WorkflowType(['name' => $probeId]),
+            'task_queue' => new TaskQueue(['name' => $probeId]),
+            'identity' => 'durable-conformance',
+        ]);
+        TemporalPolicyMapper::applySearchAttributes(DurableSearchAttributes::of($connection, $probeId, $probeId, SearchAttributes::none()), $probe);
+        self::awaitNamespace($namespace, \sprintf('refuses a start that sets %s and %s', DurableSearchAttributes::WORKFLOW_NAME, DurableSearchAttributes::EXECUTION_ID), static function () use ($transportClient, $service, $probe): void {
+            try {
+                $probe->setRequestId(bin2hex(random_bytes(16)));
+                $transportClient->unary($service . 'StartWorkflowExecution', $probe, StartWorkflowExecutionResponse::class, [], 5_000);
+            } catch (\RuntimeException $failure) {
+                // An earlier attempt started it and only its answer was lost.
+                if (6 !== $failure->getCode()) {
+                    throw $failure;
+                }
+            }
+        });
+        $execution = new WorkflowExecution(['workflow_id' => $probeId]);
+        $transportClient->unary($service . 'TerminateWorkflowExecution', new TerminateWorkflowExecutionRequest([
+            'namespace' => $namespace,
+            'workflow_execution' => $execution,
+        ]), TerminateWorkflowExecutionResponse::class, [], 5_000);
+        // Deleted once its closed row is visible, or the late row would outlive the deletion.
+        $listed = static fn(string $query): int => \count($transportClient->unary($service . 'ListWorkflowExecutions', new ListWorkflowExecutionsRequest([
+            'namespace' => $namespace,
+            'page_size' => 1,
+            'query' => $query,
+        ]), ListWorkflowExecutionsResponse::class, [], 5_000)->getExecutions());
+        self::awaitNamespace($namespace, 'never lists its terminated probe', static fn() => 1 === $listed("WorkflowId = '{$probeId}' AND ExecutionStatus = 'Terminated'") ?: throw new \RuntimeException('not listed yet'));
+        $transportClient->unary($service . 'DeleteWorkflowExecution', new DeleteWorkflowExecutionRequest([
+            'namespace' => $namespace,
+            'workflow_execution' => $execution,
+        ]), DeleteWorkflowExecutionResponse::class, [], 5_000);
+        self::awaitNamespace($namespace, 'still lists its deleted probe', static fn() => 0 === $listed('') ?: throw new \RuntimeException('still listed'));
 
         return $connection;
     }
