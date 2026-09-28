@@ -8,4 +8,5 @@
   (both confirmed by the user), the provider excluded from the root PHPStan/Psalm paths (confirmed by
   the user; the Sylius bench CI covers it).
 - **Not in scope**: DUR049's successor note on cursor vs Pagerfanta (a human decision record).
-- **State**: taken — alice (bob released it). Reviewer: jack. Only durable-30 merges.
+- **State**: in review — PR #609, alice. Reviewers: jack (code), elsa (dashboard docs). Only
+  durable-30 merges.

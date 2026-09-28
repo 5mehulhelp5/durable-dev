@@ -43,6 +43,51 @@ default, a projection), and code that builds `ActivityMessageProcessor` itself.
 
 No Rector rule: nothing is renamed, and the new argument is optional.
 
+### `NullEventStore` is gone; a backend refuses by name what it cannot honour
+
+**Who is affected**: an application that built a `Gplanchat\Durable\Store\NullEventStore` itself,
+or that implements `WorkflowCommandBufferInterface`. An application that only runs workflows has
+nothing to change.
+
+**What changed** (DUR051):
+- `NullEventStore` answered an empty history, which is what a run that has not started looks like.
+  A workflow given it would run its activities again instead of failing. It is replaced by
+  `NoLocalJournalEventStore`, which refuses every call with
+  `Gplanchat\Durable\Exception\UnsupportedByBackendException`.
+- On Temporal, the command buffer's `completeChildWorkflow()` and `failChildWorkflow()` now refuse
+  in the same way, instead of doing nothing. No path of the component reaches them there.
+
+**What to write.** There is no Rector rule for this, on purpose: renaming the class would turn a
+sink into a store that throws on its first write, and only you know which of the two you meant.
+- If you wanted a store that keeps nothing between processes, use `InMemoryEventStore`.
+- If you wanted the guarantee that nothing is ever read or written locally, use
+  `new NoLocalJournalEventStore('<your backend>')`.
+
+A command buffer of your own should refuse what its backend cannot honour, by throwing
+`UnsupportedByBackendException::forMethod($backend, __FUNCTION__, $whatToUseInstead)`, rather
+than accepting the call and dropping it.
+
+### Temporal: two execution ids no longer share a workflow id
+
+**Who is affected**: applications on the Temporal backend whose execution ids contain a character
+outside `[a-zA-Z0-9._-]` (a `/`, a space, a colon…) or are longer than 900 characters. UUIDs, ULIDs
+and other ids made of letters, digits, `.`, `_` and `-` keep their workflow id, and nothing changes
+for them.
+
+**Why.** The workflow id replaced every other character with `-` and cut at 900, so `order/42`,
+`order 42` and `order-42` all became `durable-order-42` (#566). The second start was refused, and
+a signal or an update could reach another execution's run.
+
+**What changes.** Such an id now starts under `durable-<sanitised prefix>~<sha256 of the id>`, one
+workflow id per execution id. `WorkflowClient::workflowIdOf()` gives it, and
+`WorkflowClient::workflowId()` gives the one to address a run by.
+
+**Runs already in flight.** Until 0.1.0-beta1, addressing an execution (signal, update, query,
+history, `findRun()`) that has no run under its new workflow id falls back to its old one, but only
+when the run found there was started with that very execution id. Nothing to do if those runs end
+before you upgrade to 0.1.0-beta1. After that the fallback is gone: drain them first, or restart
+them under their new workflow id.
+
 ### On Temporal, the dashboards link a run by its execution id, not the server's run id
 
 **Who is affected**: an application on the Temporal backend with links to its run pages saved
