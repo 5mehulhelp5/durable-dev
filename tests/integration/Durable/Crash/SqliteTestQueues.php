@@ -39,9 +39,9 @@ final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResu
         $this->push('resumes', new ResumeWorkflowMessage($executionId, $pendingUpdates));
     }
 
-    public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
     {
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], AwaitedFact::activity($activityId)));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], $fact));
     }
 
     public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void

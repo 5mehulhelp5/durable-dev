@@ -896,28 +896,30 @@ started before the change:
 }
 ```
 
-### `WorkflowResumeDispatcher` gains `dispatchResumeAnnouncing()`
+### `WorkflowResumeDispatcher` gains `dispatchResumeAwaiting()`
 
 **Who is affected**: only whoever **implements** `WorkflowResumeDispatcher`. The bundle's, the Laravel
 provider's, the Temporal bridge's and the null dispatcher are updated. Code that calls the port is
 not affected. Rector cannot write the method for you: only the implementer knows how its queue
 delivers.
 
-**Why.** The activity worker now sends the resume before it appends the activity's outcome, and
-again after it (DUR050, #328). The first send has to leave at once, carrying the id of the activity
-whose outcome it announces; a resume that arrives before that outcome waits for it.
+**Why.** Whoever journals a fact a workflow waits on (an activity's outcome, a child's outcome, a
+signal, fired timers) now sends the resume before the append, and again after it (DUR050, #328;
+DUR052, #584). The first send has to leave at once, carrying the `AwaitedFact` it announces; a
+resume that arrives before that fact waits for it.
 
-**What to write.** Send a `ResumeWorkflowMessage` naming the activity, immediately, and nothing
+**What to write.** Send a `ResumeWorkflowMessage` carrying the fact, immediately, and nothing
 where your transport runs the resume inline (a `sync` route): there it would always run before
-the outcome, and the resume sent after the append does the work.
+the fact, and the resume sent after the append does the work.
 
 ```php
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 
-public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
 {
     if (!$this->runsInline) {
-        $this->send(new ResumeWorkflowMessage($executionId, [], $activityId)); // not deferred
+        $this->send(new ResumeWorkflowMessage($executionId, [], $fact)); // not deferred
     }
 }
 ```

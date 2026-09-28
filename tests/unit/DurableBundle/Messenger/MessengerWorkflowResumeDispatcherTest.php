@@ -59,7 +59,7 @@ final class MessengerWorkflowResumeDispatcherTest extends TestCase
         $bus = new RecordingBus();
 
         (new MessengerWorkflowResumeDispatcher($bus, new InMemoryWorkflowMetadataStore(), $this->routedTo(new InMemoryTransport())))
-            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
 
         self::assertCount(1, $bus->sent);
         self::assertNull($bus->sent[0]->last(DispatchAfterCurrentBusStamp::class));
@@ -77,7 +77,7 @@ final class MessengerWorkflowResumeDispatcherTest extends TestCase
         $bus = new RecordingBus();
 
         (new MessengerWorkflowResumeDispatcher($bus, new InMemoryWorkflowMetadataStore(), $this->routedTo($this->createStub(SyncTransport::class))))
-            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
 
         self::assertSame([], $bus->sent);
     }

@@ -50,7 +50,7 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $queue = new FakeQueue();
 
         (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore()))
-            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
 
         self::assertCount(1, $queue->pushed);
         self::assertEquals(AwaitedFact::activity('act-1'), $queue->pushed[0]['job']->message->awaited);
@@ -65,7 +65,7 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $queue = new FakeQueue();
 
         (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore(), runsInline: true))
-            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
 
         self::assertSame([], $queue->pushed);
     }
