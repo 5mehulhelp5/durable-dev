@@ -10,6 +10,14 @@ its input, not its substitute.
 Deepens [OST001](OST001-alternative-durable-execution-backends.md) §3, which ranked Restate
 "highest strategic upside, highest maintenance risk" and asked for a spike.
 
+**A first spike already ran**: issue #464, PR #466, notes in
+[`spike/restate/README.md`](../../spike/restate/README.md) (#470). Against server 1.7.12 in
+request/response mode, it ran a `run`, a sleep and a promise from a hand-written PHP endpoint. It
+also settled the seam (the three ports `WorkflowFiberDriver` drives, not `EventStoreInterface`),
+two mappings the maintainer decided on 2026-09-24 (side effect → `run`, activity → `CallCommand`),
+and the licence: the server is BSL 1.1 with an Additional Use Grant for your own services; the
+protocol is MIT. This document takes those as given and covers what that spike left open.
+
 ## Method
 
 Read on 2026-09-28 from `restatedev/restate` at `9d50162`:
@@ -45,7 +53,7 @@ every port method; "refused by name" below means that shape.
 |---|---|---|
 | `sideEffect()` | `RunCommandMessage` + `ProposeRunCompletionMessage` | In-process, journaled, exactly the primitive. OST002 §2.2 does not arise. |
 | `version()` | a `Run` carrying the version | Same channel as side effects. |
-| `activity()` | `CallCommandMessage` to an activity service | Own invocation, server-side retries, `idempotency_key`, its own deployment (≈ a task queue); `limit_key` (v7) for concurrency. |
+| `activity()` | `CallCommandMessage` to an activity service | Own invocation, `idempotency_key`, its own deployment (≈ a task queue); `limit_key` (v7) for concurrency. Restate retries per handler, in the manifest, not per call, so `ActivityOptions` does not map directly: who retries is still open (`spike/restate/README.md`, options 1 and 2). |
 | `timer()` | `SleepCommandMessage` | No command cancels a sleep; the interpreter ignores its late completion, as the journal backend already does. |
 | `cancelActivity()` | `SendSignalCommandMessage`, `idx = CANCEL`, on the call's invocation id (v5+) | An activity not yet started **does not run**. One already running finishes, like a Temporal activity that does not heartbeat. Weaker than Temporal only for heartbeating activities, and not silent: see §3. |
 | child workflows, `ParentClosePolicy` | `Call` to a workflow target; cancellation propagates down the call graph natively | *Abandon* is a `OneWayCallCommandMessage`. |
@@ -60,7 +68,7 @@ Failures carry `Failure.metadata` (v6), a string map for Durable's failure envel
 | Capability | Why | Refusal |
 |---|---|---|
 | Activity heartbeats | Nothing in the protocol. In request/response mode nothing can reach a request already running. | `ActivityHeartbeatSenderInterface` refuses. |
-| Nexus | No equivalent. | Refused, as on the journal backend (DUR036). |
+| Nexus across clusters | Within one cluster a `CallCommand` covers it (first spike); there is no cross-cluster endpoint registry. | The cross-cluster case refused, as on the journal backend (DUR036). |
 | Arbitrary queries | A shared handler reads key/value state; it cannot run workflow code against the run's memory. | Queries become a projection the workflow writes with `SetStateCommandMessage`. |
 | `WorkflowIdReusePolicy` beyond reject-duplicate | A workflow key runs once, "Previously accepted" until retention expires. | Other policies refuse, unless §4.3 lands. |
 
@@ -123,8 +131,8 @@ versions each Restate release accepts, over at least two releases.
 ## 5. Position
 
 A better fit than Durable Task on the point that closed it: side effects are native and
-cancellation is a real protocol feature. The losses (heartbeats, Nexus, arbitrary queries, most
-reuse policies) are all refusals by name. One silent change is possible, §4.1, and it is narrower
+cancellation is a real protocol feature. The losses (heartbeats, cross-cluster Nexus, arbitrary
+queries, most reuse policies) are all refusals by name. One silent change is possible, §4.1, and it is narrower
 than OST002's.
 
 **Next step, if wanted:** a spike of bounded length that answers §4.1 to §4.4 against a real
@@ -133,6 +141,7 @@ until an ADR decides.
 
 ## References
 
+- [`spike/restate/README.md`](../../spike/restate/README.md) — the first spike (#464, #466, #470)
 - [`restatedev/restate` — `service-protocol/`](https://github.com/restatedev/restate/tree/main/service-protocol)
 - [Restate: request lifecycle](https://docs.restate.dev/guides/request-lifecycle) · [managing invocations, cancellation](https://docs.restate.dev/services/invocation/managing-invocations) · [workflows](https://docs.restate.dev/tour/workflows)
 - [`qcodr/restate-sdk-php`](https://github.com/qcodr/restate-sdk-php)
