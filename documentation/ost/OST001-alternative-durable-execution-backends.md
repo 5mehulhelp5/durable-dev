@@ -93,9 +93,13 @@ Restate inverts the direction: the runtime **calls your service over HTTP**, sen
 
 That request/response mode is the interesting bit for PHP: it maps onto a normal **PHP-FPM request**. No long-running poller process, no `ext-grpc`, no compiled extension anywhere in the stack. That is a materially different operational story from Temporal, and it is the one deployment shape PHP shops are already good at.
 
-- **For:** removes `ext-grpc` entirely; fits shared/FPM hosting; single Rust binary to operate.
-- **Against:** protocol churn, and it is documented churn. The standalone spec repo was archived in Feb 2025 and folded into the main repo; the archived text describes **v1**, while Restate ≥ 1.7 gates a **v7** behind `RESTATE_EXPERIMENTAL_ENABLE_PROTOCOL_V7`. Upstream states only that "registered Restate services must use an SDK compatible with the service protocol version(s) of the running Restate server", and defers the matrix to each SDK's own documentation — **there is no protocol-level deprecation window or support policy**. A PHP SDK would have to publish and maintain that matrix itself. Restate's state/virtual-object model is also richer than Durable's ports and would be partly unused.
+- **For:** no long-lived worker process; fits shared/FPM hosting; single Rust binary to operate. (This line used to say "removes `ext-grpc` entirely"; the Temporal bridge has since learned to run without it over curl, so that is no longer a difference. See [OST005](OST005-restate-backend-feasibility.md) §1.)
+- **Against:** protocol churn, and it is documented churn. The standalone spec repo was archived in Feb 2025 and folded into the main repo; the archived text describes **v1**, while Restate ≥ 1.7 gates a **v7** behind `RESTATE_EXPERIMENTAL_ENABLE_PROTOCOL_V7` (status undetermined as of 2026-09-28, OST005 §4.5). Upstream states only that "registered Restate services must use an SDK compatible with the service protocol version(s) of the running Restate server", and defers the matrix to each SDK's own documentation — **there is no protocol-level deprecation window or support policy**. A PHP SDK would have to publish and maintain that matrix itself. Restate's state/virtual-object model is also richer than Durable's ports and would be partly unused.
 - **Verdict:** highest strategic upside, highest maintenance risk. Worth a spike specifically to measure protocol churn over a release or two before committing.
+
+Checked feature by feature in **[OST005](OST005-restate-backend-feasibility.md)**: a better fit than
+Durable Task, no contraindication established, one open candidate for a silent change (workflow
+cancellation from outside Durable). A PHP SDK, `qcodr/restate-sdk-php`, now exists.
 
 ### Inngest — **public spec, wrong granularity**
 
@@ -153,8 +157,8 @@ Durable's differentiator remains: **Symfony-native, no RoadRunner, no official S
 ## 7. Hypotheses to validate
 
 1. ~~Does the `TaskHubSidecarService` vocabulary cover all of `WorkflowCommandBufferInterface`?~~ **Answered, and the option closed on it** — see [OST002](OST002-durable-task-backend-feasibility.md).
-2. Does Restate's protocol churn fast enough to make a third-party SDK unsustainable? v1 → v7 across roughly 18 months is the raw signal; what matters is how many versions a given server accepts at once. (Ask upstream for the support window, or read the server's accepted-version range directly.)
-3. Is `ext-grpc` actually the adoption blocker it is assumed to be? **This hypothesis orders the whole tree and is untested.**
+2. Does Restate's protocol churn fast enough to make a third-party SDK unsustainable? v1 → v7 across roughly 18 months is the raw signal; what matters is how many versions a given server accepts at once. (Ask upstream for the support window, or read the server's accepted-version range directly.) **Partly answered**: the server accepts v5 to v7 for new deployments; see [OST005](OST005-restate-backend-feasibility.md) §4.5.
+3. ~~Is `ext-grpc` actually the adoption blocker it is assumed to be?~~ **Moot**: the Temporal bridge runs without it over curl. The question that now orders the tree is whether a long-lived worker process is the blocker. See [OST005](OST005-restate-backend-feasibility.md) §1.
 4. ~~Is a durable-execution backend without per-operation cancellation and without workflow updates worth shipping?~~ **Answered: no** — [OST002](OST002-durable-task-backend-feasibility.md) §6.
 
 ## 8. Decision tree
@@ -164,8 +168,8 @@ Durable Task / Dapr — contraindicated (OST002), branch closed.
 
 Is another protocol-level backend still wanted?
 ├── no  → nothing to do; DBAL (§5) already covers "no cluster"
-└── yes → is ext-grpc a real adoption blocker?
-          ├── yes → Restate bridge   (HTTP, PHP-FPM friendly, protocol churn risk)
+└── yes → is a long-lived worker process a real adoption blocker?
+          ├── yes → Restate spike    (OST005: HTTP, PHP-FPM friendly, protocol churn risk)
           └── no  → stay on Temporal — nothing else surveyed beats it on fit
 
 In every branch, the DBAL event store (§5) is orthogonal and cheaper:
@@ -176,7 +180,7 @@ it needs no second server at all.
 
 §5 has shipped: the DBAL event store is `gplanchat/durable-bridge-dbal` ([DUR030](../adr/DUR030-dbal-backend-simplified-durable-execution.md)). It needed no protocol at all, which is why it went first.
 
-Nothing in §3 is actionable without §7.3. DUR005 states that a third backend requires a new ADR; this study is its input, not its substitute.
+Nothing in §3 is actionable without §7.3, now the long-lived-worker question (OST005 §1). DUR005 states that a third backend requires a new ADR; this study is its input, not its substitute.
 
 ## References
 
