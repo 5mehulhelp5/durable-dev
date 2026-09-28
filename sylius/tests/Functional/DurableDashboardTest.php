@@ -103,6 +103,57 @@ final class DurableDashboardTest extends WebTestCase
         self::assertCount(1, $table->filterXPath("//a[contains(@href, '/admin/durable/runs/exec-grid-1')]"), 'a row leads to its run');
     }
 
+    public function testTheListFiltersByWorkflowNameAndExecutionIdPrefix(): void
+    {
+        // #558, #557: the catalogue filters, so the page offers both filters and applies them.
+        $client = $this->authenticatedClient();
+        $this->recordFailedRun('exec-filter-a', 'App\\AlphaWorkflow');
+        $this->recordFailedRun('exec-filter-b', 'App\\BetaWorkflow');
+
+        $byName = $client->request('GET', self::ROUTE . '?workflowName=' . rawurlencode('App\\AlphaWorkflow'));
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('exec-filter-a', $byName->filter('[data-test-grid-table]')->text());
+        self::assertStringNotContainsString('exec-filter-b', $byName->filter('[data-test-grid-table]')->text());
+
+        $byPrefix = $client->request('GET', self::ROUTE . '?executionIdPrefix=exec-filter-b');
+        self::assertStringContainsString('exec-filter-b', $byPrefix->filter('[data-test-grid-table]')->text());
+        self::assertStringNotContainsString('exec-filter-a', $byPrefix->filter('[data-test-grid-table]')->text());
+
+        $form = $byPrefix->filter('form[data-durable-run-filters]');
+        self::assertCount(1, $form->filter('input[name=workflowName]'));
+        self::assertCount(1, $form->filter('input[name=executionIdPrefix]'));
+        self::assertCount(0, $form->filter('[name=cursor], [name=back]'), 'a new filter starts from the first page');
+
+        $nothing = $client->request('GET', self::ROUTE . '?executionIdPrefix=exec-nobody');
+        self::assertCount(0, $nothing->filter('[data-test-grid-table]'));
+        self::assertStringContainsString('No workflow run matches this filter.', $nothing->html(), 'nothing matches, and nothing comes after');
+    }
+
+    public function testPagingKeepsTheFilters(): void
+    {
+        // A cursor is only valid with the filters that produced it: Next carries them along.
+        $client = $this->authenticatedClient();
+
+        try {
+            for ($i = 0; $i <= RunDashboard::PAGE_SIZE; ++$i) {
+                $this->recordFailedRun('exec-page-' . $i, 'App\\PagedWorkflow');
+            }
+
+            $first = $client->request('GET', self::ROUTE . '?executionIdPrefix=exec-page-');
+            $next = $first->selectLink('Next page')->link()->getUri();
+
+            self::assertStringContainsString('executionIdPrefix=exec-page-', $next);
+            $second = $client->request('GET', $next);
+            self::assertResponseIsSuccessful();
+            self::assertCount(1, $second->filter('[data-test-grid-table] tbody tr'), 'the one run left over');
+        } finally {
+            $connection = static::getContainer()->get('doctrine.dbal.default_connection');
+            foreach (['durable_events', 'durable_workflow_metadata', 'durable_workflow_runs'] as $table) {
+                $connection->executeStatement("DELETE FROM {$table} WHERE execution_id LIKE 'exec-page-%'");
+            }
+        }
+    }
+
     public function testAnAnonymousVisitorDoesNotReachIt(): void
     {
         $client = static::createClient();

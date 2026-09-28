@@ -36,6 +36,12 @@ ran at all.
 
 Filterable by outcome (running, completed, failed, cancelled, continued as new) and paged.
 
+On Sylius, the list can also be filtered by workflow name (the whole name) and by the start of the
+execution id. Both are exact about case and take `%` and `_` literally. They show only where the
+backend can apply them. On Temporal, that means [turning on its search
+attributes](../backends/#register-durables-search-attributes); without them, the page lists every
+run and offers no such filter.
+
 A **continued-as-new** run is not a failure. It is a normal ending: the component treats it as a
 fresh execution, and the run that handed over finished without error. Painting both alike would put
 perfectly healthy long-running workflows in red.
@@ -140,7 +146,7 @@ The chrome, and only the chrome.
 | | Sylius | Magento |
 | --- | --- | --- |
 | Where | Admin menu → Durable | **System > Durable processes > Process history** |
-| The list | Tabler cards, cursor paging | The standard grid: paging, bookmarks, column controls, export, and a status filter whose options come from the status enum |
+| The list | A Sylius grid with its own filters (outcome, workflow name, execution id prefix), cursor paging | The standard grid: paging, bookmarks, column controls, export, and a status filter whose options come from the status enum |
 | Paging | Cursor, 20 a page | Offset inside a 200-run window, whose ceiling the screen states |
 | Read-only | Yes | Yes |
 

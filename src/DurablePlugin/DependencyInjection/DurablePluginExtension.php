@@ -50,7 +50,7 @@ final class DurablePluginExtension extends Extension implements PrependExtension
             // The admin's table and "no results" read a Pagerfanta, and the catalog pages by cursor:
             // the plugin's own, for this grid only, never under `sylius_admin.common`.
             'sylius_admin.durable_dashboard.index.content.grid' => [
-                'filters' => ['enabled' => false],
+                'filters' => ['template' => '@DurablePlugin/admin/grid/filters.html.twig'],
                 'data_table' => ['template' => '@DurablePlugin/admin/grid/data_table.html.twig'],
                 'no_data_block' => ['enabled' => false],
             ],

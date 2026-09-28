@@ -109,6 +109,8 @@
                         {% endif %}
                     </div>
 
+                    {# With the Sylius grid, its filters and its list take over (#383, slice B). #}
+                    {% if resources is not defined %}
                     <div class="card">
                         <div class="card-body">
                             <form class="row g-2 align-items-end" method="get" action="{{ path('gplanchat_durable_plugin_admin_run_index') }}">
@@ -126,6 +128,7 @@
                             </form>
                         </div>
                     </div>
+                    {% endif %}
 
                 {% endif %}
 

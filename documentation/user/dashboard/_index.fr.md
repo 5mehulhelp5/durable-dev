@@ -39,6 +39,12 @@ rien n'a tourné du tout.
 Filtrables par issue (en cours, terminée, échouée, annulée, poursuivie sous un nouveau nom) et
 paginées.
 
+Sous Sylius, la liste se filtre aussi par nom de workflow (le nom entier) et par le début de
+l'identifiant d'exécution. Les deux respectent la casse et prennent `%` et `_` à la lettre. Ils
+n'apparaissent que là où le backend sait les appliquer : sur Temporal, il faut [activer ses
+attributs de recherche](../backends/#register-durables-search-attributes) ; sans eux, la page liste
+toutes les exécutions et n'offre pas ces filtres.
+
 Une exécution **poursuivie sous un nouveau nom** n'est pas un échec. C'est une fin normale : le
 composant la traite comme une exécution neuve, et celle qui passe la main s'est terminée sans erreur.
 Les confondre ferait apparaître en rouge des workflows longs parfaitement sains.
@@ -146,7 +152,7 @@ L'habillage, et rien que l'habillage.
 | | Sylius | Magento |
 | --- | --- | --- |
 | Où | Menu d'administration → Durable | **System > Durable processes > Process history** |
-| La liste | Cartes Tabler, pagination par curseur | La grille standard : pagination, signets, contrôle des colonnes, export, et un filtre d'état dont les options viennent de l'énumération |
+| La liste | Une grille Sylius avec ses propres filtres (issue, nom de workflow, début de l'identifiant d'exécution), pagination par curseur | La grille standard : pagination, signets, contrôle des colonnes, export, et un filtre d'état dont les options viennent de l'énumération |
 | Pagination | Curseur, 20 par page | Décalage dans une fenêtre de 200 exécutions, dont l'écran annonce le plafond |
 | Lecture seule | Oui | Oui |
 
