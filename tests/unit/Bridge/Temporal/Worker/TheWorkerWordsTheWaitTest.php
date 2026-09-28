@@ -54,11 +54,15 @@ final class TheWorkerWordsTheWaitTest extends TestCase
         self::assertCount(1, $commands, 'no second schedule on replay');
     }
 
-    public function testATimerIsDueAtItsStartPlusItsTimeout(): void
+    /**
+     * The deadline counts from the task that started the timer, the one clock both that task and the
+     * later ones read: TIMER_STARTED is written a moment after, and the worker's own clock drifts.
+     */
+    public function testATimerIsDueAtItsTaskStartPlusItsTimeout(): void
     {
-        $commands = $this->task('TimerWorkflow', [self::started(1), self::timerStarted(5, 1_790_000_000, 60)]);
+        $commands = $this->task('TimerWorkflow', [self::started(1), self::taskStarted(3, 1_790_000_000), self::timerStarted(5, 1_790_000_001, 60), self::taskStarted(7, 1_790_000_030)]);
 
-        self::assertSame('timer due at ' . (new \DateTimeImmutable('@1790000060'))->format(\DATE_ATOM), self::waitIn($commands));
+        self::assertSame(self::dueAt(1_790_000_060), self::waitIn($commands));
     }
 
     /**
@@ -67,10 +71,9 @@ final class TheWorkerWordsTheWaitTest extends TestCase
      */
     public function testATimerIsWordedAlikeOnTheTaskThatStartsIt(): void
     {
-        $waitingOn = self::waitIn($this->task('SummarisedTimerWorkflow', [self::started(1)]));
+        $waitingOn = self::waitIn($this->task('SummarisedTimerWorkflow', [self::started(1), self::taskStarted(3, 1_790_000_000)]));
 
-        self::assertNotNull($waitingOn);
-        self::assertStringStartsWith('timer due at ', $waitingOn);
+        self::assertSame(self::dueAt(1_790_000_060), $waitingOn, 'the same words as the later tasks read back');
     }
 
     public function testAConditionIsNamedByItsLabel(): void
@@ -166,6 +169,16 @@ final class TheWorkerWordsTheWaitTest extends TestCase
 
         return self::event($id, EventType::EVENT_TYPE_WORKFLOW_PROPERTIES_MODIFIED)
             ->setWorkflowPropertiesModifiedEventAttributes(new WorkflowPropertiesModifiedEventAttributes(['upserted_memo' => $memo]));
+    }
+
+    private static function taskStarted(int $id, int $at): HistoryEvent
+    {
+        return self::event($id, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED)->setEventTime(new Timestamp(['seconds' => $at]));
+    }
+
+    private static function dueAt(int $at): string
+    {
+        return 'timer due at ' . (new \DateTimeImmutable('@' . $at))->format(\DATE_ATOM);
     }
 
     private static function event(int $id, int $type): HistoryEvent
