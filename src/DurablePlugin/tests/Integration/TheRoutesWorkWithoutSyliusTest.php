@@ -24,14 +24,43 @@ final class TheRoutesWorkWithoutSyliusTest extends TestCase
 {
     private string $cacheDir;
 
+    private ?Kernel $kernel = null;
+
+    /** @var array{exception: ?callable, error: ?callable} */
+    private array $handlers;
+
     protected function setUp(): void
     {
         $this->cacheDir = sys_get_temp_dir() . '/durable-plugin-routes-' . bin2hex(random_bytes(4));
+        $this->handlers = self::currentHandlers();
     }
 
+    /**
+     * A booted kernel installs error and exception handlers (Symfony 6.4.0's ErrorHandler never
+     * takes them back), and PHPUnit marks the test risky unless both stacks end as they started.
+     */
     protected function tearDown(): void
     {
+        $this->kernel?->shutdown();
+        // ponytail: ten pops at most, far more than one kernel boot pushes.
+        for ($i = 0; $i < 10 && self::currentHandlers()['exception'] !== $this->handlers['exception']; ++$i) {
+            restore_exception_handler();
+        }
+        for ($i = 0; $i < 10 && self::currentHandlers()['error'] !== $this->handlers['error']; ++$i) {
+            restore_error_handler();
+        }
         (new Filesystem())->remove($this->cacheDir);
+    }
+
+    /** @return array{exception: ?callable, error: ?callable} */
+    private static function currentHandlers(): array
+    {
+        $exception = set_exception_handler(null);
+        restore_exception_handler();
+        $error = set_error_handler(null);
+        restore_error_handler();
+
+        return ['exception' => $exception, 'error' => $error];
     }
 
     public function testWithoutSyliusTheRunsListIsNotFoundUnderThePluginsOwnPrefix(): void
@@ -60,7 +89,7 @@ final class TheRoutesWorkWithoutSyliusTest extends TestCase
     /** @param array<string, string> $parameters */
     private function kernel(array $parameters): Kernel
     {
-        return new class ('test', false, $this->cacheDir, $parameters) extends Kernel {
+        return $this->kernel = new class ('test', false, $this->cacheDir, $parameters) extends Kernel {
             /** @param array<string, string> $parameters */
             public function __construct(string $environment, bool $debug, private readonly string $dir, private readonly array $parameters)
             {
