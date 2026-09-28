@@ -11,6 +11,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowLifecycle;
 use Gplanchat\Durable\Exception\WorkflowCancelledFailure;
 use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\ExecutionRuntime;
+use Gplanchat\Durable\Port\History\CancellationDelivery;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\NoLocalJournalEventStore;
 use Gplanchat\Durable\Transport\NoopActivityTransport;
@@ -177,7 +178,7 @@ final class TemporalWorkflowCancellationTest extends TestCase
         ]);
 
         self::assertTrue($replayed->cancellationAlreadyDelivered());
-        self::assertSame(['position' => 21, 'targets' => []], $replayed->cancellationDelivery());
+        self::assertEquals(new CancellationDelivery(21, []), $replayed->cancellationDelivery());
     }
 
     public function testSideEffectMarkerRoundTripsThroughTheCommand(): void
