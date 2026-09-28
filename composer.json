@@ -67,6 +67,7 @@
         "phpunit/phpunit": "^11.5",
         "rector/rector": "^2.0",
         "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0",
+        "symfony/serializer": "^6.4 || ^7.0 || ^8.0",
         "symfony/uid": "^6.4 || ^7.0 || ^8.0",
         "vimeo/psalm": "^6.0"
     },
