@@ -55,10 +55,10 @@ final class DurableDashboardTest extends WebTestCase
         self::assertCount(1, $crawler->filterXPath('//h1')->reduce(static fn($h1): bool => str_contains($h1->text(), 'Durable Workflow Dashboard')));
     }
 
-    public function testThePreviousPageLinkLeadsBackThroughRealUrls(): void
+    public function testTheListPagesForwardAndLeadsBackToTheFirstPage(): void
     {
-        // #383: the way back is a stack of cursors in the URL; only a real router proves it survives
-        // generation and parsing. One run more than a page, so there is a second page.
+        // #383: Temporal cannot page backwards, so the list pages forward only, with the first page
+        // as the way back, through real URLs. One run more than a page, so there is a second page.
         $client = $this->authenticatedClient();
 
         try {
@@ -67,14 +67,15 @@ final class DurableDashboardTest extends WebTestCase
             }
 
             $first = $client->request('GET', self::ROUTE);
-            self::assertCount(0, $first->selectLink('Previous page'), 'the first page has no way back');
+            self::assertCount(0, $first->selectLink('First page'), 'the first page does not lead to itself');
 
             $second = $client->click($first->selectLink('Next page')->link());
             self::assertResponseIsSuccessful();
+            self::assertCount(0, $second->selectLink('Previous page'), 'there is no previous page');
 
-            $back = $client->click($second->selectLink('Previous page')->link());
+            $back = $client->click($second->selectLink('First page')->link());
             self::assertResponseIsSuccessful();
-            self::assertCount(0, $back->selectLink('Previous page'), 'Previous leads back to the first page');
+            self::assertCount(0, $back->selectLink('First page'));
             self::assertCount(1, $back->selectLink('Next page'));
         } finally {
             // The database outlives the test: a full page of runs would push the other tests' run
@@ -84,6 +85,16 @@ final class DurableDashboardTest extends WebTestCase
                 $connection->executeStatement("DELETE FROM {$table} WHERE execution_id LIKE 'exec-page-%'");
             }
         }
+    }
+
+    public function testALinkFromBeforeLandsOnTheFirstPage(): void
+    {
+        // Links bookmarked while the list had a previous page carried its way back in `back`.
+        $client = $this->authenticatedClient();
+
+        $client->request('GET', self::ROUTE . '?status=failed&cursor=abc&back=WyIiXQ');
+
+        self::assertResponseRedirects(self::ROUTE . '?status=failed', 301);
     }
 
     public function testTheRunListIsASyliusGrid(): void
