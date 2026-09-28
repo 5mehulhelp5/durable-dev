@@ -82,6 +82,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | WA005 | The canvas is the source, `layouts/index.html` is output | [wa/WA005-the-canvas-is-the-source-the-page-is-output.md](wa/WA005-the-canvas-is-the-source-the-page-is-output.md) |
 | WA006 | English is the working language; French documentation is a product | [wa/WA006-english-is-the-working-language.md](wa/WA006-english-is-the-working-language.md) |
 | WA007 | The agentic loop and its ledgers | [wa/WA007-the-agentic-loop-and-its-ledgers.md](wa/WA007-the-agentic-loop-and-its-ledgers.md) |
+| WA008 | Publishing a version: `bin/release.sh`, from origin/main only | [wa/WA008-publishing-a-version.md](wa/WA008-publishing-a-version.md) |
 
 ## Opportunity solution trees (OST)
 
