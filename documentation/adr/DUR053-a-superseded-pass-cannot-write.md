@@ -32,10 +32,12 @@ Two facts shape the fix:
   in its child (`ParentChildWorkflowCoordinator`). Some land *inside* a live pass: the inline
   activity drain (`ExecutionRuntime::drainActivityQueueOnce()`) and `sync://` activities run the
   activity processor in the pass itself.
-- **A pass that stops loses no wakeup.** Both locks make a second resume wait its turn
-  (`SingleResumeLockMiddleware` acquires blocking; `ResumeLock` waits, then throws, and the job is
-  retried). Under DUR050 every fact that needs a pass sends a resume. A pass that is refused can
-  simply stop: the resume that will follow replays the execution.
+- **A pass that stops loses no wakeup.** A second resume of a locked execution is kept, not
+  dropped. On Symfony, `SingleResumeLockMiddleware` acquires blocking, so the resume waits its turn.
+  On Laravel, `ResumeWorkflowJob` calls `ResumeLock::tryAround()`, and when the lock is taken it
+  dispatches the resume again through `ResumeDeferral`, failing only past `max_deferrals`. Under
+  DUR050 every fact that needs a pass sends a resume. A pass that is refused can simply stop: the
+  resume that follows replays the execution.
 
 Two shapes were considered on #505:
 
@@ -70,11 +72,17 @@ Two shapes were considered on #505:
    absent row meaning epoch 0. The events table does not change, so no row is backfilled. The DBAL
    `DurableSchema` declares the table (and `DurableSchemaListener` shows it to Doctrine's schema
    tools); the Illuminate bridge ships a migration.
-4. **Atomicity.** `claimPass()` writes the heads row, which locks it. `appendFenced()` reads the
-   epoch under a shared lock on that row and inserts the event in the same transaction. A claim
-   therefore cannot fall between a stale pass's check and its insert. A newer pass reads the
-   history only after its claim has committed, so it sees every append the older pass made before
-   it.
+4. **Atomicity.** A claim must not fall between a stale pass's check of the epoch and its insert,
+   and a newer pass reads the history only after its claim has committed, so that it sees every
+   append the older pass made before it.
+   - On MySQL and PostgreSQL, `claimPass()` writes the heads row, which locks it, and
+     `appendFenced()` reads the epoch under a shared lock on that row and inserts the event in the
+     same transaction.
+   - SQLite has no row locks, but it admits one writer at a time. There, `appendFenced()` is a
+     single conditional `INSERT … SELECT … WHERE` the head's epoch equals the fence's, and
+     `claimPass()` is a single upsert. Two write statements never interleave, so the check and the
+     insert cannot straddle a claim. An `SQLITE_BUSY_SNAPSHOT` raised under WAL is a lost race, and
+     the store rethrows it as `SupersededPassException`.
 5. **Where a pass claims.** Every place that assembles a pass claims once, before it reads the
    history, when the store has the capability: `ExecutionEngine::start()` and `::resume()`,
    `FireWorkflowTimersHandler`, and `InMemoryWorkflowRunner`. The pass's writers receive a
@@ -96,7 +104,8 @@ Two shapes were considered on #505:
   (Doctrine users see it in `doctrine:migrations:diff`; Laravel users run `migrate`) and for
   third-party store authors who want the guarantee.
 - **Conformance.** `EventStoreConformanceTestCase` gains the fencing cases, run against stores that
-  implement the capability. An `expectsFencedPasses()` hook (false by default, true for InMemory,
+  implement the capability. They run on SQLite in the root suite, and on MySQL 8.4 and PostgreSQL
+  16 in the SQL conformance jobs. An `expectsFencedPasses()` hook (false by default, true for InMemory,
   DBAL and Illuminate) makes a store that should fence and does not fail the suite. The cases:
   - two passes claimed in turn: the older pass's append is refused and the newer one's accepted;
   - an external append between them is accepted;
@@ -104,6 +113,12 @@ Two shapes were considered on #505:
     not write to the journal.
 - **One more write per pass.** A claim is one upsert on a small table, next to the reads a replay
   already makes.
+- **A known limit: the handler's own writes after the pass.** A stale pass that swallows every
+  refusal can still reach the end of `ResumeWorkflowHandler`. There it records the wait in the run
+  catalogue and may send a resume or a timer wake. None of these writes the journal. An extra
+  resume or wake is harmless under DUR050. A stale wait in the catalogue lasts until the next pass
+  records its own. Checking the fence again before those writes is the next step if that ever
+  matters.
 - **The lock stays.** It keeps two passes from replaying at once in the common case; the fence
   makes the rare case, a lost lock, safe rather than silent.
 - **Temporal is unaffected**, and so is a third-party store until its author opts in.
