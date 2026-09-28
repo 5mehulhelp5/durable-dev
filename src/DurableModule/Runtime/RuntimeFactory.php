@@ -20,10 +20,12 @@ use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
+use Gplanchat\Durable\SystemClock;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use Gplanchat\Durable\WorkflowRegistry;
 use Magento\Framework\App\DeploymentConfig;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -117,6 +119,11 @@ class RuntimeFactory
          * `durable/temporal/search_attributes` from `env.php`; absent there, off.
          */
         private readonly ?bool $temporalSearchAttributes = null,
+        /**
+         * The clock the in-process journal, catalog, transport and runner read (#617). Magento has
+         * no PSR-20 clock of its own: null is the core's system clock.
+         */
+        private readonly ?ClockInterface $clock = null,
     ) {}
 
     /** One per factory, and the ObjectManager shares the factory: one gRPC client per request (#356). */
@@ -124,10 +131,15 @@ class RuntimeFactory
 
     private ?TemporalRuntimeAssembly $assembly = null;
 
+    private function clock(): ClockInterface
+    {
+        return $this->clock ?? new SystemClock();
+    }
+
     public function create(): MagentoRuntime
     {
         $eventStore = $this->eventStore();
-        $transport = new InMemoryActivityTransport();
+        $transport = new InMemoryActivityTransport($this->clock());
         $activities = new RegistryActivityExecutor();
         $workflows = new WorkflowRegistry();
 
@@ -142,6 +154,7 @@ class RuntimeFactory
                 $this->maxActivityRetries,
                 $workflows,
                 $this->budgetSeconds,
+                $this->clock(),
             ),
         );
 
@@ -175,8 +188,8 @@ class RuntimeFactory
         $settings = $this->temporalSettings();
 
         return $settings === null
-            ? new InMemoryEventStore()
-            : $this->assembly($settings)->readThroughEventStore(new InMemoryEventStore());
+            ? new InMemoryEventStore($this->clock())
+            : $this->assembly($settings)->readThroughEventStore(new InMemoryEventStore($this->clock()));
     }
 
     /**
@@ -193,7 +206,7 @@ class RuntimeFactory
         $settings = $this->temporalSettings();
 
         if ($settings === null) {
-            return new InMemoryWorkflowRunCatalog(new InMemoryEventStore());
+            return new InMemoryWorkflowRunCatalog(new InMemoryEventStore($this->clock()), $this->clock());
         }
 
         // The history cursor is not decorative: `listRuns()` returns only the Temporal workflow's

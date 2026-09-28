@@ -10,10 +10,12 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
+use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\FrozenClock;
 use unit\DurableModule\Fixture\OrderWorkflow;
 use unit\DurableModule\Fixture\RecordingOrderActivities;
 
@@ -149,6 +151,22 @@ final class RuntimeFactoryTest extends TestCase
         }
 
         self::assertSame(1, $sent);
+    }
+
+    /**
+     * Magento has no PSR-20 clock: the core's system clock by default, the one `di.xml` hands
+     * otherwise, for every in-process service that reads time (#617).
+     */
+    public function testTheHandedClockStampsTheProcessJournal(): void
+    {
+        $runtime = (new RuntimeFactory(clock: new FrozenClock(1_700_000_000.0)))->create();
+        $runtime->eventStore()->append(new WorkflowSignalReceived('exec-1', 'go', []));
+
+        $stamps = [];
+        foreach ($runtime->eventStore()->readStreamWithRecordedAt('exec-1') as $row) {
+            $stamps[] = $row['recordedAt']->format('U');
+        }
+        self::assertSame(['1700000000'], $stamps);
     }
 
     public function testWithoutAClusterTheCatalogIsTheProcessItself(): void
