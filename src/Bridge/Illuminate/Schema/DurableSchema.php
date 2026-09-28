@@ -37,7 +37,14 @@ final class DurableSchema
         private readonly string $metadataTable = 'durable_workflow_metadata',
         private readonly string $parentLinkTable = 'durable_child_workflow_parent_link',
         private readonly string $runsTable = 'durable_workflow_runs',
+        private readonly string $headsTable = 'durable_execution_heads',
     ) {}
+
+    /** Each execution's newest pass epoch (DUR053): what a fenced append is checked against. */
+    public function headsTable(): string
+    {
+        return $this->headsTable;
+    }
 
     /**
      * The journal's table as configured: whoever reads the journal without being handed its store
@@ -89,7 +96,7 @@ final class DurableSchema
         }
 
         $builder = $this->connection->getSchemaBuilder();
-        $tables = [$this->eventsTable, $this->metadataTable, $this->runsTable, $this->parentLinkTable];
+        $tables = [$this->eventsTable, $this->metadataTable, $this->runsTable, $this->parentLinkTable, $this->headsTable];
         $missing = array_values(array_filter($tables, static fn(string $table): bool => !$builder->hasTable($table)));
         if ([] === $missing) {
             $this->ensured = true;
@@ -142,6 +149,14 @@ final class DurableSchema
             $builder->create($this->parentLinkTable, function (Blueprint $table): void {
                 $table->string('child_execution_id', 128)->primary();
                 $table->string('parent_execution_id', 128)->index();
+            });
+        }
+
+        if (!$builder->hasTable($this->headsTable)) {
+            $builder->create($this->headsTable, function (Blueprint $table): void {
+                // One row per execution that ever claimed a pass; an absent row is epoch 0 (DUR053).
+                $table->string('execution_id', 128)->primary();
+                $table->unsignedBigInteger('epoch');
             });
         }
 

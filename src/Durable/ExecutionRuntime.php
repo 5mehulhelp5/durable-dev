@@ -82,10 +82,15 @@ final class ExecutionRuntime
         return $awaitable->getResult();
     }
 
-    public function checkTimers(ExecutionContext $context): void
+    /**
+     * @param EventStoreInterface|null $journal the pass's journal when a pass fires the timers
+     *                                          (DUR053); the runtime's own store otherwise
+     */
+    public function checkTimers(ExecutionContext $context, ?EventStoreInterface $journal = null): void
     {
-        foreach (PendingTimers::dueAt($this->eventStore, $context->executionId(), ($this->clock)()) as $timerId) {
-            $this->eventStore->append(new TimerCompleted($context->executionId(), $timerId));
+        $journal ??= $this->eventStore;
+        foreach (PendingTimers::dueAt($journal, $context->executionId(), ($this->clock)()) as $timerId) {
+            $journal->append(new TimerCompleted($context->executionId(), $timerId));
             $context->resolveTimer($timerId);
         }
     }

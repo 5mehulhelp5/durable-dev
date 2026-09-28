@@ -1028,6 +1028,37 @@ A controller that relied on it returning at once will now wait for the run.
 queued job of your own if the caller must return at once, or switch that environment to
 `illuminate`.
 
+### SQL journals: a superseded pass can no longer write, and a new table holds pass epochs (#505, DUR053)
+
+**Who is affected**: applications on the DBAL or Illuminate journal (a new table), and authors of
+their own `EventStoreInterface` who want the guarantee. Nothing changes on Temporal.
+
+**Why.** A pass that lost its resume lock, and that a second resume took over, could still append
+to the journal. Each pass now claims an epoch for its execution. An append from a pass that a
+newer one has superseded is refused with `SupersededPassException`, and the handler stops
+without ending the run.
+
+**What to do.**
+
+- **Create the table before you deploy.** The journal refuses to create a missing table inside an
+  open transaction. The first write after the deploy may happen in one (a `doctrine_transaction`
+  middleware, a `DB::transaction()` around an activity), and it would then fail.
+  - **Symfony, DBAL journal**: run `bin/console durable:setup`. With Doctrine Migrations,
+    `doctrine:migrations:diff` sees `durable_execution_heads` through the schema listener.
+  - **Laravel, Illuminate journal**: run `php artisan migrate`. The new migration adds the table to
+    a database that already ran the create migration.
+- A claim holds the execution's heads row until its transaction commits. A pass that runs inside
+  an outer transaction you opened keeps that lock until you commit, so a newer pass waits for it
+  rather than superseding it.
+- **Your own store**: nothing breaks. To fence passes, implement
+  `Gplanchat\Durable\Store\FencedEventStoreInterface` (`claimPass()` and `appendFenced()`) and
+  override `expectsFencedPasses()` to return `true` in your `EventStoreConformanceTestCase`.
+  No Rector rule: the storage is yours to write.
+- `ExecutionRuntime::checkTimers()` takes an optional second argument, the pass's journal. Existing
+  calls keep working.
+- `WorkflowBackendInterface::start()` (and `ExecutionEngine::start()`) can throw
+  `SupersededPassException` if another pass claims the same execution while it runs.
+
 ### Temporal: the `Temporal\Api` classes come from `roadrunner-php/roadrunner-api-dto` (#352)
 
 **Who is affected**: an application that installs `gplanchat/durable-bridge-temporal`, and one

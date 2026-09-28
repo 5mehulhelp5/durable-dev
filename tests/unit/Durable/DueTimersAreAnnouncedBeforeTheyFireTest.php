@@ -11,6 +11,7 @@ use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
+use Gplanchat\Durable\Store\PassEventStore;
 use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\FireWorkflowTimersMessage;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
@@ -52,9 +53,25 @@ final class DueTimersAreAnnouncedBeforeTheyFireTest extends TestCase
         self::assertSame([], $this->fire($journal, now: 500.0)->sent);
     }
 
-    private function fire(InMemoryEventStore $journal, float $now): TimerRecordingResumes
+    /**
+     * DUR053 with DUR052: firing timers is a fenced pass. A newer pass that claims the execution
+     * after the announcement leaves the older one firing nothing; the newer pass owns the timers.
+     */
+    public function testATimerPassSupersededAfterItsAnnouncementFiresNothing(): void
     {
-        $resumes = new TimerRecordingResumes($journal);
+        $journal = new InMemoryEventStore();
+        $journal->append(new TimerScheduled('exec-1', 'timer-1', 100.0, ''));
+        $resumes = new TimerRecordingResumes($journal, takeOverOnAnnouncement: true);
+
+        $this->fire($journal, now: 500.0, resumes: $resumes);
+
+        self::assertSame(['awaiting timer timer-1 with 1 events'], $resumes->sent, 'announced, then neither fired nor resumed');
+        self::assertSame(1, $journal->countEventsInStream('exec-1'), 'no TimerCompleted from the superseded pass');
+    }
+
+    private function fire(InMemoryEventStore $journal, float $now, ?TimerRecordingResumes $resumes = null): TimerRecordingResumes
+    {
+        $resumes ??= new TimerRecordingResumes($journal);
         $runtime = new ExecutionRuntime($journal, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, static fn(): float => $now, true);
 
         (new FireWorkflowTimersHandler($journal, $runtime, $resumes, new RecordingTimerDispatcher()))(new FireWorkflowTimersMessage('exec-1'));
@@ -68,7 +85,11 @@ final class TimerRecordingResumes implements WorkflowResumeDispatcher
     /** @var list<string> */
     public array $sent = [];
 
-    public function __construct(private readonly InMemoryEventStore $journal) {}
+    public function __construct(
+        private readonly InMemoryEventStore $journal,
+        /** A second worker claims the execution as soon as the due timers are announced. */
+        private readonly bool $takeOverOnAnnouncement = false,
+    ) {}
 
     public function dispatchResume(string $executionId, array $pendingUpdates = []): void
     {
@@ -78,6 +99,9 @@ final class TimerRecordingResumes implements WorkflowResumeDispatcher
     public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
     {
         $this->sent[] = \sprintf('awaiting %s with %d events', $fact->describe(), $this->journal->countEventsInStream($executionId));
+        if ($this->takeOverOnAnnouncement) {
+            PassEventStore::open($this->journal, $executionId);
+        }
     }
 
     public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}

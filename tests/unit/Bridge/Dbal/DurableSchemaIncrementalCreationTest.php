@@ -44,6 +44,7 @@ final class DurableSchemaIncrementalCreationTest extends TestCase
             [
                 'durable_child_workflow_parent_link',
                 'durable_events',
+                'durable_execution_heads',
                 'durable_workflow_metadata',
                 'durable_workflow_runs',
             ],
@@ -103,7 +104,7 @@ final class DurableSchemaIncrementalCreationTest extends TestCase
         $schema = new Schema();
         (new DurableSchema($this->connection))->addToSchema(
             $schema,
-            ['durable_workflow_metadata', 'durable_child_workflow_parent_link', 'durable_workflow_runs'],
+            ['durable_workflow_metadata', 'durable_child_workflow_parent_link', 'durable_workflow_runs', 'durable_execution_heads'],
         );
         foreach ($schema->toSql($this->connection->getDatabasePlatform()) as $sql) {
             $this->connection->executeStatement($sql);

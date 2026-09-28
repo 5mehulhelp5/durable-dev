@@ -41,7 +41,14 @@ final class DurableSchema
         private readonly string $parentLinkTable = 'durable_child_workflow_parent_link',
         private readonly string $runsTable = 'durable_workflow_runs',
         private readonly bool $autoSetup = true,
+        private readonly string $headsTable = 'durable_execution_heads',
     ) {}
+
+    /** Each execution's newest pass epoch (DUR053): what a fenced append is checked against. */
+    public function headsTable(): string
+    {
+        return $this->headsTable;
+    }
 
     /**
      * The journal's table as configured: whoever reads the journal without being handed its store
@@ -77,7 +84,7 @@ final class DurableSchema
 
     private function create(bool $refuseInsideTransaction): void
     {
-        $tables = [$this->eventsTable, $this->metadataTable, $this->parentLinkTable, $this->runsTable];
+        $tables = [$this->eventsTable, $this->metadataTable, $this->parentLinkTable, $this->runsTable, $this->headsTable];
         $schemaManager = $this->connection->createSchemaManager();
         $existing = $this->unfiltered(static fn(): array => array_values(array_filter(
             $tables,
@@ -250,6 +257,14 @@ final class DurableSchema
             $runs->addIndex(['started_at'], $this->runsTable . '_started_idx');
             // The run list filters on status and orders by start (#339).
             $runs->addIndex(['status', 'started_at'], $this->runsTable . '_status_started_idx');
+        }
+
+        if (!\in_array($this->headsTable, $skip, true)) {
+            // One row per execution that ever claimed a pass; an absent row is epoch 0 (DUR053).
+            $heads = $schema->createTable($this->headsTable);
+            $heads->addColumn('execution_id', Types::STRING, ['length' => 128]);
+            $heads->addColumn('epoch', Types::BIGINT);
+            $heads->setPrimaryKey(['execution_id']);
         }
 
         if (!\in_array($this->parentLinkTable, $skip, true)) {
