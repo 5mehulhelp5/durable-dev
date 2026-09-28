@@ -489,6 +489,10 @@ jobs:
                 # **bench**'s module, which carries the demonstration and the probes, and which will
                 # never reach a user. It is the one that provides `durable:demo` to the next step.
                 bin/magento module:enable Gplanchat_DurableModule Gplanchat_DurableProbe
+                # The run page step below logs into the admin; two-factor auth would stop it at the
+                # setup screen. Every enabled *TwoFactorAuth module goes, dependents included.
+                tfa=$(bin/magento module:status --enabled | grep -E '_[A-Za-z]*TwoFactorAuth$' || true)
+                if [ -n "$tfa" ]; then bin/magento module:disable $tfa; fi
                 bin/magento setup:upgrade --keep-generated
                 bin/magento module:status Gplanchat_DurableModule | tee /tmp/status.txt
                 grep -q 'Module is enabled' /tmp/status.txt
@@ -510,6 +514,59 @@ jobs:
                 php -r 'usleep(5000000);'
                 curl -sf --max-time 120 http://127.0.0.1:8080/admin -o /tmp/login.html
                 grep -qi 'Magento Admin' /tmp/login.html
+
+            # From here on, with a cluster: the admin finds a run by the execution id the
+            # application started it with (#514), and that id may hold a slash. The steps above
+            # stay as they are, since they assert the page without a DSN.
+            - name: Install Temporal CLI
+              uses: temporalio/setup-temporal@v0
+
+            # No search attribute is registered: `search_attributes` stays off in env.php, and the
+            # execution id travels in the memo, which needs none.
+            - name: Start a Temporal dev server
+              timeout-minutes: 3
+              run: |
+                temporal server start-dev --headless --port 7233 --namespace default --log-level warn > /tmp/temporal.log 2>&1 &
+                timeout 60 bash -c 'until nc -z 127.0.0.1 7233; do sleep 1; done'
+                timeout 60 bash -c 'until temporal workflow list --namespace default --limit 1 >/dev/null 2>&1; do sleep 1; done'
+
+            # This job has no ext-grpc, hence gRPC over curl, named rather than left to `auto`.
+            - name: Point Magento at the cluster
+              working-directory: magento
+              run: |
+                php -r '$f = "app/etc/env.php"; $c = include $f; $c["durable"]["temporal"]["dsn"] = "temporal://127.0.0.1:7233?namespace=default&tls=0&transport=grpc-curl"; file_put_contents($f, "<?php\nreturn " . var_export($c, true) . ";\n");'
+                bin/magento config:set admin/security/use_form_key 0
+                bin/magento config:set admin/captcha/enable 0
+                bin/magento cache:flush
+
+            - name: Seed a run whose execution id holds a slash
+              working-directory: magento
+              timeout-minutes: 2
+              run: timeout 60 bin/magento durable:demo:start order/4242
+
+            # `findRun()` asks the cluster with DescribeWorkflowExecution, so the run is there as soon
+            # as it is started: no worker, no visibility delay. The page title repeats the requested
+            # id even when nothing is found, so the assertion reads what only a found run renders.
+            - name: The admin opens the run by its execution id
+              working-directory: magento
+              timeout-minutes: 3
+              run: |
+                nc -z 127.0.0.1 8080 || { php -S 127.0.0.1:8080 -t pub/ phpserver/router.php >> /tmp/httpd.log 2>&1 & timeout 30 bash -c 'until nc -z 127.0.0.1 8080; do sleep 1; done'; }
+                jar=/tmp/admin.cookies
+                curl -sf --max-time 60 -c $jar -b $jar http://127.0.0.1:8080/admin -o /tmp/login.html
+                form_key=$(grep -oE '<input[^>]*name="form_key"[^>]*>' /tmp/login.html | head -n1 | grep -oE 'value="[^"]+"' | sed -E 's/value="([^"]+)"/\1/')
+                action=$(grep -oE '<form[^>]*id="login-form"[^>]*' /tmp/login.html | grep -oE 'action="[^"]+"' | sed -E 's/action="([^"]+)"/\1/')
+                test -n "$form_key" && test -n "$action"
+                curl -s --max-time 60 -c $jar -b $jar -L -o /tmp/after-login.html \
+                  --data-urlencode "form_key=$form_key" --data-urlencode 'login[username]=durable' --data-urlencode 'login[password]=Durable123!' \
+                  "$action"
+                if grep -q 'id="login-form"' /tmp/after-login.html; then echo 'The admin login failed.' >&2; cat /tmp/after-login.html; exit 1; fi
+                curl -s --max-time 60 -c $jar -b $jar -o /tmp/run.html 'http://127.0.0.1:8080/admin/durable/process/view/?run_id=order%2F4242'
+                if ! grep -q '<td>order/4242</td>' /tmp/run.html || ! grep -q 'Backend run' /tmp/run.html; then
+                  echo 'The run page did not render the run.' >&2
+                  cat /tmp/run.html; tail -n 50 /tmp/httpd.log; tail -n 50 /tmp/temporal.log
+                  exit 1
+                fi
 
     static-analysis:
         # Was the required status check on `main` until 2026-09-16; `ci-ok` below is now. Its name
