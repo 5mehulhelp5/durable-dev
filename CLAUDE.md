@@ -15,7 +15,8 @@ to run this loop at all, are in [WA007](documentation/wa/WA007-the-agentic-loop-
   - `.worktrees/prises/` — the coordination registry. A wrong write here makes two sessions build
     the same slice twice; `.worktrees/PRISES.md` records the day that happened. One exception:
     `bin/prises-check.sh --release`, which deletes only the claims it has just proven merged.
-  - `.github/workflows/`, `bin/splitsh-publish.sh` — CI and publication reach outside this repo.
+  - `.github/workflows/`, `bin/splitsh-publish.sh`, `bin/release.sh` — CI and publication reach
+    outside this repo.
   - `composer.json`, `composer.lock` at any level — see the dependency rule below.
 - Never weaken, skip, delete, or `markTestSkipped` an existing test to get to green.
 - Never add an entry to `psalm-baseline.xml`. A baseline entry silences a finding without fixing
