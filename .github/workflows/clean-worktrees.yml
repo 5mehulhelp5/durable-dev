@@ -1,0 +1,27 @@
+name: Clean worktrees
+
+# `make clean-worktrees` removes checkouts on a workstation, so it never runs here. Its test does:
+# it builds a throwaway repository and checks that only a merged worktree without local work goes.
+on:
+  pull_request:
+    paths:
+      - 'bin/clean-worktrees.sh'
+      - 'bin/clean-worktrees-test.sh'
+      - '.github/workflows/clean-worktrees.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clean-worktrees-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Only merged worktrees without local work go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the cleanup
+        run: bin/clean-worktrees-test.sh
