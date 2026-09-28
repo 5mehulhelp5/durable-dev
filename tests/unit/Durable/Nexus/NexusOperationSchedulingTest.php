@@ -10,6 +10,7 @@ use Gplanchat\Durable\Nexus\NexusEndpoint;
 use Gplanchat\Durable\Nexus\NexusOperationName;
 use Gplanchat\Durable\Nexus\NexusOperationTimeouts;
 use Gplanchat\Durable\Nexus\NexusService;
+use Gplanchat\Durable\Port\History\SlotOutcome;
 use Gplanchat\Durable\Port\WorkflowCommandBufferInterface;
 use Gplanchat\Durable\Port\WorkflowHistorySourceInterface;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -59,7 +60,7 @@ final class NexusOperationSchedulingTest extends TestCase
     {
         $context = $this->context($this->history(
             scheduledId: 'op-done',
-            slotResult: ['result' => 'ok', 'failed' => null],
+            slotResult: new SlotOutcome('ok'),
         ));
 
         $this->schedule($context);
@@ -92,7 +93,7 @@ final class NexusOperationSchedulingTest extends TestCase
     {
         $awaitable = $this->schedule($this->context($this->history(
             scheduledId: 'op-done',
-            slotResult: ['result' => ['invoice' => 'INV-1'], 'failed' => null],
+            slotResult: new SlotOutcome(['invoice' => 'INV-1']),
         )));
 
         self::assertCount(0, $this->scheduled);
@@ -105,7 +106,7 @@ final class NexusOperationSchedulingTest extends TestCase
     {
         $awaitable = $this->schedule($this->context($this->history(
             scheduledId: 'op-missed',
-            slotResult: ['result' => null, 'failed' => new \RuntimeException('handler exploded')],
+            slotResult: new SlotOutcome(null, new \RuntimeException('handler exploded')),
         )));
 
         self::assertCount(0, $this->scheduled);
@@ -166,10 +167,7 @@ final class NexusOperationSchedulingTest extends TestCase
         return $awaitable;
     }
 
-    /**
-     * @param array{result: mixed, failed: \Throwable|null}|null $slotResult
-     */
-    private function history(?string $scheduledId = null, ?array $slotResult = null): WorkflowHistorySourceInterface&MockObject
+    private function history(?string $scheduledId = null, ?SlotOutcome $slotResult = null): WorkflowHistorySourceInterface&MockObject
     {
         $history = $this->createMock(WorkflowHistorySourceInterface::class);
         $history->method('findScheduledNexusOperation')

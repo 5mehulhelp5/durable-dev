@@ -16,6 +16,12 @@ use Gplanchat\Durable\Exception\DurableNexusOperationFailedException;
 use Gplanchat\Durable\Exception\WorkflowCancelledFailure;
 use Gplanchat\Durable\Failure\FailureEnvelope;
 use Gplanchat\Durable\Nexus\NexusOperationFailureKind;
+use Gplanchat\Durable\Port\History\CancellationDelivery;
+use Gplanchat\Durable\Port\History\ChildWorkflowOutcome;
+use Gplanchat\Durable\Port\History\RecordedMessage;
+use Gplanchat\Durable\Port\History\SideEffectOutcome;
+use Gplanchat\Durable\Port\History\SlotOutcome;
+use Gplanchat\Durable\Port\History\TimerOutcome;
 use Gplanchat\Durable\Port\WorkflowHistorySourceInterface;
 use Gplanchat\Durable\Versioning\ChangePoint;
 use Temporal\Api\Enums\V1\EventType;
@@ -49,7 +55,7 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
     /** @var array<int, array{operationId: string, endpoint: string, service: string, operation: string}> */
     private array $nexusOperationCallSites = [];
 
-    /** @var array<int, array{result: mixed, failed: \Throwable|null}> scheduling eventId → outcome */
+    /** @var array<int, SlotOutcome> scheduling eventId → outcome */
     private array $nexusOperationOutcomes = [];
 
     /** @var array<string, int> activity ID → scheduled event ID */
@@ -90,9 +96,6 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
 
     /** @var array<int, string> start timer event ID → timer ID */
     private array $startedEventIdToTimerId = [];
-
-    /** @var array<string, float> timer ID → scheduled-at */
-    private array $timerScheduledAt = [];
 
     /** @var array<string, float> timer ID → when it fires: its task's start plus its timeout, for the wait's wording (#514) */
     private array $timerDeadlines = [];
@@ -240,37 +243,28 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
                     if (null !== $payload) {
                         $result = JsonPlainPayload::decode($payload);
                     }
-                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = ['result' => $result, 'failed' => null];
+                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = new SlotOutcome($result);
                 }
                 break;
 
             case EventType::EVENT_TYPE_NEXUS_OPERATION_FAILED:
                 $attr = $event->getNexusOperationFailedEventAttributes();
                 if (null !== $attr) {
-                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = [
-                        'result' => null,
-                        'failed' => $this->nexusFailure((int) $attr->getScheduledEventId(), NexusOperationFailureKind::OperationFailed),
-                    ];
+                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = new SlotOutcome(null, $this->nexusFailure((int) $attr->getScheduledEventId(), NexusOperationFailureKind::OperationFailed));
                 }
                 break;
 
             case EventType::EVENT_TYPE_NEXUS_OPERATION_TIMED_OUT:
                 $attr = $event->getNexusOperationTimedOutEventAttributes();
                 if (null !== $attr) {
-                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = [
-                        'result' => null,
-                        'failed' => $this->nexusFailure((int) $attr->getScheduledEventId(), NexusOperationFailureKind::Timeout),
-                    ];
+                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = new SlotOutcome(null, $this->nexusFailure((int) $attr->getScheduledEventId(), NexusOperationFailureKind::Timeout));
                 }
                 break;
 
             case EventType::EVENT_TYPE_NEXUS_OPERATION_CANCELED:
                 $attr = $event->getNexusOperationCanceledEventAttributes();
                 if (null !== $attr) {
-                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = [
-                        'result' => null,
-                        'failed' => $this->nexusFailure((int) $attr->getScheduledEventId(), NexusOperationFailureKind::Cancellation),
-                    ];
+                    $this->nexusOperationOutcomes[(int) $attr->getScheduledEventId()] = new SlotOutcome(null, $this->nexusFailure((int) $attr->getScheduledEventId(), NexusOperationFailureKind::Cancellation));
                 }
                 break;
 
@@ -397,7 +391,6 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
                     $timerId = (string) $attr->getTimerId();
                     $this->scheduledTimerIds[] = $timerId;
                     $this->startedEventIdToTimerId[$eventId] = $timerId;
-                    $this->timerScheduledAt[$timerId] = 0.0;
                     // From the task that started it, as that task worded it: TIMER_STARTED is written later.
                     $this->timerDeadlines[$timerId] = ($this->taskStartedAt ?? (float) ($event->getEventTime()?->getSeconds() ?? 0)) + (float) ($attr->getStartToFireTimeout()?->getSeconds() ?? 0);
                 }
@@ -595,7 +588,7 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         }
     }
 
-    public function findActivitySlotResult(int $slot): ?array
+    public function findActivitySlotResult(int $slot): ?SlotOutcome
     {
         $activityId = $this->scheduledActivityIds[$slot] ?? null;
         if (null === $activityId) {
@@ -606,16 +599,16 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         // operation, it must read back identically, even if the server ended up recording a
         // completion that arrived in the meantime.
         if (isset($this->cancellationDeliveredTargets[$activityId])) {
-            return ['result' => null, 'failed' => new WorkflowCancelledFailure($this->durableExecutionId() ?? '', ActivityCancellationReason::WORKFLOW_CANCELLED)];
+            return new SlotOutcome(null, new WorkflowCancelledFailure($this->durableExecutionId() ?? '', ActivityCancellationReason::WORKFLOW_CANCELLED));
         }
         if (isset($this->activityFailures[$activityId])) {
-            return ['result' => null, 'failed' => $this->activityFailures[$activityId]];
+            return new SlotOutcome(null, $this->activityFailures[$activityId]);
         }
         if (isset($this->activityCancellations[$activityId])) {
-            return ['result' => null, 'failed' => new ActivitySupersededException($activityId, $this->activityCancellations[$activityId])];
+            return new SlotOutcome(null, new ActivitySupersededException($activityId, $this->activityCancellations[$activityId]));
         }
         if (\array_key_exists($activityId, $this->activityResults)) {
-            return ['result' => $this->activityResults[$activityId], 'failed' => null];
+            return new SlotOutcome($this->activityResults[$activityId]);
         }
 
         return null;
@@ -666,24 +659,20 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         return $this->activityPayloads[$activityId] ?? null;
     }
 
-    public function findTimerSlotResult(int $slot): ?array
+    public function findTimerSlotResult(int $slot): ?TimerOutcome
     {
         $timerId = $this->scheduledTimerIds[$slot] ?? null;
         if (null === $timerId) {
             return null;
         }
         if (isset($this->cancellationDeliveredTargets[$timerId])) {
-            return [
-                'id' => $timerId,
-                'scheduledAt' => $this->timerScheduledAt[$timerId] ?? 0.0,
-                'failed' => new WorkflowCancelledFailure($this->durableExecutionId() ?? '', ActivityCancellationReason::WORKFLOW_CANCELLED),
-            ];
+            return new TimerOutcome($timerId, new WorkflowCancelledFailure($this->durableExecutionId() ?? '', ActivityCancellationReason::WORKFLOW_CANCELLED));
         }
         if (!isset($this->firedTimerIds[$timerId])) {
             return null;
         }
 
-        return ['id' => $timerId, 'scheduledAt' => $this->timerScheduledAt[$timerId] ?? 0.0, 'failed' => null];
+        return new TimerOutcome($timerId);
     }
 
     /**
@@ -708,12 +697,12 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         return \array_key_exists($slot, $this->sideEffects);
     }
 
-    public function findSideEffectForSlot(int $slot): mixed
+    public function findSideEffectForSlot(int $slot): ?SideEffectOutcome
     {
-        return $this->sideEffects[$slot] ?? null;
+        return \array_key_exists($slot, $this->sideEffects) ? new SideEffectOutcome($this->sideEffects[$slot]) : null;
     }
 
-    public function findChildWorkflowForSlot(int $slot): ?array
+    public function findChildWorkflowForSlot(int $slot): ?ChildWorkflowOutcome
     {
         $childId = $this->childExecutionIds[$slot] ?? null;
         if (null === $childId) {
@@ -726,14 +715,10 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         }
 
         if ($outcome['failed']) {
-            return [
-                'childExecutionId' => $childId,
-                'result' => null,
-                'failed' => new \RuntimeException('Child workflow failed'),
-            ];
+            return new ChildWorkflowOutcome($childId, null, new \RuntimeException('Child workflow failed'));
         }
 
-        return ['childExecutionId' => $childId, 'result' => $outcome['result'], 'failed' => null];
+        return new ChildWorkflowOutcome($childId, $outcome['result']);
     }
 
     public function findScheduledChildExecutionId(int $slot): ?string
@@ -764,28 +749,23 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         return \sprintf('%s/%s/%s', $site['endpoint'], $site['service'], $site['operation']);
     }
 
-    public function messageAt(int $index): ?array
+    public function messageAt(int $index): ?RecordedMessage
     {
         // Two separate arrays on the Temporal side, a single order on the workflow side: the
         // merge is done by eventId, otherwise every signal would come before every update.
         $messages = [];
         foreach ($this->signals as $signal) {
-            $messages[] = [
-                'position' => $signal['eventId'],
-                'kind' => 'signal',
-                'name' => $signal['signalName'],
-                'payload' => \is_array($signal['payload']) ? $signal['payload'] : ['value' => $signal['payload']],
-            ];
+            $messages[] = new RecordedMessage(
+                $signal['eventId'],
+                'signal',
+                $signal['signalName'],
+                \is_array($signal['payload']) ? $signal['payload'] : ['value' => $signal['payload']],
+            );
         }
         foreach ($this->updates as $update) {
-            $messages[] = [
-                'position' => $update['eventId'],
-                'kind' => 'update',
-                'name' => $update['updateName'],
-                'payload' => $update['arguments'],
-            ];
+            $messages[] = new RecordedMessage($update['eventId'], 'update', $update['updateName'], $update['arguments']);
         }
-        usort($messages, static fn(array $a, array $b): int => $a['position'] <=> $b['position']);
+        usort($messages, static fn(RecordedMessage $a, RecordedMessage $b): int => $a->position <=> $b->position);
 
         return $messages[$index] ?? null;
     }
@@ -885,12 +865,12 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         return null !== $this->cancellationDeliveredAt;
     }
 
-    public function cancellationDelivery(): ?array
+    public function cancellationDelivery(): ?CancellationDelivery
     {
-        return null === $this->cancellationDeliveredAt ? null : [
-            'position' => $this->cancellationDeliveredAt,
-            'targets' => array_map(strval(...), array_keys($this->cancellationDeliveredTargets)),
-        ];
+        return null === $this->cancellationDeliveredAt ? null : new CancellationDelivery(
+            $this->cancellationDeliveredAt,
+            array_map(strval(...), array_keys($this->cancellationDeliveredTargets)),
+        );
     }
 
     /** @return array<string, mixed> */
@@ -924,10 +904,8 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
      *
      * "Scheduled" is not "settled", and confusing the two would make the workflow conclude on an
      * operation that has not answered.
-     *
-     * @return array{result: mixed, failed: \Throwable|null}|null
      */
-    public function findNexusOperationSlotResult(int $slot): ?array
+    public function findNexusOperationSlotResult(int $slot): ?SlotOutcome
     {
         $operationId = $this->scheduledNexusOperationIds[$slot] ?? null;
         if (null === $operationId) {

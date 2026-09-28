@@ -960,6 +960,59 @@ resume is sent before the outcome and again after it.
 **What to do.** Delete the line. Left in place, the container build fails with an
 `InvalidConfigurationException` naming the unrecognized option.
 
+### `WorkflowRunCatalogInterface::canFilterRuns()` takes the filter it is asked about
+
+**Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`.
+
+**Why.** A catalog may apply one filter and not another. Temporal Server before 1.23.0 rejects
+`STARTS_WITH`, so on such a server the Temporal catalog takes a workflow name but not an
+execution-id prefix (#523). It reads the server's version once, through `GetSystemInfo`, which
+`WorkflowServiceClientInterface` now declares.
+
+**What to write.** Add the optional parameter, and answer for the filter given: with none, whether
+you can filter at all.
+
+```php
+public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
+{
+    return true; // a catalog that applies every filter
+}
+```
+
+`RunDashboard` asks about each part, applies the ones you accept, and tells the page which inputs
+to offer. The conformance suite checks each filter case against your answer for that filter.
+
+### `WorkflowHistorySourceInterface` returns value objects, not array shapes (#325)
+
+**Who is affected**: code that implements `Gplanchat\Durable\Port\WorkflowHistorySourceInterface`
+(a custom history source, a test double), and code that reads what it returns. The two history
+sources Durable ships are converted.
+
+| Method | Returned | Now returns |
+|---|---|---|
+| `findActivitySlotResult()`, `findNexusOperationSlotResult()` | `array{result, failed}` | `History\SlotOutcome` (`result`, `failed`) |
+| `findTimerSlotResult()` | `array{id, scheduledAt, failed}` | `History\TimerOutcome` (`timerId`, `failed`) |
+| `findChildWorkflowForSlot()` | `array{childExecutionId, result, failed}` | `History\ChildWorkflowOutcome` (`childExecutionId`, `result`, `failed`) |
+| `findSideEffectForSlot()` | `mixed` | `?History\SideEffectOutcome` (`result`) |
+| `messageAt()` | `array{position, kind, name, payload}` | `History\RecordedMessage` (same fields) |
+| `cancellationDelivery()` | `array{position, targets}` | `History\CancellationDelivery` (same fields) |
+
+The classes live in `Gplanchat\Durable\Port\History\`, and each lookup still returns `null` where
+it did. To migrate a reader, replace `$x['result']` with `$x->result`, and so on for each field. To
+migrate an implementer, return `new SlotOutcome($result, $failure)` where you returned the array.
+
+Two meanings change:
+
+- **The timer's `scheduledAt` is gone.** It was `0.0` on every backend.
+- **`findSideEffectForSlot()` distinguishes the two empty cases.** It now returns `null` only when
+  nothing is recorded; a recorded `null` is a `SideEffectOutcome` whose `result` is null.
+  `hasSideEffectForSlot()` is unchanged.
+
+`ExecutionContext::cancellationDelivery()` follows the port and returns a `CancellationDelivery`.
+
+No Rector rule yet: it ships with the `ExecutionId` type-hints, planned with #269 (the user's
+decision of 2026-09-24).
+
 ### Laravel: `dispatchNewWorkflowRun()` starts runs on the memory and Temporal backends
 
 **Who is affected**: a Laravel application on the `memory` or `temporal` backend that calls
@@ -1012,6 +1065,19 @@ class leaves `gplanchat/durable-plugin` for `gplanchat/durable`.
 
 **What to run**: the `durable-upgrade` Rector set renames it. Then clear the container cache
 (`bin/console cache:clear`): the compiled container holds the old class name.
+
+### Sylius plugin: the run list pages forward only; `back` is gone
+
+**Who is affected**: whoever links to the plugin's run list (`/admin/durable/runs`) with the `back`
+query parameter, or reads the `previous`, `back` and `nextBack` entries of its pagination model in
+a template override.
+
+**Why.** Temporal cannot page backwards, so the previous page is dropped (#383, the user's decision
+of 2026-09-28): the list pages forward, and a "First page" link leads back.
+
+**What changes.** A URL that still carries `back` redirects permanently (301) to the first page of
+the same list, with its status and filters kept, rather than failing. The pagination model carries
+`isFirstPage` instead of `previous`, `back` and `nextBack`.
 
 ## 0.1.0-alpha8
 

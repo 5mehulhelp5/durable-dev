@@ -30,22 +30,24 @@ final class AdminDashboardController
     public function index(Request $request, RunDashboard $view): Response
     {
         $this->requireTheSyliusAdmin();
-        ['status' => $status, 'cursor' => $cursor, 'back' => $encodedBack] = self::listPosition($request);
-        $back = self::decodeBack($encodedBack);
+        // The list pages forward only: Temporal cannot page backwards, and the user dropped the
+        // previous page (#383, 2026-09-28). A link from before carried the way back in `back`: it
+        // lands on the first page of the same list, rather than on a page no link leads back from.
+        if ($request->query->has('back')) {
+            $first = array_diff_key($request->query->all(), ['cursor' => true, 'back' => true]);
+
+            return new RedirectResponse(
+                $request->getBaseUrl() . $request->getPathInfo() . ([] === $first ? '' : '?' . http_build_query($first)),
+                Response::HTTP_MOVED_PERMANENTLY,
+            );
+        }
+        ['status' => $status, 'cursor' => $cursor] = self::listPosition($request);
 
         $grid = $this->grid?->view($request->query->all());
         $model = null === $grid
             ? $view->listing('' === $status ? 'all' : $status, '' === $cursor ? null : $cursor)
             : ['resources' => $grid['resources']] + $grid['page']->model;
-        // The catalog pages forward only (Temporal's visibility has no reverse cursor), so the way
-        // back is the stack of cursors the operator came through, '' standing for the first page.
-        // ponytail: the stack grows with each page in the URL; cap it if operators page that deep.
-        $model['pagination']['back'] = self::encodeBack($back);
-        $model['pagination']['nextBack'] = self::encodeBack([...$back, $cursor]);
-        $model['pagination']['previous'] = [] === $back ? null : [
-            'cursor' => $back[array_key_last($back)],
-            'back' => self::encodeBack(\array_slice($back, 0, -1)),
-        ];
+        $model['pagination']['isFirstPage'] = '' === $cursor;
 
         return new Response($this->twig->render('@DurablePlugin/admin/dashboard/index.html.twig', $model));
     }
@@ -99,30 +101,20 @@ final class AdminDashboardController
         }
     }
 
-    /** @return array{status: string, cursor: string, back: string} */
+    /**
+     * Where the operator is in the list, which a run's page leads back to.
+     *
+     * @return array{status: string, cursor: string, workflowName: string, executionIdPrefix: string}
+     */
     private static function listPosition(Request $request): array
     {
+        $text = static fn(string $key): string => trim((string) $request->query->get($key, ''));
+
         return [
-            'status' => trim((string) $request->query->get('status', '')),
-            'cursor' => trim((string) $request->query->get('cursor', '')),
-            'back' => (string) $request->query->get('back', ''),
+            'status' => $text('status'),
+            'cursor' => $text('cursor'),
+            'workflowName' => $text('workflowName'),
+            'executionIdPrefix' => $text('executionIdPrefix'),
         ];
-    }
-
-    /** @param list<string> $cursors */
-    private static function encodeBack(array $cursors): string
-    {
-        return rtrim(strtr(base64_encode(json_encode($cursors, \JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
-    }
-
-    /** @return list<string> a stack that does not decode is no way back, not an error */
-    private static function decodeBack(string $encoded): array
-    {
-        $json = base64_decode(strtr($encoded, '-_', '+/'), true);
-        $cursors = false === $json ? null : json_decode($json, true);
-
-        return \is_array($cursors) && array_is_list($cursors) && [] === array_filter($cursors, static fn(mixed $c): bool => !\is_string($c))
-            ? $cursors
-            : [];
     }
 }
