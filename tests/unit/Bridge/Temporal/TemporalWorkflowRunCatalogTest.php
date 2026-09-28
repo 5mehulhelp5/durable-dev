@@ -15,6 +15,7 @@ use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Exception\RunFilterUnavailableException;
 use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Memo;
 use Temporal\Api\Common\V1\Payload;
@@ -289,6 +290,41 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         self::assertSame(self::RUN_ID, $run->runId);
         self::assertSame(WorkflowClient::workflowIdOf('order/42'), $requests[0]->getExecution()?->getWorkflowId());
         self::assertSame('', $requests[0]->getExecution()->getRunId(), 'the current run of the chain');
+    }
+
+    /**
+     * #566: a run started before the injective mapping lives under the lossy workflow id. It is
+     * still found, for one release, when its memo names the execution asked for, and only then.
+     *
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function legacyRuns(): iterable
+    {
+        yield 'started by this execution' => ['order/42', true];
+        yield 'started by another execution with the same legacy id' => ['order 42', false];
+    }
+
+    #[DataProvider('legacyRuns')]
+    public function testARunStartedUnderTheLegacyWorkflowIdIsFoundOnlyByItsOwnExecution(string $startedBy, bool $found): void
+    {
+        $asked = [];
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->method('DescribeWorkflowExecution')->willReturnCallback(function (DescribeWorkflowExecutionRequest $request) use (&$asked, $startedBy): DescribeWorkflowExecutionResponse {
+            $asked[] = $request->getExecution()?->getWorkflowId();
+            if ('durable-order-42' !== $request->getExecution()?->getWorkflowId()) {
+                throw new \RuntimeException('workflow not found', 5);
+            }
+
+            return new DescribeWorkflowExecutionResponse(['workflow_execution_info' => $this->withExecutionId(
+                $this->info('durable-order-42', self::RUN_ID, 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 1_700_000_200),
+                $startedBy,
+            )]);
+        });
+
+        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order/42');
+
+        self::assertSame($found ? 'order/42' : null, $run?->executionId);
+        self::assertSame([WorkflowClient::workflowIdOf('order/42'), 'durable-order-42'], \array_slice($asked, 0, 2), 'the new id first, the legacy one next');
     }
 
     /**
