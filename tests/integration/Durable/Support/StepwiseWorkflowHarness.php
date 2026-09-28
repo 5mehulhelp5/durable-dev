@@ -103,7 +103,7 @@ final class StepwiseWorkflowHarness
         $context = new ExecutionContext(
             $executionId,
             $history,
-            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $executionId, $this->runtime->nowSeconds(...), $history),
+            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $executionId, $this->runtime->clock(), $history),
         );
         $this->runtime->drainActivityQueueOnce($context);
 

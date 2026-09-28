@@ -9,7 +9,10 @@ use Gplanchat\Durable\Activity\ActivityTimeouts;
 use Gplanchat\Durable\Activity\NullActivityHeartbeatSender;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\ActivityCompleted;
+use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\ExecutionRuntime;
+use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\NoActivityAttemptClaim;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -21,6 +24,7 @@ use Gplanchat\Durable\Transport\ActivityMessage;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Uuid\NativeUuidV7Generator;
 use Gplanchat\Durable\Worker\ActivityMessageProcessor;
+use Gplanchat\Durable\WorkflowEnvironment;
 use PHPUnit\Framework\TestCase;
 use unit\Durable\Fixtures\FrozenClock;
 
@@ -101,5 +105,34 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         ));
 
         self::assertInstanceOf(ActivityCompleted::class, ActivityEventJournal::lastTerminalOutcome($store, 'exec-1', 'act-1'));
+    }
+
+    public function testTheRuntimeReadsItsClock(): void
+    {
+        $clock = new FrozenClock(1_700_000_000.25);
+        $runtime = new ExecutionRuntime(new InMemoryEventStore(), new InMemoryActivityTransport(), new RegistryActivityExecutor(), clock: $clock);
+
+        self::assertSame($clock, $runtime->clock());
+        self::assertSame(1_700_000_000.25, $runtime->nowSeconds());
+    }
+
+    public function testTheRunnersVirtualTimeStartsFromItsClock(): void
+    {
+        $store = new InMemoryEventStore();
+        $runner = new InMemoryWorkflowRunner($store, new InMemoryActivityTransport(), new RegistryActivityExecutor(), clock: new FrozenClock(1_700_000_000.0));
+
+        $runner->run('exec-1', static function (WorkflowEnvironment $wf): string {
+            $wf->sleep(60);
+
+            return 'done';
+        });
+
+        $scheduledAt = [];
+        foreach ($store->readStream('exec-1') as $event) {
+            if ($event instanceof TimerScheduled) {
+                $scheduledAt[] = $event->scheduledAt();
+            }
+        }
+        self::assertSame([1_700_000_060.0], $scheduledAt);
     }
 }

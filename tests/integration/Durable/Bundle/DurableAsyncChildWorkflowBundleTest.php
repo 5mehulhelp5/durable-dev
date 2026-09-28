@@ -206,7 +206,7 @@ final class DurableAsyncChildWorkflowBundleTest extends KernelTestCase
             $ctx = new ExecutionContext(
                 $peek->executionId,
                 $history,
-                new EventStoreCommandBuffer($eventStore, $activityTransport, $peek->executionId, $runtime->nowSeconds(...), $history),
+                new EventStoreCommandBuffer($eventStore, $activityTransport, $peek->executionId, $runtime->clock(), $history),
                 $childWorkflowRunner,
             );
             $runtime->drainActivityQueueOnce($ctx);

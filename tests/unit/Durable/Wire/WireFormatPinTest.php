@@ -25,6 +25,7 @@ use Gplanchat\Durable\WorkflowIdReusePolicy;
 use Gplanchat\Durable\WorkflowNamespace;
 use Gplanchat\Durable\WorkflowTimeouts;
 use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\FrozenClock;
 
 /**
  * Pins the wire form, independently of the port signatures.
@@ -178,7 +179,7 @@ final class WireFormatPinTest extends TestCase
         $context = new ExecutionContext(
             'exec-1',
             new EventStoreHistorySource($store, 'exec-1'),
-            new EventStoreCommandBuffer($store, $transport, 'exec-1', static fn(): float => 1_700_000_000.0),
+            new EventStoreCommandBuffer($store, $transport, 'exec-1', new FrozenClock(1_700_000_000.0)),
         );
 
         $context->activity('charge', ['o' => 1], new ActivityOptions(

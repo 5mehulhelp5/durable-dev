@@ -16,6 +16,7 @@ use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\FireWorkflowTimersMessage;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\FrozenClock;
 
 require_once __DIR__ . '/CoreResumeWithoutASymfonyBusTest.php';
 
@@ -72,7 +73,7 @@ final class DueTimersAreAnnouncedBeforeTheyFireTest extends TestCase
     private function fire(InMemoryEventStore $journal, float $now, ?TimerRecordingResumes $resumes = null): TimerRecordingResumes
     {
         $resumes ??= new TimerRecordingResumes($journal);
-        $runtime = new ExecutionRuntime($journal, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, static fn(): float => $now, true);
+        $runtime = new ExecutionRuntime($journal, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, new FrozenClock($now), true);
 
         (new FireWorkflowTimersHandler($journal, $runtime, $resumes, new RecordingTimerDispatcher()))(new FireWorkflowTimersMessage('exec-1'));
 
