@@ -108,8 +108,9 @@ répond à sa place.
 Deux messages passent outre `max_retries`, exprès : chacun attend une chose qu'un autre worker va
 régler.
 
-- **Une tentative d'activité qu'un autre worker exécute.** Durable réserve chaque tentative avant de
-  l'exécuter. Une copie qui trouve la réservation prise est réessayée plus tard, selon le
+- **Une tentative d'activité qu'un autre worker exécute.** Sur un journal DBAL, Durable réserve chaque
+  tentative avant de l'exécuter (Laravel aussi ; un journal en mémoire tourne dans un seul processus
+  et ne réserve rien). Une copie qui trouve la réservation prise est réessayée plus tard, selon le
   `retry_strategy` du transport. Elle trouve alors la tentative journalisée, ou, si le détenteur est
   mort, l'exécute une fois la réservation expirée.
 - **Une reprise arrivée avant son fait.** Un worker envoie la reprise avant de journaliser ce qu'elle

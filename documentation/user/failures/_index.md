@@ -106,7 +106,8 @@ answers for it.
 Two messages bypass `max_retries` on purpose, because each waits for something another worker will
 settle:
 
-- **An activity attempt another worker is running.** Durable claims each attempt before it runs. A
+- **An activity attempt another worker is running.** On a DBAL journal, Durable claims each attempt
+  before it runs (Laravel does too; an in-memory journal runs one process and claims nothing). A
   copy that finds the claim taken is retried later, on the transport's `retry_strategy`. It either
   finds the attempt journalled or, if the holder died, runs it once the claim expires.
 - **A resume that arrived before its fact.** A worker sends the resume before it journals what it
