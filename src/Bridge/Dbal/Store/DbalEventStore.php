@@ -89,7 +89,8 @@ final class DbalEventStore implements FencedEventStoreInterface
 
     /**
      * SQLite has no row locks but admits one writer at a time: a single conditional insert cannot
-     * straddle a claim (DUR053). A busy database under WAL is a lost race, and the pass stops.
+     * straddle a claim (DUR053). A busy database is a lost race only when a newer claim moved the
+     * epoch; otherwise it is a wait like any other.
      */
     private function appendFencedInOneStatement(Event $event, PassFence $fence): bool
     {
@@ -106,8 +107,26 @@ final class DbalEventStore implements FencedEventStoreInterface
                 [3 => 'datetime_immutable'],
             );
         } catch (LockWaitTimeoutException $e) {
+            // Only a newer claim supersedes the pass. Any other writer holding the database is a
+            // transient wait, and the lock error goes up for the resume to be retried (#616).
+            if ($this->currentEpoch($fence->executionId) === $fence->epoch) {
+                throw $e;
+            }
+
             throw new SupersededPassException(SupersededPassException::for($fence)->getMessage(), 0, $e);
         }
+    }
+
+    /** Null when even the read is refused: the caller then keeps the original error. */
+    private function currentEpoch(string $executionId): ?int
+    {
+        try {
+            $epoch = $this->connection->fetchOne(\sprintf('SELECT epoch FROM %s WHERE execution_id = ?', $this->schema->headsTable()), [$executionId]);
+        } catch (LockWaitTimeoutException) {
+            return null;
+        }
+
+        return false === $epoch ? 0 : (int) $epoch;
     }
 
     /** MySQL and PostgreSQL: the epoch is read under a shared lock that a claim's update must wait for. */
