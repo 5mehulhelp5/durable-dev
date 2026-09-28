@@ -363,8 +363,9 @@ receives anything.
 ## Retry semantics are identical
 
 An activity with no attempt bound retries **indefinitely** on every backend, which is the Temporal default.
-The bundle's `max_activity_retries` still acts as a ceiling when an activity does not set its own;
-at `0` it caps nothing.
+The bundle's `max_activity_retries` still acts as a ceiling when an activity does not set its own,
+on the in-memory and DBAL backends; at `0` it caps nothing. On Temporal, the cluster retries from the
+activity's own `RetryLimit` and the ceiling is not read.
 
 See [Failures and retries](../failures/) and [Options](../options/#retrylimit).
 

@@ -1,0 +1,37 @@
+name: Install from Packagist
+
+# What a reader gets (#347). The `guide-follows` job in ci.yml installs this commit's packages from
+# path repositories; this one installs the last published tag from Packagist, by running the
+# getting-started install block verbatim in a fresh Symfony skeleton, in both languages. A release
+# that no longer installs the way the guide says fails here, once a week, instead of on a reader.
+on:
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/install-from-packagist.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: install-from-packagist-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    name: Getting-started install block, from Packagist
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install the way the guide says
+        run: bin/guide-follows.sh --packagist

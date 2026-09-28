@@ -155,6 +155,24 @@ final class DurableDeclaredWiringTest extends TestCase
     }
 
     /**
+     * B-10 (#343): the extension references `messenger.default_bus` and FrameworkBundle's tags
+     * (`kernel.cache_warmer`, `data_collector`, `console.command`), so the bundle requires
+     * FrameworkBundle. TwigBundle only renders the profiler panel's views, so it is suggested.
+     */
+    public function testFrameworkBundleIsRequiredAndTwigBundleSuggested(): void
+    {
+        $manifest = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../../../src/DurableBundle/composer.json'),
+            true,
+        );
+
+        self::assertIsArray($manifest);
+        self::assertArrayHasKey('symfony/framework-bundle', $manifest['require'] ?? []);
+        self::assertArrayNotHasKey('symfony/framework-bundle', $manifest['suggest'] ?? [], 'required, so no longer only suggested');
+        self::assertArrayHasKey('symfony/twig-bundle', $manifest['suggest'] ?? []);
+    }
+
+    /**
      * What FrameworkExtension registers for `framework.lock: <dsn>`.
      */
     private function containerWithLockStore(string $dsn): ContainerBuilder

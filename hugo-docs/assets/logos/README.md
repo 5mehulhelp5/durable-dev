@@ -22,10 +22,13 @@ and it is also precisely what a brand guideline is most likely to forbid.
 
 | Mark | Where it came from |
 |---|---|
-| `php`, `doctrine`, `temporal`, `symfony`, `laravel`, `magento`, `shopware`, `pimcore`, `filament`, `statamic`, `typo3` | [Simple Icons](https://github.com/simple-icons/simple-icons) |
-| `akeneo`, `sulu`, `api-platform`, `bagisto`, `aimeos` | extracted from each project's own published asset |
+| `php`, `doctrine`, `temporal`, `symfony`, `laravel`, `magento`, `filament`, `typo3` | [Simple Icons](https://github.com/simple-icons/simple-icons) |
+| `api-platform` | extracted from the project's own published asset |
 | `sylius` | drawn here from the published mark |
 | `illuminate` | **not a mark.** A generic database glyph written for this repository; see below |
+
+Seven marks no page displayed (`aimeos`, `akeneo`, `bagisto`, `pimcore`, `shopware`, `statamic`,
+`sulu`) were deleted on 2026-09-28 (#370).
 
 ### Simple Icons is CC0, and that settles less than it sounds
 
@@ -35,7 +38,7 @@ Simple Icons' own disclaimer is explicit:
 > project are also CC0.
 
 The CC0 dedication covers the collection. It does not dedicate the marks, and it grants no trademark
-rights. Eleven of the marks here arrived through Simple Icons; that provenance makes them
+rights. Eight of the marks here arrived through Simple Icons; that provenance makes them
 convenient, not cleared.
 
 ### `illuminate` is ours
@@ -53,14 +56,13 @@ Checked 2026-08-27. Findings, not legal advice.
 |---|---|---|
 | **API Platform** | [Trademark and logo policy](https://api-platform.com/trademark-policy/) | Permits *"use of our Marks on websites to name or accurately describe Les-Tilleuls.coop's products, services or technology"*, which covers the **name**. It grants nothing further for the logo, and names the drawing separately: *"Use or reproduction of Les-Tilleuls.coop's original works of authorship, including the API Platform 'Webby' spider design is prohibited without prior approval from Les-Tilleuls.coop."* **`api-platform.svg` is Webby.** See below. |
 | **TYPO3** | [Trademark Usage Policy](https://docs.typo3.org/m/typo3/guide-policy/main/en-us/Association/TrademarkUsagePolicy.html), [brand guidelines](https://typo3.com/typo3-cms/the-brand/brand-guidelines) | The shield is not a registered trademark but its use is governed by the brand guidelines; the figurative mark may be used without the wordmark as a design element. Modification is not addressed. Questions go to `trademark@typo3.org`. |
-| **Akeneo** | Brand assets and a style guide, no usage policy located | Nothing found that permits or forbids modification. |
-| **Sulu**, **Aimeos**, **Bagisto** | None located | Absence of a policy is not permission; it is absence of a policy. |
 | Simple Icons sources | [Disclaimer](https://github.com/simple-icons/simple-icons/blob/develop/DISCLAIMER.md) | See above. Each brand's own terms still apply. |
 
 ## One mark needs a decision, not a notice
 
 **`api-platform.svg` reproduces Webby**, and API Platform's policy names that design specifically as
-requiring prior approval. We have not asked.
+requiring prior approval. The user is asking for it (2026-09-28, #370); the file stays until the
+answer.
 
 Two things make this one different from every other row above:
 

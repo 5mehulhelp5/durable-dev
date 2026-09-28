@@ -12,7 +12,7 @@ use Gplanchat\Durable\Exception\WorkflowCancelledFailure;
 use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
-use Gplanchat\Durable\Store\NullEventStore;
+use Gplanchat\Durable\Store\NoLocalJournalEventStore;
 use Gplanchat\Durable\Transport\NoopActivityTransport;
 use Gplanchat\Durable\Worker\WorkflowFiberDriver;
 use Gplanchat\Durable\WorkflowEnvironment;
@@ -213,7 +213,7 @@ final class TemporalWorkflowCancellationTest extends TestCase
         $buffer = new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), 'exec-1', $history);
         $context = new ExecutionContext('exec-1', $history, $buffer);
         $runtime = new ExecutionRuntime(
-            new NullEventStore(),
+            new NoLocalJournalEventStore('Temporal'),
             new NoopActivityTransport(),
             new RegistryActivityExecutor(),
             0,

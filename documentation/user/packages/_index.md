@@ -42,6 +42,8 @@ The last two are **development-time tools**, `require-dev` rather than `require`
 ## `gplanchat/durable`, the library {#gplanchatdurable--the-library}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable
 ```
 
@@ -65,6 +67,8 @@ tests use, and it needs nothing installed.
 ## `gplanchat/durable-bundle`, the Symfony integration {#gplanchatdurable-bundle--the-symfony-integration}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-bundle
 ```
 
@@ -90,6 +94,8 @@ Configuration is one file, documented key by key in the
 ## `gplanchat/durable-bridge-temporal`, the Temporal driver {#gplanchatdurable-bridge-temporal--the-temporal-driver}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-bridge-temporal
 ```
 
@@ -119,6 +125,8 @@ temporal server start-dev --namespace durable-test --port 7233
 ## `gplanchat/durable-bridge-dbal`, the SQL backend {#gplanchatdurable-bridge-dbal--the-sql-backend}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal
 ```
 
@@ -145,6 +153,8 @@ up, one migration, and no extension to compile.
 ## `gplanchat/durable-bridge-illuminate`, the Laravel backend {#gplanchatdurable-bridge-illuminate--the-laravel-backend}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable gplanchat/durable-bridge-illuminate
 php artisan migrate
 ```
@@ -184,6 +194,8 @@ worker can all use it.
 ## `gplanchat/durable-laravel`, the Laravel integration {#gplanchatdurable-laravel--the-laravel-integration}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-laravel
 php artisan migrate
 php artisan vendor:publish --tag=durable-config
@@ -284,6 +296,8 @@ require, suggest or detect Filament.
 ## `gplanchat/durable-plugin`, the Sylius dashboard {#gplanchatdurable-plugin--the-sylius-dashboard}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-plugin
 ```
 
@@ -307,6 +321,8 @@ catalog it reads, so the command above is the whole install.
 ## `gplanchat/durable-magento`, the Magento integration {#gplanchatdurable-magento--the-magento-integration}
 
 ```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
 composer require gplanchat/durable-magento
 ```
 
@@ -339,6 +355,21 @@ explicit: two arrays in `di.xml`:
 The *contract* is not declared: the factory reads each handler's interfaces and keeps those carrying
 `#[AsActivityMethod]`. One declaration fewer to get wrong, and the activity names stay the
 attributes'.
+
+Two more arguments of the same factory bound a run, and `di.xml` is the only place to set them:
+
+```xml
+<argument name="maxActivityRetries" xsi:type="number">3</argument>
+<argument name="budgetSeconds" xsi:type="number">30</argument>
+```
+
+- `maxActivityRetries` is the retry ceiling of the activities `MagentoRuntime::run()` runs in the
+  calling process, the Symfony bundle's [`max_activity_retries`](../configuration/#max_activity_retries).
+  `0`, the default, caps nothing. Temporal workers never read it: there, the cluster retries from the activity's own `RetryLimit`.
+- `budgetSeconds` bounds `MagentoRuntime::run()`, which runs a workflow to its end inside the
+  calling process: past it, the call throws `WorkflowStuckException` instead of waiting on. Default
+  `10`. It exists because of the first one: with no ceiling, an activity that keeps failing would
+  keep that process busy forever. Workers and `workflowClient()` never read either argument.
 
 **Two backends, and Composer enforces it.** Magento reaches in-memory and Temporal, and the module
 declares `conflict` on both SQL bridges: `Magento\Framework\App\ResourceConnection` is neither
@@ -409,6 +440,13 @@ chooser refuses (a framework that has not shipped, a backend that pairing forbid
 rather than forced, so an old link degrades to the default instead of showing a combination that
 does not exist. Choosing in the page rewrites the address bar, so the link to share is the one you
 are already looking at.
+
+Every command in the table assumes the project allows the alpha line first:
+
+```bash
+composer config minimum-stability alpha
+composer config prefer-stable true
+```
 
 | Your situation | Command |
 |---|---|
