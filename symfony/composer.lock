@@ -633,20 +633,20 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Durable",
-                "reference": "fbf41ee943e176704562b50cefb8bbfcc20ba2a1"
+                "reference": "68b84b432beae47c836b579e9c813457d563a47c"
             },
             "require": {
                 "php": ">=8.2",
                 "psr/cache": "^3.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^11.0"
+                "phpunit/phpunit": "^11.5"
             },
             "suggest": {
                 "gplanchat/durable-bridge-dbal": "SQL backend: durable execution on one database, no cluster (DUR030)",
                 "gplanchat/durable-bridge-temporal": "Temporal gRPC backend (requires ext-grpc)",
                 "gplanchat/durable-phpstan": "Optional PHPStan extension: resolves ActivityStub and ChildWorkflowStub calls from their typed contract (DUR038)",
-                "phpunit/phpunit": "Required by the shipped test helpers (Testing\\DurableTestCase, Testing\\WorkflowTestEnvironment) and the conformance suites (Testing\\EventStoreConformanceTestCase, DUR041)"
+                "phpunit/phpunit": "Required by the Testing\\ helpers: DurableTestCase, ActivitySpy and the store conformance test cases."
             },
             "type": "library",
             "extra": {
@@ -669,6 +669,16 @@
                 }
             ],
             "description": "PHP library for durable execution: workflows, activities, event journal, and transports (HttpKernel integration lives in the bundle).",
+            "keywords": [
+                "activity",
+                "durable-execution",
+                "event-sourcing",
+                "fiber",
+                "long-running",
+                "orchestration",
+                "saga",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -680,19 +690,27 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Bridge/Temporal",
-                "reference": "86199f26705baaca45decac9c54daba3406e0f3d"
+                "reference": "1559f34e88bb4fa0bf0b5550e6172ad37732bc6c"
             },
             "require": {
-                "ext-grpc": "*",
+                "ext-filter": "*",
                 "google/common-protos": "^4.9",
                 "google/protobuf": "^4.31",
                 "gplanchat/durable": "self.version",
                 "grpc/grpc": "^1.57",
                 "php": ">=8.2",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
+                "roadrunner-php/roadrunner-api-dto": "^1.17",
                 "symfony/config": "^6.4 || ^7.0 || ^8.0",
                 "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
                 "symfony/messenger": "^6.4 || ^7.0 || ^8.0"
+            },
+            "suggest": {
+                "ext-curl": "For transport=grpc-curl or transport=http, and the automatic fallback when ext-grpc is not loaded: the same RPCs over HTTP/2",
+                "ext-grpc": "For transport=grpc (the default): the generated stub over the gRPC extension",
+                "guzzlehttp/guzzle": "For transport=guzzle (7.14 or newer, cURL handler): gRPC over the application's Guzzle client",
+                "psr/http-client": "For transport=http over the application's PSR-18 client (with a PSR-17 factory: psr/http-factory)"
             },
             "type": "library",
             "extra": {
@@ -702,9 +720,7 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Gplanchat\\Bridge\\Temporal\\": "./",
-                    "Temporal\\Api\\": "Api/",
-                    "GPBMetadata\\Temporal\\": "Generated/GPBMetadata/Temporal/"
+                    "Gplanchat\\Bridge\\Temporal\\": "./"
                 }
             },
             "license": [
@@ -716,7 +732,17 @@
                     "email": "gregory@gyroscops.com"
                 }
             ],
-            "description": "Temporal journal EventStore + worker (gRPC only, no Temporal PHP SDK) for gplanchat/durable",
+            "description": "Temporal journal EventStore + worker (gRPC, no Temporal PHP SDK) for gplanchat/durable",
+            "keywords": [
+                "durable-execution",
+                "grpc",
+                "long-running",
+                "nexus",
+                "orchestration",
+                "temporal",
+                "temporalio",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -728,12 +754,13 @@
             "dist": {
                 "type": "path",
                 "url": "../src/DurableBundle",
-                "reference": "6fe58d8bb99c8afc5cff1d1fb098d93af725d540"
+                "reference": "2355437dbf30673598a721825989132d1bb4b516"
             },
             "require": {
                 "gplanchat/durable": "self.version",
                 "php": ">=8.2",
                 "psr/container": "^2.0",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
                 "symfony/config": "^6.4 || ^7.0 || ^8.0",
                 "symfony/console": "^6.4 || ^7.0 || ^8.0",
                 "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
@@ -742,14 +769,14 @@
                 "symfony/http-foundation": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
                 "symfony/messenger": "^6.4 || ^7.0 || ^8.0",
-                "symfony/service-contracts": "^3.0",
-                "symfony/uid": "^6.4 || ^7.0 || ^8.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^11.0"
+                "symfony/service-contracts": "^3.0"
             },
             "suggest": {
+                "doctrine/orm": "Declares the DBAL journal tables to doctrine:schema:update and doctrine:migrations:diff, which would otherwise generate DROP TABLE for them (SchemaListener\\DurableSchemaListener)",
+                "gplanchat/durable-bridge-dbal": "SQL backend: DurableExtension wires its journal, stores and resume lock when event_store.type is dbal",
+                "gplanchat/durable-bridge-temporal": "Temporal backend: DurableExtension wires its client, stores and worker transports when durable.temporal.dsn is set",
                 "phpunit/phpunit": "Required by the shipped test helper (Testing\\DurableBundleTestTrait)",
+                "symfony/twig-bundle": "Renders the Durable profiler panel (Resources/views), with symfony/web-profiler-bundle",
                 "symfony/web-profiler-bundle": "Web Debug Toolbar and profiler: Durable panel (workflows / activities)"
             },
             "type": "symfony-bundle",
@@ -773,6 +800,16 @@
                 }
             ],
             "description": "Symfony bundle for gplanchat/durable: extension, autoconfiguration of workflows and activities.",
+            "keywords": [
+                "durable-execution",
+                "long-running",
+                "messenger",
+                "orchestration",
+                "saga",
+                "symfony",
+                "symfony-bundle",
+                "workflow"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -1104,6 +1141,73 @@
                 "source": "https://github.com/php-fig/log/tree/3.0.2"
             },
             "time": "2024-09-11T13:17:53+00:00"
+        },
+        {
+            "name": "roadrunner-php/roadrunner-api-dto",
+            "version": "v1.17.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/roadrunner-php/roadrunner-api-dto.git",
+                "reference": "2f66cf73b4378a5a9fa538cc85a7ed0543999761"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/roadrunner-php/roadrunner-api-dto/zipball/2f66cf73b4378a5a9fa538cc85a7ed0543999761",
+                "reference": "2f66cf73b4378a5a9fa538cc85a7ed0543999761",
+                "shasum": ""
+            },
+            "require": {
+                "google/protobuf": "^4.31.1||^5.34.0",
+                "php": "^8.1"
+            },
+            "conflict": {
+                "temporal/sdk": "<2.9.0"
+            },
+            "suggest": {
+                "google/common-protos": "Required for Temporal API"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Temporal\\": "generated/Temporal",
+                    "RoadRunner\\": "generated/RoadRunner",
+                    "GPBMetadata\\": "generated/GPBMetadata"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Pavel Butchnev (butschster)",
+                    "email": "pavel.buchnev@spiralscout.com"
+                },
+                {
+                    "name": "Aleksei Gagarin (roxblnfk)",
+                    "email": "alexey.gagarin@spiralscout.com"
+                },
+                {
+                    "name": "RoadRunner Community",
+                    "homepage": "https://github.com/roadrunner-server/roadrunner/graphs/contributors"
+                }
+            ],
+            "description": "RoadRunner PHP API",
+            "homepage": "https://roadrunner.dev",
+            "support": {
+                "chat": "https://discord.gg/V6EK4he",
+                "docs": "https://docs.roadrunner.dev",
+                "forum": "https://forum.roadrunner.dev",
+                "issues": "https://github.com/roadrunner-server/roadrunner/issues",
+                "source": "https://github.com/roadrunner-php/roadrunner-api-dto/tree/v1.17.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/roadrunner-server",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-16T11:44:04+00:00"
         },
         {
             "name": "symfony/cache",
