@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Gplanchat\Bridge\Dbal\Store;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
 use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\RunPageCursor;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
@@ -41,7 +43,12 @@ final class DbalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         private readonly ?JournalRunHistoryReader $history = null,
     ) {}
 
-    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage
+    public function canFilterRuns(): bool
+    {
+        return true;
+    }
+
+    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         $this->schema->ensure();
 
@@ -52,6 +59,19 @@ final class DbalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         if (null !== $status) {
             $where[] = 'status = ?';
             $params[] = $status->value;
+        }
+
+        if (null !== $filter?->workflowName) {
+            $where[] = $this->exactly('workflow_type') . ' = ' . $this->exactly('?');
+            $params[] = $filter->workflowName;
+        }
+
+        if (null !== $filter?->executionIdPrefix) {
+            // Not a LIKE: its wildcards and its case folding differ from one database to the next.
+            $head = $this->connection->getDatabasePlatform()->getSubstringExpression('execution_id', '1', '?');
+            $where[] = $this->exactly($head) . ' = ' . $this->exactly('?');
+            $params[] = $filter->executionIdPrefixLength();
+            $params[] = $filter->executionIdPrefix;
         }
 
         $position = RunPageCursor::decode($cursor);
@@ -120,6 +140,18 @@ final class DbalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         }
 
         return new BackendHealth(self::BACKEND, true, 'The SQL database answers.', $checkedAt);
+    }
+
+    /**
+     * A comparison that tells `A` from `a`, whatever the column's collation. SQLite and PostgreSQL
+     * compare strings byte for byte already; MySQL's default collations fold case and accents, so
+     * both sides are compared as bytes there (#557).
+     */
+    private function exactly(string $expression): string
+    {
+        return $this->connection->getDatabasePlatform() instanceof AbstractMySQLPlatform
+            ? 'CAST(' . $expression . ' AS BINARY)'
+            : $expression;
     }
 
     /**

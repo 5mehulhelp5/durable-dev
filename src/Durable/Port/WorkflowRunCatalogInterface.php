@@ -7,6 +7,7 @@ namespace Gplanchat\Durable\Port;
 use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 
@@ -26,20 +27,33 @@ interface WorkflowRunCatalogInterface
     /**
      * A page of executions, from the most recently started to the oldest.
      *
+     * A filtered page holds `$limit` runs while enough match, but may come back shorter, even
+     * empty, with a `nextCursor` all the same: Temporal on a visibility store that ignores case
+     * returns runs the prefix does not match, and the catalog drops them after a few extra trips.
+     * Only a `null` cursor means there is nothing after.
+     *
      * @param WorkflowRunStatus|null $status `null` for every outcome
-     * @param string|null            $cursor `nextCursor` of a previous page, obtained from the
-     *                                       same catalog and with the same filter; `null` for the
-     *                                       first page
+     * @param string|null            $cursor       `nextCursor` of a previous page, obtained from
+     *                                             the same catalog and with the same filters;
+     *                                             `null` for the first page
+     * @param WorkflowRunFilter|null $filter       the workflow name and the execution-id prefix,
+     *                                             compared as the application wrote them, case
+     *                                             included (#558, #557); `null` for every run
      */
-    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage;
+    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage;
 
     /**
-     * One execution, by the id a description of it carries in `runId`; `null` when the catalog has
-     * no such execution.
-     *
-     * On every catalog but Temporal's, that id is the execution id the application started the run
-     * with. On Temporal it is still the server's run id until #514 settles which id names a run.
-     * The parameter is already named for where it is going.
+     * Whether {@see listRuns()} honours a {@see WorkflowRunFilter}. When it does not, a filter
+     * makes it throw {@see \Gplanchat\Durable\Exception\RunFilterUnavailableException}: a surface
+     * reads this first, and offers no filter controls. Temporal filters only once Durable writes
+     * its search attributes (#558).
+     */
+    public function canFilterRuns(): bool;
+
+    /**
+     * One execution, by the id the application started it with, the `executionId` a description
+     * carries (#514); `null` when the catalog has no such execution. On a backend that chains runs
+     * under one execution (Temporal's continue-as-new), the current run of the chain.
      *
      * A run page links to a run by this id alone (#264): no cursor, no filter, no page. Paging
      * {@see listRuns()} until the id shows up would make an old run unreachable.

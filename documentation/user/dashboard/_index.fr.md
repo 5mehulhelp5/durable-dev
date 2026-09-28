@@ -65,8 +65,10 @@ Une exécution en cours dit aussi **ce qu'elle attend**, à sa dernière suspens
 `waiting on activity charge attempt 2 in flight`, ou `waiting on condition at src/…/OrderWorkflow.php:42`.
 L'attente d'un signal est une condition : la ligne nomme l'endroit où la condition est écrite, sauf si
 le workflow lui a donné un libellé (`await(…, label: 'signal approve')` affiche
-`waiting on signal approve`, voir [Workflows](../workflows/#attendre-sur-une-condition)). Les mêmes backends le disent, sur une table des exécutions qui a la colonne `waiting_on` ;
-Temporal et la grille Magento non.
+`waiting on signal approve`, voir [Workflows](../workflows/#attendre-sur-une-condition)). Les mêmes backends le disent, sur une table des exécutions qui a la colonne `waiting_on`.
+Temporal le dit aussi, grille Magento comprise, par un mémo `durableWaitingOn` que le worker met à
+jour à chaque suspension. Le mémo omet la tentative, puisqu'aucune tâche de workflow ne s'exécute quand une
+tentative d'activité démarre, et le résumé d'un minuteur, qui n'est jamais envoyé au serveur.
 
 ### 3. Les compteurs, sur ce que vous regardez
 

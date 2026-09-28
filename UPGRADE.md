@@ -24,6 +24,99 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### On Temporal, the dashboards link a run by its execution id, not the server's run id
+
+**Who is affected**: an application on the Temporal backend with links to its run pages saved
+before this version. That covers the Magento grid's run links, the Sylius plugin's
+`/dashboard?run=…` and the Symfony bench's `?run=…`. Those links carried the server's run UUID.
+They now answer "not found". The SQL and in-memory backends are not affected: there the two ids
+are the same.
+
+**Why.** A run page finds its run by the id the application started it with (#514). That is the
+id a log line, an exception or `durable:execution:diagnose` names. There is deliberately no
+fallback on the UUID: it would bring back a visibility query built from a URL.
+
+**What to do.** Link with the execution id. If you only have the old link, open the run in
+Temporal's UI by its UUID. Its workflow id there is `durable-` followed by the execution id,
+with characters other than letters, digits, `.`, `_` and `-` replaced by `-`. The run's page in
+the dashboard shows the execution id, and the server's run id beside it.
+
+### Temporal: search attributes, opt-in, registered first
+
+**Who is affected**: applications on the Temporal backend that want the run list to filter by
+workflow name or execution id (#558, #557). Nothing changes until you turn the option on, and
+nothing changes on the in-memory, DBAL and Illuminate backends.
+
+**Why.** With `durable.temporal.search_attributes: true`, Durable writes `DurableWorkflowName` and
+`DurableExecutionId` on every run it starts, including child workflows, continue-as-new runs and
+Nexus-started workflows. A Temporal server refuses a start that sets an attribute the namespace has
+no mapping for, so the option is off by default.
+
+**What to do, before turning it on**, once per namespace:
+
+```bash
+temporal operator search-attribute create --namespace <ns> \
+    --name DurableWorkflowName --type Keyword \
+    --name DurableExecutionId --type Keyword
+```
+
+Then wait until the namespace can use them. This takes a few seconds, and the
+[backends page](https://durable.rocks/docs/backends/#register-durables-search-attributes) has a
+command that waits for it. On Temporal Cloud, add the two attributes in the Cloud UI or with
+`tcld`. Only then set the option: `search_attributes: true` under `durable.temporal` on Symfony,
+under `temporal` in `config/durable.php` on Laravel, and `durable/temporal/search_attributes` in
+`env.php` on Magento. Turned on against a namespace without the mapping, every start fails with
+`Namespace <ns> has no mapping defined for search attribute DurableExecutionId`.
+
+Runs started before the option was on don't carry the attributes. The unfiltered run list still
+shows them, but a filtered one doesn't. A value longer than the 255 characters Temporal documents
+keeps at most its first 189 bytes and ends with a hash of the whole: an exact filter still finds it, a
+prefix filter only within those bytes.
+
+### `WorkflowRunCatalogInterface::listRuns()` takes a filter, and the port gains `canFilterRuns()`
+
+**Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`. Code that calls
+`listRuns()` keeps working, since the new parameter is optional. Code that passes a filter checks
+`canFilterRuns()` first, and offers no filter when it is `false`. Rector cannot write the filter for
+you, because only the implementer knows how the runs are stored.
+
+**Why.** The run list filters by workflow name and by execution-id prefix (#558, #557), without
+paging until a run shows up.
+
+**What to write.**
+
+- Add `?WorkflowRunFilter $filter = null` as the fourth parameter of `listRuns()`, and honour both of
+  its fields. Compare the whole `workflowName` and the start of the execution id with
+  `executionIdPrefix`. Take every character literally (`%` and `_` included, so not a bare SQL
+  `LIKE`) and keep case: MySQL's default collations fold it, so compare as bytes there. A `null`
+  field is no filter, and the value object already turns an empty string into `null`.
+- Add `canFilterRuns(): bool`, and return `true` when `listRuns()` honours the filter. When it
+  cannot, return `false` and throw `RunFilterUnavailableException` for a non-empty filter. Never
+  ignore the filter, and never answer an empty page in place of the refusal.
+- A filtered page may come back shorter than `$limit`, even empty, with a `nextCursor`: only a
+  `null` cursor means the end.
+
+```php
+use Gplanchat\Durable\Exception\RunFilterUnavailableException;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
+
+public function canFilterRuns(): bool
+{
+    return true;
+}
+
+public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
+{
+    // … narrow by $filter?->workflowName and $filter?->executionIdPrefix as well as by $status
+}
+```
+
+`WorkflowRunCatalogConformanceTestCase` expects a catalog to filter. If yours cannot, override
+`expectsToFilterRuns()` to return `false`: the suite checks that `canFilterRuns()` agrees with it.
+It also follows `canFilterRuns()`. When it is `true`, the suite checks
+both filters, their case and the literal characters. When it is `false`, it checks that a filter is
+refused and that an empty one is not.
+
 ### `WorkflowRunCatalogInterface` gains `findRun()`
 
 **Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`, that is, whoever
@@ -34,8 +127,9 @@ method for you, because only the implementer knows where the run is stored.
 a `WorkflowRunDescription` was `listRuns()`, so the page had to go through the list page by page
 until the id appeared, and could not reach an old run.
 
-**What to write.** Return the run whose `runId` is the one given, described exactly as
-`listRuns()` would describe it, or `null` when the catalog does not know it:
+**What to write.** Return the run whose `executionId` is the one given, described exactly as
+`listRuns()` would describe it, or `null` when the catalog does not know it. On a backend that
+chains runs under one execution, return the current run of the chain:
 
 ```php
 public function findRun(string $executionId): ?WorkflowRunDescription

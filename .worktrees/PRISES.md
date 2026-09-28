@@ -1,83 +1,79 @@
-# Prises en cours
+# Claims in progress
 
-Plusieurs sessions partagent cette copie. Une tranche se prend en **créant son fichier** dans
-`prises/`, **avant** de commencer, et ce fichier se supprime à la fusion. Son absence est ce qui a
-permis à deux sessions de se croiser sur `workflow-conditions-and-handler-dispatch` le 2026-08-26.
+Several sessions share this checkout. A slice is claimed by **creating its file** in `prises/`,
+**before** starting, and the file is deleted at merge. Its absence is what let two sessions cross
+paths on `workflow-conditions-and-handler-dispatch` on 2026-08-26.
 
-Le chemin du fichier **est** le nom de la branche : `prises/test/bundle-integration-suite.md` pour
-la branche `test/bundle-integration-suite`. Rien à choisir, rien à écrire deux fois.
+The file's path **is** the branch name: `prises/test/bundle-integration-suite.md` for the branch
+`test/bundle-integration-suite`. Nothing to choose, nothing to write twice.
 
-## Pourquoi un fichier et non une ligne
+## Why a file and not a line
 
-Le registre a été une table dans ce fichier jusqu'au 2026-08-27, et la table était un aimant à
-conflits : trois rebasages en une heure sur une seule PR, à chaque fois parce qu'une autre session
-avait touché **une autre ligne** de la même table. Deux sessions n'écrivent jamais la même prise —
-c'est tout l'objet du registre — mais git ne voit qu'un fichier, et deux lignes voisines suffisent
-à le faire trancher.
+The registry was a table in this file until 2026-08-27, and the table was a magnet for conflicts:
+three rebases in one hour on a single PR, each time because another session had touched **another
+line** of the same table. Two sessions never write the same claim — that is the whole point of the
+registry — but git only sees one file, and two neighbouring lines are enough to make it stop.
 
-Un fichier par prise supprime le conflit par construction : ajouter une prise crée un fichier, la
-retirer le supprime. Deux sessions ne se marchent dessus que si elles prennent **la même branche** —
-et là, git s'arrête sur un conflit ajout/ajout, ce qui est exactement le service qu'on attend du
-registre.
+One file per claim removes the conflict by construction: adding a claim creates a file, releasing
+it deletes it. Two sessions only step on each other if they take **the same branch** — and then git
+stops on an add/add conflict, which is exactly the service the registry is expected to give.
 
-## Ce que la mécanique ne fait pas toute seule
+## What the mechanism does not do on its own
 
-**Une prise se pousse sur `main` avant de commencer, et s'y retire en refermant.** Un fichier créé
-dans un worktree n'existe que là : personne ne le voit avant la fusion, c'est-à-dire une fois le
-travail fait. Le 2026-08-26, neuf tranches ont été construites en double pour cette raison — le
-bloc 4 entier de `temporal-nexus-support` deux fois, la même classe sous le même nom, la même garde
-écrite à l'identique. Le registre n'empêche une collision que s'il est lu **et écrit** sur `main`.
+**A claim is pushed to `main` before starting, and released there when closing.** A file created in
+a worktree exists only there: nobody sees it before the merge, that is, once the work is done. On
+2026-08-26, nine slices were built twice for that reason — the whole block 4 of
+`temporal-nexus-support` twice, the same class under the same name, the same guard written
+identically. The registry only prevents a collision if it is read **and written** on `main`.
 
-> **Et le dépôt le permet.** La protection de `main` n'exige que des status checks
-> (`QA (CS + tests)` 8.2→8.5, `Analyse statique`, `strict: true`) et laisse `enforce_admins` à
-> `false` : le propriétaire pousse en direct. Les commits `docs(prises):` de l'historique sont là
-> pour le prouver — `d0f614d`, `8180b45`, `a04420b` n'ont pas de commit de fusion.
+> **And the repository allows it.** The protection of `main` only requires status checks
+> (`QA (CS + tests)` 8.2→8.5, `Analyse statique`, `strict: true`) and leaves `enforce_admins` at
+> `false`: the owner pushes directly. The `docs(prises):` commits in the history are there to prove
+> it — `d0f614d`, `8180b45`, `a04420b` have no merge commit.
 >
-> Passer une prise par une PR la rend visible **après** coup, plusieurs minutes plus tard. C'est
-> exactement le retard que le paragraphe ci-dessus accuse d'avoir produit neuf tranches en double.
-> Une session qui s'interdit le push direct par convention doit savoir ce qu'elle échange contre
-> quoi, plutôt que de croire à une limite technique.
+> Sending a claim through a PR makes it visible **after** the fact, several minutes later. That is
+> exactly the delay the paragraph above blames for nine slices built twice. A session that forbids
+> itself the direct push by convention should know what it trades for what, rather than believe in
+> a technical limit.
 
-Et une prise qu'on ne retire pas ment aussi longtemps qu'elle reste. Le 2026-08-27, le registre
-annonçait encore quatre tranches « en cours » ou « en relecture » sur un chantier **archivé**, dont
-les quatre branches avaient disparu du distant depuis longtemps. Un registre périmé est pire qu'un
-registre vide : il fait renoncer à une tranche libre. **Retirer sa prise fait partie de la
-fusion**, au même titre que supprimer sa branche et démonter son worktree.
+And a claim that is not released lies for as long as it stays. On 2026-08-27, the registry still
+announced four slices "in progress" or "in review" on an **archived** change, whose four branches
+had long vanished from the remote. A stale registry is worse than an empty one: it makes you give up
+a free slice. **Releasing your claim is part of the merge**, just like deleting your branch and
+removing your worktree.
 
-## Le contrôle, et ce qu'il ne couvre pas
+## The check, and what it does not cover
 
-`bin/prises-check.sh` attrape les prises périmées. Il tourne sur chaque PR qui touche au registre,
-et une fois par jour pour le reste — un retrait oublié n'apparaît dans aucune PR, par définition.
+`bin/prises-check.sh` catches stale claims. It runs on every PR that touches the registry, and once
+a day for the rest — a forgotten release shows up in no PR, by definition.
 
-**Le critère est la PR, pas la branche.** Une prise se pose *avant* que la branche existe sur le
-distant : la comparer aux branches vivantes la ferait rougir sur le cas normal, et un contrôle qui
-rougit sur le cas normal se fait désarmer dans la semaine. Une prise est périmée quand sa branche a
-au moins une PR fermée et **aucune** PR ouverte.
+**The criterion is the PR, not the branch.** A claim is placed *before* the branch exists on the
+remote: comparing it to live branches would turn it red on the normal case, and a check that turns
+red on the normal case gets disarmed within the week. A claim is stale when its branch has at least
+one closed PR and **no** open PR.
 
-Il vérifie aussi que le titre du fichier dit la même branche que son chemin, parce que le registre
-se lit à l'œil autant qu'avec un script.
+It also checks that the file's title names the same branch as its path, because the registry is
+read by eye as much as by a script.
 
-**Ce qu'il ne voit pas :** une prise vivante supprimée par mégarde. Le 2026-08-27, un rebasage plus
-vieux qu'une prise a bien failli l'emporter — la table conflictait, mais la résolution était
-devenue machinale à force d'être la même. Rien n'aurait rougi, et c'est la session qui la tenait
-qui l'a vu. Si tu supprimes une prise, regarde `main` au moment de refermer plutôt que de le
-supposer.
+**What it does not see:** a live claim deleted by mistake. On 2026-08-27, a rebase older than a
+claim very nearly swept it away — the table conflicted, but the resolution had become mechanical
+from being always the same. Nothing would have turned red, and it was the session holding the claim
+that saw it. If you delete a claim, look at `main` when closing rather than assume it.
 
-## La forme d'un fichier de prise
+## The shape of a claim file
 
 ```markdown
-# <branche>
+# <branch>
 
-- **Chantier** : ce qu'on fait, en une ligne
-- **Entrées** : les fichiers ou dossiers touchés
-- **État** : en cours | en relecture
+- **Scope**: what is being done, in one line
+- **Entries**: the files or directories touched
+- **State**: in progress | in review
 ```
 
-## Lire le registre
+## Reading the registry
 
-Le chemin porte le slash de la branche, donc un répertoire par préfixe (`change/`, `docs/`,
-`fix/`…). `ls` ne montre alors que les préfixes ; c'est `find` qui rend la vue d'ensemble que la
-table donnait d'un coup d'œil :
+The path carries the branch's slash, so one directory per prefix (`change/`, `docs/`, `fix/`…).
+`ls` then only shows the prefixes; `find` gives back the overview the table gave at a glance:
 
 ```
 find .worktrees/prises -name '*.md'

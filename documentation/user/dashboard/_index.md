@@ -62,8 +62,10 @@ A running run also says **what it waits on**, as of its last suspension:
 A signal wait is a condition: the line names where the condition is written, unless the workflow gave
 it a label (`await(…, label: 'signal approve')` shows `waiting on signal approve`, see
 [Workflows](../workflows/#waiting-on-a-condition)). The same
-backends tell it, on a runs table that has the `waiting_on` column; Temporal and the Magento grid do
-not.
+backends tell it, on a runs table that has the `waiting_on` column. Temporal tells it too, the
+Magento grid included, from a `durableWaitingOn` memo the worker updates at each suspension. It
+leaves out the attempt, since no workflow task runs when an activity attempt starts, and a timer's
+summary, which is never sent to the server.
 
 ### 3. Counters, over what you are looking at
 

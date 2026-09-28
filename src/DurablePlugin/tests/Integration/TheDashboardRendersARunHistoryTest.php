@@ -10,6 +10,7 @@ use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
 use Gplanchat\Durable\Observation\WorkflowRunEventKind;
 use Gplanchat\Durable\Observation\WorkflowRunEventPhase;
+use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
@@ -120,6 +121,26 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringContainsString('<div class="col-12">', $page);
         self::assertStringContainsString('href="/gplanchat_durable_plugin_admin_run_show?runId=run-1&amp;status=all', $page);
         self::assertStringNotContainsString('Run details', $page);
+    }
+
+    /**
+     * #514: on Temporal the run id is the server's own; the link is the id the application started
+     * the run with, the one `findRun()` finds by.
+     */
+    public function testARunLinksByTheIdTheApplicationStartedItWith(): void
+    {
+        $model = (new RunDashboard(new RenderingCatalog(executionId: 'order/42')))->listing();
+        $model['pagination']['previous'] = null;
+
+        $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model);
+
+        self::assertStringContainsString('href="/gplanchat_durable_plugin_admin_run_show?runId=order%2F42&amp;', $page);
+        self::assertStringContainsString('<code>order/42</code>', $page);
+
+        $run = (new RunDashboard(new RenderingCatalog(executionId: 'order/42')))->run('order/42');
+        $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', ['backend' => $run['backend'], 'selectedRun' => $run['run']]);
+
+        self::assertStringContainsString('<code>order/42</code> <small class="text-secondary">run run-1 on the backend</small>', $page);
     }
 
     public function testTheRunPageIsTheRunAloneWithAWayBackToItsList(): void
@@ -344,22 +365,28 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         private readonly bool $waiting = false,
         private readonly bool $secrets = false,
         private readonly ?string $waitingOn = null,
+        private readonly ?string $executionId = null,
     ) {}
 
-    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20): WorkflowRunPage
+    public function canFilterRuns(): bool
+    {
+        return true;
+    }
+
+    public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
     {
         if ($this->ephemeral) {
             return new WorkflowRunPage([]);
         }
 
         return new WorkflowRunPage([
-            new WorkflowRunDescription('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Running, new \DateTimeImmutable('@1700000000'), waitingForWorkerSince: $this->waiting ? new \DateTimeImmutable('@1700000000') : null, waitingOn: $this->waitingOn),
+            new WorkflowRunDescription('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Running, new \DateTimeImmutable('@1700000000'), waitingForWorkerSince: $this->waiting ? new \DateTimeImmutable('@1700000000') : null, waitingOn: $this->waitingOn, executionId: $this->executionId),
         ], tellsWaitingForWorker: $this->waiting);
     }
 
     public function findRun(string $executionId): ?WorkflowRunDescription
     {
-        return array_values(array_filter($this->listRuns()->runs, static fn(WorkflowRunDescription $run): bool => $run->runId === $executionId))[0] ?? null;
+        return array_values(array_filter($this->listRuns()->runs, static fn(WorkflowRunDescription $run): bool => $run->executionId === $executionId))[0] ?? null;
     }
 
     public function readHistory(WorkflowRunDescription $run): array

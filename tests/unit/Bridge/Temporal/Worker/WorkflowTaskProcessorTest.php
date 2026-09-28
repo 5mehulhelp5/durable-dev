@@ -239,11 +239,13 @@ final class WorkflowTaskProcessorTest extends TestCase
         $processor->processOne();
 
         self::assertNotNull($capturedRequest);
-        self::assertCount(1, $capturedRequest->getCommands());
+        // The schedule, then what the run now waits on for the run list (#514).
+        self::assertCount(2, $capturedRequest->getCommands());
         self::assertSame(
             CommandType::COMMAND_TYPE_SCHEDULE_ACTIVITY_TASK,
             $capturedRequest->getCommands()[0]->getCommandType(),
         );
+        self::assertSame(CommandType::COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES, $capturedRequest->getCommands()[1]->getCommandType());
     }
 
     public function testReplayedActivityCompletesWorkflow(): void
@@ -459,11 +461,13 @@ final class WorkflowTaskProcessorTest extends TestCase
         );
 
         // The execution carries on its way: the command it had to emit leaves all the same.
-        self::assertCount(1, $capturedRequest->getCommands());
+        // The schedule, then what the run now waits on for the run list (#514).
+        self::assertCount(2, $capturedRequest->getCommands());
         self::assertSame(
             CommandType::COMMAND_TYPE_SCHEDULE_ACTIVITY_TASK,
             $capturedRequest->getCommands()[0]->getCommandType(),
         );
+        self::assertSame(CommandType::COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES, $capturedRequest->getCommands()[1]->getCommandType());
     }
 
     /**

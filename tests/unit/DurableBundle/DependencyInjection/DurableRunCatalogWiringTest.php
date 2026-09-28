@@ -176,14 +176,15 @@ final class DurableRunCatalogWiringTest extends TestCase
     }
 
     /**
-     * The Temporal catalog tells no wait yet, and a Durable execution id is not the run id it finds
-     * by (#514): each profiled request would pay a visibility query per execution for nothing.
+     * Since #514 the Temporal catalog finds a run by its execution id, through
+     * `DescribeWorkflowExecution` rather than a visibility query, and reads its wait from the
+     * `durableWaitingOn` memo: the profiler asks it as it asks the others.
      */
-    public function testTheProfilerDoesNotAskTheTemporalCatalog(): void
+    public function testTheProfilerAsksTheTemporalCatalogToo(): void
     {
         $container = $this->load(['temporal' => ['dsn' => 'temporal://127.0.0.1:7233?namespace=durable-test']]);
 
-        self::assertArrayNotHasKey(4, $container->getDefinition('durable.data_collector')->getArguments());
+        self::assertSame(WorkflowRunCatalogInterface::class, (string) ($container->getDefinition('durable.data_collector')->getArguments()[4] ?? null));
     }
 
     /**
