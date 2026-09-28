@@ -143,16 +143,20 @@ Without it, the journal lives in the process that writes it and dies with it —
 is then empty, **and that is the right answer**: an administration request opens a fresh process.
 The page says so itself rather than letting one believe in a failure.
 
-With it, the grid reads the cluster:
+With it, the grid reads the cluster, and lists what was **started on the cluster**:
+`RuntimeFactory::workflowClient()->startAsync()`, which the probe module's order observer and
+`durable:demo:start` call. Each run shows under its own workflow name:
 
 ```
-Run                                   | Workflow       | Status  | Started
-d81bfb25-af86-43b9-a310-9d9d34695a30  | DurableJournal | running | 2026-08-28 09:23:45
+Run                                   | Workflow                 | Status  | Started
+d81bfb25-af86-43b9-a310-9d9d34695a30  | durable.demo.place-order | running | 2026-08-28 09:23:45
 ```
 
-⚠ **Two caveats to know.** The name displayed is `DurableJournal`: it is the Temporal type that
-*carries* an execution's journal, not the business type. And the status stays `running` until a
-worker drains the task queue: nothing advances an execution on the cluster but
+⚠ **Two caveats to know.** A run executed in the process — `RuntimeFactory::create()->run()`, as
+`durable:demo` does — is **not durable**, DSN or not: its events stay in memory, it never reaches the
+cluster and never shows in the grid. What has to survive the process is started with
+`workflowClient()->startAsync()`. And a started run stays `running` until a worker drains the task
+queue: nothing advances an execution on the cluster but
 
 ```bash
 bin/magento durable:worker --role=journal    # answers workflow tasks
