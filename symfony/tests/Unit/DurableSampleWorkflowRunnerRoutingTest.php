@@ -77,6 +77,8 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
 
         $resume = new class implements WorkflowResumeDispatcher {
             public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
         };
 
@@ -115,6 +117,8 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
 
         $resume = new class implements WorkflowResumeDispatcher {
             public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
         };
 
@@ -167,6 +171,8 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $resume = new class ($dispatched) implements WorkflowResumeDispatcher {
             public function __construct(private array &$dispatched) {}
             public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
             {
                 $this->dispatched[] = ['executionId' => $executionId, 'type' => $workflowType];
@@ -208,6 +214,8 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $resume = new class ($dispatched) implements WorkflowResumeDispatcher {
             public function __construct(private array &$dispatched) {}
             public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
             {
                 $this->dispatched[] = $executionId;

@@ -364,6 +364,15 @@ is a deferred resume on the queue's own delay, and `php artisan queue:work` is t
 that poll the backend directly; nothing rides Magento's own `MessageQueue`, because on Temporal an
 activity is already a Temporal command and a resume a workflow task.
 
+### A resume is delivered at least once
+
+On Symfony and Laravel, an activity worker sends the resume **before** it journals the activity's
+outcome, and again after. A worker that dies between the two leaves a resume behind, not an outcome
+that nothing resumes. So a resume may arrive **more than once**, and **before** the outcome it
+announces. One that arrives early waits for the outcome through the queue's own retry. A second
+delivery replays the journal and changes nothing. Temporal delivers workflow tasks itself, and the
+contract doesn't apply there. The reasoning is recorded in DUR050.
+
 For configuration, see [Getting started](../getting-started/) and
 [Configuration reference](../configuration/).
 

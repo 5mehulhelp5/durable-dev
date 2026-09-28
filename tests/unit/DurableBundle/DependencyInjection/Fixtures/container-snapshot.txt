@@ -104,7 +104,7 @@ IDTNLAidtnla def   durable.parent_child_coordinator class=Gplanchat\Durable\Pare
 IDTNLAidtnla def   durable.payload_redactor class=Gplanchat\Durable\Observation\KeyPatternPayloadRedactor private args=[] tags=[]
 IDTNLAidtnla def   durable.query_runner class=Gplanchat\Durable\Query\WorkflowQueryRunner private args=[0: @Gplanchat\Durable\Store\EventStoreInterface] tags=[]
 ..T.....t... def   durable.resume_dispatcher class=Gplanchat\Bridge\Temporal\Port\TemporalWorkflowResumeDispatcher private args=[0: @Gplanchat\Bridge\Temporal\WorkflowClientInterface, 1: @Gplanchat\Durable\Store\WorkflowMetadataStore, 2: @Gplanchat\Durable\Workflow\WorkflowDefinitionLoader, 3: @?durable.execution_trace] tags=[]
-ID.NLAid.nla def   durable.resume_dispatcher class=Gplanchat\Durable\Bundle\Messenger\MessengerWorkflowResumeDispatcher private args=[0: @messenger.default_bus, 1: @Gplanchat\Durable\Store\WorkflowMetadataStore] tags=[]
+ID.NLAid.nla def   durable.resume_dispatcher class=Gplanchat\Durable\Bundle\Messenger\MessengerWorkflowResumeDispatcher private args=[0: @messenger.default_bus, 1: @Gplanchat\Durable\Store\WorkflowMetadataStore, 2: @?messenger.senders_locator] tags=[]
 .D.NL..d.nl. def   durable.run_catalog.dbal class=Gplanchat\Bridge\Dbal\Store\DbalWorkflowRunCatalog private args=[0: @doctrine.dbal.default_connection, 1: @durable.dbal.schema] tags=[]
 I....Ai....a def   durable.run_catalog.in_memory class=Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog private args=[0: @durable.event_store.inner] tags=[]
 ..TN....tn.. def   durable.run_catalog.temporal class=Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog private factory=[0: @Gplanchat\Bridge\Temporal\TemporalRuntimeAssembly, 1: 'runCatalog'] args=[] tags=[]
