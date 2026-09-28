@@ -16,7 +16,7 @@
   - `src/DurableBundle/DependencyInjection/Loader/Observability.php`;
   - the plugin, `symfony/`, `src/DurableModule/`;
   - the conformance suite.
-- **State**: taken over by anna from jane on 2026-09-28, at durable-30's request. Slices a and b
-  merged in #564, slice c in #567. Slice d is #570 (`feat/temporal-records-the-wait-anna`, jane's
-  WIP `0e0d7c84` cherry-picked), in review by jack; it closes #514. Next: the magento-boot check on
-  a run id with a slash, prepared as a diff for durable-30.
+- **State**: anna, taken over from jane on 2026-09-28. Slices a and b merged in #564, c in #567, d in
+  #570; #514 is closed. Left: the magento-boot check on a run id with a slash. The job has no DSN,
+  so a run the admin can read needs Temporal there: waiting for the user to choose between (A)
+  Temporal in the job, (B) a not-found page for a slashed id on the memory backend, or (C) B then A.
