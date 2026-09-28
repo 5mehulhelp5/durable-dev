@@ -78,6 +78,11 @@ decides.
      carries `UPDATE_ACCEPTED` and `UPDATE_COMPLETED` for an update the worker handled. With that,
      the body is not silent: the contract and a test both say where the record comes from. This
      meets #331's "no silently empty implementation" without splitting the port.
+   - *The tension, stated plainly:* #331's Done-when asks for no silently empty implementation
+     under `src/Bridge/Temporal`, and this keeps one empty body. It reads the Done-when as "no body
+     that is empty **and** unexplained", with the explanation carried by the contract and pinned by
+     a test. Approving the recommendation approves that reading. If the Done-when is meant
+     literally, the alternative below is the one that meets it.
    - *Alternative:* the buffer states whether it records updates itself (for example
      `recordsUpdatesItself(): bool`), and `ExecutionContext` skips the call when it does not. There
      is then no empty body at all, but the port gains a capability question, which is a small dose
@@ -88,6 +93,11 @@ decides.
      `UnsupportedByBackendException`: `append()`, both reads, and the count. The name says what it
      is, and the Temporal integration suites prove that no path reaches it. `NullEventStore` is
      then deleted, with an `UPGRADE.md` entry for any application that used it.
+     - *No Rector rule for it.* A `RenameClassRector` from `NullEventStore` to the new class would
+       compile, and it would silently change the behaviour. An application that used the old class
+       as a sink would be handed a store that throws on its first write. Only the application knows
+       which of the two it meant, so `UPGRADE.md` is the migration: an in-memory store if it wanted
+       one, the new class if it wanted the guarantee.
    - *Alternative:* keep `NullEventStore` under its name, and make only the three read methods
      throw. `append()` stays a silent sink. That is a smaller change, and a write on a backend
      without a local journal would still vanish unseen.
@@ -107,6 +117,10 @@ decides.
   - under choice 2's recommendation, `NullEventStore` goes;
   - on Temporal, the two child methods now throw, although no path of the component calls them
     there.
+- **Implementation note.** In `ExecutionContext`, a refusal thrown by `completeChildWorkflow()`
+  is caught by the same `catch (\Throwable)` as the child's own failure, and reported through
+  `failChildWorkflow()`, which would refuse in turn. The refusals must reach the caller
+  unchanged: the catch lets `UnsupportedByBackendException` through, and a test pins it.
 - **Tests.**
   - Each refusal is pinned with its message.
   - The Temporal integration suites run unchanged. That is the proof that no working path reaches
