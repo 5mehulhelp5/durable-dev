@@ -28,4 +28,9 @@ final class IlluminateEventStoreConformanceTest extends EventStoreReplayConforma
 
         return new IlluminateEventStore($connection, new DurableSchema($connection));
     }
+
+    protected function expectsFencedPasses(): bool
+    {
+        return true;
+    }
 }
