@@ -43,7 +43,7 @@ final class DbalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         private readonly ?JournalRunHistoryReader $history = null,
     ) {}
 
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
         return true;
     }
