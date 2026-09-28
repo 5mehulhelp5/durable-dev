@@ -17,11 +17,14 @@
                         {% endfor %}
                     </select>
                 </div>
-                {% if filters.available %}
+                {# Each input only where the catalog can apply it: Temporal before 1.23.0 takes a name, not a prefix (#523). #}
+                {% if filters.workflowNameAvailable|default(false) %}
                     <div class="col-md-4">
                         <label for="durable-workflow-name" class="form-label">{{ 'filter.workflow_name'|trans({}, 'durable') }}</label>
                         <input id="durable-workflow-name" class="form-control" type="text" name="workflowName" value="{{ filters.workflowName }}">
                     </div>
+                {% endif %}
+                {% if filters.executionIdPrefixAvailable|default(false) %}
                     <div class="col-md-3">
                         <label for="durable-execution-id-prefix" class="form-label">{{ 'filter.execution_id_prefix'|trans({}, 'durable') }}</label>
                         <input id="durable-execution-id-prefix" class="form-control" type="text" name="executionIdPrefix" value="{{ filters.executionIdPrefix }}">

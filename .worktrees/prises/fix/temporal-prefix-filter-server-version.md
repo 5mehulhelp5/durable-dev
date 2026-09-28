@@ -8,4 +8,4 @@
 - **Entries**: `WorkflowServiceClientInterface` and `WorkflowRpcMethods` (`GetSystemInfo`), the JSON
   gateway routes, `WorkflowRunCatalogInterface::canFilterRuns()` and the four catalogues,
   `RunDashboard`, the conformance suite, `UPGRADE.md`. jane carries the docs naming 1.23 (#608).
-- **State**: taken — alice. Reviewer: sirius. Only durable-30 merges.
+- **State**: in review — PR #629, alice. Reviewer: sirius. Only durable-30 merges.

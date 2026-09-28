@@ -77,7 +77,7 @@ final class TheListPagesForwardOnlyTest extends TestCase
 
 final class OnePageCatalog implements WorkflowRunCatalogInterface
 {
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
         return true;
     }

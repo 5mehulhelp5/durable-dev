@@ -372,7 +372,7 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         private readonly ?string $executionId = null,
     ) {}
 
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
         return true;
     }

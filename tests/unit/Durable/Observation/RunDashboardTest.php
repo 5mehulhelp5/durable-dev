@@ -121,7 +121,7 @@ final class RunDashboardTest extends TestCase
         $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow', 'ord'));
 
         self::assertEquals(new WorkflowRunFilter('App\\OrderWorkflow', 'ord'), $catalog->askedFilter);
-        self::assertSame(['available' => true, 'workflowName' => 'App\\OrderWorkflow', 'executionIdPrefix' => 'ord'], $view['filters']);
+        self::assertSame(['available' => true, 'workflowNameAvailable' => true, 'executionIdPrefixAvailable' => true, 'workflowName' => 'App\\OrderWorkflow', 'executionIdPrefix' => 'ord'], $view['filters']);
     }
 
     public function testACatalogThatCannotFilterIsNeverHandedAFilter(): void
@@ -132,7 +132,18 @@ final class RunDashboardTest extends TestCase
         $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow'));
 
         self::assertNull($catalog->askedFilter);
-        self::assertSame(['available' => false, 'workflowName' => null, 'executionIdPrefix' => null], $view['filters']);
+        self::assertSame(['available' => false, 'workflowNameAvailable' => false, 'executionIdPrefixAvailable' => false, 'workflowName' => null, 'executionIdPrefix' => null], $view['filters']);
+    }
+
+    public function testAPartOfTheFilterTheCatalogCannotApplyIsLeftOut(): void
+    {
+        // #523: Temporal before 1.23.0 takes the name, not the prefix. The page keeps the name,
+        // leaves the prefix out rather than failing, and says which input it can offer.
+        $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Failed)], prefix: false);
+        $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow', 'ord'));
+
+        self::assertEquals(new WorkflowRunFilter('App\\OrderWorkflow'), $catalog->askedFilter);
+        self::assertSame(['available' => true, 'workflowNameAvailable' => true, 'executionIdPrefixAvailable' => false, 'workflowName' => 'App\\OrderWorkflow', 'executionIdPrefix' => null], $view['filters']);
     }
 
     public function testAnUnknownStatusFilterIsIgnoredRatherThanRefused(): void
@@ -446,6 +457,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         private readonly bool $ephemeral = false,
         private readonly bool $tellsWaitingForWorker = false,
         private readonly bool $filters = true,
+        private readonly bool $prefix = true,
     ) {}
 
     public function checkHealth(): BackendHealth
@@ -459,9 +471,9 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         );
     }
 
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
-        return $this->filters;
+        return $this->filters && ($this->prefix || null === $filter?->executionIdPrefix);
     }
 
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage

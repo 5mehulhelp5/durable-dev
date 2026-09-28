@@ -1,0 +1,32 @@
+name: Release script
+
+# `bin/release.sh` tags and publishes a version (WA008). It runs a handful of times a year, so a
+# regression in it would only show on release day, on a tag already pushed to ten satellites. Its
+# test runs on a throwaway repository with a stub `gh`, so every PR that touches the script, its
+# test or the working agreement gets it (#350).
+on:
+  pull_request:
+    paths:
+      - 'bin/release.sh'
+      - 'bin/release-test.sh'
+      - 'documentation/wa/WA008-publishing-a-version.md'
+      - '.github/workflows/release-script.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-script-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-script:
+    name: bin/release.sh on a throwaway repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the release script
+        run: bin/release-test.sh
