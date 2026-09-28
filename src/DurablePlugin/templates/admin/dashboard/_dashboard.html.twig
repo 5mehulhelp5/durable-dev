@@ -133,7 +133,7 @@
                     {# The list page carries `runs`, the run page `selectedRun`; the single page
                        `RunDashboard::build()` serves carries both, side by side (#264). #}
                     <div class="row g-3">
-                        {% if runs is defined %}
+                        {% if runs is defined and resources is not defined %}
                         <div class="{{ selectedRun is defined ? 'col-xl-4' : 'col-12' }}">
                             <div class="card">
                                 <div class="card-header"><h3 class="card-title">{{ 'runs.title'|trans({}, 'durable') }}</h3></div>

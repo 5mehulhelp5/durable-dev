@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Functional;
 
+use App\Entity\User\AdminUser;
 use Doctrine\ORM\EntityManagerInterface;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\ExecutionStarted;
@@ -13,7 +14,6 @@ use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use App\Entity\User\AdminUser;
 
 /**
  * The dashboard, rendered by a real Sylius application.
@@ -52,7 +52,7 @@ final class DurableDashboardTest extends WebTestCase
         self::assertCount(1, $crawler->filterXPath("//header[contains(concat(' ', normalize-space(@class), ' '), ' navbar ')]"), 'the navbar, from the common hook');
         self::assertCount(1, $crawler->filterXPath("//*[contains(concat(' ', normalize-space(@class), ' '), ' page-wrapper ')]"), 'one page wrapper, not one per layer');
         self::assertCount(1, $crawler->filterXPath("//footer[contains(concat(' ', normalize-space(@class), ' '), ' footer ')]"), 'the footer, from the common hook');
-        self::assertCount(1, $crawler->filterXPath('//h1')->reduce(static fn ($h1): bool => str_contains($h1->text(), 'Durable Workflow Dashboard')));
+        self::assertCount(1, $crawler->filterXPath('//h1')->reduce(static fn($h1): bool => str_contains($h1->text(), 'Durable Workflow Dashboard')));
     }
 
     public function testThePreviousPageLinkLeadsBackThroughRealUrls(): void
@@ -60,6 +60,7 @@ final class DurableDashboardTest extends WebTestCase
         // #383: the way back is a stack of cursors in the URL; only a real router proves it survives
         // generation and parsing. One run more than a page, so there is a second page.
         $client = $this->authenticatedClient();
+
         try {
             for ($i = 0; $i <= RunDashboard::PAGE_SIZE; ++$i) {
                 $this->recordFailedRun('exec-page-' . $i, 'App\\PagedWorkflow');
@@ -83,6 +84,23 @@ final class DurableDashboardTest extends WebTestCase
                 $connection->executeStatement("DELETE FROM {$table} WHERE execution_id LIKE 'exec-page-%'");
             }
         }
+    }
+
+    public function testTheRunListIsASyliusGrid(): void
+    {
+        // #383, slice B: the list is the grid's, its rows rendered by its fields, its table the
+        // admin's own markup; the pagination under it is the catalogue's cursor, not Pagerfanta.
+        $client = $this->authenticatedClient();
+        $this->recordFailedRun('exec-grid-1', 'App\\GridWorkflow');
+
+        $crawler = $client->request('GET', self::ROUTE);
+
+        self::assertResponseIsSuccessful();
+        $table = $crawler->filter('[data-test-grid-table]');
+        self::assertCount(1, $table, 'one grid table');
+        self::assertStringContainsString('Execution', $table->filter('thead')->text());
+        self::assertStringContainsString('exec-grid-1', $table->filter('tbody')->text());
+        self::assertCount(1, $table->filterXPath("//a[contains(@href, '/admin/durable/runs/exec-grid-1')]"), 'a row leads to its run');
     }
 
     public function testAnAnonymousVisitorDoesNotReachIt(): void

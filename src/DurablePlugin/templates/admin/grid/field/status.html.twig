@@ -1,0 +1,1 @@
+<span class="badge durable-status {% if data == 'running' %}bg-blue-lt text-blue{% elseif data == 'completed' %}bg-green-lt text-green{% elseif data == 'failed' %}bg-red-lt text-red{% else %}bg-secondary-lt text-secondary{% endif %}">{{ ('status.' ~ data)|trans({}, 'durable')|upper }}</span>
