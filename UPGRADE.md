@@ -1074,6 +1074,62 @@ no longer map the same namespaces from two places, where the first autoloader to
 gplanchat/durable-bridge-temporal` so that Composer installs the new dependency, and drop any
 autoload mapping of your own that pointed `Temporal\Api\` into the bridge's directory.
 
+### The core reads time through a PSR-20 `ClockInterface` (#617)
+
+**Who is affected**: code that builds `ExecutionRuntime`, `EventStoreCommandBuffer` or
+`RunDashboard` itself and passes a clock. Passing `null` or nothing still works. Hosts on the
+Symfony bundle, Laravel or Magento have nothing to do.
+
+`gplanchat/durable` now requires `psr/clock`. The core used to read "now" through closures, or
+straight from `microtime(true)`. Every class that reads it now takes a
+`Psr\Clock\ClockInterface`. The default is the new `Gplanchat\Durable\SystemClock`, the wall
+clock in UTC.
+
+| Constructor                                      | Before                                     | Now               |
+|--------------------------------------------------|--------------------------------------------|-------------------|
+| `ExecutionRuntime`, 5th argument `$clock`        | `?callable` returning a float timestamp    | `?ClockInterface` |
+| `EventStoreCommandBuffer`, 4th argument `$clock` | `?callable` returning a float timestamp    | `?ClockInterface` |
+| `RunDashboard`, 2nd argument `$now` → `$clock`   | `?\Closure` returning `\DateTimeImmutable` | `?ClockInterface` |
+
+Some constructors gain an optional **last** argument `?ClockInterface $clock`, so existing calls
+keep working: `InMemoryEventStore`, `InMemoryWorkflowRunCatalog`, `InMemoryActivityTransport`,
+`ActivityMessageProcessor`, `InMemoryWorkflowRunner`, `NativeUuidV7Generator`, and Magento's
+`RuntimeFactory`. `ExecutionRuntime::clock()` returns the runtime's clock, and
+`ExecutionRuntime::runUntilIdle()` takes the queue's clock as an optional third argument.
+
+**What to do.**
+
+1. Replace a closure clock with a `ClockInterface`. Symfony's `MockClock`, or any PSR-20 clock,
+   will do. `$runtime->nowSeconds(...)` handed to a command buffer becomes `$runtime->clock()`.
+2. `new RunDashboard($catalog, now: …)` becomes `new RunDashboard($catalog, clock: …)`.
+3. The hosts wire the clock for you:
+   - **Symfony**: the bundle and the Sylius plugin pass FrameworkBundle's `clock` service when
+     one exists, and the core's `SystemClock` otherwise.
+   - **Laravel**: the provider binds `durable.clock` to `SystemClock`. Bind your own clock under
+     that id to replace it.
+   - **Magento**: set `RuntimeFactory`'s `clock` argument in `di.xml`.
+
+Lengths of time are no longer read from a clock. An activity's duration, its start-to-close
+bound, and the budgets of the inline drain and of `InMemoryWorkflowRunner` use `hrtime()`
+instead. A frozen or skipping clock stops or jumps, and these lengths must not.
+
+`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
+backend) measures schedule-to-start and schedule-to-close on its virtual clock. That clock jumps
+to the next timer when nothing else can progress, and moves by the real time the drain spends
+waiting out a retry's backoff. Both count towards the bounds. It never follows the wall clock
+on its own. Hand the runner the same clock as its activity transport, or delayed retries never
+fall due.
+
+A timer that falls due during a backoff is now recorded as fired once the drain is idle. The
+activity's remaining attempts still run first, so the timer cannot win against an activity that
+is retrying. In `any(activity, timer)`, the losing timer's history changes from
+`ActivityCompleted TimerCancelled` to `ActivityCompleted TimerCompleted`.
+
+No Rector rule. The closures being replaced read captured, often mutable, state
+(`static fn(): float => $clock->now`). A mechanical rewrite would have to generate a clock
+class in your code for every call site. Choosing a clock is a one-line decision, and it is
+yours to make.
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract

@@ -488,11 +488,12 @@
             "dist": {
                 "type": "path",
                 "url": "src/Durable",
-                "reference": "cbd2d922bfe9786a3e6053f97eb2d037ffd2fbd1"
+                "reference": "f6cd284a7a12d06825fc4a4c1ab821d381e3f239"
             },
             "require": {
                 "php": ">=8.2",
-                "psr/cache": "^3.0"
+                "psr/cache": "^3.0",
+                "psr/clock": "^1.0"
             },
             "require-dev": {
                 "phpunit/phpunit": "^11.5"
@@ -714,7 +715,7 @@
             "dist": {
                 "type": "path",
                 "url": "src/DurableBundle",
-                "reference": "13e420e082c2af0623df1856f5eea0bd26bf6336"
+                "reference": "4582704e6cc1f40368251d1a70d9003c64249098"
             },
             "require": {
                 "gplanchat/durable": "self.version",
@@ -731,11 +732,15 @@
                 "symfony/messenger": "^6.4 || ^7.0 || ^8.0",
                 "symfony/service-contracts": "^3.0"
             },
+            "require-dev": {
+                "symfony/serializer": "^6.4 || ^7.0 || ^8.0"
+            },
             "suggest": {
                 "doctrine/orm": "Declares the DBAL journal tables to doctrine:schema:update and doctrine:migrations:diff, which would otherwise generate DROP TABLE for them (SchemaListener\\DurableSchemaListener)",
                 "gplanchat/durable-bridge-dbal": "SQL backend: DurableExtension wires its journal, stores and resume lock when event_store.type is dbal",
                 "gplanchat/durable-bridge-temporal": "Temporal backend: DurableExtension wires its client, stores and worker transports when durable.temporal.dsn is set",
                 "phpunit/phpunit": "Required by the shipped test helper (Testing\\DurableBundleTestTrait)",
+                "symfony/serializer": "Normalizers for Duration, RetryLimit and TaskQueue, registered when installed: a Messenger transport set to messenger.transport.symfony_serializer needs them to carry activity messages",
                 "symfony/twig-bundle": "Renders the Durable profiler panel (Resources/views), with symfony/web-profiler-bundle",
                 "symfony/web-profiler-bundle": "Web Debug Toolbar and profiler: Durable panel (workflows / activities)"
             },
@@ -780,7 +785,7 @@
             "dist": {
                 "type": "path",
                 "url": "src/DurableLaravel",
-                "reference": "acb91d9a46095d8c1317e0288edb0dfcb19fb36e"
+                "reference": "353209d040e5608e1fa3946b3fbf4763eafa8016"
             },
             "require": {
                 "gplanchat/durable": "self.version",
@@ -790,6 +795,7 @@
                 "illuminate/database": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "php": ">=8.2",
+                "psr/clock": "^1.0",
                 "psr/log": "^1.1 || ^2.0 || ^3.0"
             },
             "suggest": {

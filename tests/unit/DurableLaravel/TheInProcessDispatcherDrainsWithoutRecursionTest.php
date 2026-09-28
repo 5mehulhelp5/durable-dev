@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable\Laravel;
 
+use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Laravel\Queue\InProcessWorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
@@ -11,6 +12,7 @@ use Gplanchat\Durable\Transport\FireWorkflowTimersMessage;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\FrozenClock;
 
 /**
  * #603: on Laravel's memory backend a run is driven in the caller's process. A resume dispatched
@@ -112,6 +114,35 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
     {
         $this->ran[] = $what;
         $this->deepest = max($this->deepest, ++$this->depth);
+    }
+
+    /**
+     * The transport stamps its due times with `durable.clock`, and the drain waits for them on the
+     * same clock. A clock that does not move never makes a retry due: the budget, a length of real
+     * time, still ends the drain (#617).
+     */
+    public function testTheDrainWaitsOnTheTransportsClockWithinARealBudget(): void
+    {
+        $clock = new FrozenClock(1_700_000_000.0);
+        $activities = new InMemoryActivityTransport($clock);
+        $activities->enqueue(new ActivityMessage('exec-1', 'act-1', 'charge', [], retryDelay: Duration::seconds(0.05)));
+        $dispatcher = new InProcessWorkflowResumeDispatcher(
+            new InMemoryWorkflowMetadataStore(),
+            $activities,
+            static fn(): \Closure => static function (): void {},
+            fn(): \Closure => function (ActivityMessage $message): void {
+                $this->ran[] = 'activity ' . $message->activityId;
+            },
+            static fn(): \Closure => static function (): void {},
+            0.3,
+            clock: $clock,
+        );
+
+        $started = hrtime(true);
+        $dispatcher->dispatchResume('exec-1');
+
+        self::assertSame([], $this->ran, 'the retry is not due on the frozen clock');
+        self::assertLessThan(2.0, ((float) (hrtime(true) - $started)) / 1e9);
     }
 
     private function dispatcher(
