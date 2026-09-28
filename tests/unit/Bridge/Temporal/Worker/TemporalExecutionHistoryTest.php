@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Bridge\Temporal\Worker;
 
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
+use Gplanchat\Durable\Port\History\RecordedMessage;
 use Gplanchat\Durable\Port\History\SlotOutcome;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payloads;
@@ -231,23 +232,23 @@ final class TemporalExecutionHistoryTest extends TestCase
         ]);
 
         $first = $history->messageAt(0);
-        self::assertNotNull($first);
-        self::assertSame('approve', $first['name']);
-        self::assertSame(['approved' => true], $first['payload']);
+        self::assertInstanceOf(RecordedMessage::class, $first);
+        self::assertSame('approve', $first->name);
+        self::assertSame(['approved' => true], $first->payload);
 
         $second = $history->messageAt(1);
         self::assertNotNull($second);
-        self::assertSame('reject', $second['name']);
-        self::assertSame(['reason' => 'no budget'], $second['payload']);
+        self::assertSame('reject', $second->name);
+        self::assertSame(['reason' => 'no budget'], $second->payload);
 
         $third = $history->messageAt(2);
         self::assertNotNull($third);
-        self::assertSame('approve', $third['name']);
-        self::assertTrue($third['payload']['second'] ?? false);
+        self::assertSame('approve', $third->name);
+        self::assertTrue($third->payload['second'] ?? false);
 
         // The positions are increasing: that is what allows a message to be compared with the
         // firing of a deadline.
-        self::assertSame([2, 3, 4], [$first['position'], $second['position'], $third['position']]);
+        self::assertSame([2, 3, 4], [$first->position, $second->position, $third->position]);
 
         self::assertNull($history->messageAt(3), 'There is no fourth message');
     }
