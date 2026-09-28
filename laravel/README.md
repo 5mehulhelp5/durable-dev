@@ -76,16 +76,16 @@ prerequisites for the whole thing are in [`demo/README.md`](../demo/README.md).
 ## The probe
 
 ```bash
-DURABLE_DSN='temporal://127.0.0.1:7999?namespace=probe&nexus_task_queue=q&tls=0' php8.2 probe-nexus.php
+DURABLE_DSN='temporal://127.0.0.1:7999?namespace=probe&nexus_task_queue=q&tls=0' CACHE_STORE=array php8.2 probe-nexus.php
 ```
 
 It boots the application, takes the core's registry out of the container and **dispatches both
 operations** — the very method the Nexus worker calls when a task arrives. No cluster, no endpoint,
 no process on the other side: the DSN designates a closed port, and nothing connects to it. It is
-run by hand: no CI job touches `laravel/` — the root `laravel` job runs
+run by the `laravel-bench` CI job, with the same two variables: `CACHE_STORE=array` because the
+delivery handler caches its plans and the probe has no database. The root `laravel` job runs
 `vendor/bin/phpunit --testsuite laravel` over `tests/unit/DurableLaravel`, the package's own tests,
-against three Illuminate lines. Running this probe in CI is issue #360; the end-to-end, for its
-part, lives in `demo/`.
+against three Illuminate lines. The end-to-end lives in `demo/`.
 
 ## What it is not
 

@@ -214,6 +214,45 @@ jobs:
             - name: PHPStan
               run: composer phpstan
 
+    laravel-bench:
+        # The Laravel bench's probe (#360): `config/durable.php` → the core's Nexus registry → the
+        # handler, through the very method the Nexus worker calls. No cluster: the DSN names a
+        # closed port and nothing connects to it. The `laravel` job above tests the package; this
+        # one tests the application that installs it, from `laravel/`'s own lock.
+        name: Laravel bench (Nexus probe)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        env:
+            # Read at boot, `package:discover` included: the bench's backend is temporal.
+            DURABLE_DSN: 'temporal://127.0.0.1:7999?namespace=probe&nexus_task_queue=q&tls=0'
+            # Without a `.env`, the bench's cache is the database one; the probe needs no database.
+            CACHE_STORE: array
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  # The bench's floor, the PHP its README runs the probe with.
+                  php-version: '8.2'
+                  extensions: mbstring, sqlite3, pdo_sqlite, curl, grpc
+                  coverage: none
+
+            - name: Cache Composer downloads
+              uses: actions/cache@v6
+              with:
+                  path: ~/.cache/composer
+                  key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock', '**/composer.json') }}
+                  restore-keys: composer-${{ runner.os }}-
+
+            - name: Composer install (laravel/)
+              working-directory: laravel
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Probe — the bench serves delivery/schedule and delivery/ship
+              working-directory: laravel
+              run: php probe-nexus.php
+
     sylius-shop:
         # The only check in the repository that really renders a page. Everything else proves the
         # pieces are correct; this one proves that, assembled, they display something.
@@ -994,7 +1033,7 @@ jobs:
         # job names can move without touching the protection. A skipped job is not a failure.
         name: ci-ok
         if: always()
-        needs: [qa, symfony-matrix, laravel, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, no-grpc, grpc-integration, manifests]
+        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, no-grpc, grpc-integration, manifests]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
