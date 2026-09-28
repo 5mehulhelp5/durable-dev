@@ -47,6 +47,30 @@ default, a projection), and code that builds `ActivityMessageProcessor` itself.
 
 No Rector rule: nothing is renamed, and the new argument is optional.
 
+### Temporal: the journal workflow's leftovers are gone (#594)
+
+**Who is affected**: code that used `Gplanchat\Bridge\Temporal\Journal\JournalStateResolver`,
+`TemporalConnection::journalWorkflowId()`, `TemporalConnection::$workflowType`,
+`TemporalConnection::$signalAppend`, `TemporalConnection::DEFAULT_WORKFLOW_TYPE` or
+`TemporalConnection::DEFAULT_SIGNAL_APPEND`, and every DSN that sets `workflow_type`.
+
+**Why.** They served the `DurableJournal` workflow, which recorded Durable's events as signals.
+Nothing has started or read that workflow since #356: each run is a Temporal workflow of its own
+type, and Temporal's history is the journal.
+
+**What to do.**
+
+- Remove `workflow_type` from `durable.temporal.dsn` (Symfony), from `temporal.dsn` in
+  `config/durable.php` (Laravel) and from `durable/temporal/dsn` in `env.php` (Magento). A DSN that
+  still sets it is refused with a message that names this entry.
+- Code that builds `TemporalConnection` directly: drop the `workflowType:` and `signalAppend:`
+  arguments. They were the fourth and fifth parameters, so a call that
+  passes the following arguments by position now shifts: pass them by name.
+- No Rector rule: the DSN key lives in configuration, which Rector does not read, and the hosts
+  build `TemporalConnection` from the DSN, so a hand-written constructor call is rare.
+- Nothing replaces `JournalStateResolver` or `journalWorkflowId()`. A `durable-journal-*` workflow
+  left on a cluster from before #356 can be read with the Temporal CLI or UI.
+
 ### Magento reads the cluster's history through; `TemporalJournalEventStore` is gone (#356, #372)
 
 **Who is affected**: a Magento store with `durable/temporal/dsn` set, and code that built
