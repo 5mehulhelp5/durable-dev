@@ -9,4 +9,5 @@
 - **Entries**: `src/Durable/Observation/WorkflowRunPage.php`, a cursor-stack helper in
   `src/Durable/Observation/`, the four catalogues, `WorkflowRunCatalogConformanceTestCase`,
   `RunDashboard`, `UPGRADE.md`; later `src/DurablePlugin/Controller/` and its templates.
-- **State**: taken — alice. Reviewer: jack. Only durable-30 merges.
+- **State**: in review — PR #615, alice. Reviewer: jack. Only durable-30 merges. The Sylius page's
+  switch to it follows #609.
