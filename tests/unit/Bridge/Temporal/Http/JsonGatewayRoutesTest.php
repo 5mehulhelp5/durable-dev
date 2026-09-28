@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Bridge\Temporal\Http;
 
+use GPBMetadata\Temporal\Api\Workflowservice\V1\Service;
 use Gplanchat\Bridge\Temporal\Http\JsonGatewayRoutes;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
  * The route table is copied from the protobuf HTTP annotations by hand; this holds it to the
- * descriptor checked in with the stubs, so a stub regeneration that moves a route fails here
- * rather than as a 404 in production.
+ * descriptor shipped with the installed `Temporal\Api` classes, so an API upgrade that moves a
+ * route fails here rather than as a 404 in production.
  */
 final class JsonGatewayRoutesTest extends TestCase
 {
-    private const DESCRIPTOR = __DIR__ . '/../../../../../src/Bridge/Temporal/Generated/GPBMetadata/Temporal/Api/Workflowservice/V1/Service.php';
-
     public function testEveryRouteMatchesTheDescriptorBinding(): void
     {
         $bindings = self::bindingsFromDescriptor();
@@ -45,7 +44,7 @@ final class JsonGatewayRoutesTest extends TestCase
      */
     private static function bindingsFromDescriptor(): array
     {
-        $source = (string) file_get_contents(self::DESCRIPTOR);
+        $source = self::serializedDescriptor();
         // Each method block names the RPC then its request type; the http rule bytes follow, with
         // the verb as the HttpRule field tag (2 get, 3 put, 4 post, 5 delete, 6 patch).
         preg_match_all('/([A-Z][A-Za-z]+)[\s\S]{1,3}\.temporal\.api\.workflowservice\.v1\.\1Request/', $source, $matches, \PREG_OFFSET_CAPTURE);
@@ -62,5 +61,23 @@ final class JsonGatewayRoutesTest extends TestCase
         }
 
         return $bindings;
+    }
+
+    /**
+     * The descriptor bytes, read from the string literal the metadata class hands to the pool,
+     * whichever quoting its generator chose.
+     */
+    private static function serializedDescriptor(): string
+    {
+        $file = (string) (new \ReflectionClass(Service::class))->getFileName();
+        $literal = '';
+        foreach (token_get_all((string) file_get_contents($file)) as $token) {
+            if (\is_array($token) && \T_CONSTANT_ENCAPSED_STRING === $token[0] && \strlen($token[1]) > \strlen($literal)) {
+                $literal = $token[1];
+            }
+        }
+        $body = substr($literal, 1, -1);
+
+        return '"' === ($literal[0] ?? '') ? stripcslashes($body) : strtr($body, ['\\\\' => '\\', "\\'" => "'"]);
     }
 }
