@@ -29,6 +29,7 @@ final class MigrationMatchesSchemaTest extends TestCase
         'durable_workflow_metadata',
         'durable_workflow_runs',
         'durable_child_workflow_parent_link',
+        'durable_execution_heads',
     ];
 
     /**

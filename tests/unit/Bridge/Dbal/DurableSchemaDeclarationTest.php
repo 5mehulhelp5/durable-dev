@@ -26,6 +26,7 @@ final class DurableSchemaDeclarationTest extends TestCase
         'durable_workflow_metadata',
         'durable_child_workflow_parent_link',
         'durable_workflow_runs',
+        'durable_execution_heads',
     ];
 
     public function testTheTablesAreDeclaredInAnEmptySchema(): void

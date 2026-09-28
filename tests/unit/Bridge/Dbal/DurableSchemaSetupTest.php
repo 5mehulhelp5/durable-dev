@@ -30,7 +30,7 @@ final class DurableSchemaSetupTest extends TestCase
     {
         (new DurableSchema($this->connection, autoSetup: false))->setup();
 
-        self::assertCount(4, $this->durableTables());
+        self::assertCount(5, $this->durableTables());
     }
 
     public function testAutoSetupRefusesInsideTheCallersTransaction(): void
@@ -73,7 +73,7 @@ final class DurableSchemaSetupTest extends TestCase
 
         $schema->ensure();
 
-        self::assertCount(4, $this->durableTables());
+        self::assertCount(5, $this->durableTables());
     }
 
     /**

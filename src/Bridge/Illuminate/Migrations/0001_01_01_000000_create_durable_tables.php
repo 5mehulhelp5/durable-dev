@@ -56,10 +56,17 @@ return new class extends Migration {
             $table->string('child_execution_id', 128)->primary();
             $table->string('parent_execution_id', 128)->index();
         });
+
+        Schema::create('durable_execution_heads', function (Blueprint $table): void {
+            // One row per execution that ever claimed a pass; an absent row is epoch 0 (DUR053).
+            $table->string('execution_id', 128)->primary();
+            $table->unsignedBigInteger('epoch');
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('durable_execution_heads');
         Schema::dropIfExists('durable_child_workflow_parent_link');
         Schema::dropIfExists('durable_workflow_runs');
         Schema::dropIfExists('durable_workflow_metadata');

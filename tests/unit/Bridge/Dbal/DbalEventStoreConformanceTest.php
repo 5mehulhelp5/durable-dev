@@ -22,4 +22,9 @@ final class DbalEventStoreConformanceTest extends EventStoreReplayConformanceTes
 
         return new DbalEventStore($connection, new DurableSchema($connection));
     }
+
+    protected function expectsFencedPasses(): bool
+    {
+        return true;
+    }
 }
