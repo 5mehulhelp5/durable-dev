@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\DurableSearchAttributes;
 use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
+use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Exception\RunFilterUnavailableException;
 use Gplanchat\Durable\Observation\WorkflowRunFilter;
@@ -286,7 +287,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
 
         self::assertSame('order/42', $run?->executionId);
         self::assertSame(self::RUN_ID, $run->runId);
-        self::assertSame('durable-order-42', $requests[0]->getExecution()?->getWorkflowId());
+        self::assertSame(WorkflowClient::workflowIdOf('order/42'), $requests[0]->getExecution()?->getWorkflowId());
         self::assertSame('', $requests[0]->getExecution()->getRunId(), 'the current run of the chain');
     }
 
