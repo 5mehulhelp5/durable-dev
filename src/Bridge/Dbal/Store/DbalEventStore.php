@@ -6,7 +6,6 @@ namespace Gplanchat\Bridge\Dbal\Store;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\LockWaitTimeoutException;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
@@ -51,13 +50,15 @@ final class DbalEventStore implements FencedEventStoreInterface
         $this->schema->ensure();
         $heads = $this->schema->headsTable();
 
-        // The first claim creates the row; two first claims racing each other leave one row.
-        if (false === $this->connection->fetchOne(\sprintf('SELECT 1 FROM %s WHERE execution_id = ?', $heads), [$executionId])) {
-            try {
-                $this->connection->insert($heads, ['execution_id' => $executionId, 'epoch' => 0]);
-            } catch (UniqueConstraintViolationException) {
-            }
-        }
+        // The first claim creates the row; two first claims racing each other leave one row. An
+        // insert that ignores the duplicate rather than a caught violation: on PostgreSQL, a
+        // violation aborts the transaction the pass may run in.
+        $platform = $this->connection->getDatabasePlatform();
+        $this->connection->executeStatement(match (true) {
+            $platform instanceof SQLitePlatform => \sprintf('INSERT OR IGNORE INTO %s (execution_id, epoch) VALUES (?, 0)', $heads),
+            $platform instanceof AbstractMySQLPlatform => \sprintf('INSERT IGNORE INTO %s (execution_id, epoch) VALUES (?, 0)', $heads),
+            default => \sprintf('INSERT INTO %s (execution_id, epoch) VALUES (?, 0) ON CONFLICT (execution_id) DO NOTHING', $heads),
+        }, [$executionId]);
 
         // The update locks the row until the claim commits: a fenced append waits for it (DUR053).
         $epoch = $this->connection->transactional(function (Connection $connection) use ($heads, $executionId): int {
