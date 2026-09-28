@@ -11,6 +11,8 @@ use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Exception\DeadlineExceededException;
 use Gplanchat\Durable\Exception\WorkflowCancelledFailure;
 use Gplanchat\Durable\RegistryActivityExecutor;
+use Gplanchat\Durable\Testing\ConformanceChildWorkflow;
+use Gplanchat\Durable\Testing\ConformanceWorkflow;
 use Gplanchat\Durable\WorkflowEnvironment;
 use Gplanchat\Durable\WorkflowRegistry;
 
@@ -28,6 +30,8 @@ final class IntegrationWorkflows
 
     public static function registerActivities(RegistryActivityExecutor $executor): void
     {
+        // DUR041's replay tier, run on the server (#326).
+        ConformanceWorkflow::registerActivity($executor);
         $executor->register('double', static fn(array $p): int => ((int) ($p['value'] ?? 0)) * 2);
         $executor->register('append', static fn(array $p): string => ((string) ($p['text'] ?? '')) . '!');
         $executor->register('refund', static fn(array $p): string => 'refunded:' . ($p['order'] ?? '?'));
@@ -43,6 +47,9 @@ final class IntegrationWorkflows
 
     public static function registerWorkflows(WorkflowRegistry $registry): void
     {
+        $registry->registerFactory(ConformanceWorkflow::TYPE, static fn(array $input): \Closure => ConformanceWorkflow::run(...));
+        $registry->registerClass(ConformanceChildWorkflow::class);
+
         $registry->registerFactory('Plain', static fn(array $input) => static fn(WorkflowEnvironment $env): array => ['echo' => $input['value'] ?? null]);
 
         // A class rather than a factory: that is what a child stub knows how to resolve, and
