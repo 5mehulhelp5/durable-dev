@@ -30,6 +30,7 @@ Each step had a trap that has already been hit:
 bin/release.sh v0.1.0-alpha15 --dry-run              # what would happen
 bin/release.sh v0.1.0-alpha15                         # tag the tip of origin/main, then release
 bin/release.sh v0.1.0-alpha15 <sha> --notes-file body.md
+bin/release.sh v0.1.0-alpha15 --release-only          # the tag is pushed, the release failed
 ```
 
 The script:
@@ -38,12 +39,16 @@ The script:
   commit, it tags the tip of origin/main;
 - refuses a tag that is malformed (`vMAJOR.MINOR.PATCH`, optionally `-alphaN`, `-betaN` or
   `-rcN`) or that already exists, locally or on origin;
-- finds the previous tag in **version order**, where a prerelease sorts before its release, and
-  passes it to `gh release create` as `--notes-start-tag`;
+- finds the previous tag in **version order**, where a prerelease sorts before its release: the
+  newest tag *below* the new one, so that a version on an older line is compared with its own
+  line. It passes that tag to `gh release create` as `--notes-start-tag`;
 - creates an annotated tag, pushes it, and then creates the release, titled `Version <x>`, with
   generated notes, marked `--prerelease` for any `-alpha`, `-beta` or `-rc` tag;
 - places an editorial body above the generated notes when given `--notes-file`. Every alpha so far
-  has had one, and a release is expected to keep doing so.
+  has had one, and a release is expected to keep doing so;
+- finishes a release whose tag is already pushed with `--release-only`. If `gh` fails after the
+  push, a plain rerun refuses the existing tag and says so. `--release-only` checks that the tag is
+  on origin and on origin/main, then creates the release only.
 
 `bin/release-test.sh` checks all of this on a throwaway repository, with a stub `gh`.
 

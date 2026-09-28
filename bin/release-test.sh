@@ -65,4 +65,20 @@ check "a dry run succeeds"                            '[ "$status" -eq 0 ]'
 check "a dry run tags nothing"                        '[ -z "$(git ls-remote origin refs/tags/v0.1.0-alpha13)" ] && [ -z "$(git tag -l v0.1.0-alpha13)" ]'
 check "a dry run creates no release"                  '[ ! -s "$GH_LOG" ]'
 
+# Publishing onto an older line: the previous tag is the newest one below the new tag, not the
+# newest tag of the repository.
+g tag -a v0.0.1 -m "Version 0.0.1" "$(git rev-list --max-parents=0 origin/main)" && g push -q origin v0.0.1
+: > "$GH_LOG"
+output="$(release v0.0.2)"
+check "an older line names its own previous tag"      'grep -q -- "release create v0.0.2 .*--notes-start-tag v0.0.1" "$GH_LOG"'
+
+# A release that failed after the tag was pushed is finished with --release-only: the tag is
+# kept, only the release is created.
+: > "$GH_LOG"
+output="$(release v0.1.0-alpha11 --release-only)"; status=$?
+check "--release-only finishes an existing tag"       '[ "$status" -eq 0 ] && grep -q -- "release create v0.1.0-alpha11 .*--notes-start-tag v0.1.0-alpha10" "$GH_LOG"'
+: > "$GH_LOG"
+output="$(release v0.1.0-alpha14 --release-only)"; status=$?
+check "--release-only refuses a tag not on origin"    '[ "$status" -ne 0 ] && [ ! -s "$GH_LOG" ]'
+
 [ "$failures" -eq 0 ] || { echo "$output"; exit 1; }
