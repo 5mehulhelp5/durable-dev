@@ -94,7 +94,7 @@ exists when the application [serves a Nexus operation](../nexus/).
   there.
 - The run list's filter by **execution-id prefix** needs **Server 1.23 or newer**: older servers,
   1.22 included, reject the `STARTS_WITH` it sends in a visibility query. Filtering by exact
-  workflow name or execution id works from 1.20.
+  workflow name works from 1.20.
 
 ### Install `ext-grpc`
 

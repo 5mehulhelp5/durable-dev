@@ -102,7 +102,7 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
 - Le filtre de la liste des exécutions par **préfixe d'identifiant d'exécution** demande un
   **serveur 1.23 ou plus récent** : les serveurs plus anciens, 1.22 compris, refusent le
   `STARTS_WITH` qu'il envoie dans une requête de visibilité. Le filtre exact par nom de workflow
-  ou par identifiant d'exécution fonctionne dès la 1.20.
+  fonctionne dès la 1.20.
 
 ### Installer `ext-grpc`
 
