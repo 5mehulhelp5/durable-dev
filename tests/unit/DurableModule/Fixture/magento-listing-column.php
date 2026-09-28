@@ -13,9 +13,14 @@ if (!interface_exists(UrlInterface::class)) {
     interface UrlInterface
     {
         /**
+         * Untyped, as Magento declares it: an implementation must accept what the real one does.
+         *
+         * @param string|null               $routePath
          * @param array<string, mixed>|null $routeParams
+         *
+         * @return string
          */
-        public function getUrl(?string $routePath = null, ?array $routeParams = null): string;
+        public function getUrl($routePath = null, $routeParams = null);
     }
 }
 

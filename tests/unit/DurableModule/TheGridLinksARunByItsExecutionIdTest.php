@@ -23,10 +23,17 @@ final class TheGridLinksARunByItsExecutionIdTest extends TestCase
     public function testTheLinkCarriesTheExecutionIdInTheQueryString(): void
     {
         $urls = new class implements UrlInterface {
-            /** @var list<array{?string, ?array<string, mixed>}> */
+            /** @var list<array{mixed, mixed}> */
             public array $asked = [];
 
-            public function getUrl(?string $routePath = null, ?array $routeParams = null): string
+            /**
+             * Untyped parameters: Magento's own interface declares none, and a checkout that loads
+             * it refuses a narrower signature.
+             *
+             * @param string|null               $routePath
+             * @param array<string, mixed>|null $routeParams
+             */
+            public function getUrl($routePath = null, $routeParams = null): string
             {
                 $this->asked[] = [$routePath, $routeParams];
 
