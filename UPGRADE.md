@@ -937,6 +937,44 @@ resume is sent before the outcome and again after it.
 **What to do.** Delete the line. Left in place, the container build fails with an
 `InvalidConfigurationException` naming the unrecognized option.
 
+## 0.1.0-alpha10
+
+### Laravel refuses at boot a workflow whose parameter names diverge from the contract
+
+`gplanchat/durable-laravel` used to register without checking. A workflow carrying
+`#[FulfilsNexusOperation]` with a **required** parameter matching no parameter of the contract now
+makes registration fail, naming both signatures — the same refusal `NexusHandlerPass` has always
+produced on the Symfony side, and from the same class:
+`Gplanchat\Durable\Nexus\Serving\NexusFulfilmentParameterNames`.
+
+**Why** — a Nexus operation's payload is keyed **by name** at both ends. A parameter renamed on one
+side only breaks nothing when written, raises nothing when run, and arrives as `null`: the workflow
+starts, runs and returns a result computed on nothing. Registration is the last moment anyone looks.
+
+**What Rector cannot do** — nothing to rename mechanically: the right name is the contract's, and
+only the author knows which of the two sides carries the typo. The refusal message prints both
+parameter lists, which is exactly the information Rector would need in order to choose.
+
+**Who is affected** — no application whose Nexus operations work: the refusal only strikes
+configurations that were already returning `null` in silence. If boot fails after the upgrade, the
+fault was already there, without saying so.
+
+## 0.1.0-alpha9
+
+### `RunDashboardView` moves to the core, as `RunDashboard`
+
+**Who is affected**: an application that injected or decorated
+`Gplanchat\Durable\Plugin\Dashboard\RunDashboardView`. It was never documented as a user-facing
+class, since the Sylius plugin autowires it and its own template consumes it, so most installs
+notice nothing.
+
+**What changed**: the Sylius plugin's view model became the core's
+`Gplanchat\Durable\Observation\RunDashboard`, which the Magento screen reads too (DUR049). The
+class leaves `gplanchat/durable-plugin` for `gplanchat/durable`.
+
+**What to run**: the `durable-upgrade` Rector set renames it. Then clear the container cache
+(`bin/console cache:clear`): the compiled container holds the old class name.
+
 ## 0.1.0-alpha8
 
 ### The divergence guard compares the payload too
@@ -972,26 +1010,6 @@ journal backend refuses Nexus operations by construction (DUR036), and its `Nexu
 event carries only the call site. No field was added to any event: the three payloads were already
 on the wire.
 
-
-### Laravel refuses at boot a workflow whose parameter names diverge from the contract
-
-`gplanchat/durable-laravel` used to register without checking. A workflow carrying
-`#[FulfilsNexusOperation]` with a **required** parameter matching no parameter of the contract now
-makes registration fail, naming both signatures — the same refusal `NexusHandlerPass` has always
-produced on the Symfony side, and from the same class:
-`Gplanchat\Durable\Nexus\Serving\NexusFulfilmentParameterNames`.
-
-**Why** — a Nexus operation's payload is keyed **by name** at both ends. A parameter renamed on one
-side only breaks nothing when written, raises nothing when run, and arrives as `null`: the workflow
-starts, runs and returns a result computed on nothing. Registration is the last moment anyone looks.
-
-**What Rector cannot do** — nothing to rename mechanically: the right name is the contract's, and
-only the author knows which of the two sides carries the typo. The refusal message prints both
-parameter lists, which is exactly the information Rector would need in order to choose.
-
-**Who is affected** — no application whose Nexus operations work: the refusal only strikes
-configurations that were already returning `null` in silence. If boot fails after the upgrade, the
-fault was already there, without saying so.
 
 ### A workflow that fulfils a Nexus operation must carry its tag
 
