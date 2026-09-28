@@ -896,6 +896,19 @@ started before the change:
 }
 ```
 
+### Sylius plugin: the run list pages forward only; `back` is gone
+
+**Who is affected**: whoever links to the plugin's run list (`/admin/durable/runs`) with the `back`
+query parameter, or reads the `previous`, `back` and `nextBack` entries of its pagination model in
+a template override.
+
+**Why.** Temporal cannot page backwards, so the previous page is dropped (#383, the user's decision
+of 2026-09-28): the list pages forward, and a "First page" link leads back.
+
+**What changes.** A URL that still carries `back` redirects permanently (301) to the first page of
+the same list, with its status and filters kept, rather than failing. The pagination model carries
+`isFirstPage` instead of `previous`, `back` and `nextBack`.
+
 ## 0.1.0-alpha8
 
 ### The divergence guard compares the payload too
