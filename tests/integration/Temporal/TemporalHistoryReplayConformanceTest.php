@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace integration\Temporal;
 
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
+use Gplanchat\Bridge\Temporal\Store\TemporalReadThroughEventStore;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Port\WorkflowHistorySourceInterface;
@@ -20,7 +21,10 @@ use Temporal\Api\Common\V1\WorkflowExecution;
 /**
  * DUR041's replay tier on Temporal (#326). The same conformance workflow runs on a server, through
  * this suite's workers, and inline on the in-memory reference; the lookups of the history port
- * must then read the same thing from `TemporalExecutionHistory` as from the reference.
+ * must then read the same thing from `TemporalExecutionHistory` as from the reference, and from
+ * the journal `TemporalReadThroughEventStore` rebuilds from that history. `TemporalEventStoreConformanceTest`
+ * runs the port tier against that store. Both are hand-written siblings of the replay tier: a case
+ * added to `EventStoreReplayConformanceTestCase` later does not reach Temporal by itself.
  *
  * Positions are backend-specific (the stream index in memory, the `eventId` on Temporal) and never
  * compared across backends (DUR035): only whether one is found is.
@@ -42,6 +46,24 @@ final class TemporalHistoryReplayConformanceTest extends TemporalServerTestCase
         $subject = TemporalExecutionHistory::fromEvents($cursor->events(new WorkflowExecution(['workflow_id' => $this->workflowId($executionId)])));
 
         self::assertHistoriesAgree(new EventStoreHistorySource($reference, 'exec-reference'), $subject);
+    }
+
+    /**
+     * The same lookups, read through `TemporalReadThroughEventStore` over an empty local store: the
+     * journal DUR029's conversion rebuilds from the server's history must answer them as the
+     * reference does. A child is read under its own workflow id, which is its execution id.
+     */
+    public function testTheReadThroughStoreAgreesWithTheReference(): void
+    {
+        $executionId = $this->startWorkflow(ConformanceWorkflow::TYPE, []);
+        $this->workflowClient()->pollForCompletion($executionId, 250, 240);
+
+        $reference = new InMemoryEventStore();
+        self::runOnTheReference($reference);
+
+        $store = new TemporalReadThroughEventStore(new InMemoryEventStore(), new TemporalHistoryCursor($this->client, $this->connection), $this->workflowClient());
+
+        self::assertHistoriesAgree(new EventStoreHistorySource($reference, 'exec-reference'), new EventStoreHistorySource($store, $executionId));
     }
 
     private static function assertHistoriesAgree(WorkflowHistorySourceInterface $reference, WorkflowHistorySourceInterface $subject): void
