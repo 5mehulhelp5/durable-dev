@@ -459,7 +459,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         );
     }
 
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
         return $this->filters;
     }

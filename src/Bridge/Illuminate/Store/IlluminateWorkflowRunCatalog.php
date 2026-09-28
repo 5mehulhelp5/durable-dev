@@ -127,7 +127,7 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
 
     // -- read side: WorkflowRunCatalogInterface --------------------------------------------------
 
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
         return true;
     }
