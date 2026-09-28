@@ -95,7 +95,6 @@ This repository documents the **Durable** component (durable execution orchestra
 - [Document lifecycle](LIFECYCLE.md)
 - [Hugo user guide](HUGO.md) — built from `documentation/user/` and `documentation/blog/`; ADRs, WAs and OSTs are not mirrored
 - [Blog](blog/) — dated posts, mounted under `/posts/` on the site
-- [Audit of 3 September 2026](audit/) — twenty review reports and their synthesis, French, a point-in-time record (WA006 lists it as debt); every open finding has a GitHub issue under the `audit-2026-09` label
 - [OpenSpec](../openspec/) — the design record of a change while it is being built: `changes/<name>/{proposal,tasks,specs}`, archived under `changes/archive/` once landed; `specs/` holds the live requirements
 - [User documentation source (Markdown)](user/) — content published by Hugo as the end-user site, 19 sections:
   - [Why Durable](user/why/) — the problem it solves, what it replaces, and when you do not need it
