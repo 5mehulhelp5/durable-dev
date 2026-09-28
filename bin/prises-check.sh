@@ -38,9 +38,16 @@
 #   | closed only       | branch missing                  | **stale** — the branch was deleted        |
 #   | closed only       | nothing beyond `main`           | **stale** — the removal was forgotten     |
 #
-# Usage: bin/prises-check.sh [repository]      (default: gplanchat/durable-dev)
+# `--release` deletes the claim files the check has just proven merged: closed PRs and a branch
+# with nothing beyond `main`. A missing branch proves nothing about where its commits went, so that
+# claim stays reported. It is the one unattended write CLAUDE.md allows under the registry (#376);
+# committing the deletion is the caller's job.
+#
+# Usage: bin/prises-check.sh [--release] [repository]      (default: gplanchat/durable-dev)
 set -uo pipefail
 
+RELEASE=0
+[ "${1:-}" = --release ] && { RELEASE=1; shift; }
 REPO="${1:-gplanchat/durable-dev}"
 OWNER="${REPO%%/*}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -121,6 +128,10 @@ while IFS= read -r file; do
     numbers="$(gh api "repos/$REPO/pulls?head=$OWNER:$branch&state=all&per_page=100" --jq '[.[] | "#\(.number)"] | join(", ")')"
     if [ -z "$ahead" ]; then
         reason="the branch no longer exists on the remote"
+    elif [ "$RELEASE" -eq 1 ]; then
+        rm -- "$file"
+        echo "  released  $branch — $numbers closed, and the branch has nothing \`main\` does not already have"
+        continue
     else
         reason="$numbers closed, and the branch has nothing \`main\` does not already have"
     fi
