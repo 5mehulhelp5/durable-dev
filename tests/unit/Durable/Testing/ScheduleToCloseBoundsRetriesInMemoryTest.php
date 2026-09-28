@@ -41,6 +41,44 @@ final class ScheduleToCloseBoundsRetriesInMemoryTest extends TestCase
         }
         self::assertSame(2, $attempts, 'the third attempt starts past the 0.3 s bound');
     }
+
+    /**
+     * A timer that falls due during a backoff is recorded once the drain is idle: the activity's
+     * remaining attempts run first, so a retrying activity still wins `any()`, and the losing
+     * timer is journalled as completed after it (it used to be cancelled).
+     */
+    public function testATimerDueDuringABackoffIsRecordedAfterTheRetryingActivityWins(): void
+    {
+        $attempts = 0;
+        $env = WorkflowTestEnvironment::inMemory(['flaky' => static function () use (&$attempts): string {
+            if (++$attempts < 3) {
+                throw new \RuntimeException('boom');
+            }
+
+            return 'charged';
+        }]);
+
+        $result = $env->run(static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->any(
+            $wf->activityStub(FlakyActivities::class, new ActivityOptions(
+                retryLimit: RetryLimit::ofAttempts(5),
+                initialInterval: Duration::seconds(0.2),
+                backoffCoefficient: 1.0,
+            ))->flaky(),
+            $wf->timer(0.1),
+        )), 'exec-race');
+
+        $recorded = [];
+        foreach ($env->getEventStore()->readStream('exec-race') as $event) {
+            $name = (new \ReflectionClass($event))->getShortName();
+            if (\in_array($name, ['ActivityCompleted', 'TimerCompleted', 'TimerCancelled'], true)) {
+                $recorded[] = $name;
+            }
+        }
+
+        self::assertSame('charged', $result);
+        self::assertSame(3, $attempts);
+        self::assertSame(['ActivityCompleted', 'TimerCompleted'], $recorded);
+    }
 }
 
 interface FlakyActivities

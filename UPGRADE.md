@@ -1116,9 +1116,14 @@ instead. A frozen or skipping clock stops or jumps, and these lengths must not.
 `InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
 backend) measures schedule-to-start and schedule-to-close on its virtual clock. That clock jumps
 to the next timer when nothing else can progress, and moves by the real time the drain spends
-waiting out a retry's backoff: both count towards the bounds, as a timer due during a backoff
-now fires once the wait is over. It still never follows the wall clock on its own. Hand the
-runner the same clock as its activity transport, or delayed retries never fall due.
+waiting out a retry's backoff. Both count towards the bounds. It never follows the wall clock
+on its own. Hand the runner the same clock as its activity transport, or delayed retries never
+fall due.
+
+A timer that falls due during a backoff is now recorded as fired once the drain is idle. The
+activity's remaining attempts still run first, so the timer cannot win against an activity that
+is retrying. In `any(activity, timer)`, the losing timer's history changes from
+`ActivityCompleted TimerCancelled` to `ActivityCompleted TimerCompleted`.
 
 No Rector rule. The closures being replaced read captured, often mutable, state
 (`static fn(): float => $clock->now`). A mechanical rewrite would have to generate a clock
