@@ -11,6 +11,8 @@ use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Temporal\Api\Enums\V1\IndexedValueType;
 use Temporal\Api\Operatorservice\V1\AddSearchAttributesRequest;
 use Temporal\Api\Operatorservice\V1\AddSearchAttributesResponse;
+use Temporal\Api\Operatorservice\V1\ListSearchAttributesRequest;
+use Temporal\Api\Operatorservice\V1\ListSearchAttributesResponse;
 use Temporal\Api\Workflowservice\V1\DescribeNamespaceRequest;
 use Temporal\Api\Workflowservice\V1\DescribeNamespaceResponse;
 use Temporal\Api\Workflowservice\V1\ListWorkflowExecutionsRequest;
@@ -72,13 +74,19 @@ trait FreshNamespace
         // Through the same wait: on an older server (1.20) the operator service reads the namespace
         // from a cache that learns of it seconds after DescribeNamespace does. And 1.20 keeps these
         // attributes cluster-wide, so "already exists" (6) is the state wanted, not a failure (#523).
-        self::awaitNamespace($namespace, 'still unknown to the operator service', static fn() => self::alreadyExistsIsFine(static fn() => $transportClient->unary('/temporal.api.operatorservice.v1.OperatorService/AddSearchAttributes', new AddSearchAttributesRequest([
-            'namespace' => $namespace,
-            'search_attributes' => [
-                DurableSearchAttributes::WORKFLOW_NAME => IndexedValueType::INDEXED_VALUE_TYPE_KEYWORD,
-                DurableSearchAttributes::EXECUTION_ID => IndexedValueType::INDEXED_VALUE_TYPE_KEYWORD,
-            ],
-        ]), AddSearchAttributesResponse::class, [], 10_000)));
+        $wanted = [
+            DurableSearchAttributes::WORKFLOW_NAME => IndexedValueType::INDEXED_VALUE_TYPE_KEYWORD,
+            DurableSearchAttributes::EXECUTION_ID => IndexedValueType::INDEXED_VALUE_TYPE_KEYWORD,
+        ];
+        $operator = '/temporal.api.operatorservice.v1.OperatorService/';
+        self::awaitNamespace($namespace, 'still unknown to the operator service', static fn() => self::alreadyExistsIsFine(
+            static fn() => $transportClient->unary($operator . 'AddSearchAttributes', new AddSearchAttributesRequest([
+                'namespace' => $namespace,
+                'search_attributes' => $wanted,
+            ]), AddSearchAttributesResponse::class, [], 10_000),
+            static fn(): ListSearchAttributesResponse => $transportClient->unary($operator . 'ListSearchAttributes', new ListSearchAttributesRequest(['namespace' => $namespace]), ListSearchAttributesResponse::class, [], 10_000),
+            $wanted,
+        ));
         // Listed at once, usable a couple of seconds later: until then a query naming the attribute
         // fails as a start would, without starting anything.
         self::awaitNamespace($namespace, 'has no usable Durable search attributes', static fn() => $transportClient->unary($service . 'ListWorkflowExecutions', new ListWorkflowExecutionsRequest([
@@ -90,13 +98,32 @@ trait FreshNamespace
         return $connection;
     }
 
-    private static function alreadyExistsIsFine(callable $call): void
+    /**
+     * "Already exists" is the state wanted only if it exists with the wanted type: an attribute
+     * registered with another one would fail every query that names it, far from its cause.
+     * A LogicException, so awaitNamespace() does not retry it until its timeout.
+     *
+     * @param callable(): mixed                         $add
+     * @param callable(): ListSearchAttributesResponse $list
+     * @param array<string, int>                        $wanted name => IndexedValueType
+     */
+    private static function alreadyExistsIsFine(callable $add, callable $list, array $wanted): void
     {
         try {
-            $call();
+            $add();
         } catch (\RuntimeException $failure) {
             if (6 !== $failure->getCode()) {
                 throw $failure;
+            }
+            $registered = [];
+            foreach ($list()->getCustomAttributes() as $name => $type) {
+                $registered[(string) $name] = (int) $type;
+            }
+            foreach ($wanted as $name => $type) {
+                $actual = $registered[$name] ?? null;
+                if ($type !== $actual) {
+                    throw new \LogicException(\sprintf('Search attribute %s exists as %s, expected %s.', $name, null === $actual ? 'nothing' : IndexedValueType::name($actual), IndexedValueType::name($type)));
+                }
             }
         }
     }
