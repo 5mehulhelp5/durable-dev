@@ -91,7 +91,7 @@ Durable décide ; Messenger achemine.
 | Question | Qui répond | Le réglage |
 |---|---|---|
 | Cet échec vaut-il une nouvelle tentative ? | Durable | `nonRetryableExceptions` sur `ActivityOptions` |
-| Combien de tentatives, et quel délai entre elles ? | Durable | `retryLimit`, `initialInterval`, `backoffCoefficient`, `maximumInterval` ; `max_activity_retries` les plafonne tous |
+| Combien de tentatives, et quel délai entre elles ? | Durable | `retryLimit`, `initialInterval`, `backoffCoefficient`, `maximumInterval` ; `max_activity_retries` les plafonne tous, sauf sous Temporal |
 | Où va une activité en échec pour qu'un opérateur la retrouve ? | Messenger | `failure_transport` |
 | Acheminement, acquittement, le transport lui-même | Messenger | le transport `durable_activities` |
 

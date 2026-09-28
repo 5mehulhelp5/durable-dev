@@ -347,12 +347,13 @@ Two more arguments of the same factory bound a run, and `di.xml` is the only pla
 <argument name="budgetSeconds" xsi:type="number">30</argument>
 ```
 
-- `maxActivityRetries` is the retry ceiling of every activity, the Symfony bundle's
-  [`max_activity_retries`](../configuration/#max_activity_retries). `0`, the default, caps nothing.
+- `maxActivityRetries` is the retry ceiling of the activities `MagentoRuntime::run()` runs in the
+  calling process, the Symfony bundle's [`max_activity_retries`](../configuration/#max_activity_retries).
+  `0`, the default, caps nothing. Temporal workers never read it: there, the cluster retries from the activity's own `RetryLimit`.
 - `budgetSeconds` bounds `MagentoRuntime::run()`, which runs a workflow to its end inside the
   calling process: past it, the call throws `WorkflowStuckException` instead of waiting on. Default
   `10`. It exists because of the first one: with no ceiling, an activity that keeps failing would
-  keep that process busy forever. Workers and `workflowClient()` never read it.
+  keep that process busy forever. Workers and `workflowClient()` never read either argument.
 
 **Two backends, and Composer enforces it.** Magento reaches in-memory and Temporal, and the module
 declares `conflict` on both SQL bridges: `Magento\Framework\App\ResourceConnection` is neither

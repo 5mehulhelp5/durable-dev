@@ -90,7 +90,7 @@ Durable decides; Messenger delivers.
 | Question | Who answers | The knob |
 |---|---|---|
 | Is this failure worth another attempt? | Durable | `nonRetryableExceptions` on `ActivityOptions` |
-| How many attempts, and how long between them? | Durable | `retryLimit`, `initialInterval`, `backoffCoefficient`, `maximumInterval`; `max_activity_retries` caps them all |
+| How many attempts, and how long between them? | Durable | `retryLimit`, `initialInterval`, `backoffCoefficient`, `maximumInterval`; `max_activity_retries` caps them all, except on Temporal |
 | Where does a failed activity go for an operator to look at? | Messenger | `failure_transport` |
 | Delivery, acknowledgement, the transport itself | Messenger | the `durable_activities` transport |
 

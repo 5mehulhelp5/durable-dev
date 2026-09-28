@@ -380,7 +380,8 @@ qui échoue mais un service qui ne reçoit jamais rien.
 
 Une activité sans borne de tentatives réessaie **indéfiniment** sur tous les backends, c'est le
 défaut de Temporal. Le `max_activity_retries` du bundle agit toujours comme un plafond quand une
-activité n'en pose pas ; à `0`, il ne plafonne rien.
+activité n'en pose pas, sur les backends en mémoire et DBAL ; à `0`, il ne plafonne rien. Sous
+Temporal, la grappe relance d'après la `RetryLimit` propre à l'activité, et le plafond n'est pas lu.
 
 Voir [Échecs et réessais](../failures/) et [Options](../options/#retrylimit).
 
