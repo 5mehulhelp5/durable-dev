@@ -7,5 +7,5 @@
 - **Entries**: `DeliverWorkflowSignalHandler`, `DeliverWorkflowUpdateHandler`,
   `ResumeWorkflowHandler::finalizeAsyncChildOnParentIfLinked()`, `FireWorkflowTimersHandler`,
   `ResumeWorkflowMessage` (the awaited fact generalises beyond an activity id).
-- **Careful**: builds on #605 (#328), not merged yet; no code before it lands.
-- **State**: taken by anna, 2026-09-28, design reading. Reviewer: sirius.
+- **Careful**: DUR052 (#607, merged) is the decision; #605 (#328, merged) is what it reshapes.
+- **State**: anna. In review as PR #622 (sirius).
