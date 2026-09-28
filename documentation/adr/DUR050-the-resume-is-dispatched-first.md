@@ -3,8 +3,8 @@
 ## Status
 
 Proposed — drafted by an agent for #328. `documentation/adr/` is supervised: this ADR takes effect
-when the user approves it on its pull request. The direction (option b below) is the user's
-decision of 2026-09-28; the three choices under "Open for approval" are not decided yet.
+when the user approves its text on its pull request. The direction (option b) and the three choices
+recorded under "Decision" are the user's decisions of 2026-09-28.
 
 Related to [DUR030](DUR030-dbal-backend-simplified-durable-execution.md), whose single-database
 backend is the one the gap below bites hardest; DUR030 is not amended.
@@ -51,47 +51,43 @@ the outcome, and the resume contract becomes **at-least-once**.
    `ResumeWorkflowHandler` concludes nothing: it throws a dedicated core exception, and the
    transport's retry is the wait. The core stays transport-neutral: Messenger and Laravel queues
    both retry a failed message with a delay.
-3. **The activity path sends immediately.** Its resume cannot carry `DispatchAfterCurrentBusStamp`,
-   or the order in the processor would stay cosmetic. The other callers keep the stamp.
-4. **A crash between the two steps is recovered by redelivery.** The activity message is only
-   acknowledged after the append. A worker killed after the send and before the append leaves it
+3. **The activity path sends immediately.** Its first resume cannot carry
+   `DispatchAfterCurrentBusStamp`, or the order in the processor would stay cosmetic. The other
+   callers keep the stamp.
+4. **A resume is sent again after the append** (user's choice 1). The early resume may exhaust its
+   retries before the outcome lands (Messenger's default budget is 3 retries, about 7 seconds), for
+   instance when the append sits in a `doctrine_transaction` the application added. The second send
+   makes liveness independent of any retry budget, for one message more per activity; replay makes
+   it harmless when the first one already did the work.
+5. **A crash between the send and the append is recovered by redelivery**, on the paths that
+   acknowledge the activity message after processing it: the Messenger worker consuming an
+   asynchronous transport, and the Laravel queue worker. A worker killed there leaves the message
    unacknowledged. The transport redelivers it, the attempt runs again (at-least-once, as an
-   activity already is under retries), and it sends and appends again. The early resume from the
-   killed attempt waits, then either finds the outcome or gives up; see choice 1.
-5. **A failed send is not a failed activity.** Today `dispatchResume()` sits inside the attempt's
-   `try`, so a broker error is journalled as `ActivityTaskFailed` on an attempt that succeeded, and
-   can spend the retry budget. The send moves out of it: a broker error fails the message, which
-   is redelivered.
-6. **The dead node goes.** `activity_transport.table_name` is removed. Setting it becomes a
+   activity already is under retries), and it sends and appends again. The delay is the
+   transport's own: the Doctrine transport redelivers after `redeliver_timeout`, 3600 seconds by
+   default.
+   It does **not** hold for the inline drain: `MessengerActivityTransport::dequeue()` acknowledges
+   the message before the processor runs it, so a crash there loses the attempt. The inline drain
+   serves a single process that nothing outlives; this ADR does not make it durable.
+6. **A resume routed `sync` keeps append-then-send** (user's choice 2). A synchronous resume runs
+   inline, before the append, every time. Both hosts already refuse that routing where a journal
+   outlives the process: `RequireAsyncRoutingPass` (#554) with the DBAL journal on Symfony, and
+   `DurableServiceProvider` with the Illuminate journal on Laravel. It remains possible with an
+   in-memory journal on either host. There the activity path detects it, the way
+   `DurableWorkerInspection` does, and appends before it sends, which is correct in one process.
+7. **A failed send is not a failed activity.** Today `dispatchResume()` sits inside the attempt's
+   `try`, so a broker error appends `ActivityTaskFailed` *after* the attempt's `ActivityCompleted`,
+   and can spend the retry budget. An error after the outcome fails the message instead, which is
+   redelivered (#583).
+8. **The dead node goes.** `activity_transport.table_name` is removed. Setting it becomes a
    configuration error, documented in `UPGRADE.md`.
+9. **Scope: the activity paths** (completed, failed, cancelled), as #328 names them (user's choice
+   3). The signal, update, child-to-parent and timer pairs keep the gap for now. A follow-up issue
+   applies the same protocol there; the fact each resume awaits is a signal, an update, a child's
+   outcome or a fired timer, not an activity id.
 
 The at-least-once contract is stated in the user documentation: a resume may be delivered more
 than once and before the fact it announces, and replay makes a second delivery harmless.
-
-## Open for approval
-
-These three shape the implementation, and each is a real trade-off. A recommendation is given;
-the user decides.
-
-1. **Liveness after the early resume gives up.** A resume that waits longer than the transport's
-   retry budget (Messenger's default is 3 retries, about 7 seconds) goes to the failure transport.
-   If the append then succeeds, because the worker was slow or the append sat in a
-   `doctrine_transaction` the application added, no resume follows and the run is stuck.
-   - *Recommended:* **also send a resume after the append.** It is idempotent, costs one message
-     per activity, and makes liveness independent of any retry budget.
-   - *Alternative:* document that the resume transport's retry budget must exceed the longest gap
-     between send and append. That is one message fewer, and a configuration trap.
-2. **A resume routed `sync`.** A synchronous transport runs the resume inline, before the append,
-   every time. Neither the guide nor the benches route resumes `sync`, but an application can.
-   - *Recommended:* detect it the way `DurableWorkerInspection` already does, and keep the current
-     order there: append, then send. In a single process nothing is durable anyway, and the order
-     is then correct.
-   - *Alternative:* refuse a `sync`-routed resume at container compilation.
-3. **Scope.** The signal, update, child-to-parent and timer pairs have the same gap.
-   - *Recommended:* this ADR covers the activity paths (completed, failed, cancelled) that #328
-     names. The other pairs get a follow-up issue that applies the same protocol: their awaited fact
-     is a signal, an update, a child outcome or a fired timer, not an activity id.
-   - *Alternative:* cover all of them now, in one larger change.
 
 ## Consequences
 
@@ -100,6 +96,8 @@ the user decides.
   and the null one. Third-party implementers get an `UPGRADE.md` entry.
 - **Message compatibility.** A `ResumeWorkflowMessage` serialized before the upgrade has no awaited
   id. Reading it back must not fail. It is handled on unserialize, and a test reads an old payload.
+- **A redelivered attempt runs again.** Until the processor skips an attempt whose outcome is
+  already journalled, a redelivery can append a second outcome, as a retry already can.
 - **Tests.** A test kills a worker between the send and the append, on a persistent transport, and
   shows that a fresh worker completes the run. A thrown exception does not model a kill (`finally`
   blocks run, and the deferred send is discarded), so the test uses a subprocess that kills itself.
