@@ -324,6 +324,9 @@ activité ne peut qu'être plus stricte. Une valeur négative est refusée. `0` 
 ce qu'une activité en échec ne fasse jamais échouer le workflow. Posez une borne par activité avec
 `RetryLimit::ofAttempts()` ou `RetryLimit::once()` ; voir [Options et objets valeur](../options/#retrylimit).
 
+Sous Laravel, la même clé dans `config/durable.php` ; sous Magento, l'argument `maxActivityRetries`
+de `RuntimeFactory` dans `di.xml` (voir [le tableau des hôtes](#host-table)).
+
 ---
 
 ## `activity_contracts`
@@ -387,6 +390,37 @@ when@test:
         child_workflow:
             async_messenger: false
 ```
+
+---
+
+## Les mêmes réglages sous Laravel et Magento {#host-table}
+
+Une ligne par réglage. La dernière colonne est une **proposition** en cours de revue (#357) :
+*identique* (le réglage existe sur chaque hôte qui peut s'en servir), *propre à l'hôte* (avec la
+raison), ou *à ajouter*. Magento n'atteint que deux journaux, en mémoire et Temporal : les lignes
+SQL ne s'y appliquent pas.
+
+| Symfony (`durable.yaml`) | Laravel (`config/durable.php`) | Magento (`env.php`, `di.xml`) | Proposition |
+|---|---|---|---|
+| `backend` | `backend` (`illuminate`, `temporal`, `memory`) | un DSN sous `durable/temporal/dsn` dans `env.php` veut dire Temporal, aucun veut dire en mémoire | identique ; la valeur SQL porte le nom de la connexion de chaque hôte |
+| `dbal.connection` | `connection` | — | identique |
+| `dbal.auto_setup` | — (le pont livre des migrations) | — | propre à l'hôte : Laravel crée les tables par `php artisan migrate` |
+| `dbal.lock_factory`, `dbal.allow_local_lock` | `lock.store` | — | propre à l'hôte : Symfony Lock et les verrous de cache de Laravel sont deux services différents |
+| `dbal.lock_ttl` | `lock.ttl` | — | identique |
+| — | `lock.backoff`, `lock.max_deferrals`, `lock.wait` | — | propre à l'hôte : Laravel rend à la file une reprise dont le tour est pris ; le worker Symfony attend que le verrou se libère |
+| `event_store.table_name`, `workflow_metadata.table_name`, `child_workflow.parent_link_store.table_name` | `tables.events`, `tables.metadata`, `tables.parent_links`, `tables.runs` | — | à ajouter : le nom de la table des exécutions sous Symfony |
+| `temporal.dsn` | `temporal.dsn` | `durable/temporal/dsn` | identique |
+| `temporal.search_attributes` | `temporal.search_attributes` | `durable/temporal/search_attributes` | identique |
+| `temporal.guzzle_client`, `temporal.psr18_client`, `temporal.psr17_factory` | les trois mêmes clés | arguments `guzzle`, `jsonGateway` | identique |
+| `backend: dbal` avec un `temporal.dsn` (servir Nexus depuis un journal SQL) | — (`nexus.handlers` exige `backend: temporal`) | — | à ajouter sous Laravel |
+| `activity_transport.type`, `activity_transport.transport_name` | `queue.connection`, `queue.name` | — (les activités tournent dans le processus, ou sur la file de tâches de Temporal) | propre à l'hôte : la file de chaque hôte |
+| `messenger.buses` | — | — | propre à l'hôte : Messenger seulement |
+| `profiler.enabled` | — | — | propre à l'hôte : le profileur web de Symfony |
+| `max_activity_retries` | `max_activity_retries` | argument `maxActivityRetries` | identique |
+| — | — | argument `budgetSeconds` | propre à l'hôte : borne `MagentoRuntime::run()`, le seul appel de l'hôte qui mène un workflow à son terme dans le processus appelant |
+| `activity_contracts.cache`, `activity_contracts.contracts` | — | — | à ajouter sous Laravel et Magento |
+| `child_workflow.async_messenger` | — | — | propre à l'hôte : Messenger seulement |
+| workflows : `#[AsWorkflow]` sur un service | `workflows` | argument `workflowClasses` | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut |
 
 ---
 
