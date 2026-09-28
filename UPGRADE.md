@@ -1059,6 +1059,21 @@ without ending the run.
 - `WorkflowBackendInterface::start()` (and `ExecutionEngine::start()`) can throw
   `SupersededPassException` if another pass claims the same execution while it runs.
 
+### Temporal: the `Temporal\Api` classes come from `roadrunner-php/roadrunner-api-dto` (#352)
+
+**Who is affected**: an application that installs `gplanchat/durable-bridge-temporal`, and one
+that also installs `temporal/sdk`.
+
+**What changes.** The bridge no longer ships its own generated protobuf classes
+(`src/Bridge/Temporal/Api/`, `Generated/`); it requires `roadrunner-php/roadrunner-api-dto` ^1.17,
+which provides the same `Temporal\Api\…` and `GPBMetadata\Temporal\…` classes, generated from
+Temporal API v1.63.5 (ours were v1.62.7). `temporal/sdk` depends on that same package, so the two
+no longer map the same namespaces from two places, where the first autoloader to answer won.
+
+**What to do.** Nothing in code: class names and namespaces are unchanged. Run `composer update
+gplanchat/durable-bridge-temporal` so that Composer installs the new dependency, and drop any
+autoload mapping of your own that pointed `Temporal\Api\` into the bridge's directory.
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract
