@@ -4,21 +4,37 @@ declare(strict_types=1);
 
 namespace Gplanchat\Durable\Plugin\DependencyInjection;
 
+use Gplanchat\Durable\Observation\RunDashboard;
+use Gplanchat\Durable\Plugin\Grid\RunGridViews;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
+use Symfony\Component\DependencyInjection\Reference;
 
 final class DurablePluginExtension extends Extension implements PrependExtensionInterface
 {
     /** {@see \Gplanchat\Durable\Plugin\Grid\SyliusRunGrid::GRID}, which this class cannot name. */
     private const RUN_GRID = 'gplanchat_durable_runs';
+    private const RUN_GRID_PROVIDER = 'Gplanchat\\Durable\\Plugin\\Grid\\SyliusRunGrid';
 
     public function load(array $configs, ContainerBuilder $container): void
     {
         $loader = new PhpFileLoader($container, new FileLocator(__DIR__ . '/../config'));
         $loader->load('services.php');
+
+        // The run list as a Sylius grid (#383), where the grid bundle is registered: its classes
+        // can be installed without it, and then its services are not. load() runs on a container
+        // that holds only this extension, so the kernel's bundle list is what says so. The class is
+        // named by string, since the root analysis does not see grid-bundle.
+        $bundles = $container->hasParameter('kernel.bundles') ? $container->getParameter('kernel.bundles') : [];
+        if (\is_array($bundles) && isset($bundles['SyliusGridBundle'])) {
+            $container->register(self::RUN_GRID_PROVIDER, self::RUN_GRID_PROVIDER)
+                ->setArguments([new Reference(RunDashboard::class), new Reference('sylius.grid.provider'), new Reference('sylius.grid.view_factory')])
+                ->addTag('sylius.grid_data_provider');
+            $container->setAlias(RunGridViews::class, self::RUN_GRID_PROVIDER);
+        }
     }
 
     /**
@@ -74,7 +90,7 @@ final class DurablePluginExtension extends Extension implements PrependExtension
         ];
 
         return [
-            'provider' => 'Gplanchat\\Durable\\Plugin\\Grid\\SyliusRunGrid',
+            'provider' => self::RUN_GRID_PROVIDER,
             'fields' => [
                 'execution' => $template('execution', '[row]', 'durable.grid.execution'),
                 'workflow' => ['type' => 'string', 'path' => '[workflowName]', 'label' => 'durable.grid.workflow'],

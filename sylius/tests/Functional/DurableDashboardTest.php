@@ -96,10 +96,10 @@ final class DurableDashboardTest extends WebTestCase
         $crawler = $client->request('GET', self::ROUTE);
 
         self::assertResponseIsSuccessful();
-        $table = $crawler->filter('[data-test-grid-table]');
+        $table = $crawler->filterXPath('//*[@data-test-grid-table]');
         self::assertCount(1, $table, 'one grid table');
-        self::assertStringContainsString('Execution', $table->filter('thead')->text());
-        self::assertStringContainsString('exec-grid-1', $table->filter('tbody')->text());
+        self::assertStringContainsString('Execution', $table->filterXPath('//thead')->text());
+        self::assertStringContainsString('exec-grid-1', $table->filterXPath('//tbody')->text());
         self::assertCount(1, $table->filterXPath("//a[contains(@href, '/admin/durable/runs/exec-grid-1')]"), 'a row leads to its run');
     }
 
@@ -112,20 +112,20 @@ final class DurableDashboardTest extends WebTestCase
 
         $byName = $client->request('GET', self::ROUTE . '?workflowName=' . rawurlencode('App\\AlphaWorkflow'));
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('exec-filter-a', $byName->filter('[data-test-grid-table]')->text());
-        self::assertStringNotContainsString('exec-filter-b', $byName->filter('[data-test-grid-table]')->text());
+        self::assertStringContainsString('exec-filter-a', $byName->filterXPath('//*[@data-test-grid-table]')->text());
+        self::assertStringNotContainsString('exec-filter-b', $byName->filterXPath('//*[@data-test-grid-table]')->text());
 
         $byPrefix = $client->request('GET', self::ROUTE . '?executionIdPrefix=exec-filter-b');
-        self::assertStringContainsString('exec-filter-b', $byPrefix->filter('[data-test-grid-table]')->text());
-        self::assertStringNotContainsString('exec-filter-a', $byPrefix->filter('[data-test-grid-table]')->text());
+        self::assertStringContainsString('exec-filter-b', $byPrefix->filterXPath('//*[@data-test-grid-table]')->text());
+        self::assertStringNotContainsString('exec-filter-a', $byPrefix->filterXPath('//*[@data-test-grid-table]')->text());
 
-        $form = $byPrefix->filter('form[data-durable-run-filters]');
-        self::assertCount(1, $form->filter('input[name=workflowName]'));
-        self::assertCount(1, $form->filter('input[name=executionIdPrefix]'));
-        self::assertCount(0, $form->filter('[name=cursor], [name=back]'), 'a new filter starts from the first page');
+        $form = $byPrefix->filterXPath('//form[@data-durable-run-filters]');
+        self::assertCount(1, $form->filterXPath("//input[@name='workflowName']"));
+        self::assertCount(1, $form->filterXPath("//input[@name='executionIdPrefix']"));
+        self::assertCount(0, $form->filterXPath("//*[@name='cursor' or @name='back']"), 'a new filter starts from the first page');
 
         $nothing = $client->request('GET', self::ROUTE . '?executionIdPrefix=exec-nobody');
-        self::assertCount(0, $nothing->filter('[data-test-grid-table]'));
+        self::assertCount(0, $nothing->filterXPath('//*[@data-test-grid-table]'));
         self::assertStringContainsString('No workflow run matches this filter.', $nothing->html(), 'nothing matches, and nothing comes after');
     }
 
@@ -145,7 +145,7 @@ final class DurableDashboardTest extends WebTestCase
             self::assertStringContainsString('executionIdPrefix=exec-page-', $next);
             $second = $client->request('GET', $next);
             self::assertResponseIsSuccessful();
-            self::assertCount(1, $second->filter('[data-test-grid-table] tbody tr'), 'the one run left over');
+            self::assertCount(1, $second->filterXPath('//*[@data-test-grid-table]//tbody/tr'), 'the one run left over');
         } finally {
             $connection = static::getContainer()->get('doctrine.dbal.default_connection');
             foreach (['durable_events', 'durable_workflow_metadata', 'durable_workflow_runs'] as $table) {
