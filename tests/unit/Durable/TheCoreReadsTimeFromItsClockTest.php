@@ -9,6 +9,7 @@ use Gplanchat\Durable\Activity\ActivityTimeouts;
 use Gplanchat\Durable\Activity\NullActivityHeartbeatSender;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\ActivityCompleted;
+use Gplanchat\Durable\Event\ActivityFailed;
 use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\ExecutionRuntime;
@@ -161,5 +162,34 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         $runner = new InMemoryWorkflowRunner(new InMemoryEventStore(), new InMemoryActivityTransport(), new RegistryActivityExecutor(), clock: null);
 
         self::assertSame('done', $runner->run('exec-1', static fn(WorkflowEnvironment $wf): string => 'done'));
+    }
+
+    public function testAnActivityPastItsScheduleToCloseOnTheProcessorsClockTimesOut(): void
+    {
+        $clock = new FrozenClock(1_700_000_020.0);
+        $store = new InMemoryEventStore($clock);
+        $executor = new RegistryActivityExecutor();
+        $executor->register('charge', static fn(): string => 'ok');
+        $processor = new ActivityMessageProcessor(
+            $store,
+            new InMemoryActivityTransport($clock),
+            $executor,
+            new NullWorkflowResumeDispatcher(),
+            new NullActivityHeartbeatSender(),
+            attemptClaim: new NoActivityAttemptClaim(),
+            clock: $clock,
+        );
+
+        // Twenty seconds after the first queueing, by this clock: past the ten allowed.
+        $processor->process(new ActivityMessage(
+            'exec-1',
+            'act-1',
+            'charge',
+            [],
+            new ActivityOptions(timeouts: new ActivityTimeouts(scheduleToClose: Duration::seconds(10.0))),
+            firstQueuedAt: 1_700_000_000.0,
+        ));
+
+        self::assertInstanceOf(ActivityFailed::class, ActivityEventJournal::lastTerminalOutcome($store, 'exec-1', 'act-1'));
     }
 }

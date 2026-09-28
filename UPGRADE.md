@@ -1098,6 +1098,13 @@ Lengths of time are no longer read from a clock. An activity's duration, its sta
 bound, and the budgets of the inline drain and of `InMemoryWorkflowRunner` use `hrtime()`
 instead. A frozen or skipping clock stops or jumps, and these lengths must not.
 
+`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
+backend) measures schedule-to-start and schedule-to-close on its virtual clock. That clock jumps
+to the next timer when nothing else can progress, and moves by the real time the drain spends
+waiting out a retry's backoff: both count towards the bounds, as a timer due during a backoff
+now fires once the wait is over. It still never follows the wall clock on its own. Hand the
+runner the same clock as its activity transport, or delayed retries never fall due.
+
 No Rector rule. The closures being replaced read captured, often mutable, state
 (`static fn(): float => $clock->now`). A mechanical rewrite would have to generate a clock
 class in your code for every call site. Choosing a clock is a one-line decision, and it is
