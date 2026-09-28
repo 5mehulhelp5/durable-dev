@@ -1,0 +1,13 @@
+{
+    "$schema": "https://context7.com/schema/context7.json",
+    "projectTitle": "Durable",
+    "description": "Durable execution for PHP (gplanchat/durable): workflows and activities recorded in a journal, on memory, SQL or Temporal, with Symfony, Laravel, Sylius and Magento packages.",
+    "folders": ["documentation/user"],
+    "excludeFiles": ["_index.fr.md", "nexus-demo.fr.md"],
+    "rules": [
+        "The package is gplanchat/durable and its namespace is Gplanchat\\Durable. Never use durable-workflow/workflow (Workflow\\V2) or Azure Durable Functions APIs for it.",
+        "A workflow is a class with #[AsWorkflow] and exactly one #[AsWorkflowMethod].",
+        "Start a run with WorkflowResumeDispatcher::dispatchNewWorkflowRun(): it works on every backend (in-memory, DBAL, Illuminate, Temporal).",
+        "Workflow code calls activities through $env->activityStub(Contract::class) and records anything a replay cannot reproduce (clock, random, environment) with $env->sideEffect()."
+    ]
+}
