@@ -24,6 +24,25 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
+
+**Who is affected**: code that reads journal events by type (a custom mapper, a `match` without a
+default, a projection), and code that builds `ActivityMessageProcessor` itself.
+
+- When an attempt fails and will retry, the worker now appends
+  `Gplanchat\Durable\Event\ActivityRetryQueued` once the transport took the next attempt: the
+  counterpart of Temporal's dispatch task. A redelivered failure without it queues the retry again;
+  before, the retry was lost when the broker refused it. Handle or skip the new type where events
+  are read by type. Journals recorded before have none, and read as before.
+- `ActivityMessageProcessor` takes an eighth, optional argument,
+  `Gplanchat\Durable\Port\ActivityAttemptClaimInterface`: one worker per activity attempt. It
+  defaults to `NoActivityAttemptClaim`, right for one process. The Symfony bundle wires
+  `LockActivityAttemptClaim` on a DBAL journal (the resume lock's factory and TTL) and the Laravel
+  provider wires `ActivityAttemptLock` (the resume lock's cache store and TTL). A host that builds the
+  processor for several workers passes its own shared-lock implementation.
+
+No Rector rule: nothing is renamed, and the new argument is optional.
+
 ### On Temporal, the dashboards link a run by its execution id, not the server's run id
 
 **Who is affected**: an application on the Temporal backend with links to its run pages saved
