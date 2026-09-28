@@ -23,7 +23,8 @@ use Gplanchat\Durable\Testing\EventStoreConformanceTestCase;
  * cases prove the local-first delegation, and only the empty-stream paths reach the server
  * (`testAnUnknownExecutionIsEmptyRatherThanAnError`, and the first count of
  * `testCountingAgreesWithTheStreamLength`): an execution the server does not know must read back
- * empty, not raise.
+ * empty, not raise. The four fencing cases (DUR053) pass vacuously: this store does not fence, the
+ * worker's passes are fenced by Temporal itself, and `expectsFencedPasses()` stays false.
  *
  * The replay tier cannot apply as {@see \Gplanchat\Durable\Testing\EventStoreReplayConformanceTestCase}
  * runs it: its runner appends inline, so every event would land in the local store and Temporal
