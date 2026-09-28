@@ -32,8 +32,9 @@ use unit\DurableBundle\Fixtures\FirstContract;
  * - L the legacy mixed path, a DBAL journal and in-memory metadata (deprecated keys; it goes when they do);
  * - A in_memory where the application already aliased the payload redactor and the observer.
  *
- * The one registration that depends on installed packages, the DBAL schema listener
- * (`class_exists` on doctrine/orm), is kept: doctrine/orm is a root dev dependency on every CI lane.
+ * The registrations that depend on installed packages are kept: the DBAL schema listener
+ * (`class_exists` on doctrine/orm) and the serializer normalizers (symfony/serializer, #643) are
+ * root dev dependencies on every CI lane.
  *
  * After an intended change: DURABLE_UPDATE_SNAPSHOT=1 vendor/bin/phpunit --filter DurableContainerSnapshotTest
  */
