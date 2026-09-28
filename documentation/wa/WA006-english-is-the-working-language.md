@@ -71,7 +71,7 @@ another reason, or in a change that says so.
 
 | Where | Extent |
 |---|---|
-| `documentation/audit/` | 22 files, French, landed by #271 — and unknown to `INDEX.md`, `LIFECYCLE.md` and `HUGO.md` |
+| `documentation/audit/` | 22 files, French, landed by #271 — deleted on 2026-09-28 (#379), see below |
 | `documentation/journal/inbox/` | 8 entries, French, in a directory WA001 already required to be English |
 | `.worktrees/prises/` | the open prise files written before this agreement, and `PRISES.md` itself — released or translated as each slice closes |
 | `hugo-docs/` | 12 maintainer-facing files (the README, `hugo.toml` comments, `import-design.py` and its output strings, layout and asset comments) — added 2026-09-14; the French landing canvases and layouts stay, they are the product |
@@ -96,7 +96,9 @@ debt.
   else. The single exception is narrow enough to name explicitly when it applies.
 - `documentation/audit/` is the first thing this agreement judges, and it judges it
   non-conforming — in language and in placement. Deciding what happens to it is a follow-up, not a
-  silent grandfathering.
+  silent grandfathering. The user decided on 2026-09-28 (#379) to delete it: every open finding has
+  a GitHub issue under the `audit-2026-09` label, and git keeps the files. An audit lands as issues
+  from now on.
 - Two guards enforce a narrow slice of this in CI, added after the agreement: a French accented
   letter fails the QA job in the shipped templates (`tests/unit/TheShippedTemplatesSpeakEnglishTest.php`)
   and in `README.md`, `UPGRADE.md` and every package README
