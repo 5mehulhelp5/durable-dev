@@ -19,7 +19,7 @@ use Temporal\Api\Common\V1\WorkflowExecution;
 
 /**
  * DUR041's replay tier on Temporal (#326). The same conformance workflow runs on a server, through
- * this suite's workers, and inline on the in-memory reference; every lookup of the history port
+ * this suite's workers, and inline on the in-memory reference; the lookups of the history port
  * must then read the same thing from `TemporalExecutionHistory` as from the reference.
  *
  * Positions are backend-specific (the stream index in memory, the `eventId` on Temporal) and never
@@ -80,6 +80,10 @@ final class TemporalHistoryReplayConformanceTest extends TemporalServerTestCase
         self::assertEquals($reference->childWorkflowInputForSlot(0), $subject->childWorkflowInputForSlot(0));
         self::assertEquals($reference->findChildWorkflowForSlot(0)?->result, $subject->findChildWorkflowForSlot(0)?->result);
         self::assertSame($childId, $subject->findChildWorkflowForSlot(0)?->childExecutionId);
+        self::assertTrue($subject->hasChildExecutionId($childId));
+        self::assertTrue($subject->hasChildExecutionCompletedSuccessfully($childId));
+        self::assertFalse($subject->hasChildExecutionId('never-started'));
+        self::assertFalse($subject->hasChildExecutionCompletedSuccessfully('never-started'));
         self::assertNull($subject->childWorkflowTypeForSlot(1));
 
         // What this workflow never does reads back as absent on both sides.
