@@ -6,4 +6,4 @@
 - **Entries**: `documentation/user/configuration/` (EN + FR), `src/DurableLaravel/config/durable.php`,
   `src/DurableLaravel/DurableServiceProvider.php`, their tests.
 - **Not in scope**: adding the keys a row marks "to add"; each gets its own task.
-- **State**: taken — emma. Reviewers: jack (docs), sirius (code).
+- **State**: in review, PR #591 — emma. Reviewers: jack (docs), sirius (code).
