@@ -91,8 +91,10 @@ exists when the application [serves a Nexus operation](../nexus/).
   search attributes. On PostgreSQL that takes the `postgres12` persistence plugin
   (`DB=postgres12` with the `auto-setup` image). The older `postgresql` plugin only offers standard
   visibility, which cannot filter on custom search attributes, so the run list's filters fail
-  there. CI runs the run-list and visibility-query suites against `temporalio/auto-setup:1.20` on
-  PostgreSQL, as well as against a current server.
+  there.
+- The run list's filter by **execution-id prefix** needs **Server 1.23 or newer**: older servers,
+  1.22 included, reject the `STARTS_WITH` it sends in a visibility query. Filtering by exact
+  workflow name or execution id works from 1.20.
 
 ### Install `ext-grpc`
 
