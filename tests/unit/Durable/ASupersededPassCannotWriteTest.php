@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable;
 
+use Gplanchat\Bridge\Dbal\Schema\DurableSchema as DbalSchema;
+use Gplanchat\Bridge\Dbal\Store\DbalEventStore;
+use Gplanchat\Bridge\Illuminate\Schema\DurableSchema as IlluminateSchema;
+use Gplanchat\Bridge\Illuminate\Store\IlluminateEventStore;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Event\ExecutionStarted;
@@ -14,6 +18,7 @@ use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\WorkflowTimerDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
+use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\InMemoryChildWorkflowParentLinkStore;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
@@ -23,7 +28,9 @@ use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use Gplanchat\Durable\WorkflowEnvironment;
 use Gplanchat\Durable\WorkflowRegistry;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use unit\Bridge\SqlTestDatabase;
 use unit\Durable\Fixtures\SuiteActivities;
 
 /**
@@ -47,9 +54,29 @@ final class ASupersededPassCannotWriteTest extends TestCase
         OvertakenWorkflow::$store = $this->store;
     }
 
-    public function testWorkflowCodeThatCatchesTheRefusalStillWritesNothing(): void
+    /** @return iterable<string, array{\Closure(): EventStoreInterface}> */
+    public static function journals(): iterable
     {
-        $store = $this->store;
+        yield 'in memory' => [static fn(): EventStoreInterface => new InMemoryEventStore()];
+        yield 'DBAL' => [static function (): EventStoreInterface {
+            $connection = SqlTestDatabase::dbal();
+
+            return new DbalEventStore($connection, new DbalSchema($connection));
+        }];
+        yield 'Illuminate' => [static function (): EventStoreInterface {
+            $connection = SqlTestDatabase::illuminate();
+
+            return new IlluminateEventStore($connection, new IlluminateSchema($connection));
+        }];
+    }
+
+    /** @param \Closure(): EventStoreInterface $journal */
+    #[DataProvider('journals')]
+    public function testWorkflowCodeThatCatchesTheRefusalStillWritesNothing(\Closure $journal): void
+    {
+        $store = $journal();
+        $activities = new InMemoryActivityTransport();
+        $engine = new ExecutionEngine($store, new ExecutionRuntime($store, $activities, new RegistryActivityExecutor(), 0, null, true));
         $handler = static function (WorkflowEnvironment $env) use ($store): string {
             PassEventStore::open($store, 'exec-1'); // a second resume takes the execution over
 
@@ -62,13 +89,13 @@ final class ASupersededPassCannotWriteTest extends TestCase
         };
 
         try {
-            $this->engine->start('exec-1', $handler);
+            $engine->start('exec-1', $handler);
             self::fail('the superseded pass must not complete the run');
         } catch (SupersededPassException) {
         }
 
-        self::assertSame([ExecutionStarted::class], array_map(static fn(object $e): string => $e::class, iterator_to_array($this->store->readStream('exec-1'), false)));
-        self::assertTrue($this->activities->isEmpty(), 'nothing was dispatched');
+        self::assertSame([ExecutionStarted::class], array_map(static fn(object $e): string => $e::class, iterator_to_array($store->readStream('exec-1'), false)));
+        self::assertTrue($activities->isEmpty(), 'nothing was dispatched');
     }
 
     public function testTheResumeHandlerStopsWithoutEndingTheRun(): void
