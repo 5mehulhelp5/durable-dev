@@ -8,5 +8,5 @@
   `src/Durable/Store/EventStoreHistorySource.php`, `src/Bridge/Temporal/Worker/TemporalExecutionHistory.php`,
   `src/Durable/ExecutionContext.php`, `src/Durable/Worker/WorkflowFiberDriver.php`, the replay conformance
   suite, their tests, `UPGRADE.md`.
-- **State**: in progress — bob (took over from durable-50; its work is archived under
+- **State**: in review — PR #635, bob (took over from durable-50; its work is archived under
   `archive/history-source-value-objects*`). Reviewer: sirius.
