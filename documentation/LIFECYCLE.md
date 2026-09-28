@@ -87,9 +87,6 @@ was planned; the decisions it produced are written up as ADRs.
 
 ### Other folders
 
-- **`audit/`** — a dated, read-only review of the code base, one file per axis plus a synthesis.
-  Each finding is anchored on a verified `file:line`. It records a state at a commit and is not
-  updated afterwards.
 - **`journal/`** — day files under `inbox/`, material already used for a published post under
   `archive/`. Both are ignored by Git; only the README and `.gitkeep` files are tracked. See
   [journal/README.md](journal/README.md) and the Cursor rule `blog-journal`.
@@ -146,7 +143,6 @@ documentation/
 ├── adr/              ← DUR000-xxx.md, DUR001-xxx.md, … (Architecture Decision Records for this component)
 ├── wa/               ← WA001-xxx.md, WA002-xxx.md, ...
 ├── ost/              ← OST001-xxx.md, OST002-xxx.md, ...
-├── audit/            ← dated read-only review, one file per axis
 ├── journal/          ← inbox/ and archive/ day files (ignored by Git)
 ├── blog/             ← posts published beside the user guide
 └── user/             ← user guide source (Hugo)

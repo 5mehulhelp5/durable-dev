@@ -66,6 +66,8 @@ This repository documents the **Durable** component (durable execution orchestra
 | DUR047 | Laravel: a Tier 1 host that measured before it wired | [adr/DUR047-laravel-the-host-that-measured-before-it-wired.md](adr/DUR047-laravel-the-host-that-measured-before-it-wired.md) |
 | DUR048 | Audience measurement without a consent banner | [adr/DUR048-audience-measurement-without-a-banner.md](adr/DUR048-audience-measurement-without-a-banner.md) |
 | DUR049 | One projection, two chromes: presentation is decided beside the model | [adr/DUR049-one-projection-two-chromes.md](adr/DUR049-one-projection-two-chromes.md) |
+| DUR050 | The resume is dispatched first, and a resume that arrives early waits (proposed) | [adr/DUR050-the-resume-is-dispatched-first.md](adr/DUR050-the-resume-is-dispatched-first.md) |
+| DUR051 | One command port, and a backend refuses by name what it cannot honour (proposed) | [adr/DUR051-a-backend-refuses-what-it-cannot-honour.md](adr/DUR051-a-backend-refuses-what-it-cannot-honour.md) |
 
 ## Working agreements (WA)
 
@@ -94,7 +96,6 @@ This repository documents the **Durable** component (durable execution orchestra
 - [Document lifecycle](LIFECYCLE.md)
 - [Hugo user guide](HUGO.md) — built from `documentation/user/` and `documentation/blog/`; ADRs, WAs and OSTs are not mirrored
 - [Blog](blog/) — dated posts, mounted under `/posts/` on the site
-- [Audit of 3 September 2026](audit/) — twenty review reports and their synthesis, French, a point-in-time record (WA006 lists it as debt); every open finding has a GitHub issue under the `audit-2026-09` label
 - [OpenSpec](../openspec/) — the design record of a change while it is being built: `changes/<name>/{proposal,tasks,specs}`, archived under `changes/archive/` once landed; `specs/` holds the live requirements
 - [User documentation source (Markdown)](user/) — content published by Hugo as the end-user site, 19 sections:
   - [Why Durable](user/why/) — the problem it solves, what it replaces, and when you do not need it

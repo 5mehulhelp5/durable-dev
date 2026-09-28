@@ -152,7 +152,9 @@
       Huit vérifications, dont les deux qui distinguent les deux formes — `planifier` répond sur la
       tâche et refuse un panier vide (c'est donc bien **le gestionnaire** qui a répondu, pas un
       enregistrement vide), `expedier` ne répond pas et nomme `ExpedierWorkflow`.
-- [ ] 7.2 **Le job de CI est écrit et n'est pas dans cette PR** : le jeton disponible dans la
+- [x] 7.2 Landed as the `laravel-bench` job of `ci.yml` (#360), without `.env` or migrations:
+      `CACHE_STORE=array` is enough for the probe. The original draft follows.
+      **Le job de CI est écrit et n'est pas dans cette PR** : le jeton disponible dans la
       session n'a pas la portée `workflow`, et GitHub refuse le push — *« refusing to allow an OAuth
       App to create or update workflow `.github/workflows/ci.yml` without `workflow` scope »*.
       À ajouter après `laravel:` dans `.github/workflows/ci.yml`, par quelqu'un dont le jeton l'a
