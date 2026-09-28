@@ -15,6 +15,7 @@ use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
+use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -44,6 +45,21 @@ final class TemporalBackendTest extends TestCase
         self::assertInstanceOf(TemporalWorkflowRunCatalog::class, $app->make(WorkflowRunCatalogInterface::class));
         // …and the task worker is assembled, ready to be drained by the command.
         self::assertInstanceOf(WorkflowTaskProcessor::class, $app->make(WorkflowTaskProcessor::class));
+    }
+
+    /**
+     * #603: on Temporal the dispatcher starts the run on the cluster, as Symfony's does. It was the
+     * null dispatcher, and `dispatchNewWorkflowRun()` returned without starting anything.
+     */
+    public function testANewRunIsStartedOnTheCluster(): void
+    {
+        $app = $this->container(['backend' => 'temporal', 'temporal' => ['dsn' => self::DSN]]);
+        (new DurableServiceProvider($app))->register();
+        $client = $this->createMock(WorkflowClientInterface::class);
+        $client->expects(self::once())->method('startAsync')->with('Greeting', ['who' => 'world'], 'exec-1')->willReturn('durable-exec-1');
+        $app->instance(WorkflowClientInterface::class, $client);
+
+        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun('exec-1', 'Greeting', ['who' => 'world']);
     }
 
     public function testSearchAttributesAreOffUntilTheApplicationTurnsThemOn(): void

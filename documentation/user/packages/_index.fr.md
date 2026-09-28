@@ -245,6 +245,17 @@ modification. C'est toute la promesse, et c'est celle que l'autre paquet ne fait
 
 Deux noms voisins sur Packagist méritent la phrase plutôt que l'espoir que personne ne remarque.
 
+### Démarrer une exécution
+
+`WorkflowResumeDispatcher::dispatchNewWorkflowRun()` démarre une exécution sur chaque backend :
+
+- sur `illuminate`, il met en file la première reprise pour `queue:work` ;
+- sur `temporal`, il démarre le workflow sur le cluster, qui livre tout ce qui suit ;
+- sur `memory`, il mène l'exécution **dans le processus appelant** : l'appel rend la main une fois
+  l'exécution terminée, ou quand elle attend un signal ou une échéance au-delà du budget de dix
+  secondes. Le journal de ce backend vit dans le processus : rien d'autre ne pourrait la faire
+  avancer.
+
 ### Nexus, sur le backend qui sait le router
 
 Servir une opération Nexus, c'est répondre à un appel venu d'un autre espace de noms, et seul le
