@@ -553,10 +553,13 @@ jobs:
               run: |
                 nc -z 127.0.0.1 8080 || { php -S 127.0.0.1:8080 -t pub/ phpserver/router.php >> /tmp/httpd.log 2>&1 & timeout 30 bash -c 'until nc -z 127.0.0.1 8080; do sleep 1; done'; }
                 jar=/tmp/admin.cookies
-                curl -sf --max-time 60 -c $jar -b $jar http://127.0.0.1:8080/admin -o /tmp/login.html
-                form_key=$(grep -oE '<input[^>]*name="form_key"[^>]*>' /tmp/login.html | head -n1 | grep -oE 'value="[^"]+"' | sed -E 's/value="([^"]+)"/\1/')
-                action=$(grep -oE '<form[^>]*id="login-form"[^>]*' /tmp/login.html | grep -oE 'action="[^"]+"' | sed -E 's/action="([^"]+)"/\1/')
-                test -n "$form_key" && test -n "$action"
+                # The login form posts to the page it is served on (`action=""`), so the URL the GET
+                # ends on is where the credentials go.
+                login_url=$(curl -sS -L --max-time 60 -c $jar -b $jar -o /tmp/login.html -w '%{url_effective}' http://127.0.0.1:8080/admin)
+                form_key=$(grep -oE '<input[^>]*name="form_key"[^>]*>' /tmp/login.html | head -n1 | grep -oE 'value="[^"]+"' | sed -E 's/value="([^"]+)"/\1/' || true)
+                action=$(grep -oE '<form[^>]*id="login-form"[^>]*' /tmp/login.html | grep -oE 'action="[^"]+"' | sed -E 's/action="([^"]+)"/\1/' || true)
+                action=${action:-$login_url}
+                if [ -z "$form_key" ]; then echo "No form_key on the login page ($login_url)." >&2; cat /tmp/login.html; tail -n 50 /tmp/httpd.log; exit 1; fi
                 curl -s --max-time 60 -c $jar -b $jar -L -o /tmp/after-login.html \
                   --data-urlencode "form_key=$form_key" --data-urlencode 'login[username]=durable' --data-urlencode 'login[password]=Durable123!' \
                   "$action"
