@@ -111,7 +111,11 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         } catch (QueryException $e) {
             // Only a newer claim supersedes the pass. Any other writer holding the database is a
             // transient wait, and the lock error goes up for the resume to be retried (#616).
-            if (!str_contains($e->getMessage(), 'database is locked') || $this->currentEpoch($fence->executionId) === $fence->epoch) {
+            if (!str_contains($e->getMessage(), 'database is locked')) {
+                throw $e;
+            }
+            $current = $this->currentEpoch($fence->executionId);
+            if (null === $current || $current === $fence->epoch) {
                 throw $e;
             }
 

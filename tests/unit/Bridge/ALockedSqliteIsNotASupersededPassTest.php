@@ -45,14 +45,24 @@ final class ALockedSqliteIsNotASupersededPassTest extends TestCase
         yield 'Illuminate' => ['illuminate'];
     }
 
-    #[DataProvider('stores')]
-    public function testACurrentPassBlockedByAnotherWriterIsNotSuperseded(string $bridge): void
+    /** @return iterable<string, array{string, string}> */
+    public static function storesAndLocks(): iterable
+    {
+        foreach (['DBAL' => 'dbal', 'Illuminate' => 'illuminate'] as $name => $bridge) {
+            // IMMEDIATE lets the head be read back; EXCLUSIVE blocks that read too.
+            yield $name . ', IMMEDIATE' => [$bridge, 'IMMEDIATE'];
+            yield $name . ', EXCLUSIVE' => [$bridge, 'EXCLUSIVE'];
+        }
+    }
+
+    #[DataProvider('storesAndLocks')]
+    public function testACurrentPassBlockedByAnotherWriterIsNotSuperseded(string $bridge, string $lock): void
     {
         $store = $this->store($bridge);
         $fence = $store->claimPass('exec-1');
 
         $other = new \PDO('sqlite:' . $this->file);
-        $other->exec('BEGIN IMMEDIATE'); // an unrelated writer holds the database
+        $other->exec('BEGIN ' . $lock); // an unrelated writer holds the database
 
         try {
             $store->appendFenced(new TimerCompleted('exec-1', 'timer-1'), $fence);

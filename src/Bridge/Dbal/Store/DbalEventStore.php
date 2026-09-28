@@ -110,7 +110,8 @@ final class DbalEventStore implements FencedEventStoreInterface
         } catch (LockWaitTimeoutException $e) {
             // Only a newer claim supersedes the pass. Any other writer holding the database is a
             // transient wait, and the lock error goes up for the resume to be retried (#616).
-            if ($this->currentEpoch($fence->executionId) === $fence->epoch) {
+            $current = $this->currentEpoch($fence->executionId);
+            if (null === $current || $current === $fence->epoch) {
                 throw $e;
             }
 
