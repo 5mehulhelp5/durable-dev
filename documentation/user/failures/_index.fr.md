@@ -97,13 +97,26 @@ Durable décide ; Messenger achemine.
 
 Durable planifie ses propres réessais : une tentative réessayée est un nouveau message, mis en file
 avec son délai. Le handler ne lève jamais d'exception pour un échec que Durable va réessayer : le
-`retry_strategy` de Messenger ne s'applique donc pas aux activités, et il n'y a pas de second
-compteur.
+`retry_strategy` de Messenger ne s'applique donc pas aux échecs d'une activité, et il n'y a pas de
+second compteur.
 
 Un échec **non réessayable** est journalisé, puis levé en `UnrecoverableMessageHandlingException` :
 Messenger ne le réessaie pas, et l'envoie au `failure_transport` si vous en avez configuré un.
 `messenger:failed:retry` sur ce message ne relance rien. Le journal contient déjà cette tentative et
 répond à sa place.
+
+Deux messages passent outre `max_retries`, exprès : chacun attend une chose qu'un autre worker va
+régler.
+
+- **Une tentative d'activité qu'un autre worker exécute.** Durable réserve chaque tentative avant de
+  l'exécuter. Une copie qui trouve la réservation prise est réessayée plus tard, selon le
+  `retry_strategy` du transport. Elle trouve alors la tentative journalisée, ou, si le détenteur est
+  mort, l'exécute une fois la réservation expirée.
+- **Une reprise arrivée avant son résultat.** Un worker envoie la reprise avant de journaliser le
+  résultat, puis une autre après. La reprise en avance attend en échouant, et elle est réessayée. Au
+  bout de dix nouvelles livraisons, elle est acquittée, et une ligne `info` sur le canal `messenger`
+  l'indique : *« dropped an early resume of execution … the resume sent after its append carries the
+  run »*. Ce n'est pas une exécution perdue : rien d'elle n'atteint le `failure_transport`.
 
 ---
 
