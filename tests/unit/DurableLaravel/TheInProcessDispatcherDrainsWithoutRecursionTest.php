@@ -135,7 +135,7 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
             },
             static fn(): \Closure => static function (): void {},
             0.3,
-            now: static fn(): float => (float) $clock->now()->format('U.u'),
+            clock: $clock,
         );
 
         $started = hrtime(true);

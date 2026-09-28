@@ -20,6 +20,7 @@
         "magento/module-backend": "^102.0",
         "magento/module-ui": "^101.2",
         "php": ">=8.2",
+        "psr/clock": "^1.0",
         "symfony/console": "^6.4 || ^7.0"
     },
     "conflict": {
