@@ -61,6 +61,18 @@ final class TheWorkerWordsTheWaitTest extends TestCase
         self::assertSame('timer due at ' . (new \DateTimeImmutable('@1790000060'))->format(\DATE_ATOM), self::waitIn($commands));
     }
 
+    /**
+     * The summary never reaches the server, so a later task cannot read it back: the task that
+     * starts the timer leaves it out as well, or the same wait would change words and be written twice.
+     */
+    public function testATimerIsWordedAlikeOnTheTaskThatStartsIt(): void
+    {
+        $waitingOn = self::waitIn($this->task('SummarisedTimerWorkflow', [self::started(1)]));
+
+        self::assertNotNull($waitingOn);
+        self::assertStringStartsWith('timer due at ', $waitingOn);
+    }
+
     public function testAConditionIsNamedByItsLabel(): void
     {
         self::assertSame('the stock comes back', self::waitIn($this->task('ConditionWorkflow', [self::started(1)])));
@@ -84,6 +96,11 @@ final class TheWorkerWordsTheWaitTest extends TestCase
         $registry->registerFactory('ActivityWorkflow', static fn(array $payload) => static fn(WorkflowEnvironment $env): string => $env->await($env->activityStub(SuiteActivities::class)->greet('World')));
         $registry->registerFactory('TimerWorkflow', static fn(array $payload) => static function (WorkflowEnvironment $env): string {
             $env->sleep(60);
+
+            return 'after';
+        });
+        $registry->registerFactory('SummarisedTimerWorkflow', static fn(array $payload) => static function (WorkflowEnvironment $env): string {
+            $env->sleep(60, 'grace period');
 
             return 'after';
         });

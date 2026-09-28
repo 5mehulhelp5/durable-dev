@@ -103,6 +103,21 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         self::assertSame('activity charge', $this->catalog($this->responseWith($info))->listRuns()->runs[0]->waitingOn);
     }
 
+    /**
+     * The worker upserts the wait beside the execution id, and the server merges memo keys: a run
+     * keeps both.
+     */
+    public function testTheWaitAndTheExecutionIdAreReadFromTheSameMemo(): void
+    {
+        $info = $this->withExecutionId($this->info('durable-order-42', 'run-1', 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 1_700_000_200), 'order/42');
+        $info->getMemo()?->getFields()->offsetSet(JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON, JsonPlainPayload::encode('activity charge'));
+
+        $run = $this->catalog($this->responseWith($info))->listRuns()->runs[0];
+
+        self::assertSame('order/42', $run->executionId);
+        self::assertSame('activity charge', $run->waitingOn);
+    }
+
     public function testAnEndedRunWaitsForNothingWhateverTheMemoStillSays(): void
     {
         $info = $this->waitingOn($this->info('wf-1', 'run-1', 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_COMPLETED, 1_700_000_200), 'activity charge');
