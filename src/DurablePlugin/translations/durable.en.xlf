@@ -16,6 +16,8 @@
             <trans-unit id="status.cancelled"><source>status.cancelled</source><target>Cancelled</target></trans-unit>
             <trans-unit id="status.continued_as_new"><source>status.continued_as_new</source><target>Continued as new</target></trans-unit>
             <trans-unit id="filter.outcome"><source>filter.outcome</source><target>Outcome</target></trans-unit>
+            <trans-unit id="filter.workflow_name"><source>filter.workflow_name</source><target>Workflow name</target></trans-unit>
+            <trans-unit id="filter.execution_id_prefix"><source>filter.execution_id_prefix</source><target>Execution id starts with</target></trans-unit>
             <trans-unit id="filter.submit"><source>filter.submit</source><target>Filter</target></trans-unit>
             <trans-unit id="runs.title"><source>runs.title</source><target>Runs</target></trans-unit>
             <trans-unit id="runs.empty"><source>runs.empty</source><target>No workflow run matches this filter.</target></trans-unit>

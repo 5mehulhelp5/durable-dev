@@ -25,6 +25,8 @@
             <directory name="src/DurablePlugin/tests" />
             <!-- See phpstan.neon: illuminate/console cannot enter the root graph. -->
             <directory name="src/DurableLaravel/Console" />
+            <!-- See phpstan.neon: sylius/grid-bundle is the Sylius bench's, not the root graph's. -->
+            <file name="src/DurablePlugin/Grid/SyliusRunGrid.php" />
             <!-- See phpstan.neon: rule input, wrong or third-party-shaped on purpose. -->
             <directory name="tests/unit/DurablePhpstan/Fixtures" />
             <directory name="tests/unit/DurableRector/Source" />

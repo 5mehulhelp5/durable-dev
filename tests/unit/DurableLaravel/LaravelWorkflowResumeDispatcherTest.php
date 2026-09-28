@@ -44,6 +44,31 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         self::assertSame('durable', $queue->pushed[0]['queue']);
     }
 
+    public function testAnAnnouncingResumeIsQueuedAndNamesItsActivity(): void
+    {
+        $queue = new FakeQueue();
+
+        (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore()))
+            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+
+        self::assertCount(1, $queue->pushed);
+        self::assertSame('act-1', $queue->pushed[0]['job']->message->awaitedActivityId);
+    }
+
+    /**
+     * On a `sync` connection the job runs inline, before the append: nothing is queued early, and
+     * the resume after the append does the work (DUR050, choice 2).
+     */
+    public function testAnAnnouncingResumeOnASyncConnectionIsNotQueued(): void
+    {
+        $queue = new FakeQueue();
+
+        (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore(), runsInline: true))
+            ->dispatchResumeAnnouncing('exec-1', 'act-1');
+
+        self::assertSame([], $queue->pushed);
+    }
+
     public function testANewRunSavesItsMetadataBeforeItIsQueued(): void
     {
         $queue = new FakeQueue();

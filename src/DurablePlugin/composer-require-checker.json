@@ -1,0 +1,9 @@
+{
+    "symbol-whitelist": [
+        "Sylius\\Component\\Grid\\Data\\DataProviderInterface",
+        "Sylius\\Component\\Grid\\Definition\\Grid",
+        "Sylius\\Component\\Grid\\Parameters",
+        "Sylius\\Component\\Grid\\Provider\\GridProviderInterface",
+        "Sylius\\Component\\Grid\\View\\GridViewFactoryInterface"
+    ]
+}

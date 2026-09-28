@@ -355,6 +355,16 @@ worker.
 roule sur le `MessageQueue` de Magento, parce que sur Temporal une activité est déjà une commande
 Temporal et une reprise une tâche de workflow.
 
+### Une reprise est livrée au moins une fois
+
+Sur Symfony et Laravel, un worker d'activité envoie la reprise **avant** de journaliser le résultat de
+l'activité, puis de nouveau après. Un worker qui meurt entre les deux laisse une reprise derrière lui,
+et non un résultat que personne ne reprend. Une reprise peut donc arriver **plus d'une fois**, et
+**avant** le résultat qu'elle annonce. Celle qui arrive en avance attend ce résultat par les nouvelles
+tentatives de la file. Une seconde livraison rejoue le journal et ne change rien. Temporal livre
+lui-même les tâches de workflow, et ce contrat ne s'y applique pas. Le raisonnement est consigné dans
+DUR050.
+
 Pour la configuration, voir [Premiers pas](../getting-started/) et
 [Référence de configuration](../configuration/).
 
