@@ -17,8 +17,10 @@ failures=0
 # $1 case name · $2 PR states (empty, "open", "closed"…) · $3 ahead_by ("" = missing branch)
 # $4 expected outcome: "live" or "stale"
 # $5 branch prefix (default "chore") · $6 state of the OpenSpec change: "" | "left" | "done"
+# $7 "release": run with --release, and $4 is then "released" or "kept" — the claim file's fate
 case_() {
     local name="$1" states="$2" ahead="$3" expected="$4" prefix="${5:-chore}" change="${6:-}"
+    local release="${7:-}"
     local box="$TMP/$name"
     mkdir -p "$box/.worktrees/prises/$prefix" "$box/bin"
 
@@ -53,11 +55,15 @@ FAKEGH
     chmod +x "$box/gh"
 
     local output
-    output="$(cd "$box" && PATH="$box:$PATH" bash bin/prises-check.sh dummy/repo 2>&1)"
+    output="$(cd "$box" && PATH="$box:$PATH" bash bin/prises-check.sh ${release:+--release} dummy/repo 2>&1)"
     # The summary line always contains the word "stale": the error line is the one to read, not
     # the count. First false positive of this file, fixed here.
     local actual="live"
     grep -q '::error file=' <<<"$output" && actual="stale"
+    if [ -n "$release" ]; then
+        actual="kept"
+        [ -f "$box/.worktrees/prises/$prefix/$name.md" ] || actual="released"
+    fi
 
     if [ "$actual" = "$expected" ]; then
         printf '  ok        %-34s %s\n' "$name" "$expected"
@@ -89,9 +95,16 @@ case_ change-in-progress-no-branch "closed"    ""  live   change  left
 # tasks are all checked has no claim left to hold.
 case_ change-done                "closed"      0   stale  change  done
 
+# --release deletes only what it has just proven merged: closed PRs and nothing beyond `main`. A
+# missing branch proves nothing about where its commits went, and a live claim is never touched.
+case_ release-merged             "closed"      0   released chore "" release
+case_ release-missing-branch     "closed"      ""  kept     chore "" release
+case_ release-reused-branch      "closed"      3   kept     chore "" release
+case_ release-open-pr            "open"        0   kept     chore "" release
+
 echo
 if [ "$failures" -eq 0 ]; then
-    echo "prises-check: 9 cases, all conforming"
+    echo "prises-check: 13 cases, all conforming"
 else
     echo "prises-check: $failures failing case(s)"
 fi
