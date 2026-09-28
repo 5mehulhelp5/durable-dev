@@ -18,6 +18,7 @@ use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
 use Gplanchat\Durable\Transport\ActivityTransportInterface;
+use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use Gplanchat\Durable\Worker\ActivityMessageProcessor;
@@ -70,10 +71,10 @@ final class AnEarlyResumeWhileARetryIsQueuedTest extends TestCase
         // A resume announcing act-1 arrives while attempt 2 is queued: a failure that will retry
         // is not the outcome it waits for (DUR050).
         try {
-            $handler(new ResumeWorkflowMessage('exec-1', [], 'act-1'));
+            $handler(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')));
             self::fail('the early resume must keep waiting');
         } catch (ResumeArrivedBeforeItsOutcome $e) {
-            self::assertSame('act-1', $e->activityId);
+            self::assertSame(['act-1'], $e->awaited->ids);
         }
         self::assertSame([], $announced, 'a retry announces nothing: no outcome yet');
 
@@ -82,9 +83,9 @@ final class AnEarlyResumeWhileARetryIsQueuedTest extends TestCase
         $attempt2 = $queue->dequeue();
         self::assertSame(2, $attempt2?->attempt);
         $processor->process($attempt2);
-        self::assertSame(['act-1'], $announced);
+        self::assertSame([AwaitedFact::activity('act-1')->describe()], $announced);
 
-        $handler(new ResumeWorkflowMessage('exec-1', [], 'act-1'));
+        $handler(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')));
         self::assertSame(2, $attempts, 'each attempt ran once');
     }
 
@@ -114,9 +115,9 @@ final class AnEarlyResumeWhileARetryIsQueuedTest extends TestCase
 
             public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
 
-            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
             {
-                $this->announced[] = $activityId;
+                $this->announced[] = $fact->describe();
             }
 
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
