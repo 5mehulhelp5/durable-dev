@@ -134,7 +134,7 @@ with their own constraints:
 
 | Port | In-memory | Temporal | DBAL |
 |---|---|---|---|
-| `EventStoreInterface` | `InMemoryEventStore` | `TemporalJournalEventStore`, `TemporalReadThroughEventStore` | `DbalEventStore` |
+| `EventStoreInterface` | `InMemoryEventStore` | `TemporalJournalEventStore` (removed since, #356), `TemporalReadThroughEventStore` | `DbalEventStore` |
 | `WorkflowMetadataStore` | `InMemoryWorkflowMetadataStore` | — | `DbalWorkflowMetadataStore` |
 | `ChildWorkflowParentLinkStoreInterface` | `InMemoryChildWorkflowParentLinkStore` | — | `DbalChildWorkflowParentLinkStore` |
 | `WorkflowRunCatalogInterface` | `InMemoryWorkflowRunCatalog` | `TemporalWorkflowRunCatalog` | `DbalWorkflowRunCatalog` |

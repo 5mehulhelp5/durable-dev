@@ -6,7 +6,6 @@ namespace Gplanchat\DurableModule\Runtime;
 
 use Gplanchat\Bridge\Temporal\Http\Psr18Http;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
-use Gplanchat\Bridge\Temporal\TemporalJournalEventStore;
 use Gplanchat\Bridge\Temporal\TemporalRuntimeAssembly;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
@@ -165,9 +164,11 @@ class RuntimeFactory
      * §2.3 removed the backend configuration surface: so it is not a copied-out name that
      * chooses, it is **the presence of a DSN** under `durable/temporal/dsn` in `env.php`. Absent,
      * the journal lives in this process and dies with it — a legitimate choice for a command, and
-     * ruinous for a consumer. Present, it lives in the cluster, and it is the only persistent
-     * journal Magento reaches: the host ships neither of the two connection types the SQL bridges
-     * bind to.
+     * ruinous for a consumer. Present, the cluster's history is the journal of every run it
+     * carries, and the store reads it through the bridge's assembly, as the other hosts do. A run
+     * executed in this process keeps its events here, exactly as without a DSN: what must survive
+     * is started with `workflowClient()` (#356). Magento reaches no other persistent journal: the
+     * host ships neither of the two connection types the SQL bridges bind to.
      */
     private function eventStore(): EventStoreInterface
     {
@@ -175,7 +176,7 @@ class RuntimeFactory
 
         return $settings === null
             ? new InMemoryEventStore()
-            : new TemporalJournalEventStore($this->client($settings), $settings);
+            : $this->assembly($settings)->readThroughEventStore(new InMemoryEventStore());
     }
 
     /**

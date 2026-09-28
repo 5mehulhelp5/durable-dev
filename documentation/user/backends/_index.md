@@ -86,7 +86,13 @@ exists when the application [serves a Nexus operation](../nexus/).
 ### Prerequisites
 
 - **`ext-grpc`** PHP extension compiled against the `grpc/grpc` package version required by the bridge.
-- A running Temporal cluster.
+- A running Temporal cluster, **Server 1.20 or newer**. 1.20 is the oldest version Durable
+  supports, because it is the first where SQL visibility (PostgreSQL, MySQL, SQLite) accepts custom
+  search attributes. On PostgreSQL that takes the `postgres12` persistence plugin
+  (`DB=postgres12` with the `auto-setup` image). The older `postgresql` plugin only offers standard
+  visibility, which cannot filter on custom search attributes, so the run list's filters fail
+  there. CI runs the run-list and visibility-query suites against `temporalio/auto-setup:1.20` on
+  PostgreSQL, as well as against a current server.
 
 ### Install `ext-grpc`
 

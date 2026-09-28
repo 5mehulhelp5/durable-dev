@@ -1,7 +1,8 @@
 # refactor/delete-journal-workflow-leftovers
 
 - **Scope**: #594. Delete `JournalStateResolver` and its test, and `TemporalConnection::journalWorkflowId()`,
-  `signalAppend` and `DEFAULT_WORKFLOW_TYPE` (the user's decision), with an UPGRADE entry.
+  `signalAppend`, `DEFAULT_WORKFLOW_TYPE`, the `workflowType` parameter and the `workflow_type` DSN key
+  (the user's decisions), with an UPGRADE entry.
 - **Entries**: `src/Bridge/Temporal/Journal/`, `src/Bridge/Temporal/TemporalConnection.php`, their tests,
   `UPGRADE.md`.
-- **State**: taken, starts once #589 is on main — elsa. Reviewer: sirius.
+- **State**: in review, PR #612 — elsa. Reviewer: sirius.
