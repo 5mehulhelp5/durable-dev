@@ -38,6 +38,13 @@ hugo --minify --gc
 
 Output: `hugo-docs/public/` (ignored by Git).
 
+## `llms.txt`
+
+The build also writes `/llms.txt`, an index of the user guide for coding agents and for Context7
+(#253). `layouts/index.llms.txt` builds it from the guide's own sections, so a new page appears in
+it without an edit. The French home has none, since the guide is English only. The repository's
+root `context7.json` tells Context7 which folder to read if the repository itself is submitted.
+
 ## Deployment configuration
 
 In `hugo-docs/hugo.toml`, set **`baseURL`** to the real site URL and adjust **`params.BookRepo`** / **`BookEditPath`** if the default fork or branch differs.

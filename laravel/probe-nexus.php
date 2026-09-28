@@ -25,6 +25,9 @@ require __DIR__ . '/vendor/autoload.php';
 /** @var \Illuminate\Foundation\Application $app */
 $app = require __DIR__ . '/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
+// Laravel's handler renders an uncaught exception and lets the script exit 0: CI would pass on a
+// probe that crashed (#360). PHP's own handler exits 255.
+restore_exception_handler();
 
 $registry = $app->make(NexusOperationRegistry::class);
 $delivery = NexusService::named('delivery');

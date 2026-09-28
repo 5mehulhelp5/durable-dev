@@ -7,6 +7,17 @@ defaultContentLanguage = 'en'
 defaultContentLanguageInSubdir = false
 enableGitInfo = true
 
+# `/llms.txt` (#253): an index of the user guide for coding agents and for Context7, which
+# indexes a site from it. Built from the pages themselves, so it cannot drift from the guide.
+[outputFormats.llms]
+mediaType = 'text/plain'
+baseName = 'llms'
+isPlainText = true
+notAlternative = true
+
+[outputs]
+home = ['html', 'rss', 'llms']
+
 # La page d'accueil est le seul contenu traduit : `layouts/index.fr.html`. Le
 # guide reste anglais et n'est pas remonté sous /fr/ : un second exemplaire
 # complet de l'arbre servirait de l'anglais à des URL françaises.
