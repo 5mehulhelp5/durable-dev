@@ -4,11 +4,23 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable;
 
+use Gplanchat\Durable\Activity\ActivityOptions;
+use Gplanchat\Durable\Activity\ActivityTimeouts;
+use Gplanchat\Durable\Activity\NullActivityHeartbeatSender;
+use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
+use Gplanchat\Durable\Port\NoActivityAttemptClaim;
+use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
+use Gplanchat\Durable\RegistryActivityExecutor;
+use Gplanchat\Durable\Store\ActivityEventJournal;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
+use Gplanchat\Durable\Transport\ActivityMessage;
+use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Uuid\NativeUuidV7Generator;
+use Gplanchat\Durable\Worker\ActivityMessageProcessor;
 use PHPUnit\Framework\TestCase;
 use unit\Durable\Fixtures\FrozenClock;
 
@@ -48,5 +60,46 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         self::assertSame('1700000000', $run->startedAt?->format('U'));
         self::assertSame('1700000042', $run->endedAt?->format('U'));
         self::assertSame('1700000042', $catalog->checkHealth()->checkedAt->format('U'));
+    }
+
+    public function testTheInMemoryTransportDefersARetryOnItsClock(): void
+    {
+        $clock = new FrozenClock(1_700_000_000.0);
+        $transport = new InMemoryActivityTransport($clock);
+        $transport->enqueue(new ActivityMessage('exec-1', 'act-1', 'charge', [], retryDelay: Duration::seconds(10.0)));
+
+        self::assertSame(1_700_000_010.0, $transport->nextDueAt());
+        self::assertNull($transport->dequeue());
+        $clock->advance(10.0);
+        self::assertNotNull($transport->dequeue());
+    }
+
+    public function testTheActivityTimeoutsAreMeasuredOnTheProcessorsClock(): void
+    {
+        $clock = new FrozenClock(1_700_000_005.0);
+        $store = new InMemoryEventStore($clock);
+        $executor = new RegistryActivityExecutor();
+        $executor->register('charge', static fn(): string => 'ok');
+        $processor = new ActivityMessageProcessor(
+            $store,
+            new InMemoryActivityTransport($clock),
+            $executor,
+            new NullWorkflowResumeDispatcher(),
+            new NullActivityHeartbeatSender(),
+            attemptClaim: new NoActivityAttemptClaim(),
+            clock: $clock,
+        );
+
+        // Five seconds after the first queueing, by this clock: well inside the ten allowed.
+        $processor->process(new ActivityMessage(
+            'exec-1',
+            'act-1',
+            'charge',
+            [],
+            new ActivityOptions(timeouts: new ActivityTimeouts(scheduleToClose: Duration::seconds(10.0))),
+            firstQueuedAt: 1_700_000_000.0,
+        ));
+
+        self::assertInstanceOf(ActivityCompleted::class, ActivityEventJournal::lastTerminalOutcome($store, 'exec-1', 'act-1'));
     }
 }
