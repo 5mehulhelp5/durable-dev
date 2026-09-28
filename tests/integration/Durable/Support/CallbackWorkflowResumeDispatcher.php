@@ -24,6 +24,12 @@ final class CallbackWorkflowResumeDispatcher implements WorkflowResumeDispatcher
         ($this->onResume)($executionId, $pendingUpdates);
     }
 
+    /**
+     * Nothing to announce early: the callback runs the resume inline, which is what a `sync` route
+     * does, and the resume after the append does the work (DUR050).
+     */
+    public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+
     public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
     {
         if (null !== $this->onNew) {

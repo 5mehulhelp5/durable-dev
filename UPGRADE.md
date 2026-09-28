@@ -896,6 +896,45 @@ started before the change:
 }
 ```
 
+### `WorkflowResumeDispatcher` gains `dispatchResumeAnnouncing()`
+
+**Who is affected**: only whoever **implements** `WorkflowResumeDispatcher`. The bundle's, the Laravel
+provider's, the Temporal bridge's and the null dispatcher are updated. Code that calls the port is
+not affected. Rector cannot write the method for you: only the implementer knows how its queue
+delivers.
+
+**Why.** The activity worker now sends the resume before it appends the activity's outcome, and
+again after it (DUR050, #328). The first send has to leave at once, carrying the id of the activity
+whose outcome it announces; a resume that arrives before that outcome waits for it.
+
+**What to write.** Send a `ResumeWorkflowMessage` naming the activity, immediately, and nothing
+where your transport runs the resume inline (a `sync` route): there it would always run before
+the outcome, and the resume sent after the append does the work.
+
+```php
+use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
+
+public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+{
+    if (!$this->runsInline) {
+        $this->send(new ResumeWorkflowMessage($executionId, [], $activityId)); // not deferred
+    }
+}
+```
+
+A dispatcher whose backend owns delivery (as Temporal's does) implements it as a no-op.
+
+### `durable.activity_transport.table_name` is removed
+
+**Who is affected**: a Symfony application whose `durable.yaml` still sets it. It has been deprecated
+since 0.1.0-beta1, and nothing ever read it.
+
+**Why.** It named an outbox that was never built, and DUR050 (#328) chose not to build one: the
+resume is sent before the outcome and again after it.
+
+**What to do.** Delete the line. Left in place, the container build fails with an
+`InvalidConfigurationException` naming the unrecognized option.
+
 ## 0.1.0-alpha8
 
 ### The divergence guard compares the payload too
