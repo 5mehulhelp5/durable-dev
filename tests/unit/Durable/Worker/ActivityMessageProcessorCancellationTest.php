@@ -39,6 +39,8 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
                 $this->resumed[] = $executionId;
             }
 
+            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
+
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
         };
 
@@ -106,6 +108,8 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
             {
                 $this->resumed[] = $executionId;
             }
+
+            public function dispatchResumeAnnouncing(string $executionId, string $activityId): void {}
 
             public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
         };

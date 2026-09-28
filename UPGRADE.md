@@ -24,6 +24,34 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### `WorkflowResumeDispatcher` gains `dispatchResumeAnnouncing()`
+
+**Who is affected**: only whoever **implements** `WorkflowResumeDispatcher`. The bundle's, the Laravel
+provider's, the Temporal bridge's and the null dispatcher are updated. Code that calls the port is
+not affected. Rector cannot write the method for you: only the implementer knows how its queue
+delivers.
+
+**Why.** The activity worker now sends the resume before it appends the activity's outcome, and
+again after it (DUR050, #328). The first send has to leave at once, carrying the id of the activity
+whose outcome it announces; a resume that arrives before that outcome waits for it.
+
+**What to write.** Send a `ResumeWorkflowMessage` naming the activity, immediately, and nothing
+where your transport runs the resume inline (a `sync` route): there it would always run before
+the outcome, and the resume sent after the append does the work.
+
+```php
+use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
+
+public function dispatchResumeAnnouncing(string $executionId, string $activityId): void
+{
+    if (!$this->runsInline) {
+        $this->send(new ResumeWorkflowMessage($executionId, [], $activityId)); // not deferred
+    }
+}
+```
+
+A dispatcher whose backend owns delivery (as Temporal's does) implements it as a no-op.
+
 ### On Temporal, the dashboards link a run by its execution id, not the server's run id
 
 **Who is affected**: an application on the Temporal backend with links to its run pages saved
