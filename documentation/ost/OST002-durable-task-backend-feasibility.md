@@ -28,6 +28,10 @@ implements. One bridge would reach three hosts: the Dapr sidecar, Azure Durable 
 self-hosted `durabletask-go` over SQLite or Postgres. The proto is public and explicitly meant for
 third-party SDKs.
 
+> **No longer true as written.** Dapr now builds on its own fork of the proto, which has diverged
+> from Microsoft's: one bridge reaches one family of hosts, not three. See
+> [§8](#8-the-dapr-fork-2026-09-28).
+
 That is the opportunity. The rest of this document is why it is probably not enough.
 
 ## Method
@@ -176,7 +180,8 @@ Recorded so the ledger is honest, not only the debit side.
 - **No repeated history I/O.** `OrchestratorRequest` delivers `pastEvents` + `newEvents` **inside the
   work item**. The bridge would build its `WorkflowHistorySourceInterface` over an in-memory history,
   where `EventStoreHistorySource` re-reads the whole stream on every slot lookup. Plus
-  `WORKER_CAPABILITY_HISTORY_STREAMING` / `StreamInstanceHistory` for large histories.
+  `WORKER_CAPABILITY_HISTORY_STREAMING` / `StreamInstanceHistory` for large histories. (Microsoft's
+  proto only: Dapr's fork reserved that capability as never implemented, see §8.)
 - **The core mapping is clean.** Scheduling, timers, child workflows, completion, failure and
   continue-as-new (`CompleteOrchestrationAction` + `ORCHESTRATION_STATUS_CONTINUED_AS_NEW`) all map
   without tricks.
@@ -220,7 +225,41 @@ verdict.
    documented per-backend contract — or does per-backend semantics for cancellation break the promise
    that the authoring model is the same everywhere?
 
-## 8. Position
+## 8. The Dapr fork (2026-09-28)
+
+Re-checked against both upstreams on 2026-09-28. Microsoft's `orchestrator_service.proto` has not
+moved in substance: still 911 lines, the same eight-member action oneof. What moved is Dapr.
+
+`dapr/durabletask-go` takes its proto from a git submodule pointing at
+[`dapr/durabletask-protobuf`](https://github.com/dapr/durabletask-protobuf), a fork created in
+December 2024 that now diverges from its parent in several ways:
+
+- **Split and renamed.** Seven files instead of one (`orchestrator_service`, `orchestrator_actions`,
+  `history_events`, `orchestration`, `runtime_state`, `backend_service`, `attestation`), and
+  *orchestration* became *workflow* throughout: `WorkflowAction`, `CreateChildWorkflowAction`,
+  `CompleteWorkflowAction`, `ChildWorkflowInstanceCreatedEvent`, a new `CompleteWorkflowTask` RPC
+  next to `CompleteOrchestratorTask`.
+- **A different action set.** `WorkflowAction.workflowActionType` keeps schedule, child, timer,
+  send-event, complete and terminate; drops entity messages and rewind (field 8 reserved); adds
+  `CreateDetachedWorkflowAction` and `WorkflowVersionNotAvailableAction`, plus an optional
+  `TaskRouter` that targets another Dapr app.
+- **Different history.** Entity and lock events are gone (fields 23 to 29 reserved);
+  `ExecutionStalledEvent` and `DetachedWorkflowInstanceCreatedEvent` are new; activity and child
+  results can carry SPIFFE-signed attestations.
+- **Different history delivery.** `WORKER_CAPABILITY_HISTORY_STREAMING` is reserved "never
+  implemented". In its place, `WORKER_CAPABILITY_STATEFUL_HISTORY` lets the sidecar send only new
+  events to a worker it believes still holds the rest. That suits a long-lived worker; a PHP worker
+  that forgets between requests would have to decline it.
+
+**What did not change**, in either proto: `grep -i` for `cancel`, `heartbeat` and `update` finds
+nothing beyond the `CANCELED` status value. §2 and §3 stand as written.
+
+**Consequence for §6.** The opportunity was "one bridge, three hosts". It is now one bridge for Dapr
+and another, or a translation layer, for Azure Durable Task Scheduler and Microsoft's own SDKs. The
+contraindications are unchanged; the payoff that was meant to outweigh them is cut by more than
+half. The verdict hardens.
+
+## 9. Position
 
 **Contraindicated.** Not impossible, not even hard in most places, but the one thing it silently
 changes is the one thing Durable sells hardest.
@@ -232,6 +271,7 @@ churn. That is a risk that shows up in CI, not in a customer's compensation.
 ## References
 
 - [`microsoft/durabletask-protobuf` — `orchestrator_service.proto`](https://github.com/microsoft/durabletask-protobuf)
+- [`dapr/durabletask-protobuf`](https://github.com/dapr/durabletask-protobuf) — Dapr's fork, the proto `durabletask-go` builds on
 - [`dapr/durabletask-go`](https://github.com/dapr/durabletask-go) · [Dapr Workflow architecture](https://docs.dapr.io/developing-applications/building-blocks/workflow/workflow-architecture/)
 - [Durable Task timers and cancellation semantics](https://learn.microsoft.com/en-us/azure/durable-task/common/durable-task-timers)
 - [Eternal orchestrations and continue-as-new](https://learn.microsoft.com/en-us/azure/durable-task/common/durable-task-eternal-orchestrations)
