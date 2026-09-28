@@ -142,7 +142,7 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
         $dispatcher->dispatchResume('exec-1');
 
         self::assertSame([], $this->ran, 'the retry is not due on the frozen clock');
-        self::assertLessThan(2.0, (hrtime(true) - $started) / 1e9);
+        self::assertLessThan(2.0, ((float) (hrtime(true) - $started)) / 1e9);
     }
 
     private function dispatcher(
