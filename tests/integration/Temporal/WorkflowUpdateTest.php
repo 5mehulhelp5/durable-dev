@@ -45,4 +45,21 @@ final class WorkflowUpdateTest extends TemporalServerTestCase
         $result = $this->workflowClient()->pollForCompletion($executionId, 250, 160);
         self::assertSame(['ok' => true, 'by' => 'alice'], $result['approved'] ?? null);
     }
+
+    /**
+     * DUR051: the worker's command buffer records nothing for an update on Temporal
+     * (`recordUpdateHandled()` is a documented delegation), because the server writes the record
+     * itself from the protocol messages the worker hands back. This is the proof that it does.
+     */
+    public function testTheServerRecordsTheUpdateTheWorkerHandled(): void
+    {
+        $executionId = $this->startWorkflow('Updatable', []);
+        $this->workflowClient()->update($this->workflowId($executionId), 'approve', ['by' => 'alice']);
+        $this->workflowClient()->pollForCompletion($executionId, 250, 160);
+
+        $names = $this->historyEventNames($executionId);
+
+        self::assertContains('EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_ACCEPTED', $names);
+        self::assertContains('EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_COMPLETED', $names);
+    }
 }
