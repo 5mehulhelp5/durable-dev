@@ -65,7 +65,8 @@ left four other pairs with the same gap. Read one by one, they are not alike:
    timer is due: an early timer message on the in-memory transport would otherwise spin.
    `checkTimers()` reads the clock after the send, so it fires the named timers and possibly
    others that fell due in between; the plain resume after it covers those. It fires fewer only
-   when a concurrent pass cancelled one, which the timer fact accepts.
+   when a pass between a crash and the redelivery cancelled one (the lock serialises passes),
+   which the timer fact accepts.
 6. **Everything else follows DUR050**: the second send after the append, and no early send where
    the resume runs inline.
 
