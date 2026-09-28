@@ -69,6 +69,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | DUR050 | The resume is dispatched first, and a resume that arrives early waits (proposed) | [adr/DUR050-the-resume-is-dispatched-first.md](adr/DUR050-the-resume-is-dispatched-first.md) |
 | DUR051 | One command port, and a backend refuses by name what it cannot honour (proposed) | [adr/DUR051-a-backend-refuses-what-it-cannot-honour.md](adr/DUR051-a-backend-refuses-what-it-cannot-honour.md) |
 | DUR052 | The resume protocol beyond activities: each pair names its own fact (proposed) | [adr/DUR052-the-resume-protocol-beyond-activities.md](adr/DUR052-the-resume-protocol-beyond-activities.md) |
+| DUR053 | A superseded pass cannot write: one fencing epoch per pass (proposed) | [adr/DUR053-a-superseded-pass-cannot-write.md](adr/DUR053-a-superseded-pass-cannot-write.md) |
 
 ## Working agreements (WA)
 
