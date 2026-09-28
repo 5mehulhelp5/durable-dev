@@ -4,14 +4,37 @@
 # repository's packages, the getting-started guide's blocks applied verbatim, and the first workflow
 # run to completion. A guide edit that no longer builds a container fails here, not on a reader.
 #
-# Usage: bin/guide-follows.sh [guide.md ...]   (default: the English and French getting-started)
+# Usage: bin/guide-follows.sh [--packagist] [guide.md ...]   (default: the English and French getting-started)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+PACKAGIST=0
+[ "${1:-}" = --packagist ] && { PACKAGIST=1; shift; }
 [ $# -gt 0 ] || set -- "$ROOT"/documentation/user/getting-started/_index{,.fr}.md
+
+# --packagist (#347): what a reader gets, not what this commit holds. A fresh skeleton runs the
+# guide's Symfony install block verbatim against Packagist, and the bundle must end up registered.
+# It stops there: the guide on `main` may already describe more than the last published tag ships.
+if [ "$PACKAGIST" -eq 1 ]; then
+    for guide in "$@"; do
+        echo "== $guide, from Packagist"
+        block="$(awk '
+            /^```bash/ { fence = 1; body = ""; next }
+            /^```/     { if (fence && body ~ /composer require gplanchat\/durable-bundle/) { printf "%s", body; exit } fence = 0; next }
+            fence      { body = body $0 "\n" }' "$guide")"
+        [ -n "$block" ] || { echo "$guide has no bash block requiring gplanchat/durable-bundle" >&2; exit 1; }
+        app="$TMP/packagist"
+        rm -rf "$app"
+        composer create-project --no-interaction --quiet symfony/skeleton "$app"
+        (cd "$app" && COMPOSER_NO_INTERACTION=1 bash -euo pipefail -c "$block")
+        grep -qF 'Gplanchat\Durable\Bundle\DurableBundle::class' "$app/config/bundles.php" \
+            || { echo "$guide installed, but config/bundles.php does not register the bundle" >&2; exit 1; }
+    done
+    exit 0
+fi
 
 # The bundle's recipe lives in recipes-contrib, which Flex skips unless told otherwise; the guide
 # tells the reader to allow it before `composer require` (#443). The bench runs that line because the
