@@ -11,6 +11,7 @@ use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\Nexus\NexusEndpoint;
 use Gplanchat\Durable\Nexus\NexusOperationName;
 use Gplanchat\Durable\Nexus\NexusService;
+use Gplanchat\Durable\Port\History\SlotOutcome;
 use Gplanchat\Durable\Port\WorkflowCommandBufferInterface;
 use Gplanchat\Durable\Port\WorkflowHistorySourceInterface;
 use PHPUnit\Framework\TestCase;
@@ -64,7 +65,7 @@ final class NexusCancellationTraversalTest extends TestCase
 
         $history = $this->createStub(WorkflowHistorySourceInterface::class);
         $history->method('findScheduledNexusOperation')->willReturn('op-done');
-        $history->method('findNexusOperationSlotResult')->willReturn(['result' => 'ok', 'failed' => null]);
+        $history->method('findNexusOperationSlotResult')->willReturn(new SlotOutcome('ok'));
 
         $context = new ExecutionContext('nexus-1', $history, $buffer);
 

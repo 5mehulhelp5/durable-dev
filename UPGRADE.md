@@ -982,6 +982,37 @@ public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
 `RunDashboard` asks about each part, applies the ones you accept, and tells the page which inputs
 to offer. The conformance suite checks each filter case against your answer for that filter.
 
+### `WorkflowHistorySourceInterface` returns value objects, not array shapes (#325)
+
+**Who is affected**: code that implements `Gplanchat\Durable\Port\WorkflowHistorySourceInterface`
+(a custom history source, a test double), and code that reads what it returns. The two history
+sources Durable ships are converted.
+
+| Method | Returned | Now returns |
+|---|---|---|
+| `findActivitySlotResult()`, `findNexusOperationSlotResult()` | `array{result, failed}` | `History\SlotOutcome` (`result`, `failed`) |
+| `findTimerSlotResult()` | `array{id, scheduledAt, failed}` | `History\TimerOutcome` (`timerId`, `failed`) |
+| `findChildWorkflowForSlot()` | `array{childExecutionId, result, failed}` | `History\ChildWorkflowOutcome` (`childExecutionId`, `result`, `failed`) |
+| `findSideEffectForSlot()` | `mixed` | `?History\SideEffectOutcome` (`result`) |
+| `messageAt()` | `array{position, kind, name, payload}` | `History\RecordedMessage` (same fields) |
+| `cancellationDelivery()` | `array{position, targets}` | `History\CancellationDelivery` (same fields) |
+
+The classes live in `Gplanchat\Durable\Port\History\`, and each lookup still returns `null` where
+it did. To migrate a reader, replace `$x['result']` with `$x->result`, and so on for each field. To
+migrate an implementer, return `new SlotOutcome($result, $failure)` where you returned the array.
+
+Two meanings change:
+
+- **The timer's `scheduledAt` is gone.** It was `0.0` on every backend.
+- **`findSideEffectForSlot()` distinguishes the two empty cases.** It now returns `null` only when
+  nothing is recorded; a recorded `null` is a `SideEffectOutcome` whose `result` is null.
+  `hasSideEffectForSlot()` is unchanged.
+
+`ExecutionContext::cancellationDelivery()` follows the port and returns a `CancellationDelivery`.
+
+No Rector rule yet: it ships with the `ExecutionId` type-hints, planned with #269 (the user's
+decision of 2026-09-24).
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract

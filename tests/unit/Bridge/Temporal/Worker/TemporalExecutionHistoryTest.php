@@ -6,6 +6,8 @@ namespace unit\Gplanchat\Bridge\Temporal\Worker;
 
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
+use Gplanchat\Durable\Port\History\RecordedMessage;
+use Gplanchat\Durable\Port\History\SlotOutcome;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Enums\V1\EventType;
@@ -155,9 +157,9 @@ final class TemporalExecutionHistoryTest extends TestCase
         ]);
 
         $slot = $history->findActivitySlotResult(0);
-        self::assertNotNull($slot);
-        self::assertSame('hello', $slot['result']);
-        self::assertNull($slot['failed']);
+        self::assertInstanceOf(SlotOutcome::class, $slot);
+        self::assertSame('hello', $slot->result);
+        self::assertNull($slot->failed);
     }
 
     public function testActivitySlotResultReturnedWhenFailed(): void
@@ -170,9 +172,9 @@ final class TemporalExecutionHistoryTest extends TestCase
 
         $slot = $history->findActivitySlotResult(0);
         self::assertNotNull($slot);
-        self::assertNull($slot['result']);
-        self::assertInstanceOf(\Throwable::class, $slot['failed']);
-        self::assertStringContainsString('Something went wrong', $slot['failed']->getMessage());
+        self::assertNull($slot->result);
+        self::assertInstanceOf(\Throwable::class, $slot->failed);
+        self::assertStringContainsString('Something went wrong', $slot->failed->getMessage());
     }
 
     public function testParallelActivitiesSlotsAreOrderedBySchedule(): void
@@ -189,9 +191,9 @@ final class TemporalExecutionHistoryTest extends TestCase
         $slot1 = $history->findActivitySlotResult(1);
 
         self::assertNotNull($slot0);
-        self::assertSame('result-A', $slot0['result']);
+        self::assertSame('result-A', $slot0->result);
         self::assertNotNull($slot1);
-        self::assertSame('result-B', $slot1['result']);
+        self::assertSame('result-B', $slot1->result);
     }
 
     public function testTimerSlotNullWhenStartedButNotFired(): void
@@ -214,7 +216,7 @@ final class TemporalExecutionHistoryTest extends TestCase
 
         $slot = $history->findTimerSlotResult(0);
         self::assertNotNull($slot);
-        self::assertSame('timer-1', $slot['id']);
+        self::assertSame('timer-1', $slot->timerId);
     }
 
     public function testMessagesAreReadInRecordedOrderWhateverTheirName(): void
@@ -230,23 +232,23 @@ final class TemporalExecutionHistoryTest extends TestCase
         ]);
 
         $first = $history->messageAt(0);
-        self::assertNotNull($first);
-        self::assertSame('approve', $first['name']);
-        self::assertSame(['approved' => true], $first['payload']);
+        self::assertInstanceOf(RecordedMessage::class, $first);
+        self::assertSame('approve', $first->name);
+        self::assertSame(['approved' => true], $first->payload);
 
         $second = $history->messageAt(1);
         self::assertNotNull($second);
-        self::assertSame('reject', $second['name']);
-        self::assertSame(['reason' => 'no budget'], $second['payload']);
+        self::assertSame('reject', $second->name);
+        self::assertSame(['reason' => 'no budget'], $second->payload);
 
         $third = $history->messageAt(2);
         self::assertNotNull($third);
-        self::assertSame('approve', $third['name']);
-        self::assertTrue($third['payload']['second'] ?? false);
+        self::assertSame('approve', $third->name);
+        self::assertTrue($third->payload['second'] ?? false);
 
         // The positions are increasing: that is what allows a message to be compared with the
         // firing of a deadline.
-        self::assertSame([2, 3, 4], [$first['position'], $second['position'], $third['position']]);
+        self::assertSame([2, 3, 4], [$first->position, $second->position, $third->position]);
 
         self::assertNull($history->messageAt(3), 'There is no fourth message');
     }

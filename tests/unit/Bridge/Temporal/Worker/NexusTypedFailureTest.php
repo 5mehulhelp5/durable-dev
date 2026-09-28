@@ -51,7 +51,7 @@ final class NexusTypedFailureTest extends TestCase
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
 
-        $failure = $slot['failed'];
+        $failure = $slot->failed;
         self::assertInstanceOf(DurableNexusOperationFailedException::class, $failure);
         self::assertSame($expected, $failure->kind(), 'the kind of the ending must survive the reading');
         self::assertSame('payments', $failure->endpoint());
@@ -66,7 +66,7 @@ final class NexusTypedFailureTest extends TestCase
             $this->scheduled(5, 'op-one'),
             $this->terminal(EventType::EVENT_TYPE_NEXUS_OPERATION_FAILED, 7),
         ]);
-        $failure = $history->findNexusOperationSlotResult(0)['failed'];
+        $failure = $history->findNexusOperationSlotResult(0)->failed;
 
         $classified = \Gplanchat\Durable\Failure\WorkflowFailureClassifier::classify('exec-1', $failure);
 

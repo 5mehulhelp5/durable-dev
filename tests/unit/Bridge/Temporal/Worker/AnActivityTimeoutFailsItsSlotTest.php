@@ -45,11 +45,11 @@ final class AnActivityTimeoutFailsItsSlotTest extends TestCase
         $slot = self::historyTimingOut($timeoutType)->findActivitySlotResult(0);
 
         self::assertNotNull($slot, 'the slot is settled, not left waiting');
-        self::assertNull($slot['result']);
-        self::assertInstanceOf(DurableActivityFailedException::class, $slot['failed']);
-        self::assertSame(\RuntimeException::class, $slot['failed']->envelope()->class);
-        self::assertSame($message, $slot['failed']->envelope()->message);
-        self::assertSame('SlowOne', $slot['failed']->activityName());
+        self::assertNull($slot->result);
+        self::assertInstanceOf(DurableActivityFailedException::class, $slot->failed);
+        self::assertSame(\RuntimeException::class, $slot->failed->envelope()->class);
+        self::assertSame($message, $slot->failed->envelope()->message);
+        self::assertSame('SlowOne', $slot->failed->activityName());
     }
 
     /**
@@ -62,7 +62,7 @@ final class AnActivityTimeoutFailsItsSlotTest extends TestCase
         self::assertInstanceOf(ActivityFailed::class, $journal);
         $onTheJournal = DurableActivityFailedException::toThrowable($journal);
 
-        $onTemporal = self::historyTimingOut(TimeoutType::TIMEOUT_TYPE_START_TO_CLOSE)->findActivitySlotResult(0)['failed'] ?? null;
+        $onTemporal = self::historyTimingOut(TimeoutType::TIMEOUT_TYPE_START_TO_CLOSE)->findActivitySlotResult(0)?->failed;
 
         self::assertInstanceOf(DurableActivityFailedException::class, $onTheJournal);
         self::assertInstanceOf(DurableActivityFailedException::class, $onTemporal);

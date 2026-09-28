@@ -92,7 +92,7 @@ final class AnActivityFailureReportsItsAttemptTest extends TestCase
         }
         $events[] = $ending;
 
-        $failed = TemporalExecutionHistory::fromEvents($events)->findActivitySlotResult(0)['failed'] ?? null;
+        $failed = TemporalExecutionHistory::fromEvents($events)->findActivitySlotResult(0)?->failed;
         self::assertInstanceOf(DurableActivityFailedException::class, $failed);
 
         return $failed;

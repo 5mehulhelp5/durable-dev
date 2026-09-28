@@ -9,6 +9,7 @@ use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\Nexus\NexusEndpoint;
 use Gplanchat\Durable\Nexus\NexusOperationName;
 use Gplanchat\Durable\Nexus\NexusService;
+use Gplanchat\Durable\Port\History\SlotOutcome;
 use Gplanchat\Durable\Port\WorkflowCommandBufferInterface;
 use Gplanchat\Durable\Port\WorkflowHistorySourceInterface;
 use PHPUnit\Framework\TestCase;
@@ -55,7 +56,7 @@ final class NexusPayloadDivergenceTest extends TestCase
         $history->method('nexusOperationSignatureForSlot')->willReturn('billing/invoices/issue');
         $history->method('nexusOperationPayloadForSlot')->willReturn($recordedPayload);
         $history->method('findScheduledNexusOperation')->willReturn('op-1');
-        $history->method('findNexusOperationSlotResult')->willReturn(['result' => 'done', 'failed' => null]);
+        $history->method('findNexusOperationSlotResult')->willReturn(new SlotOutcome('done'));
 
         return new ExecutionContext('exec-nexus', $history, $this->createStub(WorkflowCommandBufferInterface::class));
     }

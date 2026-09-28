@@ -65,8 +65,8 @@ final class NexusHistoryReadingTest extends TestCase
 
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
-        self::assertNull($slot['failed']);
-        self::assertSame(['amount' => 42], $slot['result']);
+        self::assertNull($slot->failed);
+        self::assertSame(['amount' => 42], $slot->result);
     }
 
     /**
@@ -96,8 +96,8 @@ final class NexusHistoryReadingTest extends TestCase
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
         // The kind, not the wording: a message is a phrasing, a kind is a contract.
-        self::assertInstanceOf(DurableNexusOperationFailedException::class, $slot['failed']);
-        self::assertSame($expected, $slot['failed']->kind());
+        self::assertInstanceOf(DurableNexusOperationFailedException::class, $slot->failed);
+        self::assertSame($expected, $slot->failed->kind());
     }
 
     public function testTheScheduledEventIdIsRecoverableForCancellation(): void
@@ -186,8 +186,8 @@ final class NexusHistoryReadingTest extends TestCase
 
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
-        self::assertNull($slot['failed'], 'The asynchronous start must no longer leave a failure behind it.');
-        self::assertSame(['amount' => 42], $slot['result']);
+        self::assertNull($slot->failed, 'The asynchronous start must no longer leave a failure behind it.');
+        self::assertSame(['amount' => 42], $slot->result);
     }
 
     public function testAnAsynchronousOperationThatFailsIsClassifiedLikeAnyOther(): void
@@ -207,8 +207,8 @@ final class NexusHistoryReadingTest extends TestCase
 
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
-        self::assertInstanceOf(DurableNexusOperationFailedException::class, $slot['failed']);
-        self::assertSame(NexusOperationFailureKind::OperationFailed, $slot['failed']->kind());
+        self::assertInstanceOf(DurableNexusOperationFailedException::class, $slot->failed);
+        self::assertSame(NexusOperationFailureKind::OperationFailed, $slot->failed->kind());
     }
 
     public function testAnOperationStartedWithoutATokenIsNotAFailure(): void
@@ -243,8 +243,8 @@ final class NexusHistoryReadingTest extends TestCase
 
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
-        self::assertNull($slot['failed']);
-        self::assertSame('done', $slot['result']);
+        self::assertNull($slot->failed);
+        self::assertSame('done', $slot->result);
     }
 
     private function scheduled(int $eventId): HistoryEvent
