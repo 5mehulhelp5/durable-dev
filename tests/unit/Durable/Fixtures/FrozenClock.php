@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace unit\Gplanchat\Durable\Fixtures;
+namespace unit\Durable\Fixtures;
 
 use Psr\Clock\ClockInterface;
 

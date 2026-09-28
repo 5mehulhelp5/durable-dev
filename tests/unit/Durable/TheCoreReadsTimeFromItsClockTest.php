@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+namespace unit\Gplanchat\Durable;
+
+use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\Observation\WorkflowRunStatus;
+use Gplanchat\Durable\Store\InMemoryEventStore;
+use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
+use Gplanchat\Durable\Uuid\NativeUuidV7Generator;
+use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\FrozenClock;
+
+/**
+ * Every "now" the core stamps comes from the clock it was handed, not from the wall (#617).
+ */
+final class TheCoreReadsTimeFromItsClockTest extends TestCase
+{
+    public function testTheUuidV7TimestampIsTheClocksMillisecond(): void
+    {
+        $uuid = (new NativeUuidV7Generator(new FrozenClock(1_700_000_000.123)))->generate();
+
+        self::assertSame(1_700_000_000_123, hexdec(str_replace('-', '', substr($uuid, 0, 13))));
+    }
+
+    public function testTheInMemoryJournalStampsTheClocksInstant(): void
+    {
+        $store = new InMemoryEventStore(new FrozenClock(1_700_000_000.5));
+        $store->append(new WorkflowSignalReceived('exec-1', 'go', []));
+
+        foreach ($store->readStreamWithRecordedAt('exec-1') as $row) {
+            self::assertSame('1700000000.500000', $row['recordedAt']->format('U.u'));
+        }
+        self::assertSame(1, $store->countEventsInStream('exec-1'));
+    }
+
+    public function testTheInMemoryCatalogStampsTheClocksInstants(): void
+    {
+        $clock = new FrozenClock(1_700_000_000.0);
+        $catalog = new InMemoryWorkflowRunCatalog(new InMemoryEventStore($clock), $clock);
+        $catalog->recordStart('exec-1', 'Order');
+        $clock->advance(42.0);
+        $catalog->recordOutcome('exec-1', WorkflowRunStatus::Completed);
+
+        $run = $catalog->findRun('exec-1');
+        self::assertNotNull($run);
+        self::assertSame('1700000000', $run->startedAt?->format('U'));
+        self::assertSame('1700000042', $run->endedAt?->format('U'));
+        self::assertSame('1700000042', $catalog->checkHealth()->checkedAt->format('U'));
+    }
+}
