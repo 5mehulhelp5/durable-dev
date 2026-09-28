@@ -48,7 +48,9 @@ jobs:
       # calls them: this guard fails the day that stops being true.
       - name: Guard — no page uses the pruned libraries
         run: |
-          if grep -rlE '\{\{< *(mermaid|katex|math|asciinema)' documentation/user --include='*.md'; then
+          # Both mounted trees (the guide and the blog), both shortcode delimiters, and the
+          # fenced ```mermaid block hugo-book renders with the same library (#369, D-20).
+          if grep -rlE '\{\{[<%] *(mermaid|katex|math|asciinema)|^```mermaid' documentation/user documentation/blog --include='*.md'; then
             echo "::error::A page uses a shortcode whose library is pruned at deploy time."
             echo "Remove the shortcode, or remove the pruning in the \"Prune\" step."
             exit 1

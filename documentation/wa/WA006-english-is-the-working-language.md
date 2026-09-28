@@ -74,7 +74,7 @@ another reason, or in a change that says so.
 | `documentation/audit/` | 22 files, French, landed by #271 — deleted on 2026-09-28 (#379), see below |
 | `documentation/journal/inbox/` | 8 entries, French, in a directory WA001 already required to be English |
 | `.worktrees/prises/` | the open prise files written before this agreement, and `PRISES.md` itself — released or translated as each slice closes |
-| `hugo-docs/` | 12 maintainer-facing files (the README, `hugo.toml` comments, `import-design.py` and its output strings, layout and asset comments) — added 2026-09-14; the French landing canvases and layouts stay, they are the product |
+| `hugo-docs/` | 12 maintainer-facing files (the README, `hugo.toml` comments, `import-design.py` and its output strings, layout and asset comments) — added 2026-09-14, translated 2026-09-28 (#369); the French landing canvases, the home page's French title and description, and the French page text in `import-design.py` stay, they are the product |
 | `openspec/` | 11 whole-file French records under `changes/`, most of them archived — see the rule below |
 | Commit history | French throughout; frozen by the paragraph above |
 
