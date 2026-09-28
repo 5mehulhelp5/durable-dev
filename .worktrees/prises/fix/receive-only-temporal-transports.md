@@ -8,6 +8,5 @@
   under `src/DurableBundle/`, their tests, `psr/log` in `src/DurableBundle/composer.json` (approved
   by the user, that package in that manifest only).
 - **Not in scope**: the TLS Temporal in the integration job (a `.github/workflows/` change, the user's).
-- **State**: taken — alice, from arwen's branch as merged with main by jane
-  (`origin/jane/receive-only`, 11304711). Branch `fix/receive-only-temporal-transports-main`.
-  Reviewer: jack. Only durable-30 merges.
+- **State**: in review — PR #602, alice. Reviewer: jack (approved at 18c43f58). Only durable-30
+  merges.
