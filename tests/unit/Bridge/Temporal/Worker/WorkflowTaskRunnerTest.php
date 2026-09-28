@@ -305,8 +305,9 @@ final class WorkflowTaskRunnerTest extends TestCase
         $result = $runner->run($poll);
 
         // One ScheduleActivityTask command, no CompleteWorkflow yet
-        self::assertCount(1, $result->commands);
+        self::assertCount(2, $result->commands, 'the command, then the wait in the memo (#514)');
         self::assertSame(CommandType::COMMAND_TYPE_SCHEDULE_ACTIVITY_TASK, $result->commands[0]->getCommandType());
+        self::assertSame(CommandType::COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES, $result->commands[1]->getCommandType());
     }
 
     public function testWorkflowWithFailedActivityPropagatesException(): void
@@ -459,8 +460,9 @@ final class WorkflowTaskRunnerTest extends TestCase
 
         $result = $runner->run($poll);
 
-        self::assertCount(1, $result->commands);
+        self::assertCount(2, $result->commands, 'the command, then the wait in the memo (#514)');
         self::assertSame(CommandType::COMMAND_TYPE_START_TIMER, $result->commands[0]->getCommandType());
+        self::assertSame(CommandType::COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES, $result->commands[1]->getCommandType());
     }
 
     public function testWorkflowHandlerThrowsProducesFailWorkflowCommand(): void
@@ -677,8 +679,9 @@ final class WorkflowTaskRunnerTest extends TestCase
 
         $result = $runner->run($poll);
 
-        // Workflow is suspended waiting for signal → no commands emitted
-        self::assertEmpty($result->commands, 'No commands when workflow is suspended waiting for signal');
+        // Workflow is suspended waiting for signal → nothing but what it waits on, for the run list (#514)
+        self::assertCount(1, $result->commands, 'No other command when workflow is suspended waiting for signal');
+        self::assertSame(CommandType::COMMAND_TYPE_MODIFY_WORKFLOW_PROPERTIES, $result->commands[0]->getCommandType());
     }
 
     /**
