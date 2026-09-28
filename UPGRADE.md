@@ -24,6 +24,26 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### Magento reads the cluster's history through; `TemporalJournalEventStore` is gone (#356, #372)
+
+**Who is affected**: a Magento store with `durable/temporal/dsn` set, and code that built
+`Gplanchat\Bridge\Temporal\TemporalJournalEventStore` itself.
+
+- With a DSN, `RuntimeFactory::create()` now reads through
+  `Gplanchat\Bridge\Temporal\Store\TemporalReadThroughEventStore`, as the Symfony and Laravel
+  hosts do. A run executed in the process (`MagentoRuntime::run()`) keeps its events in memory,
+  as without a DSN; it no longer signals a `durable-journal-<id>` workflow on the cluster. Start
+  what must survive a process with `RuntimeFactory::workflowClient()->startAsync()`.
+- The `durable-journal-*` workflows the old store left on the cluster never complete, and nothing
+  reads them any more: terminate them once no in-process run is under way, for instance
+  `temporal workflow terminate --query 'WorkflowId STARTS_WITH "durable-journal-"' --reason "Durable #356"`.
+- `Gplanchat\Bridge\Temporal\Journal\HistoryPageMerger`, which only that store used, is gone
+  too: read a history page by page with `Grpc\TemporalHistoryCursor::events()`.
+- Code that built the store: take
+  `(new TemporalRuntimeAssembly($client, $connection, $registry, $loader))->readThroughEventStore(new InMemoryEventStore())`.
+  No Rector rule: the constructor takes different arguments, and the write side does not exist
+  any more.
+
 ### `NullEventStore` is gone; a backend refuses by name what it cannot honour
 
 **Who is affected**: an application that built a `Gplanchat\Durable\Store\NullEventStore` itself,
