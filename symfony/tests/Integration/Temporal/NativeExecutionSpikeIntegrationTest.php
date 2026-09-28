@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Temporal;
 
-use Gplanchat\Bridge\Temporal\Journal\HistoryPageMerger;
+use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use App\Temporal\NativeExecutionSpike;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
@@ -57,16 +57,15 @@ final class NativeExecutionSpikeIntegrationTest extends TestCase
 
         self::assertNotSame('', $runId);
 
-        $merger = new HistoryPageMerger(self::$workflowClient, (string) self::$connection->namespace);
+        $cursor = new TemporalHistoryCursor(self::$workflowClient, self::$connection);
         $exec = new WorkflowExecution();
         $exec->setWorkflowId($workflowId);
         $exec->setRunId($runId);
 
         $eventCount = 0;
         for ($attempt = 0; $attempt < 80; ++$attempt) {
-            $history = $merger->fullHistoryForExecution($exec);
             $types = [];
-            foreach ($history->getEvents() as $event) {
+            foreach ($cursor->events($exec) as $event) {
                 $types[] = (int) $event->getEventType();
             }
             $eventCount = \count($types);

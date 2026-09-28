@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace unit\DurableModule;
 
+use Gplanchat\Bridge\Temporal\Store\TemporalReadThroughEventStore;
 use Gplanchat\Bridge\Temporal\Store\TemporalWorkflowRunCatalog;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
-use Gplanchat\Bridge\Temporal\TemporalJournalEventStore;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
@@ -38,13 +38,17 @@ final class RuntimeFactoryTest extends TestCase
         self::assertInstanceOf(InMemoryEventStore::class, $runtime->eventStore());
     }
 
-    public function testADsnPutsTheJournalInTheCluster(): void
+    /**
+     * The cluster's own history is the journal of what it runs: the store reads it through, and a
+     * run executed in this process keeps its events here, as without a DSN (#356).
+     */
+    public function testADsnReadsTheClusterHistoryThrough(): void
     {
         $runtime = (new RuntimeFactory(
             temporalDsn: 'temporal://127.0.0.1:7234?namespace=default&tls=0',
         ))->create();
 
-        self::assertInstanceOf(TemporalJournalEventStore::class, $runtime->eventStore());
+        self::assertInstanceOf(TemporalReadThroughEventStore::class, $runtime->eventStore());
     }
 
     /**
