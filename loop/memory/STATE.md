@@ -12,3 +12,7 @@ the loop to know goes here. Lines beginning `ALERT` are pages — see `loop/cont
 ## Queue
 
 (empty)
+2026-09-25 ALERT conductor attempted 3 tool call(s) outside its seat
+Bash
+Bash
+Bash

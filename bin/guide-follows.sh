@@ -47,6 +47,25 @@ for guide in "$@"; do
         || { echo "$guide must tell the reader '$ALLOW_CONTRIB' before 'composer require gplanchat/durable-bundle'" >&2; exit 1; }
 done
 
+# Every published satellite requires the core at `self.version`, an exact alpha that a project's
+# default `stable` floor refuses: `@alpha` on the require line does not reach it (#347). Each install
+# block of the user docs therefore opens with the two lines that let it resolve, and a block that
+# loses them fails here, before the slow part.
+lint=0
+for page in "$ROOT"/documentation/user/{getting-started,packages}/_index{,.fr}.md; do
+    awk -v f="$page" '
+        /^```bash/ { fence = 1; alpha = 0; stable = 0; next }
+        /^```/     { fence = 0; next }
+        fence && $0 == "composer config minimum-stability alpha" { alpha = 1 }
+        fence && $0 == "composer config prefer-stable true"      { stable = 1 }
+        fence && /^composer require gplanchat\// && !(alpha && stable) {
+            print f ":" NR ": the block must set minimum-stability alpha and prefer-stable true before this require" > "/dev/stderr"
+            bad = 1
+        }
+        END { exit bad }' "$page" || lint=1
+done
+[ "$lint" -eq 0 ] || exit 1
+
 # One skeleton, copied per guide: the install is the slow part and does not depend on the guide.
 SKELETON="$TMP/skeleton"
 composer create-project --no-interaction --quiet symfony/skeleton "$SKELETON"

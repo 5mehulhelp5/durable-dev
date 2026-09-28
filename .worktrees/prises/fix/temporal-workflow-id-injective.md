@@ -16,4 +16,4 @@
   `src/Bridge/Temporal/Store/TemporalReadThroughEventStore.php`,
   `src/Bridge/Temporal/Store/TemporalWorkflowRunCatalog.php` (`findRun()`, jane's, coordinated), their
   tests, the Temporal integration tests, `UPGRADE.md`.
-- **State**: taken — alice. Reviewer: sirius. Only durable-30 merges.
+- **State**: in review — PR #599, alice. Reviewer: sirius. Only durable-30 merges.
