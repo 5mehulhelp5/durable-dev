@@ -307,27 +307,25 @@
         },
         {
             "name": "doctrine/lexer",
-            "version": "3.0.1",
+            "version": "3.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/doctrine/lexer.git",
-                "reference": "31ad66abc0fc9e1a1f2d9bc6a42668d2fbbcd6dd"
+                "reference": "e96fe45e92a54233726014a7cc7340abf29bb14c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/doctrine/lexer/zipball/31ad66abc0fc9e1a1f2d9bc6a42668d2fbbcd6dd",
-                "reference": "31ad66abc0fc9e1a1f2d9bc6a42668d2fbbcd6dd",
+                "url": "https://api.github.com/repos/doctrine/lexer/zipball/e96fe45e92a54233726014a7cc7340abf29bb14c",
+                "reference": "e96fe45e92a54233726014a7cc7340abf29bb14c",
                 "shasum": ""
             },
             "require": {
                 "php": "^8.1"
             },
             "require-dev": {
-                "doctrine/coding-standard": "^12",
-                "phpstan/phpstan": "^1.10",
-                "phpunit/phpunit": "^10.5",
-                "psalm/plugin-phpunit": "^0.18.3",
-                "vimeo/psalm": "^5.21"
+                "doctrine/coding-standard": "^14",
+                "phpstan/phpstan": "^2",
+                "phpunit/phpunit": "^10.5.58 || ^12.5.4"
             },
             "type": "library",
             "autoload": {
@@ -364,7 +362,7 @@
             ],
             "support": {
                 "issues": "https://github.com/doctrine/lexer/issues",
-                "source": "https://github.com/doctrine/lexer/tree/3.0.1"
+                "source": "https://github.com/doctrine/lexer/tree/3.0.2"
             },
             "funding": [
                 {
@@ -380,7 +378,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-02-05T11:56:58+00:00"
+            "time": "2026-06-14T20:44:06+00:00"
         },
         {
             "name": "dragonmantank/cron-expression",
@@ -693,20 +691,20 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Durable",
-                "reference": "974da67c472852a504bbde1db9a481a7e56e0044"
+                "reference": "68b84b432beae47c836b579e9c813457d563a47c"
             },
             "require": {
                 "php": ">=8.2",
                 "psr/cache": "^3.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^11.0"
+                "phpunit/phpunit": "^11.5"
             },
             "suggest": {
                 "gplanchat/durable-bridge-dbal": "SQL backend: durable execution on one database, no cluster (DUR030)",
                 "gplanchat/durable-bridge-temporal": "Temporal gRPC backend (requires ext-grpc)",
                 "gplanchat/durable-phpstan": "Optional PHPStan extension: resolves ActivityStub and ChildWorkflowStub calls from their typed contract (DUR038)",
-                "phpunit/phpunit": "Required by the shipped test helpers (Testing\\DurableTestCase, Testing\\WorkflowTestEnvironment) and the conformance suites (Testing\\EventStoreConformanceTestCase, DUR041)"
+                "phpunit/phpunit": "Required by the Testing\\ helpers: DurableTestCase, ActivitySpy and the store conformance test cases."
             },
             "type": "library",
             "extra": {
@@ -750,12 +748,13 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Bridge/Illuminate",
-                "reference": "e78ef33b22419884360d4528ecd5f8d5bd8377c2"
+                "reference": "56fcda92fa4ca572d14b214876b96dc81b26c711"
             },
             "require": {
                 "gplanchat/durable": "self.version",
                 "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/database": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "php": ">=8.2"
             },
             "suggest": {
@@ -808,19 +807,26 @@
             "dist": {
                 "type": "path",
                 "url": "../src/Bridge/Temporal",
-                "reference": "311d368524add9eeaf3834c3112584de72b405d3"
+                "reference": "aa6528c656240b9b75a1211c22066cf0a469d47f"
             },
             "require": {
-                "ext-grpc": "*",
+                "ext-filter": "*",
                 "google/common-protos": "^4.9",
                 "google/protobuf": "^4.31",
                 "gplanchat/durable": "self.version",
                 "grpc/grpc": "^1.57",
                 "php": ">=8.2",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
                 "symfony/config": "^6.4 || ^7.0 || ^8.0",
                 "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
                 "symfony/messenger": "^6.4 || ^7.0 || ^8.0"
+            },
+            "suggest": {
+                "ext-curl": "For transport=grpc-curl or transport=http, and the automatic fallback when ext-grpc is not loaded: the same RPCs over HTTP/2",
+                "ext-grpc": "For transport=grpc (the default): the generated stub over the gRPC extension",
+                "guzzlehttp/guzzle": "For transport=guzzle (7.14 or newer, cURL handler): gRPC over the application's Guzzle client",
+                "psr/http-client": "For transport=http over the application's PSR-18 client (with a PSR-17 factory: psr/http-factory)"
             },
             "type": "library",
             "extra": {
@@ -844,7 +850,7 @@
                     "email": "gregory@gyroscops.com"
                 }
             ],
-            "description": "Temporal journal EventStore + worker (gRPC only, no Temporal PHP SDK) for gplanchat/durable",
+            "description": "Temporal journal EventStore + worker (gRPC, no Temporal PHP SDK) for gplanchat/durable",
             "keywords": [
                 "durable-execution",
                 "grpc",
@@ -899,17 +905,17 @@
             "dist": {
                 "type": "path",
                 "url": "../src/DurableLaravel",
-                "reference": "6c7ff62cfeaa86bfd27ca4a9f0a4a1af997d373d"
+                "reference": "7df8b342ab1ef50bb87dc0445dbf89a563d832c2"
             },
             "require": {
                 "gplanchat/durable": "self.version",
                 "gplanchat/durable-bridge-illuminate": "self.version",
                 "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/container": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/database": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-                "php": ">=8.2"
+                "php": ">=8.2",
+                "psr/log": "^1.1 || ^2.0 || ^3.0"
             },
             "suggest": {
                 "gplanchat/durable-bridge-temporal": "Required by the \"temporal\" backend: the gRPC driver for a Temporal cluster. Suggested rather than required because it installs five Symfony components a Laravel application never loads.",
@@ -1761,16 +1767,16 @@
         },
         {
             "name": "laravel/serializable-closure",
-            "version": "v2.0.16",
+            "version": "v2.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/serializable-closure.git",
-                "reference": "7cfc24e4fa2cca045fb8dd2a797a2b2b13b655ed"
+                "reference": "2d5869a838bbcf37e0d8b0568fc41914e81374b5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/serializable-closure/zipball/7cfc24e4fa2cca045fb8dd2a797a2b2b13b655ed",
-                "reference": "7cfc24e4fa2cca045fb8dd2a797a2b2b13b655ed",
+                "url": "https://api.github.com/repos/laravel/serializable-closure/zipball/2d5869a838bbcf37e0d8b0568fc41914e81374b5",
+                "reference": "2d5869a838bbcf37e0d8b0568fc41914e81374b5",
                 "shasum": ""
             },
             "require": {
@@ -1818,7 +1824,7 @@
                 "issues": "https://github.com/laravel/serializable-closure/issues",
                 "source": "https://github.com/laravel/serializable-closure"
             },
-            "time": "2026-08-18T20:28:54+00:00"
+            "time": "2026-09-22T14:32:34+00:00"
         },
         {
             "name": "laravel/tinker",
@@ -1891,16 +1897,16 @@
         },
         {
             "name": "league/commonmark",
-            "version": "2.10.1",
+            "version": "2.10.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/commonmark.git",
-                "reference": "9d489ab67a02960fd8ffe624d93f751daf95439e"
+                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/9d489ab67a02960fd8ffe624d93f751daf95439e",
-                "reference": "9d489ab67a02960fd8ffe624d93f751daf95439e",
+                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/6efbd9c472b91db0a3350fcd601c8332c2382e1f",
+                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f",
                 "shasum": ""
             },
             "require": {
@@ -1994,7 +2000,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-07T13:44:26+00:00"
+            "time": "2026-09-21T13:07:34+00:00"
         },
         {
             "name": "league/config",
@@ -2555,16 +2561,16 @@
         },
         {
             "name": "nesbot/carbon",
-            "version": "3.14.0",
+            "version": "3.14.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/CarbonPHP/carbon.git",
-                "reference": "0023eaa2c9110e47446dd512a263c69c40cd41f2"
+                "reference": "34e9109535165bf1d7ff17a610492372ae73a896"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/CarbonPHP/carbon/zipball/0023eaa2c9110e47446dd512a263c69c40cd41f2",
-                "reference": "0023eaa2c9110e47446dd512a263c69c40cd41f2",
+                "url": "https://api.github.com/repos/CarbonPHP/carbon/zipball/34e9109535165bf1d7ff17a610492372ae73a896",
+                "reference": "34e9109535165bf1d7ff17a610492372ae73a896",
                 "shasum": ""
             },
             "require": {
@@ -2656,7 +2662,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-12T20:45:19+00:00"
+            "time": "2026-09-27T12:07:26+00:00"
         },
         {
             "name": "nette/schema",
@@ -7246,16 +7252,16 @@
         },
         {
             "name": "laravel/sail",
-            "version": "v1.67.0",
+            "version": "v1.68.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/sail.git",
-                "reference": "639e03ac12cf23def171770bcab05758045b2642"
+                "reference": "2bc304083d515065b03944e425e62cb3c526c33e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/sail/zipball/639e03ac12cf23def171770bcab05758045b2642",
-                "reference": "639e03ac12cf23def171770bcab05758045b2642",
+                "url": "https://api.github.com/repos/laravel/sail/zipball/2bc304083d515065b03944e425e62cb3c526c33e",
+                "reference": "2bc304083d515065b03944e425e62cb3c526c33e",
                 "shasum": ""
             },
             "require": {
@@ -7305,7 +7311,7 @@
                 "issues": "https://github.com/laravel/sail/issues",
                 "source": "https://github.com/laravel/sail"
             },
-            "time": "2026-08-12T13:55:56+00:00"
+            "time": "2026-09-18T14:34:46+00:00"
         },
         {
             "name": "mockery/mockery",
