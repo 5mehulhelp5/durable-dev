@@ -1,4 +1,4 @@
-{{- /* #253: the llms.txt index, built from the guide's own pages. The guide is English only, so the French home gets none. */ -}}
+{{- /* #253: the llms.txt index, built from the guide's own pages. It is an index for coding agents, which read the English guide, so the French home gets none. */ -}}
 {{- if eq .Language.Lang "en" -}}
 # Durable
 

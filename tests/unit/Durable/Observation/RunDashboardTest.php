@@ -114,6 +114,38 @@ final class RunDashboardTest extends TestCase
         self::assertSame('next-token', $view['pagination']['nextCursor']);
     }
 
+    public function testTheListFilterReachesACatalogThatFilters(): void
+    {
+        // #383, slice B: the page offers the name and id-prefix filters the catalog can apply.
+        $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Failed)]);
+        $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow', 'ord'));
+
+        self::assertEquals(new WorkflowRunFilter('App\\OrderWorkflow', 'ord'), $catalog->askedFilter);
+        self::assertSame(['available' => true, 'workflowNameAvailable' => true, 'executionIdPrefixAvailable' => true, 'workflowName' => 'App\\OrderWorkflow', 'executionIdPrefix' => 'ord'], $view['filters']);
+    }
+
+    public function testACatalogThatCannotFilterIsNeverHandedAFilter(): void
+    {
+        // Temporal without its search attributes: the filter would be refused. The page says the
+        // filters are unavailable and lists every run, rather than failing.
+        $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Failed)], filters: false);
+        $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow'));
+
+        self::assertNull($catalog->askedFilter);
+        self::assertSame(['available' => false, 'workflowNameAvailable' => false, 'executionIdPrefixAvailable' => false, 'workflowName' => null, 'executionIdPrefix' => null], $view['filters']);
+    }
+
+    public function testAPartOfTheFilterTheCatalogCannotApplyIsLeftOut(): void
+    {
+        // #523: Temporal before 1.23.0 takes the name, not the prefix. The page keeps the name,
+        // leaves the prefix out rather than failing, and says which input it can offer.
+        $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Failed)], prefix: false);
+        $view = (new RunDashboard($catalog))->listing('all', null, new WorkflowRunFilter('App\\OrderWorkflow', 'ord'));
+
+        self::assertEquals(new WorkflowRunFilter('App\\OrderWorkflow'), $catalog->askedFilter);
+        self::assertSame(['available' => true, 'workflowNameAvailable' => true, 'executionIdPrefixAvailable' => false, 'workflowName' => 'App\\OrderWorkflow', 'executionIdPrefix' => null], $view['filters']);
+    }
+
     public function testAnUnknownStatusFilterIsIgnoredRatherThanRefused(): void
     {
         $catalog = new FakeRunCatalog([$this->describedRun('run-1', 'App\\OrderWorkflow', WorkflowRunStatus::Running)]);
@@ -408,6 +440,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
 {
     public ?WorkflowRunStatus $askedStatus = null;
     public ?string $askedCursor = null;
+    public ?WorkflowRunFilter $askedFilter = null;
     public int $historyReads = 0;
     public int $listings = 0;
     public int $finds = 0;
@@ -423,6 +456,8 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         private readonly bool $reachable = true,
         private readonly bool $ephemeral = false,
         private readonly bool $tellsWaitingForWorker = false,
+        private readonly bool $filters = true,
+        private readonly bool $prefix = true,
     ) {}
 
     public function checkHealth(): BackendHealth
@@ -436,9 +471,9 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         );
     }
 
-    public function canFilterRuns(): bool
+    public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
     {
-        return true;
+        return $this->filters && ($this->prefix || null === $filter?->executionIdPrefix);
     }
 
     public function listRuns(?WorkflowRunStatus $status = null, ?string $cursor = null, int $limit = 20, ?WorkflowRunFilter $filter = null): WorkflowRunPage
@@ -446,6 +481,7 @@ final class FakeRunCatalog implements WorkflowRunCatalogInterface
         ++$this->listings;
         $this->askedStatus = $status;
         $this->askedCursor = $cursor;
+        $this->askedFilter = $filter;
 
         return new WorkflowRunPage($this->runs, $this->nextCursor, $this->tellsWaitingForWorker);
     }

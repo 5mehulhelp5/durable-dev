@@ -24,36 +24,28 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
-### SQL journals: a superseded pass can no longer write, and a new table holds pass epochs (#505, DUR053)
+### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
 
-**Who is affected**: applications on the DBAL or Illuminate journal (a new table), and authors of
-their own `EventStoreInterface` who want the guarantee. Nothing changes on Temporal.
+**Who is affected**: code that reads journal events by type (a custom mapper, a `match` without a
+default, a projection), and code that builds `ActivityMessageProcessor` itself.
 
-**Why.** A pass that lost its resume lock, and that a second resume took over, could still append
-to the journal. Each pass now claims an epoch for its execution. An append from a pass that a
-newer one has superseded is refused with `SupersededPassException`, and the handler stops
-without ending the run.
+- When an attempt fails and will retry, the worker now appends
+  `Gplanchat\Durable\Event\ActivityRetryQueued` once the transport took the next attempt: the
+  counterpart of Temporal's dispatch task. A redelivered failure without it queues the retry again;
+  before, the retry was lost when the broker refused it. Handle or skip the new type where events
+  are read by type. Journals recorded before have none, and read as before.
+- `ActivityMessageProcessor` takes an eighth, optional argument,
+  `Gplanchat\Durable\Port\ActivityAttemptClaimInterface`: one worker per activity attempt. It
+  defaults to `NoActivityAttemptClaim`, right for one process. The Symfony bundle wires
+  `LockActivityAttemptClaim` on a DBAL journal (the resume lock's factory and TTL) and the Laravel
+  provider wires `ActivityAttemptLock` (the resume lock's cache store and TTL). A host that builds the
+  processor for several workers passes its own shared-lock implementation. A copy whose attempt
+  another worker holds throws `Gplanchat\Durable\Exception\ActivityAttemptDeferred`: the bundle
+  turns it into a recoverable Messenger failure, retried on the transport's retry strategy whatever
+  `max_retries` says, and `RunActivityJob` queues the
+  same attempt again 10 s out. A host that calls `process()` itself catches it and redelivers later.
 
-**What to do.**
-
-- **Create the table before you deploy.** The journal refuses to create a missing table inside an
-  open transaction. The first write after the deploy may happen in one (a `doctrine_transaction`
-  middleware, a `DB::transaction()` around an activity), and it would then fail.
-  - **Symfony, DBAL journal**: run `bin/console durable:setup`. With Doctrine Migrations,
-    `doctrine:migrations:diff` sees `durable_execution_heads` through the schema listener.
-  - **Laravel, Illuminate journal**: run `php artisan migrate`. The new migration adds the table to
-    a database that already ran the create migration.
-- A claim holds the execution's heads row until its transaction commits. A pass that runs inside
-  an outer transaction you opened keeps that lock until you commit, so a newer pass waits for it
-  rather than superseding it.
-- **Your own store**: nothing breaks. To fence passes, implement
-  `Gplanchat\Durable\Store\FencedEventStoreInterface` (`claimPass()` and `appendFenced()`) and
-  override `expectsFencedPasses()` to return `true` in your `EventStoreConformanceTestCase`.
-  No Rector rule: the storage is yours to write.
-- `ExecutionRuntime::checkTimers()` takes an optional second argument, the pass's journal. Existing
-  calls keep working.
-- `WorkflowBackendInterface::start()` (and `ExecutionEngine::start()`) can throw
-  `SupersededPassException` if another pass claims the same execution while it runs.
+No Rector rule: nothing is renamed, and the new argument is optional.
 
 ### Temporal: the journal workflow's leftovers are gone (#594)
 
@@ -927,6 +919,182 @@ started before the change:
 }
 ```
 
+### `WorkflowResumeDispatcher` gains `dispatchResumeAwaiting()`
+
+**Who is affected**: only whoever **implements** `WorkflowResumeDispatcher`. The bundle's, the Laravel
+provider's, the Temporal bridge's and the null dispatcher are updated. Code that calls the port is
+not affected. Rector cannot write the method for you: only the implementer knows how its queue
+delivers.
+
+**Why.** Whoever journals a fact a workflow waits on (an activity's outcome, a child's outcome, a
+signal, fired timers) now sends the resume before the append, and again after it (DUR050, #328;
+DUR052, #584). The first send has to leave at once, carrying the `AwaitedFact` it announces; a
+resume that arrives before that fact waits for it.
+
+**What to write.** Send a `ResumeWorkflowMessage` carrying the fact, immediately, and nothing
+where your transport runs the resume inline (a `sync` route): there it would always run before
+the fact, and the resume sent after the append does the work.
+
+```php
+use Gplanchat\Durable\Transport\AwaitedFact;
+use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
+
+public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
+{
+    if (!$this->runsInline) {
+        $this->send(new ResumeWorkflowMessage($executionId, [], $fact)); // not deferred
+    }
+}
+```
+
+A dispatcher whose backend owns delivery (as Temporal's does) implements it as a no-op.
+
+### `durable.activity_transport.table_name` is removed
+
+**Who is affected**: a Symfony application whose `durable.yaml` still sets it. It has been deprecated
+since 0.1.0-beta1, and nothing ever read it.
+
+**Why.** It named an outbox that was never built, and DUR050 (#328) chose not to build one: the
+resume is sent before the outcome and again after it.
+
+**What to do.** Delete the line. Left in place, the container build fails with an
+`InvalidConfigurationException` naming the unrecognized option.
+
+### `WorkflowRunCatalogInterface::canFilterRuns()` takes the filter it is asked about
+
+**Who is affected**: only whoever **implements** `WorkflowRunCatalogInterface`.
+
+**Why.** A catalog may apply one filter and not another. Temporal Server before 1.23.0 rejects
+`STARTS_WITH`, so on such a server the Temporal catalog takes a workflow name but not an
+execution-id prefix (#523). It reads the server's version once, through `GetSystemInfo`, which
+`WorkflowServiceClientInterface` now declares.
+
+**What to write.** Add the optional parameter, and answer for the filter given: with none, whether
+you can filter at all.
+
+```php
+public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
+{
+    return true; // a catalog that applies every filter
+}
+```
+
+`RunDashboard` asks about each part, applies the ones you accept, and tells the page which inputs
+to offer. The conformance suite checks each filter case against your answer for that filter.
+
+### `WorkflowHistorySourceInterface` returns value objects, not array shapes (#325)
+
+**Who is affected**: code that implements `Gplanchat\Durable\Port\WorkflowHistorySourceInterface`
+(a custom history source, a test double), and code that reads what it returns. The two history
+sources Durable ships are converted.
+
+| Method | Returned | Now returns |
+|---|---|---|
+| `findActivitySlotResult()`, `findNexusOperationSlotResult()` | `array{result, failed}` | `History\SlotOutcome` (`result`, `failed`) |
+| `findTimerSlotResult()` | `array{id, scheduledAt, failed}` | `History\TimerOutcome` (`timerId`, `failed`) |
+| `findChildWorkflowForSlot()` | `array{childExecutionId, result, failed}` | `History\ChildWorkflowOutcome` (`childExecutionId`, `result`, `failed`) |
+| `findSideEffectForSlot()` | `mixed` | `?History\SideEffectOutcome` (`result`) |
+| `messageAt()` | `array{position, kind, name, payload}` | `History\RecordedMessage` (same fields) |
+| `cancellationDelivery()` | `array{position, targets}` | `History\CancellationDelivery` (same fields) |
+
+The classes live in `Gplanchat\Durable\Port\History\`, and each lookup still returns `null` where
+it did. To migrate a reader, replace `$x['result']` with `$x->result`, and so on for each field. To
+migrate an implementer, return `new SlotOutcome($result, $failure)` where you returned the array.
+
+Two meanings change:
+
+- **The timer's `scheduledAt` is gone.** It was `0.0` on every backend.
+- **`findSideEffectForSlot()` distinguishes the two empty cases.** It now returns `null` only when
+  nothing is recorded; a recorded `null` is a `SideEffectOutcome` whose `result` is null.
+  `hasSideEffectForSlot()` is unchanged.
+
+`ExecutionContext::cancellationDelivery()` follows the port and returns a `CancellationDelivery`.
+
+No Rector rule yet: it ships with the `ExecutionId` type-hints, planned with #269 (the user's
+decision of 2026-09-24).
+
+### SQL journals: a superseded pass can no longer write, and a new table holds pass epochs (#505, DUR053)
+
+**Who is affected**: applications on the DBAL or Illuminate journal (a new table), and authors of
+their own `EventStoreInterface` who want the guarantee. Nothing changes on Temporal.
+
+**Why.** A pass that lost its resume lock, and that a second resume took over, could still append
+to the journal. Each pass now claims an epoch for its execution. An append from a pass that a
+newer one has superseded is refused with `SupersededPassException`, and the handler stops
+without ending the run.
+
+**What to do.**
+
+- **Create the table before you deploy.** The journal refuses to create a missing table inside an
+  open transaction. The first write after the deploy may happen in one (a `doctrine_transaction`
+  middleware, a `DB::transaction()` around an activity), and it would then fail.
+  - **Symfony, DBAL journal**: run `bin/console durable:setup`. With Doctrine Migrations,
+    `doctrine:migrations:diff` sees `durable_execution_heads` through the schema listener.
+  - **Laravel, Illuminate journal**: run `php artisan migrate`. The new migration adds the table to
+    a database that already ran the create migration.
+- A claim holds the execution's heads row until its transaction commits. A pass that runs inside
+  an outer transaction you opened keeps that lock until you commit, so a newer pass waits for it
+  rather than superseding it.
+- **Your own store**: nothing breaks. To fence passes, implement
+  `Gplanchat\Durable\Store\FencedEventStoreInterface` (`claimPass()` and `appendFenced()`) and
+  override `expectsFencedPasses()` to return `true` in your `EventStoreConformanceTestCase`.
+  No Rector rule: the storage is yours to write.
+- `ExecutionRuntime::checkTimers()` takes an optional second argument, the pass's journal. Existing
+  calls keep working.
+- `WorkflowBackendInterface::start()` (and `ExecutionEngine::start()`) can throw
+  `SupersededPassException` if another pass claims the same execution while it runs.
+
+## 0.1.0-alpha10
+
+### Laravel refuses at boot a workflow whose parameter names diverge from the contract
+
+`gplanchat/durable-laravel` used to register without checking. A workflow carrying
+`#[FulfilsNexusOperation]` with a **required** parameter matching no parameter of the contract now
+makes registration fail, naming both signatures — the same refusal `NexusHandlerPass` has always
+produced on the Symfony side, and from the same class:
+`Gplanchat\Durable\Nexus\Serving\NexusFulfilmentParameterNames`.
+
+**Why** — a Nexus operation's payload is keyed **by name** at both ends. A parameter renamed on one
+side only breaks nothing when written, raises nothing when run, and arrives as `null`: the workflow
+starts, runs and returns a result computed on nothing. Registration is the last moment anyone looks.
+
+**What Rector cannot do** — nothing to rename mechanically: the right name is the contract's, and
+only the author knows which of the two sides carries the typo. The refusal message prints both
+parameter lists, which is exactly the information Rector would need in order to choose.
+
+**Who is affected** — no application whose Nexus operations work: the refusal only strikes
+configurations that were already returning `null` in silence. If boot fails after the upgrade, the
+fault was already there, without saying so.
+
+## 0.1.0-alpha9
+
+### `RunDashboardView` moves to the core, as `RunDashboard`
+
+**Who is affected**: an application that injected or decorated
+`Gplanchat\Durable\Plugin\Dashboard\RunDashboardView`. It was never documented as a user-facing
+class, since the Sylius plugin autowires it and its own template consumes it, so most installs
+notice nothing.
+
+**What changed**: the Sylius plugin's view model became the core's
+`Gplanchat\Durable\Observation\RunDashboard`, which the Magento screen reads too (DUR049). The
+class leaves `gplanchat/durable-plugin` for `gplanchat/durable`.
+
+**What to run**: the `durable-upgrade` Rector set renames it. Then clear the container cache
+(`bin/console cache:clear`): the compiled container holds the old class name.
+
+### Sylius plugin: the run list pages forward only; `back` is gone
+
+**Who is affected**: whoever links to the plugin's run list (`/admin/durable/runs`) with the `back`
+query parameter, or reads the `previous`, `back` and `nextBack` entries of its pagination model in
+a template override.
+
+**Why.** Temporal cannot page backwards, so the previous page is dropped (#383, the user's decision
+of 2026-09-28): the list pages forward, and a "First page" link leads back.
+
+**What changes.** A URL that still carries `back` redirects permanently (301) to the first page of
+the same list, with its status and filters kept, rather than failing. The pagination model carries
+`isFirstPage` instead of `previous`, `back` and `nextBack`.
+
 ## 0.1.0-alpha8
 
 ### The divergence guard compares the payload too
@@ -962,26 +1130,6 @@ journal backend refuses Nexus operations by construction (DUR036), and its `Nexu
 event carries only the call site. No field was added to any event: the three payloads were already
 on the wire.
 
-
-### Laravel refuses at boot a workflow whose parameter names diverge from the contract
-
-`gplanchat/durable-laravel` used to register without checking. A workflow carrying
-`#[FulfilsNexusOperation]` with a **required** parameter matching no parameter of the contract now
-makes registration fail, naming both signatures — the same refusal `NexusHandlerPass` has always
-produced on the Symfony side, and from the same class:
-`Gplanchat\Durable\Nexus\Serving\NexusFulfilmentParameterNames`.
-
-**Why** — a Nexus operation's payload is keyed **by name** at both ends. A parameter renamed on one
-side only breaks nothing when written, raises nothing when run, and arrives as `null`: the workflow
-starts, runs and returns a result computed on nothing. Registration is the last moment anyone looks.
-
-**What Rector cannot do** — nothing to rename mechanically: the right name is the contract's, and
-only the author knows which of the two sides carries the typo. The refusal message prints both
-parameter lists, which is exactly the information Rector would need in order to choose.
-
-**Who is affected** — no application whose Nexus operations work: the refusal only strikes
-configurations that were already returning `null` in silence. If boot fails after the upgrade, the
-fault was already there, without saying so.
 
 ### A workflow that fulfils a Nexus operation must carry its tag
 

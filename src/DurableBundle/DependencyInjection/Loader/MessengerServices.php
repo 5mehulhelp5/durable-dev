@@ -7,7 +7,9 @@ namespace Gplanchat\Durable\Bundle\DependencyInjection\Loader;
 use Gplanchat\Bridge\Temporal\Port\TemporalWorkflowResumeDispatcher;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
+use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\RegisterDurableMiddlewarePass;
 use Gplanchat\Durable\Bundle\DependencyInjection\DurableExtension;
+use Gplanchat\Durable\Bundle\Messenger\EarlyResumeMiddleware;
 use Gplanchat\Durable\Bundle\Messenger\MessengerWorkflowResumeDispatcher;
 use Gplanchat\Durable\Bundle\Profiler\DurableExecutionTrace;
 use Gplanchat\Durable\Bundle\Transport\MessengerActivityTransport;
@@ -135,6 +137,8 @@ final class MessengerServices
                 ->setArguments([
                     new Reference('messenger.default_bus'),
                     new Reference(WorkflowMetadataStore::class),
+                    // To tell a `sync` resume route apart (DUR050).
+                    new Reference('messenger.senders_locator', ContainerInterface::NULL_ON_INVALID_REFERENCE),
                 ])
                 ->setPublic(false)
             ;
@@ -155,6 +159,15 @@ final class MessengerServices
                 ->addTag('messenger.message_handler')
                 ->setPublic(false);
             $container->setAlias(ResumeWorkflowHandler::class, 'durable.handler.resume_workflow')->setPublic(false);
+
+            // An early resume that waited long is acknowledged rather than sent to the failure
+            // transport, where it read as a lost run (#606). Outside the resume lock (90).
+            $container->register('durable.messenger.early_resume', EarlyResumeMiddleware::class)
+                ->setArguments([new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE)])
+                ->addTag(RegisterDurableMiddlewarePass::TAG, ['priority' => 95])
+                ->addTag('monolog.logger', ['channel' => 'messenger'])
+                ->setPublic(false)
+            ;
         }
     }
 }

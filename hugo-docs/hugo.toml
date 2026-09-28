@@ -1,9 +1,9 @@
 baseURL = 'https://durable.rocks/'
-languageCode = 'en-us'
+locale = 'en-US'
 title = 'Durable'
 defaultContentLanguage = 'en'
-# L'anglais reste à la racine ; le français vit sous /fr/. Sans ce faux, Hugo
-# déplacerait aussi l'anglais dans /en/ et casserait toutes les URL en ligne.
+# English stays at the root and French lives under /fr/. Without this false, Hugo would move
+# English to /en/ as well and break every published URL.
 defaultContentLanguageInSubdir = false
 enableGitInfo = true
 
@@ -18,9 +18,9 @@ notAlternative = true
 [outputs]
 home = ['html', 'rss', 'llms']
 
-# La page d'accueil est le seul contenu traduit : `layouts/index.fr.html`. Le
-# guide reste anglais et n'est pas remonté sous /fr/ : un second exemplaire
-# complet de l'arbre servirait de l'anglais à des URL françaises.
+# Both the home page (`layouts/index.fr.html`) and the guide are translated: each guide page has a
+# `.fr.md` sibling, rendered under /fr/docs/ (see documentation/HUGO.md). Hugo does not fall back
+# from one language to the other, so a page without a sibling does not exist under /fr/docs/.
 [languages]
 [languages.en]
 label = 'English'
@@ -36,20 +36,10 @@ weight = 2
 [[module.imports]]
 path = 'github.com/alex-shpak/hugo-book'
 
-# Déclarer un montage remplace les montages par défaut du module projet : le
-# dossier content/ local doit donc être remonté explicitement, sinon Hugo ne
-# voit plus de section locale du tout.
-#
-# Il est vide à dessein. La page d'accueil est **entièrement** dans
-# `layouts/index.html`, qui ne lit jamais `.Content` : un `content/_index.md`
-# n'y changerait rien, il ne ferait que dire autre chose que la page en ligne.
-# C'est arrivé : il annonçait « trois paquets » alors que le site en montrait
-# cinq, et quelqu'un l'a corrigé consciencieusement avant de s'apercevoir qu'il
-# n'était rendu nulle part.
-[[module.mounts]]
-source = 'content'
-target = 'content'
-
+# No local `content/` is mounted: the home page lives entirely in `layouts/index.html`, which never
+# reads `.Content`. A `content/_index.md` would change nothing but say something other than the page
+# online. That happened once: it announced "three packages" while the site showed five, and was
+# carefully fixed before anyone noticed it was rendered nowhere.
 [[module.mounts]]
 source = '../documentation/user'
 target = 'content/docs'
@@ -65,7 +55,7 @@ BookRepo = 'https://github.com/gplanchat/durable-dev'
 BookEditPath = 'edit/main/documentation/user'
 BookSection = 'docs'
 BookSearch = true
-# 'auto' : les pages de doc suivent le thème du système, comme la page d'accueil.
+# 'auto': the doc pages follow the system theme, as the home page does.
 BookTheme = 'auto'
 BookToC = true
 BookCollapsedLevel = 1
@@ -98,18 +88,17 @@ endLevel = 3
 ordered = false
 startLevel = 2
 
-# Le bloc de code de la home est fait de <div style="white-space: pre">, une
-# ligne par ligne de PHP : le minifieur HTML écrase leur indentation (il ne lit
-# pas les styles inline). On garde la minification CSS/JS, on lâche celle du
-# HTML, 150 Ko sur 5,2 Mo, sous un quota de 100 Mo.
+# The home page's code block is made of <div style="white-space: pre">, one per line of PHP: the
+# HTML minifier flattens their indentation (it does not read inline styles). CSS and JS stay
+# minified; HTML minification is dropped, 150 KB out of 5.2 MB, under a 100 MB quota.
 [minify]
   disableHTML = true
 
-# Mesure d'audience : Matomo Cloud, en configuration exemptée de consentement.
-# Voir ../documentation/adr/DUR048-audience-measurement-without-a-banner.md, qui
-# porte les réglages serveur que ce fichier ne peut pas exprimer.
+# Audience measurement: Matomo Cloud, in its consent-exempt configuration. See
+# ../documentation/adr/DUR048-audience-measurement-without-a-banner.md, which carries the server
+# settings this file cannot express.
 #
-# Tant que ces deux valeurs sont vides, aucune balise n'est émise.
+# While these two values are empty, no tag is emitted.
 [params.matomo]
-url = "https://durablerocks.matomo.cloud/"     # https://<instance>.matomo.cloud/  (la barre finale compte)
-siteId = "1"  # l'identifiant du site dans la console
+url = "https://durablerocks.matomo.cloud/"     # https://<instance>.matomo.cloud/  (the trailing slash matters)
+siteId = "1"  # the site's id in the console

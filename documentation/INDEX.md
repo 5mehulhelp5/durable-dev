@@ -69,6 +69,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | DUR050 | The resume is dispatched first, and a resume that arrives early waits (proposed) | [adr/DUR050-the-resume-is-dispatched-first.md](adr/DUR050-the-resume-is-dispatched-first.md) |
 | DUR051 | One command port, and a backend refuses by name what it cannot honour (proposed) | [adr/DUR051-a-backend-refuses-what-it-cannot-honour.md](adr/DUR051-a-backend-refuses-what-it-cannot-honour.md) |
 | DUR052 | The resume protocol beyond activities: each pair names its own fact (proposed) | [adr/DUR052-the-resume-protocol-beyond-activities.md](adr/DUR052-the-resume-protocol-beyond-activities.md) |
+| DUR053 | A superseded pass cannot write: one fencing epoch per pass (proposed) | [adr/DUR053-a-superseded-pass-cannot-write.md](adr/DUR053-a-superseded-pass-cannot-write.md) |
 
 ## Working agreements (WA)
 
@@ -81,6 +82,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | WA005 | The canvas is the source, `layouts/index.html` is output | [wa/WA005-the-canvas-is-the-source-the-page-is-output.md](wa/WA005-the-canvas-is-the-source-the-page-is-output.md) |
 | WA006 | English is the working language; French documentation is a product | [wa/WA006-english-is-the-working-language.md](wa/WA006-english-is-the-working-language.md) |
 | WA007 | The agentic loop and its ledgers | [wa/WA007-the-agentic-loop-and-its-ledgers.md](wa/WA007-the-agentic-loop-and-its-ledgers.md) |
+| WA008 | Publishing a version: `bin/release.sh`, from origin/main only | [wa/WA008-publishing-a-version.md](wa/WA008-publishing-a-version.md) |
 
 ## Opportunity solution trees (OST)
 

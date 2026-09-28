@@ -37,7 +37,8 @@ final class TheRunHasItsOwnAddressTest extends TestCase
 
         self::assertSame('run-2', $model['selectedRun']['runId']);
         self::assertArrayNotHasKey('runs', $model);
-        self::assertSame(['status' => 'failed', 'cursor' => 'c1', 'back' => 'WyIiXQ'], $model['list']);
+        // A link from before still carries `back`: the list forgets it, since there is no previous page (#383).
+        self::assertSame(['status' => 'failed', 'cursor' => 'c1', 'workflowName' => '', 'executionIdPrefix' => ''], $model['list']);
     }
 
     public function testAnUnknownRunIsNotFound(): void
@@ -66,7 +67,7 @@ final class TheRunHasItsOwnAddressTest extends TestCase
     {
         $response = (new AdminDashboardController(new Environment(new ArrayLoader())))->dashboard(new Request(['status' => 'failed', 'cursor' => 'c1', 'back' => 'WyIiXQ']), $this->urls());
 
-        self::assertSame('gplanchat_durable_plugin_admin_run_index?status=failed&cursor=c1&back=WyIiXQ', $response->getTargetUrl());
+        self::assertSame('gplanchat_durable_plugin_admin_run_index?status=failed&cursor=c1', $response->getTargetUrl(), 'the way back from before is dropped (#383)');
     }
 
     public function testEveryActionAsksForTheAdministrationRole(): void

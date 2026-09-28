@@ -25,6 +25,7 @@ use Temporal\Api\Enums\V1\WorkflowExecutionStatus;
 use Temporal\Api\Workflow\V1\WorkflowExecutionInfo;
 use Temporal\Api\Workflowservice\V1\DescribeWorkflowExecutionRequest;
 use Temporal\Api\Workflowservice\V1\DescribeWorkflowExecutionResponse;
+use Temporal\Api\Workflowservice\V1\GetSystemInfoResponse;
 use Temporal\Api\Workflowservice\V1\ListWorkflowExecutionsRequest;
 use Temporal\Api\Workflowservice\V1\ListWorkflowExecutionsResponse;
 
@@ -556,6 +557,56 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
     private function catalog(ListWorkflowExecutionsResponse $response): TemporalWorkflowRunCatalog
     {
         return new TemporalWorkflowRunCatalog($this->client($response), $this->connection());
+    }
+
+    /**
+     * #523, the user's decision: servers before 1.23.0 reject STARTS_WITH (jane measured 1.20 and
+     * 1.22), while the name's `=` works on all of them. The catalog reads the server's version and
+     * says which filter it can apply; an unknown version (Temporal Cloud reports none) is current.
+     *
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function serverVersions(): iterable
+    {
+        yield '1.20.0 has no STARTS_WITH' => ['1.20.0', false];
+        yield '1.22.3 has no STARTS_WITH' => ['1.22.3', false];
+        yield '1.23.0 has it' => ['1.23.0', true];
+        yield '1.32.0 has it' => ['1.32.0', true];
+        yield 'a server that names no version is taken as current' => ['', true];
+    }
+
+    #[DataProvider('serverVersions')]
+    public function testThePrefixFilterFollowsTheServerVersion(string $version, bool $prefix): void
+    {
+        $asked = 0;
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->method('GetSystemInfo')->willReturnCallback(static function () use (&$asked, $version): GetSystemInfoResponse {
+            ++$asked;
+
+            return new GetSystemInfoResponse(['server_version' => $version]);
+        });
+        $client->method('ListWorkflowExecutions')->willReturn(new ListWorkflowExecutionsResponse());
+        $catalog = new TemporalWorkflowRunCatalog($client, new TemporalConnection('localhost:7233', 'durable-test', searchAttributes: true));
+
+        self::assertTrue($catalog->canFilterRuns());
+        self::assertTrue($catalog->canFilterRuns(new WorkflowRunFilter(workflowName: 'App\\OrderWorkflow')), 'the name works on every version');
+        self::assertSame($prefix, $catalog->canFilterRuns(new WorkflowRunFilter(executionIdPrefix: 'ord')));
+        self::assertSame($prefix, $catalog->canFilterRuns(new WorkflowRunFilter('App\\OrderWorkflow', 'ord')), 'a filter is as available as its least available part');
+        self::assertLessThanOrEqual(1, $asked, 'the version is asked once');
+
+        if (!$prefix) {
+            $this->expectException(RunFilterUnavailableException::class);
+            $this->expectExceptionMessage('1.23');
+        }
+        $catalog->listRuns(filter: new WorkflowRunFilter(executionIdPrefix: 'ord'));
+    }
+
+    public function testWithoutSearchAttributesTheServerIsNotAskedItsVersion(): void
+    {
+        $client = $this->createMock(WorkflowServiceClientInterface::class);
+        $client->expects($this->never())->method('GetSystemInfo');
+
+        self::assertFalse((new TemporalWorkflowRunCatalog($client, $this->connection()))->canFilterRuns(new WorkflowRunFilter(executionIdPrefix: 'ord')));
     }
 
     private function connection(): TemporalConnection

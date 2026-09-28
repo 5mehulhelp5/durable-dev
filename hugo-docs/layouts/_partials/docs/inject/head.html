@@ -1,11 +1,11 @@
 {{- /*
-  Point d'injection prévu par hugo-book. On le remplit plutôt que de surcharger
-  `html-head.html` : la recherche, le favicon et les métadonnées du thème
-  restent les siens.
+  The injection point hugo-book provides. It is filled rather than overriding
+  `html-head.html`, so search, the favicon and the theme's metadata stay the
+  theme's.
 
-  Seule dépendance externe des pages de documentation. Chaque fonte a une pile
-  de repli réelle dans `_custom.scss` : la page doit rester lisible si
-  fonts.googleapis.com ne répond pas.
+  The documentation pages' only external dependency. Each font has a real
+  fallback stack in `_custom.scss`: the page must stay readable if
+  fonts.googleapis.com does not answer.
 */ -}}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

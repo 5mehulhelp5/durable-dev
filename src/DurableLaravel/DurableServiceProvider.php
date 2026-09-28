@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\Durable\Laravel;
 
+use Gplanchat\Bridge\Illuminate\Queue\ActivityAttemptLock;
 use Gplanchat\Bridge\Illuminate\Queue\ResumeLock;
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
 use Gplanchat\Bridge\Illuminate\Store\IlluminateChildWorkflowParentLinkStore;
@@ -37,6 +38,7 @@ use Gplanchat\Durable\Nexus\Serving\NexusOperationRegistry;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\WorkflowRunPickupProjectionInterface;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
+use Gplanchat\Durable\Port\NoActivityAttemptClaim;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\NullWorkflowTimerDispatcher;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
@@ -366,6 +368,7 @@ final class DurableServiceProvider extends ServiceProvider
             $app->make(WorkflowMetadataStore::class),
             $queue['connection'] ?? null,
             $queue['name'] ?? null,
+            'sync' === $this->driverOf($queue['connection'] ?? null),
         ));
     }
 
@@ -462,6 +465,10 @@ final class DurableServiceProvider extends ServiceProvider
             // 0, the default, caps nothing: Temporal semantics. An activity's own limit can only be
             // stricter.
             $maxActivityRetries(),
+            // One worker per attempt, through the resume lock's store: the server's refusal of a
+            // second start, which a journal backend has no server to make (#590). A container
+            // without a cache (a bare test or script) runs one process: nothing to claim against.
+            attemptClaim: $app->bound('cache') ? $app->make(ActivityAttemptLock::class) : new NoActivityAttemptClaim(),
         ));
 
         $this->app->singleton(ResumeWorkflowHandler::class, fn($app) => new ResumeWorkflowHandler(
@@ -488,6 +495,10 @@ final class DurableServiceProvider extends ServiceProvider
             $app->make('cache')->store($lock['store'] ?? null)->getStore(),
             (int) ($lock['ttl'] ?? 300),
             (int) ($lock['wait'] ?? 10),
+        ));
+        $this->app->singleton(ActivityAttemptLock::class, fn($app) => new ActivityAttemptLock(
+            $app->make('cache')->store($lock['store'] ?? null)->getStore(),
+            (int) ($lock['ttl'] ?? 300),
         ));
     }
 

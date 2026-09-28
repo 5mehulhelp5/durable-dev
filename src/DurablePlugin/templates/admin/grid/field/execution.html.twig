@@ -1,0 +1,4 @@
+{# `data` is the whole run: its link keeps the list position, so the run page leads back to this page. #}
+{% set position = app.request.query.all|filter((v, k) => k in ['status', 'cursor', 'workflowName', 'executionIdPrefix'] and v is not iterable and v != '') %}
+<a href="{{ path('gplanchat_durable_plugin_admin_run_show', position|merge({runId: data.executionId})) }}"><code>{{ data.executionId }}</code></a>
+{% if data.groupId is defined %}<div class="text-secondary small">{{ 'runs.group'|trans({}, 'durable') }} <code>{{ data.groupId }}</code></div>{% endif %}

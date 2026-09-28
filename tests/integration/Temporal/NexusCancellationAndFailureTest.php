@@ -179,7 +179,7 @@ final class NexusCancellationAndFailureTest extends TestCase
         $slot = $history->findNexusOperationSlotResult(0);
         self::assertNotNull($slot);
 
-        $failure = $slot['failed'];
+        $failure = $slot->failed;
         self::assertInstanceOf(DurableNexusOperationFailedException::class, $failure, 'The failure must be typed, not bare.');
         self::assertSame(NexusOperationFailureKind::Timeout, $failure->kind());
         // The spec requires it: an uncaught failure must name the call site.

@@ -1,0 +1,39 @@
+{#
+    The run grid's filters (#383, slice B). A new filter starts from the first page: the form carries
+    no cursor and no way back, since a cursor is only valid with the filters that produced it. The
+    name and id-prefix filters show only where the catalog can apply them (#558).
+#}
+{% set context = hookable_metadata.context %}
+{% if context.resources is defined %}
+    {% set filters = context.filters|default({available: false}) %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <form class="row g-2 align-items-end" method="get" action="{{ path('gplanchat_durable_plugin_admin_run_index') }}" data-durable-run-filters>
+                <div class="col-md-3">
+                    <label for="durable-status" class="form-label">{{ 'filter.outcome'|trans({}, 'durable') }}</label>
+                    <select id="durable-status" class="form-select" name="status">
+                        {% for value in ['all', 'running', 'completed', 'failed', 'cancelled', 'continued_as_new'] %}
+                            <option value="{{ value }}" {% if context.status == value %}selected{% endif %}>{{ ('status.' ~ value)|trans({}, 'durable') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {# Each input only where the catalog can apply it: Temporal before 1.23.0 takes a name, not a prefix (#523). #}
+                {% if filters.workflowNameAvailable|default(false) %}
+                    <div class="col-md-4">
+                        <label for="durable-workflow-name" class="form-label">{{ 'filter.workflow_name'|trans({}, 'durable') }}</label>
+                        <input id="durable-workflow-name" class="form-control" type="text" name="workflowName" value="{{ filters.workflowName }}">
+                    </div>
+                {% endif %}
+                {% if filters.executionIdPrefixAvailable|default(false) %}
+                    <div class="col-md-3">
+                        <label for="durable-execution-id-prefix" class="form-label">{{ 'filter.execution_id_prefix'|trans({}, 'durable') }}</label>
+                        <input id="durable-execution-id-prefix" class="form-control" type="text" name="executionIdPrefix" value="{{ filters.executionIdPrefix }}">
+                    </div>
+                {% endif %}
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">{{ 'filter.submit'|trans({}, 'durable') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endif %}

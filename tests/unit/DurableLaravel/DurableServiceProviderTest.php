@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable\Laravel;
 
+use Gplanchat\Bridge\Illuminate\Queue\ActivityAttemptLock;
 use Gplanchat\Bridge\Illuminate\Queue\ResumeLock;
 use Gplanchat\Bridge\Illuminate\Store\IlluminateChildWorkflowParentLinkStore;
 use Gplanchat\Bridge\Illuminate\Store\IlluminateEventStore;
@@ -22,6 +23,7 @@ use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
 use Gplanchat\Durable\Store\ProjectingEventStore;
 use Gplanchat\Durable\Store\ProjectingWorkflowMetadataStore;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
+use Gplanchat\Durable\Worker\ActivityMessageProcessor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\NullStore;
 use Illuminate\Container\Container;
@@ -118,6 +120,21 @@ final class DurableServiceProviderTest extends TestCase
         $provider->boot();
 
         self::assertInstanceOf(ResumeLock::class, $app->make(ResumeLock::class));
+    }
+
+    /**
+     * A journal backend has no server to refuse a second start of one attempt: the processor claims
+     * it through the resume lock's store (#590).
+     */
+    public function testTheActivityProcessorClaimsEachAttemptThroughTheLockStore(): void
+    {
+        $app = $this->containerWithConnection(['backend' => 'memory']);
+        $app->instance('cache', $this->cacheManagerReturning(new ArrayStore()));
+        (new DurableServiceProvider($app))->register();
+
+        $claim = (new \ReflectionProperty(ActivityMessageProcessor::class, 'attemptClaim'))->getValue($app->make(ActivityMessageProcessor::class));
+
+        self::assertInstanceOf(ActivityAttemptLock::class, $claim);
     }
 
     public function testAnActivityThatInjectsTheHeartbeatSenderIsBuiltByTheContainer(): void

@@ -1,26 +1,26 @@
 {{- /*
-  Mesure d'audience, voir ../../documentation/adr/DUR048.
+  Audience measurement, see ../../documentation/adr/DUR048.
 
-  Une seule source pour les deux surfaces : la page d'accueil l'appelle depuis
-  `layout-head.html`, les pages de documentation depuis `docs/inject/head.html`.
-  Deux copies auraient divergé le jour où l'une des deux est corrigée.
+  One source for both surfaces: the home page calls it from `layout-head.html`,
+  the documentation pages from `docs/inject/head.html`. Two copies would have
+  drifted apart the day one of them was fixed.
 
-  ⚠ `disableCookies` AVANT `trackPageView`, et ce n'est pas un détail de style :
-  c'est cet appel-là qui fait qu'aucune donnée personnelle n'est collectée par
-  cookie, donc qu'aucune bannière n'est due. Inversé, l'ordre ne protège rien,
-  le cookie serait déjà posé.
+  ⚠ `disableCookies` BEFORE `trackPageView`, and that is not a matter of style:
+  that call is what keeps any personal data from being collected by cookie, so
+  no banner is owed. In the other order it protects nothing: the cookie would
+  already be set.
 
-  ⚠ Ce que ce fichier NE peut pas garantir : l'anonymisation d'IP est un réglage
-  serveur, pas du JavaScript. Elle se coche dans la console Matomo, et c'est
-  écrit dans l'ADR parce qu'aucune relecture de ce dépôt ne la verra.
+  ⚠ What this file CANNOT guarantee: IP anonymisation is a server setting, not
+  JavaScript. It is ticked in the Matomo console, and the ADR says so because no
+  review of this repository would see it.
 
-  Rien n'est émis tant que les deux paramètres ne sont pas renseignés : une
-  installation sans compte ne pose pas de balise vers nulle part.
+  Nothing is emitted until both parameters are set: an installation without an
+  account does not tag towards nowhere.
 
-  ⚠ Pas de `| jsonify` sur les deux valeurs. Go les échappe déjà pour un contexte
-  JavaScript : ajouter jsonify les guillemettait deux fois, et `var u` valait
-  littéralement `""https://…""`. La balise se posait, `matomo.js` ne chargeait
-  jamais, et rien ne le disait. Attrapé par un build réel, pas par une relecture.
+  ⚠ No `| jsonify` on the two values. Go already escapes them for a JavaScript
+  context: adding jsonify quoted them twice, and `var u` was literally
+  `""https://…""`. The tag was set, `matomo.js` never loaded, and nothing said
+  so. Caught by a real build, not by a review.
 */ -}}
 {{- with site.Params.matomo }}
 {{- if and .url .siteId }}

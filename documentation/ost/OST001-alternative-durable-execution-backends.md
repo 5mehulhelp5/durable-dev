@@ -67,8 +67,9 @@ The useful axis is not "how hard is the integration" — it is **where the `if` 
 Best structural match of anything surveyed: `GetWorkItems` / `CompleteOrchestratorTask` /
 `CompleteActivityTask`, with `pastEvents` + `newEvents` in and `actions` out — the contract
 `WorkflowFiberDriver` already implements. Public proto, explicitly meant for third-party SDKs, no
-PHP SDK in existence. One bridge would reach the Dapr sidecar, Azure Durable Task Scheduler and
-self-hosted `durabletask-go`.
+PHP SDK in existence. One bridge was expected to reach the Dapr sidecar, Azure Durable Task
+Scheduler and self-hosted `durabletask-go`; since Dapr forked the proto, one bridge reaches only one
+of those two families (OST002 §8).
 
 Checked feature by feature in **[OST002](OST002-durable-task-backend-feasibility.md)**. Summary of
 what that found:
