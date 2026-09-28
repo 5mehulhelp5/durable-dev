@@ -960,6 +960,21 @@ resume is sent before the outcome and again after it.
 **What to do.** Delete the line. Left in place, the container build fails with an
 `InvalidConfigurationException` naming the unrecognized option.
 
+### Laravel: `dispatchNewWorkflowRun()` starts runs on the memory and Temporal backends
+
+**Who is affected**: a Laravel application on the `memory` or `temporal` backend that calls
+`WorkflowResumeDispatcher::dispatchNewWorkflowRun()`. It used to return without starting anything
+(#603).
+
+**What changes.** On `temporal`, the run now starts on the cluster, as on the Symfony bundle. On
+`memory`, the run is now driven inside the call: `dispatchNewWorkflowRun()` returns once the run has
+completed, or once it waits on a signal or on something due later than the ten-second drain budget.
+A controller that relied on it returning at once will now wait for the run.
+
+**What to do.** Nothing, unless a caller counted on the no-op. On `memory`, move a long run behind a
+queued job of your own if the caller must return at once, or switch that environment to
+`illuminate`.
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract

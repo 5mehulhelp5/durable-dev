@@ -232,6 +232,16 @@ claim, and it is the one the other package does not make.
 
 Two neighbouring names on Packagist deserve the sentence rather than the hope that nobody notices.
 
+### Starting a run
+
+`WorkflowResumeDispatcher::dispatchNewWorkflowRun()` starts a run on every backend:
+
+- on `illuminate`, it queues the first resume for `queue:work`;
+- on `temporal`, it starts the workflow on the cluster, which delivers everything after that;
+- on `memory`, it drives the run **in the caller's process**: the call returns once the run has
+  completed, or once it waits on a signal or on something due later than the ten-second drain
+  budget. The journal of this backend lives in the process, so nothing else could advance it.
+
 ### Nexus, on the backend that can route it
 
 Serving a Nexus operation means answering a call that arrives from another namespace, and only the
