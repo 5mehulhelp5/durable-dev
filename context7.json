@@ -7,7 +7,7 @@
     "rules": [
         "The package is gplanchat/durable and its namespace is Gplanchat\\Durable. Never use durable-workflow/workflow (Workflow\\V2) or Azure Durable Functions APIs for it.",
         "A workflow is a class with #[AsWorkflow] and exactly one #[AsWorkflowMethod].",
-        "Start a run with WorkflowResumeDispatcher::dispatchNewWorkflowRun(): it works on every backend (in-memory, DBAL, Illuminate, Temporal).",
+        "With the Symfony bundle, start a run with WorkflowResumeDispatcher::dispatchNewWorkflowRun(): it works on the in-memory, DBAL and Temporal backends. On Laravel it starts runs only on the illuminate backend; on the other Laravel backends it is a no-op.",
         "Workflow code calls activities through $env->activityStub(Contract::class) and records anything a replay cannot reproduce (clock, random, environment) with $env->sideEffect()."
     ]
 }
