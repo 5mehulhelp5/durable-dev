@@ -977,7 +977,9 @@ jobs:
                   docker run -d --name oldest-temporal --network oldest -p 7233:7233 \
                     -e DB=postgres12 -e DB_PORT=5432 -e POSTGRES_USER=temporal -e POSTGRES_PWD=temporal -e POSTGRES_SEEDS=oldest-pg \
                     temporalio/auto-setup:1.20
-                  timeout 300 bash -c 'until docker logs oldest-temporal 2>&1 | grep -q "Search attributes have been added"; do sleep 2; done'
+                  # Probe the server, not a log line: 1.20 does not always print "Search attributes have been
+                  # added" (#650). The attributes Durable needs are registered, with a retry, by the next step.
+                  timeout 300 bash -c 'until docker exec oldest-temporal tctl --address oldest-temporal:7233 cluster health 2>/dev/null | grep -q SERVING; do sleep 2; done'
 
             # SearchAttributesTest runs in `durable-test`, which the dev server of the other jobs
             # creates at start. tctl, because the `temporal` CLI shipped in this image ignores
@@ -986,8 +988,8 @@ jobs:
             - name: The durable-test namespace and its search attributes
               run: |
                   TCTL="docker exec oldest-temporal tctl --address oldest-temporal:7233 --namespace durable-test"
-                  $TCTL namespace register
-                  timeout 60 bash -c "until $TCTL namespace describe >/dev/null 2>&1; do sleep 1; done"
+                  # Register until describe answers: a server that just turned SERVING may refuse the first try.
+                  timeout 60 bash -c "until $TCTL namespace describe >/dev/null 2>&1; do $TCTL namespace register >/dev/null 2>&1 || true; sleep 1; done"
                   timeout 90 bash -c "until $TCTL admin cluster get-search-attributes 2>/dev/null | grep -q DurableAmount; do
                     docker exec oldest-temporal sh -c 'yes | tctl --address oldest-temporal:7233 --namespace durable-test admin cluster add-search-attributes --name DurableOrderId --type Keyword --name DurableAmount --type Int --name DurableWorkflowName --type Keyword --name DurableExecutionId --type Keyword' >/dev/null 2>&1 || true
                     sleep 2
