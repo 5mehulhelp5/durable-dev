@@ -160,6 +160,24 @@ that is not a string. **What to do**: nothing. An `env(…)` default added as a 
 One case is stricter than before: an empty DSN is refused in whichever file writes it, even if a
 later profile sets a real one. It was accepted when the merged value was the only one checked.
 
+### `WorkflowServiceClientInterface` gains `DescribeTaskQueue()`
+
+**Who is affected**: only whoever **implements** `WorkflowServiceClientInterface` without extending
+`AbstractWorkflowServiceClient`. The bundled transports extend it and have nothing to change.
+
+**Why.** It is how the bridge learns whether a worker polls a task queue: an absent worker
+otherwise shows only once an execution has stalled.
+
+**What to write.** Forward the call like the other RPCs, or extend `AbstractWorkflowServiceClient`,
+which inherits it from `WorkflowRpcMethods`:
+
+```php
+public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $metadata = [], array $options = []): DescribeTaskQueueResponse
+{
+    return $this->call(__FUNCTION__, $request, DescribeTaskQueueResponse::class, $metadata, $options);
+}
+```
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

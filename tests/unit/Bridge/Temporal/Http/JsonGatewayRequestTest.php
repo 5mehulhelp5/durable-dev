@@ -40,4 +40,22 @@ final class JsonGatewayRequestTest extends TestCase
             JsonGatewayRequest::query($fields),
         );
     }
+
+    /**
+     * The one GET route whose query carries an enum: the gateway takes it by name, as the JSON
+     * form writes it.
+     */
+    public function testATaskQueueDescriptionNamesTheQueueInThePathAndItsTypeInTheQuery(): void
+    {
+        $request = new \Temporal\Api\Workflowservice\V1\DescribeTaskQueueRequest();
+        $request->setNamespace('default');
+        $request->setTaskQueue(new \Temporal\Api\Taskqueue\V1\TaskQueue(['name' => 'durable-activities']));
+        $request->setTaskQueueType(\Temporal\Api\Enums\V1\TaskQueueType::TASK_QUEUE_TYPE_ACTIVITY);
+        /** @var array<string, mixed> $fields */
+        $fields = json_decode($request->serializeToJsonString(), true, 512, \JSON_THROW_ON_ERROR);
+        [, $template] = \Gplanchat\Bridge\Temporal\Http\JsonGatewayRoutes::ROUTES['DescribeTaskQueue'];
+
+        self::assertSame('/api/v1/namespaces/default/task-queues/durable-activities', JsonGatewayRequest::path($template, $fields));
+        self::assertStringContainsString('taskQueueType=TASK_QUEUE_TYPE_ACTIVITY', JsonGatewayRequest::query($fields));
+    }
 }
