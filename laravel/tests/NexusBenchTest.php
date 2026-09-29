@@ -47,8 +47,9 @@ final class NexusBenchTest extends TestCase
                 }
                 usleep(200_000);
             }
-            self::spawn('serves-delivery', ['artisan', 'durable:nexus-worker']);
-            self::spawn('runs-workflows', ['artisan', 'durable:temporal-worker', '--role=workflow']);
+            // Bounded: a worker outlives a PHPUnit killed before tearDownAfterClass().
+            self::spawn('serves-delivery', ['artisan', 'durable:nexus-worker', '--max-time=600']);
+            self::spawn('runs-workflows', ['artisan', 'durable:temporal-worker', '--role=workflow', '--max-time=600']);
             sleep(3); // for a worker that fails at boot to die before the first test looks
         } catch (\Throwable $e) {
             // PHPUnit skips tearDownAfterClass() when this method fails: what started would outlive

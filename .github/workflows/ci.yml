@@ -216,9 +216,10 @@ jobs:
 
     laravel-bench:
         # The Laravel bench's probe (#360): `config/durable.php` → the core's Nexus registry → the
-        # handler, through the very method the Nexus worker calls. No cluster: the DSN names a
-        # closed port and nothing connects to it. The `laravel` job above tests the package; this
-        # one tests the application that installs it, from `laravel/`'s own lock.
+        # handler, through the very method the Nexus worker calls, with no cluster (the job's DSN
+        # names a closed port). Then the round trip (#666), against a dev server started below. The
+        # `laravel` job above tests the package; this one tests the application that installs it,
+        # from `laravel/`'s own lock.
         name: Laravel · bench, Nexus probe
         runs-on: ubuntu-latest
         timeout-minutes: 15
