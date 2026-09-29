@@ -17,15 +17,15 @@ final class HealthCommandWiringTest extends TestCase
 
     public function testOnTheTemporalBackendItChecksTheWorkflowAndActivityRoles(): void
     {
-        $definition = $this->load(['backend' => 'temporal', 'temporal' => ['dsn' => self::DSN]])->getDefinition('durable.command.health');
+        $container = $this->load(['backend' => 'temporal', 'temporal' => ['dsn' => self::DSN]]);
 
-        self::assertSame([['command' => 'durable:health']], $definition->getTag('console.command'));
-        self::assertSame(['workflow', 'activity'], $definition->getArgument(1));
+        self::assertSame([['command' => 'durable:health']], $container->getDefinition('durable.command.health')->getTag('console.command'));
+        self::assertSame(['workflow', 'activity'], $container->getDefinition('durable.worker_presence')->getArgument(1));
     }
 
     public function testAJournalKeptInSqlLeavesNoWorkflowRoleOnTheCluster(): void
     {
-        $definition = $this->load(['backend' => 'dbal', 'temporal' => ['dsn' => self::DSN]])->getDefinition('durable.command.health');
+        $definition = $this->load(['backend' => 'dbal', 'temporal' => ['dsn' => self::DSN]])->getDefinition('durable.worker_presence');
 
         self::assertSame([], $definition->getArgument(1), 'its workers consume the application\'s transports, not a task queue');
     }

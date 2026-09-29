@@ -280,13 +280,13 @@ final class NexusHandlerPassTest extends TestCase
     public function testAServedContractAddsTheNexusRoleToTheHealthCheck(): void
     {
         $container = $this->containerWithRegistry();
-        $container->register('durable.command.health')->setArguments([null, ['workflow', 'activity']]);
+        $container->register('durable.worker_presence')->setArguments([null, ['workflow', 'activity']]);
         $container->register('app.billing', BillingFixture::class)
             ->addTag(NexusHandlerPass::TAG, ['contract' => BillingServedFixture::class]);
 
         (new NexusHandlerPass())->process($container);
 
-        self::assertSame(['workflow', 'activity', 'nexus'], $container->getDefinition('durable.command.health')->getArgument(1));
+        self::assertSame(['workflow', 'activity', 'nexus'], $container->getDefinition('durable.worker_presence')->getArgument(1));
     }
 
     private function containerWithRegistry(): ContainerBuilder

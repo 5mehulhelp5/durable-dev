@@ -9,6 +9,7 @@ use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Bundle\Command\HealthCommand;
+use Gplanchat\Durable\Bundle\Observation\WorkerPresence;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -85,7 +86,7 @@ final class HealthCommandTest extends TestCase
             return $response;
         });
 
-        $tester = new CommandTester(new HealthCommand(new TemporalTaskQueueProbe($client, new TemporalConnection('localhost:7233', 'default')), $roles));
+        $tester = new CommandTester(new HealthCommand(new WorkerPresence(new TemporalTaskQueueProbe($client, new TemporalConnection('localhost:7233', 'default')), $roles)));
         $tester->execute([], ['capture_stderr_separately' => true]);
 
         return $tester;
