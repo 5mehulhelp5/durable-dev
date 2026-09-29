@@ -192,7 +192,8 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 `config/durable.php` gains an `activity_handlers` key beside `workflows`. Each class listed there
 serves the contract its `#[AsActivityHandler]` names, or else every interface it implements whose
 methods carry `#[AsActivityMethod]`, under the activity names the contract carries. A handler is
-resolved from the container when one of its activities runs. A class that does not exist, that
+resolved from the container each time one of its activities runs: bind it as a singleton to share
+one instance across a worker's tasks. A class that does not exist, that
 serves no activity, or that lacks a method of the contract it names is refused by name at boot.
 
 **What to do**: nothing, unless you registered activities by hand. Replace calls such as

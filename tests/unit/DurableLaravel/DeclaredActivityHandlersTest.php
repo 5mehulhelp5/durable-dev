@@ -8,7 +8,12 @@ use Gplanchat\Durable\ActivityExecutor;
 use Gplanchat\Durable\Attribute\AsActivity;
 use Gplanchat\Durable\Attribute\AsActivityHandler;
 use Gplanchat\Durable\Attribute\AsActivityMethod;
+use Gplanchat\Durable\Event\ActivityCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
+use Gplanchat\Durable\Store\EventStoreInterface;
+use Gplanchat\Durable\Transport\ActivityMessage;
+use Gplanchat\Durable\Worker\ActivityMessageProcessor;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Queue\Factory as QueueFactory;
 use Illuminate\Database\Capsule\Manager;
@@ -92,6 +97,18 @@ final class DeclaredActivityHandlersTest extends TestCase
 
         self::assertSame('hello ada', $executor->execute('greet.hello', ['who' => 'ada']));
         self::assertSame(1, $executor->execute('count.one', []));
+    }
+
+    public function testTheQueueWorkerRunsADeclaredHandlerOnTheIlluminateBackend(): void
+    {
+        $app = $this->registered('illuminate', [Greeter::class]);
+
+        $app->make(ActivityMessageProcessor::class)->process(new ActivityMessage('exec-1', 'act-1', 'greet.hello', ['who' => 'ada']));
+
+        $events = [...$app->make(EventStoreInterface::class)->readStream(ExecutionId::fromString('exec-1'))];
+        $completed = array_values(array_filter($events, static fn(object $e): bool => $e instanceof ActivityCompleted));
+        self::assertCount(1, $completed);
+        self::assertSame('hello ada', $completed[0]->result());
     }
 
     public function testTheHandlerIsBuiltWhenItsActivityRunsNotBefore(): void
