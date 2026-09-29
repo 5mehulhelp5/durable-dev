@@ -150,6 +150,19 @@ DURABLE_DSN=temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durab
 
 ## Register workflows and activities
 
+Each host registers the three kinds of class its own way:
+
+| | Symfony | Laravel (`config/durable.php`) | Magento (`di.xml`, `RuntimeFactory`) |
+|---|---|---|---|
+| workflow | `#[AsWorkflow]` on a service, autoconfigured | listed in `workflows` | listed in the `workflowClasses` argument |
+| activity handler | `#[AsActivityHandler]` on a service, autoconfigured | listed in `activity_handlers` | listed in the `activityHandlers` argument |
+| Nexus handler | `#[AsNexusServiceHandler]` on a service, autoconfigured | listed in `nexus.handlers` | not served |
+
+Only Symfony registers a class from its attribute. Laravel and Magento scan nothing: a class they
+do not list is not registered, whatever attribute it carries. On Laravel, `#[AsActivityHandler]` on
+a listed handler names the contract it serves. The [per-host table](../configuration/#host-table)
+lists every other setting. The rest of this section is the Symfony path.
+
 ### Tag workflows
 
 Nothing to write. A class carrying `#[AsWorkflow]` is registered as soon as it is a service, which
@@ -172,7 +185,7 @@ otherwise.
 
 ### Register activity implementations
 
-Nothing to write. A class carrying `#[AsActivityHandler]` is picked up by the bundle's autoconfiguration as soon as it is a service, which, with the default `autoconfigure: true` of a Symfony application, it already is.
+On Symfony, nothing to write. A class carrying `#[AsActivityHandler]` is picked up by the bundle's autoconfiguration as soon as it is a service, which, with the default `autoconfigure: true` of a Symfony application, it already is.
 
 ---
 
@@ -210,7 +223,7 @@ namespace App\Workflow\Activity;
 
 use Gplanchat\Durable\Attribute\AsActivityHandler;
 
-// This attribute is what registers the class; the bundle autoconfigures it.
+// On Symfony, this attribute registers the class; Laravel and Magento list it instead.
 #[AsActivityHandler(contract: GreetingActivities::class)]
 final class GreetingActivitiesHandler implements GreetingActivities
 {

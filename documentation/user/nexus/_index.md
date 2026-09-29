@@ -79,6 +79,12 @@ final class Billing implements BillingServed
 }
 ```
 
+Registering the handler depends on the host. On Symfony, `#[AsNexusServiceHandler]` on a service is
+enough: the bundle autoconfigures it. Laravel reads no attribute to find handlers: it serves the
+classes listed in `nexus.handlers` in `config/durable.php`, each as `handler => contract`
+([an example below](#serving-is-host-work-and-it-is-not-symfony-work)). Magento serves no Nexus
+operation. See [who registers what, per host](../getting-started/#register-workflows-and-activities).
+
 ### Why the contract comes in two pieces
 
 An operation fulfilled by a workflow has no handler body: the plumbing starts the workflow, and the

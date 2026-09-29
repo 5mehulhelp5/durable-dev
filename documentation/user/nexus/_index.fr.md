@@ -80,6 +80,12 @@ final class Billing implements BillingServed
 }
 ```
 
+L'enregistrement du gestionnaire dépend de l'hôte. Sous Symfony, `#[AsNexusServiceHandler]` sur un
+service suffit : le bundle l'autoconfigure. Laravel ne lit aucun attribut pour trouver les
+gestionnaires : il sert les classes listées dans `nexus.handlers` de `config/durable.php`, chacune
+sous la forme `gestionnaire => contrat` ([un exemple plus bas](#servir-est-du-travail-dhôte-et-ce-nest-pas-du-travail-symfony)).
+Magento ne sert aucune opération Nexus. Voir [qui enregistre quoi, par hôte](../getting-started/#déclarer-workflows-et-activités).
+
 ### Pourquoi le contrat vient en deux morceaux
 
 Une opération remplie par un workflow n'a pas de corps de gestionnaire : la plomberie démarre le
