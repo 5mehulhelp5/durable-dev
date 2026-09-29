@@ -1122,7 +1122,10 @@ waiting out a retry's backoff. Both count towards the bounds. It never follows t
 on its own. Hand the runner the same clock as its activity transport, or delayed retries never
 fall due.
 
-A timer that falls due during a backoff fires before the retry: see the #653 section below.
+A timer that falls due during a backoff is now recorded as fired once the drain is idle. The
+activity's remaining attempts still run first, so the timer cannot win against an activity that
+is retrying. In `any(activity, timer)`, the losing timer's history changes from
+`ActivityCompleted TimerCancelled` to `ActivityCompleted TimerCompleted`.
 
 No Rector rule. The closures being replaced read captured, often mutable, state
 (`static fn(): float => $clock->now`). A mechanical rewrite would have to generate a clock
@@ -1223,6 +1226,9 @@ Nothing to migrate: journals written before this change replay under the new rul
 
 **Who is affected**: a workflow run by `InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`,
 `DurableTestCase` and Magento's memory backend) that races a retrying activity against a timer.
+
+This replaces the 0.1.0-beta1 note on timers that fall due during a backoff, in the PSR-20 clock
+section (#617).
 
 The drain used to run every remaining attempt of a retrying activity before it fired a timer, so
 in `any(activity, timer)` the activity won even when the timer fell due during its backoff. The
