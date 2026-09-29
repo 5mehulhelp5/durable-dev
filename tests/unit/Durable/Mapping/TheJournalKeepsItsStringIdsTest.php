@@ -75,8 +75,8 @@ final class TheJournalKeepsItsStringIdsTest extends TestCase
         $store = new InMemoryEventStore();
         $store->append(new TimerCompleted(ExecutionId::fromString('exec-1'), 'timer-1'));
 
-        self::assertCount(1, [...$store->readStream(ExecutionId::fromString('exec-1'))]);
+        self::assertCount(1, iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false));
         self::assertSame(1, $store->countEventsInStream(ExecutionId::fromString('exec-1')));
-        self::assertCount(0, [...$store->readStream(ExecutionId::fromString('exec-2'))]);
+        self::assertCount(0, iterator_to_array($store->readStream(ExecutionId::fromString('exec-2')), false));
     }
 }
