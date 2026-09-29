@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Gplanchat\DurableModule\Runtime;
 
 use Gplanchat\Bridge\Temporal\Http\Psr18Http;
+use Gplanchat\Bridge\Temporal\Store\TaskQueueKind;
+use Gplanchat\Bridge\Temporal\Store\TaskQueuePollers;
+use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\TemporalRuntimeAssembly;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
@@ -82,6 +85,9 @@ class RuntimeFactory
      * window.
      */
     public const OBSERVATION_WINDOW = 200;
+
+    /** Unpolled this long, a role's worker is gone: a live one polls about once a minute, a stopped one stays listed for minutes. */
+    public const WORKER_SILENCE_SECONDS = 120;
 
     public function __construct(
         private readonly array $workflowClasses = [],
@@ -214,6 +220,25 @@ class RuntimeFactory
         // `running`. What tells a finished execution apart from a running one is read in its
         // events, and the assembly's catalog reads them through the cursor.
         return $this->assembly($settings)->runCatalog();
+    }
+
+    /**
+     * Who polls each role's queue, keyed by the `durable:worker --role` that serves it; empty
+     * without a cluster, where no worker exists to go missing.
+     *
+     * @return array{journal?: TaskQueuePollers, activity?: TaskQueuePollers}
+     */
+    public function workers(): array
+    {
+        $settings = $this->temporalSettings();
+        if ($settings === null) {
+            return [];
+        }
+
+        [$journal, $activity] = (new TemporalTaskQueueProbe($this->client($settings), $settings))
+            ->describe([TaskQueueKind::Workflow, TaskQueueKind::Activity]);
+
+        return ['journal' => $journal, 'activity' => $activity];
     }
 
     /**

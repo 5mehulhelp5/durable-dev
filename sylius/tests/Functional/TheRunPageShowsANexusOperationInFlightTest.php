@@ -74,6 +74,7 @@ final class TheRunPageShowsANexusOperationInFlightTest extends WebTestCase
                 'task_queue' => new TaskQueue(['name' => $connection->workflowTaskQueue->name()]),
                 'identity' => $connection->identity,
             ]), [], ['timeout' => 30_000_000]);
+            self::assertNotSame('', (string) $task->getTaskToken(), 'no workflow task came for the run within the poll');
             $buffer = new TemporalWorkflowCommandBuffer($connection, $executionId);
             $buffer->scheduleNexusOperation('op-1', NexusEndpoint::named($endpointName), NexusService::named('stock'), NexusOperationName::named('reserve'), ['order' => 'ORD-1'], new NexusOperationTimeouts(scheduleToClose: Duration::minutes(5)), NexusOperationHeaders::none());
             $grpc->RespondWorkflowTaskCompleted(new RespondWorkflowTaskCompletedRequest([
@@ -97,12 +98,21 @@ final class TheRunPageShowsANexusOperationInFlightTest extends WebTestCase
             self::assertCount(1, $table, 'the Nexus operations table');
             self::assertSame([$endpointName, 'stock', 'reserve', 'in flight'], $table->filterXPath('//tbody/tr/td')->each(static fn($cell): string => trim($cell->text())));
         } finally {
-            $grpc->TerminateWorkflowExecution(new TerminateWorkflowExecutionRequest([
-                'namespace' => $connection->namespace->name(),
-                'workflow_execution' => new WorkflowExecution(['workflow_id' => WorkflowClient::workflowIdOf($executionId)]),
-                'reason' => 'end of test',
-            ]), [], ['timeout' => 10_000_000]);
-            $transport->unary(self::OPERATOR . 'DeleteNexusEndpoint', new DeleteNexusEndpointRequest(['id' => (string) $endpoint?->getId(), 'version' => (int) $endpoint?->getVersion()]), DeleteNexusEndpointResponse::class, [], 10_000);
+            // Each on its own: a run that never started must not hide the real error, nor leave the
+            // endpoint behind on a shared server.
+            try {
+                $grpc->TerminateWorkflowExecution(new TerminateWorkflowExecutionRequest([
+                    'namespace' => $connection->namespace->name(),
+                    'workflow_execution' => new WorkflowExecution(['workflow_id' => WorkflowClient::workflowIdOf($executionId)]),
+                    'reason' => 'end of test',
+                ]), [], ['timeout' => 10_000_000]);
+            } catch (\RuntimeException) {
+            }
+
+            try {
+                $transport->unary(self::OPERATOR . 'DeleteNexusEndpoint', new DeleteNexusEndpointRequest(['id' => (string) $endpoint?->getId(), 'version' => (int) $endpoint?->getVersion()]), DeleteNexusEndpointResponse::class, [], 10_000);
+            } catch (\RuntimeException) {
+            }
         }
     }
 
