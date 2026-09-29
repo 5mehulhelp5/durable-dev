@@ -71,6 +71,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | DUR052 | The resume protocol beyond activities: each pair names its own fact (proposed) | [adr/DUR052-the-resume-protocol-beyond-activities.md](adr/DUR052-the-resume-protocol-beyond-activities.md) |
 | DUR053 | A superseded pass cannot write: one fencing epoch per pass (proposed) | [adr/DUR053-a-superseded-pass-cannot-write.md](adr/DUR053-a-superseded-pass-cannot-write.md) |
 | DUR054 | The journal does not share the application's connection (proposed) | [adr/DUR054-the-journal-does-not-share-the-applications-connection.md](adr/DUR054-the-journal-does-not-share-the-applications-connection.md) |
+| DUR056 | Magento journals through its own DB layer on a dedicated connection, with no Nexus (proposed) | [adr/DUR056-magento-journals-through-its-own-db-layer.md](adr/DUR056-magento-journals-through-its-own-db-layer.md) |
 
 ## Working agreements (WA)
 
