@@ -10,7 +10,7 @@ This page summarizes how you **author** activities in Durable. Normative detail 
 ## Two pieces
 
 1. **Activity contract interface.** Methods the workflow may call, each marked with **`#[AsActivityMethod]`**. From the workflow you interact through **`ActivityStub`** (**ActivityInvoker** in ADRs).
-2. **Activity implementation class.** A concrete class carrying **`#[AsActivityHandler]`**, naming the contract it implements. On Symfony, that attribute is what registers the class: the bundle autoconfigures it, and without it the workflow finds no handler at run time. Laravel lists the class in `activity_handlers` in `config/durable.php`, where the attribute, if present, names the contract it serves. Magento lists it in the `activityHandlers` argument of `RuntimeFactory` in `di.xml`. Neither scans attributes: an unlisted class serves nothing. See [who registers what, per host](../getting-started/#register-workflows-and-activities).
+2. **Activity implementation class.** A concrete class carrying **`#[AsActivityHandler]`**, naming the contract it implements. On Symfony, that attribute is what registers the class: the bundle autoconfigures it, and without it the workflow finds no handler at run time. Laravel lists the class in `activity_handlers` in `config/durable.php`, where the attribute, if present, names the contract it serves; without it, the class serves its interfaces whose methods carry `#[AsActivityMethod]`. Magento lists it in the `activityHandlers` argument of `RuntimeFactory` in `di.xml`. Neither scans attributes: an unlisted class serves nothing. See [who registers what, per host](../getting-started/#register-workflows-and-activities).
 
 ## Example: activity contract and implementation
 
