@@ -135,8 +135,8 @@ final class NexusOnLaravelTest extends TestCase
         (new DurableServiceProvider($app))->register();
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessageMatches('/settle/');
-        $this->expectExceptionMessageMatches('/no workflow claims it/');
+        // One pattern: a second expectExceptionMessageMatches() replaces the first.
+        $this->expectExceptionMessageMatches('/operation "settle" .* does not implement settle\(\) and no workflow claims it/');
 
         $app->make(NexusOperationRegistry::class);
     }
@@ -149,6 +149,18 @@ final class NexusOnLaravelTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('App\\Workflows\\Missing');
+
+        $app->make(NexusOperationRegistry::class);
+    }
+
+    public function testAKeyedHandlerClassThatDoesNotExistIsRefusedByName(): void
+    {
+        // A workflow fulfils `settle`, so before #714 the registry booted with `charge` unserved.
+        $app = $this->container('temporal', ['App\\Nexus\\Missing' => DeferredBillingService::class], [SettleWorkflow::class]);
+        (new DurableServiceProvider($app))->register();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('"App\\Nexus\\Missing" is declared in durable.nexus.handlers, but no such class exists');
 
         $app->make(NexusOperationRegistry::class);
     }
@@ -167,8 +179,7 @@ final class NexusOnLaravelTest extends TestCase
         (new DurableServiceProvider($app))->register();
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage(DeferredBillingHandler::class);
-        $this->expectExceptionMessage('#[AsNexusServiceHandler]');
+        $this->expectExceptionMessage(DeferredBillingHandler::class . ' is listed alone in durable.nexus.handlers, so its contract must come from #[AsNexusServiceHandler]');
 
         $app->make(NexusOperationRegistry::class);
     }
@@ -179,8 +190,7 @@ final class NexusOnLaravelTest extends TestCase
         (new DurableServiceProvider($app))->register();
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage(BillingService::class);
-        $this->expectExceptionMessage(DeferredBillingService::class);
+        $this->expectExceptionMessage(\sprintf('gives %s the contract %s, but its #[AsNexusServiceHandler] names %s', BillingHandler::class, DeferredBillingService::class, BillingService::class));
 
         $app->make(NexusOperationRegistry::class);
     }

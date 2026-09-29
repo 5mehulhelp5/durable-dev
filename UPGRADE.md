@@ -191,16 +191,21 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 
 **Who is affected**: a Laravel application that serves Nexus (`nexus.handlers`, `backend:
 temporal`). Resolving `NexusOperationRegistry` used to succeed in two cases where it now throws
-`InvalidArgumentException`, naming what is wrong:
+`InvalidArgumentException`, naming what is wrong. Each case below used to boot:
 
 - an operation of a declared contract that neither a handler method nor a workflow carrying
   `#[FulfilsNexusOperation]` serves. It used to be skipped, so a caller waited on a result nothing
   produced. Symfony's `NexusHandlerPass` already refused it at compile time.
 - a class in `workflows` that does not exist. It used to be skipped while looking for the
   operations workflows fulfil.
+- a `handler => contract` entry whose handler class does not exist. It used to boot as long as
+  workflows fulfilled some of the contract's operations.
+- a `handler => contract` entry whose handler carries an `#[AsNexusServiceHandler]` naming a
+  different contract.
 
 **What to do**: give the handler a method for the operation, or list the workflow that fulfils it
-in `workflows`. Fix or remove a misspelt workflow class.
+in `workflows`. Fix or remove a misspelt workflow or handler class. Make the entry's contract and the
+attribute's agree, or list the handler alone so that the attribute names its contract.
 
 `nexus.handlers` also accepts a handler class on its own, whose contract its
 `#[AsNexusServiceHandler]` names: `'handlers' => [App\Nexus\BillingHandler::class]`. The
