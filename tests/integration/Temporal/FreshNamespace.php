@@ -128,6 +128,36 @@ trait FreshNamespace
         }
     }
 
+    /**
+     * A start that sets the Durable search attributes, retried while the server refuses it for want
+     * of their mapping. On 1.20 a query naming them can pass while the history service still
+     * checks writes against a cached namespace without the mapping (#650). Refused, nothing
+     * started, so the retry cannot collide; any other error goes through at once.
+     *
+     * @template T
+     *
+     * @param callable(): T $start
+     *
+     * @return T
+     */
+    private static function startOnceMapped(callable $start): mixed
+    {
+        $deadline = microtime(true) + self::NAMESPACE_READY_TIMEOUT_SECONDS;
+        while (true) {
+            try {
+                return $start();
+            } catch (\RuntimeException $unmapped) {
+                if (3 !== $unmapped->getCode() || !str_contains($unmapped->getMessage(), 'no mapping defined for search attribute')) {
+                    throw $unmapped;
+                }
+                if (microtime(true) > $deadline) {
+                    self::fail(\sprintf('A start that sets %s and %s is still refused %.0f s after their registration: %s', DurableSearchAttributes::WORKFLOW_NAME, DurableSearchAttributes::EXECUTION_ID, self::NAMESPACE_READY_TIMEOUT_SECONDS, $unmapped->getMessage()));
+                }
+                usleep(200_000);
+            }
+        }
+    }
+
     private static function awaitNamespace(string $namespace, string $state, callable $probe): void
     {
         $deadline = microtime(true) + self::NAMESPACE_READY_TIMEOUT_SECONDS;
