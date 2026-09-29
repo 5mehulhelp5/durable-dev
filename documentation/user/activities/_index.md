@@ -153,8 +153,8 @@ charged the card, then the attempt timed out or the worker died. That attempt fa
 retried. An activity runs **at least once**.
 
 Anything an activity does to the outside world therefore needs a key that is the same on every
-attempt. The workflow passes the same arguments to each attempt, so build the key from them and
-the step's name, never from a random value or the time:
+attempt. The workflow passes the same arguments to each attempt, so build the key from them and a
+fixed prefix naming the operation (`charge-`, `refund-`), never from a random value or the time:
 
 ```php
 public function charge(string $orderId): string
@@ -163,7 +163,14 @@ public function charge(string $orderId): string
 }
 ```
 
+The key is the same for every attempt of one operation, and different for two distinct
+operations. `charge-<orderId>` is right only if an order is charged once. If the same order can be
+charged again (a second instalment, a new execution for the same order), add what tells the charges
+apart, such as the instalment number. Check also how long your provider remembers a key.
+
 A `RetryLimit` bounds how many attempts reach the provider; it does not make the second one safe.
+With `RetryLimit::once()`, a cut-off attempt is not retried: the call may or may not have happened,
+and the workflow sees a failure.
 
 ## Dependency injection
 
