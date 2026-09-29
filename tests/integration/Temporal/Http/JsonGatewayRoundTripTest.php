@@ -119,4 +119,24 @@ final class JsonGatewayRoundTripTest extends TestCase
             self::assertSame(5, $e->getCode(), $e->getMessage());
         }
     }
+
+    /**
+     * The one GET route whose query carries an enum (the queue type): the gateway must read it,
+     * or it describes the wrong queue without a word.
+     */
+    public function testATaskQueueNobodyServesIsDescribedOverJson(): void
+    {
+        $unserved = new TemporalConnection(
+            target: $this->connection->target,
+            namespace: $this->connection->namespace,
+            workflowTaskQueue: 'json-gateway-unserved-' . bin2hex(random_bytes(6)),
+            activityTaskQueue: 'json-gateway-unserved-' . bin2hex(random_bytes(6)),
+            transport: TemporalConnection::TRANSPORT_HTTP,
+        );
+
+        foreach ((new \Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe($this->client, $unserved))->describe() as $queue) {
+            self::assertNull($queue->error, $queue->type);
+            self::assertSame(0, $queue->pollers, $queue->type);
+        }
+    }
 }
