@@ -23,12 +23,12 @@ final class RecordingWorkflowClient implements WorkflowClientInterface
      */
     public bool $loseNextAnswer = false;
 
-    public function startAsync(string $workflowType, array $payload, ExecutionId|string $executionId): string
+    public function startAsync(string $workflowType, array $payload, ExecutionId $executionId): ExecutionId
     {
         throw new \LogicException('not expected');
     }
 
-    public function startSync(string $workflowType, array $payload, ExecutionId|string $executionId): mixed
+    public function startSync(string $workflowType, array $payload, ExecutionId $executionId): mixed
     {
         throw new \LogicException('not expected');
     }
@@ -57,11 +57,9 @@ final class RecordingWorkflowClient implements WorkflowClientInterface
         return null;
     }
 
-    public function workflowId(ExecutionId|string $executionId): string
+    public function workflowId(ExecutionId $executionId): string
     {
-        $executionId = (string) $executionId;
-
-        return 'wf-' . $executionId;
+        return 'wf-' . $executionId->toString();
     }
 
     private function answer(): void

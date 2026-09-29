@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Durable\Workflow\OrderWorkflow;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -68,7 +69,7 @@ final class DemoNexusBillingCommand extends Command
                 'amount' => (int) $input->getArgument('amount'),
                 'currency' => (string) $input->getArgument('currency'),
             ],
-            $order,
+            ExecutionId::fromString($order),
         );
 
         $io->comment(\sprintf('%s started — the shop holds nothing open while it waits.', $order));

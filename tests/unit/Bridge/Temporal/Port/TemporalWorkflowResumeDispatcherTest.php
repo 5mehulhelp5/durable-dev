@@ -31,8 +31,10 @@ final class TemporalWorkflowResumeDispatcherTest extends TestCase
             }
         };
 
+        $client = $this->createStub(WorkflowClientInterface::class);
+        $client->method('startAsync')->willReturnArgument(2);
         $dispatcher = new TemporalWorkflowResumeDispatcher(
-            $this->createStub(WorkflowClientInterface::class),
+            $client,
             new InMemoryWorkflowMetadataStore(),
             new WorkflowDefinitionLoader(),
             $observer,

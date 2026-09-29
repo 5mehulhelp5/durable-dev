@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\ExecutionStarted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Enums\V1\EventType;
@@ -73,7 +74,7 @@ final class TemporalReadThroughEventStoreTest extends TestCase
         );
 
         $workflowClient = $this->createStub(WorkflowClientInterface::class);
-        $workflowClient->method('workflowId')->willReturnCallback(static fn(string $executionId): string => 'durable-' . $executionId);
+        $workflowClient->method('workflowId')->willReturnCallback(static fn(ExecutionId $executionId): string => 'durable-' . $executionId->toString());
 
         return new TemporalReadThroughEventStore(new InMemoryEventStore(), new TemporalHistoryCursor($client, 'durable-test'), $workflowClient);
     }

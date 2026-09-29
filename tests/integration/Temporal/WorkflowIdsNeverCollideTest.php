@@ -45,12 +45,15 @@ final class WorkflowIdsNeverCollideTest extends TestCase
         $first = $this->client->startAsync('App\\OrderWorkflow', [], ExecutionId::fromString('order/42'));
         $second = $this->client->startAsync('App\\OrderWorkflow', [], ExecutionId::fromString('order 42'));
 
-        self::assertNotSame($first, $second);
+        // startAsync() hands back the execution it started; the workflow ids are workflowId()'s (#638).
+        self::assertSame('order/42', $first->toString());
+        self::assertSame('order 42', $second->toString());
+        self::assertNotSame($this->client->workflowId($first), $this->client->workflowId($second));
         $catalog = new TemporalWorkflowRunCatalog($this->grpc, $this->connection);
         self::assertSame('order/42', $catalog->findRun(ExecutionId::fromString('order/42'))?->executionId);
         self::assertSame('order 42', $catalog->findRun(ExecutionId::fromString('order 42'))?->executionId);
-        self::assertSame($first, $this->client->workflowId(ExecutionId::fromString('order/42')));
-        self::assertSame($second, $this->client->workflowId(ExecutionId::fromString('order 42')));
+        self::assertSame(WorkflowClient::workflowIdOf('order/42'), $this->client->workflowId($first));
+        self::assertSame(WorkflowClient::workflowIdOf('order 42'), $this->client->workflowId($second));
     }
 
     public function testARunStartedUnderTheLegacyIdIsReachedOnlyByItsOwnExecution(): void

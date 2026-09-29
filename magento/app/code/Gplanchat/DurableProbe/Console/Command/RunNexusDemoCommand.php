@@ -6,6 +6,7 @@ namespace Gplanchat\DurableProbe\Console\Command;
 
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use Gplanchat\DurableProbe\Workflow\OrderNexusWorkflow;
+use Gplanchat\Durable\ExecutionId;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -80,7 +81,7 @@ class RunNexusDemoCommand extends Command
                 'amount' => (int) $input->getArgument('amount'),
                 'currency' => (string) $input->getOption('currency'),
             ],
-            $order,
+            ExecutionId::fromString($order),
         );
 
         $output->writeln('  started — Magento holds nothing open while the others work.');

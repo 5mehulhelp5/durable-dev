@@ -11,6 +11,7 @@ use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Memo;
 use Temporal\Api\Workflow\V1\WorkflowExecutionInfo;
@@ -68,7 +69,7 @@ final class WorkflowIdMappingTest extends TestCase
             return new StartWorkflowExecutionResponse();
         });
 
-        $this->client($grpc)->startAsync('App\\OrderWorkflow', [], 'order/42');
+        $this->client($grpc)->startAsync('App\\OrderWorkflow', [], ExecutionId::fromString('order/42'));
 
         self::assertSame(WorkflowClient::workflowIdOf('order/42'), $started);
     }
@@ -78,21 +79,21 @@ final class WorkflowIdMappingTest extends TestCase
         $grpc = $this->createMock(WorkflowServiceClientInterface::class);
         $grpc->expects($this->never())->method('DescribeWorkflowExecution');
 
-        self::assertSame('durable-exec-1', $this->client($grpc)->workflowId('exec-1'));
+        self::assertSame('durable-exec-1', $this->client($grpc)->workflowId(ExecutionId::fromString('exec-1')));
     }
 
     public function testARunStartedUnderTheNewIdIsAddressedThere(): void
     {
         $client = $this->client($this->server([WorkflowClient::workflowIdOf('order/42') => 'order/42']));
 
-        self::assertSame(WorkflowClient::workflowIdOf('order/42'), $client->workflowId('order/42'));
+        self::assertSame(WorkflowClient::workflowIdOf('order/42'), $client->workflowId(ExecutionId::fromString('order/42')));
     }
 
     public function testARunStartedBeforeTheUpgradeIsStillReached(): void
     {
         $client = $this->client($this->server(['durable-order-42' => 'order/42']));
 
-        self::assertSame('durable-order-42', $client->workflowId('order/42'));
+        self::assertSame('durable-order-42', $client->workflowId(ExecutionId::fromString('order/42')));
     }
 
     public function testTheLegacyIdOfAnotherExecutionIsNotTaken(): void
@@ -100,7 +101,7 @@ final class WorkflowIdMappingTest extends TestCase
         // `order 42` started before the upgrade holds `durable-order-42`: `order/42` must not reach it.
         $client = $this->client($this->server(['durable-order-42' => 'order 42']));
 
-        self::assertSame(WorkflowClient::workflowIdOf('order/42'), $client->workflowId('order/42'));
+        self::assertSame(WorkflowClient::workflowIdOf('order/42'), $client->workflowId(ExecutionId::fromString('order/42')));
     }
 
     /**

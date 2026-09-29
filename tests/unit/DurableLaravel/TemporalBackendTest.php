@@ -13,6 +13,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
@@ -56,7 +57,7 @@ final class TemporalBackendTest extends TestCase
         $app = $this->container(['backend' => 'temporal', 'temporal' => ['dsn' => self::DSN]]);
         (new DurableServiceProvider($app))->register();
         $client = $this->createMock(WorkflowClientInterface::class);
-        $client->expects(self::once())->method('startAsync')->with('Greeting', ['who' => 'world'], 'exec-1')->willReturn('durable-exec-1');
+        $client->expects(self::once())->method('startAsync')->with('Greeting', ['who' => 'world'], ExecutionId::fromString('exec-1'))->willReturnArgument(2);
         $app->instance(WorkflowClientInterface::class, $client);
 
         $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun('exec-1', 'Greeting', ['who' => 'world']);

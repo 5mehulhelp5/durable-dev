@@ -6,6 +6,7 @@ namespace Gplanchat\DurableProbe\Console\Command;
 
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use Gplanchat\DurableProbe\Workflow\PlaceOrderWorkflow;
+use Gplanchat\Durable\ExecutionId;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -43,11 +44,14 @@ class StartDemoCommand extends Command
         $executionId = (string) $input->getArgument('execution-id');
 
         // The message for a missing DSN comes from the factory, and it names `app/etc/env.php`.
-        $workflowId = $this->runtimeFactory->workflowClient()->startAsync(
+        // startAsync() returns the execution; the Temporal workflow id is workflowId()'s (#638).
+        $client = $this->runtimeFactory->workflowClient();
+        $started = $client->startAsync(
             PlaceOrderWorkflow::class,
             ['orderId' => $executionId],
-            $executionId,
+            ExecutionId::fromString($executionId),
         );
+        $workflowId = $client->workflowId($started);
 
         $output->writeln(sprintf('  %s started on the cluster as %s', $executionId, $workflowId));
 

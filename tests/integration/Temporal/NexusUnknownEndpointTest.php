@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Command\V1\Command;
@@ -132,7 +133,7 @@ final class NexusUnknownEndpointTest extends TestCase
             new WorkflowServiceExecutionRpc($this->client),
         );
 
-        return $client->startAsync('NexusUnknownEndpointProbe', [], 'nexusunknown-' . bin2hex(random_bytes(4)));
+        return $client->workflowId($client->startAsync('NexusUnknownEndpointProbe', [], ExecutionId::fromString('nexusunknown-' . bin2hex(random_bytes(4)))));
     }
 
     private function pollOnce(): PollWorkflowTaskQueueResponse

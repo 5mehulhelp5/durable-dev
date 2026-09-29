@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
@@ -224,7 +225,7 @@ final class NexusOperationBoundsTest extends TestCase
         $options = null === $runTimeout ? null : new \Gplanchat\Durable\WorkflowStartOptions(
             timeouts: new \Gplanchat\Durable\WorkflowTimeouts(run: \Gplanchat\Durable\Duration::seconds((float) $runTimeout)),
         );
-        $workflowId = $client->startAsync('NexusBoundsProbe', [], 'bounds-' . bin2hex(random_bytes(5)), $options);
+        $workflowId = $client->workflowId($client->startAsync('NexusBoundsProbe', [], ExecutionId::fromString('bounds-' . bin2hex(random_bytes(5))), $options));
         $this->started[] = $workflowId;
 
         $poll = new PollWorkflowTaskQueueRequest();
