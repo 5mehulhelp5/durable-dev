@@ -824,13 +824,23 @@ jobs:
                   DURABLE_TEMPORAL_HTTP_ADDRESS: '127.0.0.1:7343'
               run: vendor/bin/phpunit --testsuite temporal --fail-on-skipped --display-skipped
 
-            - name: Stop the dev server
-              if: always()
-              run: docker rm -f temporal-dev
-
             - name: Install Composer dependencies (symfony/)
               working-directory: symfony
               run: composer install --no-interaction --prefer-dist --no-progress
+
+            # #664: the bench serves billing and calls stock, through its own workers, with the root's
+            # demo harness on the other side. On this dev server, not the compose stack: its
+            # auto-setup 1.25.2 answers "Nexus APIs are disabled". durable-test has the search
+            # attributes the bench's dev env writes on every start.
+            - name: PHPUnit — the bench serves and calls Nexus operations
+              working-directory: symfony
+              env:
+                  DURABLE_DSN: 'temporal://127.0.0.1:7333?namespace=durable-test&nexus_task_queue=symfony-bench-nexus&tls=0'
+              run: php bin/phpunit --testdox --fail-on-skipped --display-skipped --group nexus-bench tests/Integration/Temporal/
+
+            - name: Stop the dev server
+              if: always()
+              run: docker rm -f temporal-dev
 
             # `symfony/.env` publishes the frontend on 7234, so it can sit next to a local
             # Temporal on 7233. In CI there is nothing to sit next to: we publish on 7233,
@@ -860,6 +870,7 @@ jobs:
                     --testdox \
                     --fail-on-skipped \
                     --display-skipped \
+                    --exclude-group nexus-bench \
                     tests/Integration/Temporal/
 
             - name: Check Temporal UI (internal exec)
@@ -932,7 +943,7 @@ jobs:
               run: |
                   d="$RUNNER_TEMP/durable-tls"
                   export DURABLE_DSN="temporal://localhost:7443?namespace=default&journal_task_queue=durable-journal&activity_task_queue=durable-activities&tls=1&ca=$d/ca.crt&cert=$d/client.crt&key=$d/client.key&api_key=durable-ci-throwaway-key"
-                  php bin/phpunit --testdox --fail-on-skipped --display-skipped tests/Integration/Temporal/
+                  php bin/phpunit --testdox --fail-on-skipped --display-skipped --exclude-group nexus-bench tests/Integration/Temporal/
 
             - name: Stop the TLS server
               if: always()
