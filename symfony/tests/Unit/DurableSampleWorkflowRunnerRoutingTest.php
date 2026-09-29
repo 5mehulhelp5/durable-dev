@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Transport\AwaitedFact;
 use App\Durable\DurableSampleWorkflowRunner;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
@@ -77,10 +78,10 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         };
 
         $resume = new class implements WorkflowResumeDispatcher {
-            public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
         };
 
         $runner = new DurableSampleWorkflowRunner(
@@ -117,10 +118,10 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $registry = new WorkflowRegistry();
 
         $resume = new class implements WorkflowResumeDispatcher {
-            public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
         };
 
         $bus = new class implements MessageBusInterface {
@@ -171,11 +172,12 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
 
         $resume = new class ($dispatched) implements WorkflowResumeDispatcher {
             public function __construct(private array &$dispatched) {}
-            public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
+            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void
             {
+                $executionId = (string) $executionId;
                 $this->dispatched[] = ['executionId' => $executionId, 'type' => $workflowType];
             }
         };
@@ -214,11 +216,12 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $dispatched = [];
         $resume = new class ($dispatched) implements WorkflowResumeDispatcher {
             public function __construct(private array &$dispatched) {}
-            public function dispatchResume(string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
+            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void
             {
+                $executionId = (string) $executionId;
                 $this->dispatched[] = $executionId;
             }
         };

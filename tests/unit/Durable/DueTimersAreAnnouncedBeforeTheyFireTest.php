@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\Event\TimerCancelled;
 use Gplanchat\Durable\Event\TimerScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
@@ -92,18 +93,20 @@ final class TimerRecordingResumes implements WorkflowResumeDispatcher
         private readonly bool $takeOverOnAnnouncement = false,
     ) {}
 
-    public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
     {
+        $executionId = (string) $executionId;
         $this->sent[] = \sprintf('resume with %d events', $this->journal->countEventsInStream($executionId));
     }
 
-    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void
     {
+        $executionId = (string) $executionId;
         $this->sent[] = \sprintf('awaiting %s with %d events', $fact->describe(), $this->journal->countEventsInStream($executionId));
         if ($this->takeOverOnAnnouncement) {
             PassEventStore::open($this->journal, $executionId);
         }
     }
 
-    public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+    public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
 }
