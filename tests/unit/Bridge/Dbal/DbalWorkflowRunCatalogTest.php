@@ -14,6 +14,7 @@ use Gplanchat\Bridge\Dbal\Store\DbalWorkflowRunProjection;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
 use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\ProjectingEventStore;
@@ -96,7 +97,7 @@ final class DbalWorkflowRunCatalogTest extends TestCase
 
     private function startRun(string $executionId, string $workflowType): void
     {
-        $this->metadataStore()->save($executionId, $workflowType, []);
+        $this->metadataStore()->save(ExecutionId::fromString($executionId), $workflowType, []);
     }
 
     private function metadataStore(): WorkflowMetadataStore

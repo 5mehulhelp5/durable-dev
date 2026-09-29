@@ -43,7 +43,7 @@ final class DbalStoresTest extends TestCase
         $store->append(new ActivityCompleted('exec-1', 'act-1', ['ok' => true]));
         $store->append(new ExecutionCompleted('exec-1', 'done'));
 
-        $events = iterator_to_array($store->readStream('exec-1'), false);
+        $events = iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false);
 
         self::assertCount(4, $events);
         self::assertInstanceOf(ActivityScheduled::class, $events[0]);
@@ -63,10 +63,10 @@ final class DbalStoresTest extends TestCase
         $store->append(new ActivityScheduled('exec-2', 'act-2', 'refund', []));
         $store->append(new ActivityScheduled('exec-1', 'act-3', 'ship', []));
 
-        self::assertSame(2, $store->countEventsInStream('exec-1'));
-        self::assertSame(1, $store->countEventsInStream('exec-2'));
-        self::assertSame(0, $store->countEventsInStream('exec-unknown'));
-        self::assertSame([], iterator_to_array($store->readStream('exec-unknown'), false));
+        self::assertSame(2, $store->countEventsInStream(ExecutionId::fromString('exec-1')));
+        self::assertSame(1, $store->countEventsInStream(ExecutionId::fromString('exec-2')));
+        self::assertSame(0, $store->countEventsInStream(ExecutionId::fromString('exec-unknown')));
+        self::assertSame([], iterator_to_array($store->readStream(ExecutionId::fromString('exec-unknown')), false));
     }
 
     public function testRecordedAtIsReadBackAsADate(): void
@@ -74,7 +74,7 @@ final class DbalStoresTest extends TestCase
         $store = new DbalEventStore($this->connection, $this->schema());
         $store->append(new ActivityScheduled('exec-1', 'act-1', 'charge', []));
 
-        $entries = iterator_to_array($store->readStreamWithRecordedAt('exec-1'), false);
+        $entries = iterator_to_array($store->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')), false);
 
         self::assertInstanceOf(\DateTimeImmutable::class, $entries[0]['recordedAt']);
     }
@@ -83,28 +83,28 @@ final class DbalStoresTest extends TestCase
     {
         $store = new DbalWorkflowMetadataStore($this->connection, $this->schema());
 
-        self::assertNull($store->get('exec-1'));
-        self::assertFalse($store->hasActiveWorkflowMetadata('exec-1'));
+        self::assertNull($store->get(ExecutionId::fromString('exec-1')));
+        self::assertFalse($store->hasActiveWorkflowMetadata(ExecutionId::fromString('exec-1')));
 
-        $store->save('exec-1', 'App\\Checkout', ['cart' => 7]);
+        $store->save(ExecutionId::fromString('exec-1'), 'App\\Checkout', ['cart' => 7]);
 
         self::assertSame(
             ['workflowType' => 'App\\Checkout', 'payload' => ['cart' => 7], 'completed' => false],
-            $store->get('exec-1'),
+            $store->get(ExecutionId::fromString('exec-1')),
         );
-        self::assertTrue($store->hasActiveWorkflowMetadata('exec-1'));
+        self::assertTrue($store->hasActiveWorkflowMetadata(ExecutionId::fromString('exec-1')));
 
         // A second save (continue-as-new) overwrites the row instead of violating the primary key.
-        $store->save('exec-1', 'App\\Checkout', ['cart' => 8]);
-        self::assertSame(['cart' => 8], $store->get('exec-1')['payload']);
+        $store->save(ExecutionId::fromString('exec-1'), 'App\\Checkout', ['cart' => 8]);
+        self::assertSame(['cart' => 8], $store->get(ExecutionId::fromString('exec-1'))['payload']);
 
-        $store->markCompleted('exec-1');
-        self::assertFalse($store->hasActiveWorkflowMetadata('exec-1'));
+        $store->markCompleted(ExecutionId::fromString('exec-1'));
+        self::assertFalse($store->hasActiveWorkflowMetadata(ExecutionId::fromString('exec-1')));
         // The type stays readable after completion (profiler, observability).
-        self::assertSame('App\\Checkout', $store->get('exec-1')['workflowType']);
+        self::assertSame('App\\Checkout', $store->get(ExecutionId::fromString('exec-1'))['workflowType']);
 
-        $store->delete('exec-1');
-        self::assertNull($store->get('exec-1'));
+        $store->delete(ExecutionId::fromString('exec-1'));
+        self::assertNull($store->get(ExecutionId::fromString('exec-1')));
     }
 
     public function testParentLinkStoreLifecycle(): void
@@ -135,13 +135,13 @@ final class DbalStoresTest extends TestCase
         $metadata = new DbalWorkflowMetadataStore($this->connection, $schema);
 
         $events->append(new ActivityScheduled('exec-1', 'act-1', 'charge', []));
-        $metadata->save('exec-1', 'App\\Checkout', []);
+        $metadata->save(ExecutionId::fromString('exec-1'), 'App\\Checkout', []);
 
         // A second DurableSchema on the same connection must not retry the CREATE TABLE statements.
         $second = new DbalEventStore($this->connection, $this->schema());
         $second->append(new ActivityScheduled('exec-1', 'act-2', 'ship', []));
 
-        self::assertSame(2, $events->countEventsInStream('exec-1'));
+        self::assertSame(2, $events->countEventsInStream(ExecutionId::fromString('exec-1')));
     }
 
     private function schema(): DurableSchema

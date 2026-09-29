@@ -98,21 +98,21 @@ $killing = new class ($journal, (string) getenv('SLICE_KILL')) implements EventS
     {
         $executionId = (string) $executionId;
 
-        return $this->inner->readStream($executionId);
+        return $this->inner->readStream(ExecutionId::fromString($executionId));
     }
 
     public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
     {
         $executionId = (string) $executionId;
 
-        return $this->inner->readStreamWithRecordedAt($executionId);
+        return $this->inner->readStreamWithRecordedAt(ExecutionId::fromString($executionId));
     }
 
     public function countEventsInStream(ExecutionId|string $executionId): int
     {
         $executionId = (string) $executionId;
 
-        return $this->inner->countEventsInStream($executionId);
+        return $this->inner->countEventsInStream(ExecutionId::fromString($executionId));
     }
 };
 $runtime = new ExecutionRuntime($killing, $queues, $executor, 0, null, true);
@@ -120,19 +120,19 @@ $acksOnDequeue = 'on-dequeue' === getenv('SLICE_ACK');
 
 switch ($step) {
     case 'start':
-        $queues->dispatchNewWorkflowRun(EXECUTION, 'resume-first', []);
+        $queues->dispatchNewWorkflowRun(ExecutionId::fromString(EXECUTION), 'resume-first', []);
         exit(0);
 
     case 'start-parent':
-        $queues->dispatchNewWorkflowRun('parent', 'ParentOfAsyncChild', []);
+        $queues->dispatchNewWorkflowRun(ExecutionId::fromString('parent'), 'ParentOfAsyncChild', []);
         exit(0);
 
     case 'start-timer':
-        $queues->dispatchNewWorkflowRun('timer', 'resume-timer', []);
+        $queues->dispatchNewWorkflowRun(ExecutionId::fromString('timer'), 'resume-timer', []);
         exit(0);
 
     case 'status':
-        echo ($metadata->get(getenv('SLICE_EXECUTION') ?: EXECUTION)['completed'] ?? false) ? 'completed' : 'running', "\n";
+        echo ($metadata->get(ExecutionId::fromString(getenv('SLICE_EXECUTION') ?: EXECUTION))['completed'] ?? false) ? 'completed' : 'running', "\n";
         exit(0);
 
     case 'count-resumes':
