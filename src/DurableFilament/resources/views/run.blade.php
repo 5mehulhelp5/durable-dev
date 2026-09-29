@@ -36,7 +36,7 @@
             </dl>
         </x-filament::section>
 
-        {{-- Filled by a catalog that can hold Nexus operations (#707); absent until then. --}}
+        {{-- Read through NexusOperationCatalogInterface by a catalog that can hold them (#707); empty on a journal. --}}
         @include('durable-filament::nexus-operations', ['operations' => $run['nexusOperations'] ?? []])
 
         <x-filament::section :heading="$t('run.history')">

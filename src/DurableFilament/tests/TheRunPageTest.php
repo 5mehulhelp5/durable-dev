@@ -46,6 +46,23 @@ final class TheRunPageTest extends PanelTestCase
             ->assertSee('No run with this id on this backend.');
     }
 
+    public function testTheRunPageShowsTheNexusOperationsTheCatalogReports(): void
+    {
+        $catalog = $this->app->make(WorkflowRunCatalogInterface::class);
+        self::assertInstanceOf(FakeCatalog::class, $catalog);
+        $catalog->nexusOperations = [new NexusOperationSummary('stock-endpoint', 'stock', 'reserve', NexusOperationState::InFlight)];
+
+        $this->get('/admin/durable/run?executionId=order-1')
+            ->assertSee('Nexus operations')
+            ->assertSee('stock-endpoint')
+            ->assertSee('in flight');
+    }
+
+    public function testNoNexusOperationFromTheCatalogMeansNoNexusSection(): void
+    {
+        $this->get('/admin/durable/run?executionId=order-1')->assertOk()->assertDontSee('Nexus operations');
+    }
+
     public function testTheNexusOperationsReadWhereTheyAreServedAndWhetherTheyAreSettled(): void
     {
         $html = view('durable-filament::nexus-operations', ['operations' => [

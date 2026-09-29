@@ -11,10 +11,10 @@ use Livewire\Attributes\Url;
  * One run, by the id the application started it with (#514): its status, what it waits on, its
  * history, and its Nexus operations.
  *
- * The Nexus operations are `nexusOperations` in the run model, which a catalog that can hold them
- * fills (#707). Until the model carries the key, the section is not shown: a journal cannot hold a
- * Nexus operation (DUR036), and rebuilding one from the history's rows would re-decide what the
- * projection settles (DUR049).
+ * The Nexus operations are `nexusOperations` in the run model, read through
+ * `NexusOperationCatalogInterface` by a catalog that can hold them (#707), Temporal's. A journal
+ * cannot hold a Nexus operation (DUR036), so the model's list is empty there and the section is not
+ * shown; rebuilding one from the history's rows would re-decide what the projection settles (DUR049).
  */
 final class Run extends DurablePage
 {

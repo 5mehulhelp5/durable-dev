@@ -6,18 +6,23 @@ namespace Gplanchat\Durable\Filament\Tests;
 
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\BackendHealth;
+use Gplanchat\Durable\Observation\NexusOperationSummary;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
 use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
+use Gplanchat\Durable\Port\NexusOperationCatalogInterface;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 
 /**
  * A catalog the test fills by hand, and which remembers what the page asked it.
  */
-final class FakeCatalog implements WorkflowRunCatalogInterface
+final class FakeCatalog implements WorkflowRunCatalogInterface, NexusOperationCatalogInterface
 {
+    /** @var list<NexusOperationSummary> what every run is waiting on in Nexus */
+    public array $nexusOperations = [];
+
     public ?string $askedCursor = null;
     public ?WorkflowRunFilter $askedFilter = null;
 
@@ -60,6 +65,11 @@ final class FakeCatalog implements WorkflowRunCatalogInterface
     public function readHistory(WorkflowRunDescription $run): array
     {
         return $this->histories[$run->executionId] ?? [];
+    }
+
+    public function readNexusOperations(WorkflowRunDescription $run): array
+    {
+        return $this->nexusOperations;
     }
 
     public function checkHealth(): BackendHealth
