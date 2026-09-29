@@ -83,7 +83,7 @@ final class IntegrationWorkflows
             };
 
             try {
-                $env->await($pending, Duration::seconds(2));
+                $env->await($pending, deadline: Duration::seconds(2));
                 $first = ['signal', array_shift($approvals)];
             } catch (DeadlineExceededException) {
                 $first = ['timeout'];
@@ -94,7 +94,7 @@ final class IntegrationWorkflows
             $env->sleep(Duration::seconds(5));
 
             try {
-                $env->await($pending, Duration::seconds(10));
+                $env->await($pending, deadline: Duration::seconds(10));
                 $second = ['signal', array_shift($approvals)];
             } catch (DeadlineExceededException) {
                 $second = ['timeout'];
@@ -156,6 +156,23 @@ final class IntegrationWorkflows
             timeouts: self::attemptTimeout(),
         ))->boom()));
 
+        // The timer wins the race while the activity waits out its 30 s backoff, and the workflow
+        // then awaits something else: the next task replays the race (#681).
+        $registry->registerFactory('LostRace', static fn(array $input) => static function (WorkflowEnvironment $env): array {
+            $winner = $env->await($env->any(
+                $env->activityStub(IntegrationActivities::class, new ActivityOptions(
+                    RetryLimit::ofAttempts(5),
+                    initialInterval: Duration::seconds(30),
+                    backoffCoefficient: 1.0,
+                    timeouts: self::attemptTimeout(),
+                ))->boom(),
+                $env->timer(Duration::seconds(2)),
+            ));
+            $env->await($env->timer(Duration::seconds(1)));
+
+            return ['winner' => null === $winner ? 'timer' : 'activity', 'after' => true];
+        });
+
         $registry->registerFactory('Compensating', static fn(array $input) => static function (WorkflowEnvironment $env) use ($input): mixed {
             try {
                 return $env->await($env->activityStub(IntegrationActivities::class, new ActivityOptions(
@@ -182,8 +199,8 @@ final class IntegrationWorkflows
                 2,
                 $env->activityStub(IntegrationActivities::class, self::options())->double(1),
                 $env->activityStub(IntegrationActivities::class, self::options())->double(2),
-                $env->timer(Duration::hours(1), 'loser-1'),
-                $env->timer(Duration::hours(2), 'loser-2'),
+                $env->timer(Duration::hours(1), timerSummary: 'loser-1'),
+                $env->timer(Duration::hours(2), timerSummary: 'loser-2'),
             ));
 
             return ['keys' => array_keys($reached), 'values' => array_values($reached)];
@@ -206,7 +223,7 @@ final class IntegrationWorkflows
         // once it closes, a heartbeat hears "not found", not "cancel requested".
         $registry->registerFactory('CancelsItsHeartbeatingActivity', static fn(array $input) => static function (WorkflowEnvironment $env) use ($input): array {
             try {
-                $env->await($env->activityStub(HeartbeatActivities::class, self::heartbeatOptions())->heartbeatUntilCancelled((string) ($input['marker'] ?? '')), Duration::seconds(3));
+                $env->await($env->activityStub(HeartbeatActivities::class, self::heartbeatOptions())->heartbeatUntilCancelled((string) ($input['marker'] ?? '')), deadline: Duration::seconds(3));
             } catch (DeadlineExceededException) {
                 $env->sleep(Duration::seconds(10));
 

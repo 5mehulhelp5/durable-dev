@@ -103,7 +103,7 @@ final class TheWorkerWordsTheWaitTest extends TestCase
             return 'after';
         });
         $registry->registerFactory('SummarisedTimerWorkflow', static fn(array $payload) => static function (WorkflowEnvironment $env): string {
-            $env->sleep(60, 'grace period');
+            $env->sleep(60, timerSummary: 'grace period');
 
             return 'after';
         });

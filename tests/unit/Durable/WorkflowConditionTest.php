@@ -242,7 +242,7 @@ final class WorkflowConditionTest extends TestCase
             try {
                 $wf->await(static function () use (&$ticks): bool {
                     return [] !== $ticks;
-                }, Duration::seconds(30));
+                }, deadline: Duration::seconds(30));
 
                 return ['satisfied', $ticks[0]];
             } catch (DeadlineExceededException) {

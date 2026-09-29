@@ -121,7 +121,7 @@ final class PayloadForSlotTest extends TestCase
                 NexusEndpoint::named('payments'),
                 NexusService::named('billing'),
                 NexusOperationName::named('collect'),
-                ['amount' => 120],
+                payload: ['amount' => 120],
             );
             self::fail('The payload divergence should have been refused.');
         } catch (WorkflowTaskFailure $refusal) {
@@ -146,7 +146,7 @@ final class PayloadForSlotTest extends TestCase
             NexusEndpoint::named('payments'),
             NexusService::named('billing'),
             NexusOperationName::named('collect'),
-            ['amount' => 90],
+            payload: ['amount' => 90],
         );
 
         self::assertNotNull($awaitable);

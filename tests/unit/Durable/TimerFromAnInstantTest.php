@@ -59,7 +59,7 @@ final class TimerFromAnInstantTest extends TestCase
         $due = new \DateTimeImmutable('+40 milliseconds');
         $handler = static function (WorkflowEnvironment $wf) use ($due): string {
             try {
-                $wf->await(static fn(): bool => false, $due);
+                $wf->await(static fn(): bool => false, deadline: $due);
 
                 return 'settled';
             } catch (\Gplanchat\Durable\Exception\DeadlineExceededException) {

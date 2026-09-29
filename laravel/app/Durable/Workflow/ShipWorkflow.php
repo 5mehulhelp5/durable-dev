@@ -62,7 +62,7 @@ final class ShipWorkflow
         // The warehouse preparation. `sleep()` waits; `timer()` returns an awaitable that has to be
         // awaited — confusing the two has already produced a `TimerStarted` with no `TimerFired` in
         // this repository.
-        $this->environment->sleep(6.0, 'warehouse preparation');
+        $this->environment->sleep(6.0, timerSummary: 'warehouse preparation');
 
         // Empty lines: this is not asking for a new reservation, it reads back the one the order
         // identifier already decided at the shop.

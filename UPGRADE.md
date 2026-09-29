@@ -160,6 +160,15 @@ that is not a string. **What to do**: nothing. An `env(…)` default added as a 
 One case is stricter than before: an empty DSN is refused in whichever file writes it, even if a
 later profile sets a real one. It was accepted when the merged value was the only one checked.
 
+### Temporal: a workflow goes on after a timer beats an activity in `any()` (#681)
+
+The rule of #678, on Temporal. An activity whose cancellation the workflow requested now reads
+back on replay as unsettled, unless the workflow's own cancellation withdrew it (that one still
+replays as `WorkflowCancelledFailure`). It used to read back as a rejection, so the run failed
+with `Activity <id> was superseded (Cancelled by Temporal)`. Replay no longer sends
+`RequestCancelActivityTask` again for an activity whose `ACTIVITY_TASK_CANCEL_REQUESTED` is in the
+history, and an outcome the activity records after that request is ignored. Nothing to migrate.
+
 ### `WorkflowServiceClientInterface` gains `DescribeTaskQueue()`
 
 **Who is affected**: only whoever **implements** `WorkflowServiceClientInterface` without extending
@@ -961,7 +970,7 @@ plays. Rector can do nothing here: only you know which branches the code still c
 
 ```php
 // The DEFAULT_VERSION branch is still in the code: say so.
-$version = $env->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+$version = $env->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
 ### `version()` no longer switches an in-flight execution
@@ -1068,7 +1077,7 @@ started before the change:
 
 ```php
 } catch (DurableActivityFailedException $e) {
-    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', ChangePoint::DEFAULT_VERSION, 1)
+    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1)
         ? 1                  // started before the upgrade: the history recorded attempt 1
         : $e->attempt();
 

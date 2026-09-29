@@ -225,7 +225,7 @@ or a service written in another language. The enum types the inside; it cannot t
 >
 > // After
 > $env->onSignal(OrderSignal::Approve, fn(array $p) => $this->approvals[] = $p);
-> $env->await(fn(): bool => [] !== $this->approvals, Duration::hours(1));
+> $env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1));
 > $approval = array_shift($this->approvals);
 > ```
 >
