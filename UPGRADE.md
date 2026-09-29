@@ -1263,21 +1263,25 @@ through `?->`. It leaves alone:
 
 - a receiver it cannot type, such as `$container->get(EventStoreInterface::class)->readStream($id)`
   or Laravel's `app(...)`. Static analysis may miss these too, and the `TypeError` shows up at run time;
-- a named or unpacked argument, and one whose type is `mixed` or unknown;
+- a named or unpacked argument, a nullable one (`?string`), and one whose type is `mixed` or
+  unknown;
 - any code that **reads** an id a port returns (`getParentExecutionId()`,
   `getChildExecutionIdsForParent()`, `findScheduledChildExecutionId()`, `startAsync()`), including
   the `$client->signal($client->startAsync(...), ...)` pattern. What the value is for decides the
   rewrite (`->toString()` for a string, `workflowId()` for a Temporal id, or keep the value object),
   and no rule can guess it;
-- a class that **implements** a port. Changing a parameter type makes the method body wrong
-  wherever it relies on a string, which is a review, not a rewrite.
+- every call made inside a class that **implements** a port, including a decorator's
+  `$this->inner->readStream($executionId)` and its calls to itself. Step 4 turns those parameters
+  into `ExecutionId`, and a wrap written before would then be `fromString()` of an object.
+  Changing a parameter type makes the method body wrong wherever it relies on a string, which is a
+  review, not a rewrite.
 
 **What to do**, in this order:
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm: what remains is listed.
 2. At each call Rector left, pass `ExecutionId::fromString($id)`. An empty string is refused:
    `fromString('')` throws, where a store used to look up the empty id and find nothing. The
-   helpers that kept a `string` signature convert inside, so they refuse `''` too:
+   helpers that kept a `string` signature convert inside, so they refuse `''` too, for example
    `WorkflowQueryEvaluator`, `ActivityEventJournal`, `RunDashboard::run()`, the message handlers.
 3. Where you read a returned id, call `->toString()` where a string is needed, and compare two ids
    with `->equals()`, not `===`. After `startAsync()`, call `workflowId()` for the Temporal id.
