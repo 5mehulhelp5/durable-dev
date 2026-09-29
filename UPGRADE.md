@@ -187,6 +187,15 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 }
 ```
 
+### Temporal read model: a cancelled activity or timer says why (#701)
+
+Read through `TemporalReadThroughEventStore` (the bundle's event store on Temporal, the profiler,
+the dashboards), `ActivityCancelled` and `TimerCancelled` used to carry the reason
+`Cancelled by Temporal`. They now carry the reason the event-store backends record:
+`workflow_cancelled` when the workflow's own cancellation withdrew the operation, `race_superseded`
+otherwise. A replay through that store now reads a race loser as unsettled, as the worker does.
+Code that matched on `Cancelled by Temporal` should match on `ActivityCancellationReason` instead.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
