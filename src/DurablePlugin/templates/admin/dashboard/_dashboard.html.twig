@@ -34,11 +34,6 @@
         .durable-frieze-bar.update, .durable-frieze-mark.update { background: #7048e8; }
         /* Nexus stands out on purpose here too, as it does on the blocks further down. */
         .durable-frieze-bar.nexus, .durable-frieze-mark.nexus { background: #f76707; }
-    .durable-nexus-state { padding: 1px 6px; border-radius: 4px; font-weight: 600; }
-    .durable-nexus-state.in_flight { background: #dbeafe; color: #1e40af; }
-    .durable-nexus-state.completed { background: #dcfce7; color: #166534; }
-    .durable-nexus-state.failed, .durable-nexus-state.timed_out { background: #fee2e2; color: #991b1b; }
-    .durable-nexus-state.cancelled { background: #f3f4f6; color: #374151; }
         .durable-frieze-bar.other, .durable-frieze-mark.other { background: #868e96; }
         /* After the per-kind rules, not before: those set `background` as a shorthand, which
            resets `background-image`. The opacity is raised because a queue of a few milliseconds
@@ -55,6 +50,12 @@
         .durable-failed { color: #d63939; }
         .durable-events summary { cursor: pointer; }
         .durable-events pre { margin: .5rem 0 0; padding: .5rem; font-size: .8em; white-space: pre-wrap; word-break: break-word; background: var(--tblr-bg-surface-secondary); color: var(--tblr-body-color); border-radius: var(--tblr-border-radius); }
+        /* A Nexus operation's state: one still waiting is not a failure, and does not look like one (#671). */
+        .durable-nexus-state { padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+        .durable-nexus-state.in_flight { background: #dbeafe; color: #1e40af; }
+        .durable-nexus-state.completed { background: #dcfce7; color: #166534; }
+        .durable-nexus-state.failed, .durable-nexus-state.timed_out { background: #fee2e2; color: #991b1b; }
+        .durable-nexus-state.cancelled { background: #f3f4f6; color: #374151; }
     </style>
 
         <div class="container-xl my-4">
@@ -208,10 +209,10 @@
                                             <table class="table table-sm">
                                                 <thead>
                                                     <tr>
-                                                        <th>{{ 'nexus.endpoint'|trans({}, 'durable') }}</th>
-                                                        <th>{{ 'nexus.service'|trans({}, 'durable') }}</th>
-                                                        <th>{{ 'nexus.operation'|trans({}, 'durable') }}</th>
-                                                        <th>{{ 'nexus.state'|trans({}, 'durable') }}</th>
+                                                        <th scope="col">{{ 'nexus.endpoint'|trans({}, 'durable') }}</th>
+                                                        <th scope="col">{{ 'nexus.service'|trans({}, 'durable') }}</th>
+                                                        <th scope="col">{{ 'nexus.operation'|trans({}, 'durable') }}</th>
+                                                        <th scope="col">{{ 'nexus.state'|trans({}, 'durable') }}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
