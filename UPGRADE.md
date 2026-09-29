@@ -644,9 +644,8 @@ and becomes a compatibility promise nobody meant to make.
 | `durable.run_catalog.dbal`, `durable.run_catalog.in_memory`, `durable.run_catalog.temporal`                                 | `Gplanchat\Durable\Port\WorkflowRunCatalogInterface` |
 
 The three interfaces stay **public** and autowirable, and they point at the same instance: what
-changes is the path to get there, not what you get. The rest of the bundle's public surface is
-unchanged — the Temporal workers, the parent/child link store, the profiler collector and the engine
-classes stay reachable by their id.
+changes is the path to get there, not what you get. The rest of the bundle's surface goes private
+too, see "Only the documented services stay public" below.
 
 Rector can do nothing: rewriting a `$container->get('durable.event_store.dbal')` into an injection
 requires knowing where the object is used, which no rule can guess. The table above is the
@@ -1129,6 +1128,59 @@ No Rector rule. The closures being replaced read captured, often mutable, state
 (`static fn(): float => $clock->now`). A mechanical rewrite would have to generate a clock
 class in your code for every call site. Choosing a clock is a one-line decision, and it is
 yours to make.
+
+### Only the documented services stay public (#342)
+
+**Who is affected**: an application, or a test booted in an environment without `framework.test`,
+that pulls one of the ids below out of the container with `$container->get()` or checks it with
+`$container->has()`. Not one that receives them by autowiring: every id below still exists, and
+every class or interface id is still an alias of the same service.
+
+Five ids stay **public**, the ones the documentation names and `DurableBundleTestTrait` fetches:
+`EventStoreInterface`, `WorkflowMetadataStore`, `WorkflowRunCatalogInterface`,
+`WorkflowResumeDispatcher`, and `DurableDataCollector` when the profiler is on.
+
+| Now private                                                                          | Where it exists            |
+| ------------------------------------------------------------------------------------ | -------------------------- |
+| `Gplanchat\Durable\ExecutionEngine`, `ExecutionRuntime`, `WorkflowRegistry`          | every backend              |
+| `Gplanchat\Durable\ActivityExecutor`, `ChildWorkflowRunner`                          | every backend              |
+| `Gplanchat\Durable\Port\WorkflowBackendInterface`                                    | every backend              |
+| `Gplanchat\Durable\Port\ParentChildWorkflowCoordinatorInterface`                     | every backend              |
+| `Gplanchat\Durable\Query\WorkflowQueryRunner`                                        | every backend              |
+| `Gplanchat\Durable\Transport\ActivityTransportInterface`                             | every backend              |
+| `Gplanchat\Durable\Worker\ActivityMessageProcessor`                                  | every backend              |
+| `Gplanchat\Durable\Store\ChildWorkflowParentLinkStoreInterface`                      | every backend              |
+| `durable.child_workflow_parent_link_store`                                           | every backend              |
+| `Gplanchat\Durable\Debug\WorkflowExecutionObserverInterface`                         | every backend              |
+| `durable.execution_trace`                                                            | profiler on                |
+| `Gplanchat\Durable\Bundle\Handler\ActivityRunHandler`                                | `dbal`                     |
+| `Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner`                                | a Temporal DSN             |
+| `durable.temporal.activity_worker`, `durable.temporal.nexus_worker`                  | a Temporal DSN             |
+
+**What to do**, in this order:
+
+1. In a service, type-hint the class or interface in the constructor. Autowiring is unchanged.
+2. In a `KernelTestCase` or `WebTestCase`, use `static::getContainer()`. The test container reaches
+   a private service as long as something injects it. An id nothing injects is removed at compile
+   time; `WorkflowBackendInterface` and `WorkflowQueryRunner` are two the bundle never injects.
+3. If you must still fetch an id by name, make it public in your own compiler pass. A kernel that
+   implements `CompilerPassInterface` is registered as one:
+
+```php
+final class Kernel extends BaseKernel implements CompilerPassInterface
+{
+    use MicroKernelTrait;
+
+    public function process(ContainerBuilder $container): void
+    {
+        $container->getAlias(\Gplanchat\Durable\ExecutionRuntime::class)->setPublic(true);
+    }
+}
+```
+
+No Rector rule. Turning `$container->get(ExecutionRuntime::class)` into constructor injection adds
+a parameter to the caller, and to every place that builds it, and needs the caller to be a service.
+That is not a rewrite of one expression, and no rule can find those places.
 
 ## 0.1.0-alpha10
 
