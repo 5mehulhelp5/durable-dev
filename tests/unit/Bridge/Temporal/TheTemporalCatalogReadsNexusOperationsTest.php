@@ -15,11 +15,14 @@ use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\NexusOperationCatalogInterface;
 use PHPUnit\Framework\TestCase;
+use Temporal\Api\Common\V1\Payload;
+use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Enums\V1\EventType;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\NexusOperationCompletedEventAttributes;
 use Temporal\Api\History\V1\NexusOperationScheduledEventAttributes;
+use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
 
 /**
@@ -41,6 +44,21 @@ final class TheTemporalCatalogReadsNexusOperationsTest extends TestCase
             new NexusOperationSummary('demo-business-billing', 'billing', 'verify', NexusOperationState::Completed),
             new NexusOperationSummary('demo-business-billing', 'billing', 'charge', NexusOperationState::InFlight),
         ], $catalog->readNexusOperations($this->describedRun('wf-1')));
+    }
+
+    public function testAPayloadInAnotherEncodingDoesNotBreakTheReading(): void
+    {
+        // Another SDK's worker or a payload codec: readHistory() already tolerates it, and the run
+        // page must not answer 500 because the Nexus operations were read from the same history.
+        $started = $this->event(1, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_STARTED);
+        $started->setWorkflowExecutionStartedEventAttributes(new WorkflowExecutionStartedEventAttributes([
+            'input' => new Payloads(['payloads' => [new Payload(['metadata' => ['encoding' => 'binary/protobuf'], 'data' => "\x00\x01\x02"])]]),
+        ]));
+
+        self::assertEquals(
+            [new NexusOperationSummary('demo-shop-stock', 'stock', 'reserve', NexusOperationState::InFlight)],
+            $this->catalog($started, $this->scheduled(5, 'demo-shop-stock', 'stock', 'reserve'))->readNexusOperations($this->describedRun('wf-1')),
+        );
     }
 
     public function testARunWithoutItsGroupingIdentifierHasNoOperationsToRead(): void
