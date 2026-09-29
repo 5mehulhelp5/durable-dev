@@ -8,6 +8,9 @@ use Gplanchat\Durable\Bundle\DependencyInjection\Compiler\WarnOnSharedJournalCon
 use Gplanchat\Durable\Bundle\EventListener\WarnOnSharedJournalConnectionListener;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
@@ -37,6 +40,9 @@ final class WarnOnSharedJournalConnectionPassTest extends TestCase
 
         self::assertTrue($container->hasDefinition(WarnOnSharedJournalConnectionListener::class));
         $listener = $container->getDefinition(WarnOnSharedJournalConnectionListener::class);
+        // Registered after ResolveClassPass: the class is not inferred from the id any more, and a
+        // definition without one fails CheckDefinitionValidityPass in a real compile.
+        self::assertSame(WarnOnSharedJournalConnectionListener::class, $listener->getClass());
         self::assertSame([['event' => WorkerStartedEvent::class]], $listener->getTag('kernel.event_listener'));
         self::assertSame($journal, $listener->getArgument(1));
     }
@@ -69,10 +75,30 @@ final class WarnOnSharedJournalConnectionPassTest extends TestCase
         self::assertFalse($container->hasDefinition(WarnOnSharedJournalConnectionListener::class));
     }
 
+    public function testTheContainerCompilesWithTheWarningRegistered(): void
+    {
+        $container = $this->container('doctrine.dbal.default_connection');
+        foreach (['logger', 'doctrine.dbal.app_connection', 'doctrine.dbal.durable_connection', 'durable.dbal.schema'] as $id) {
+            $container->getDefinition($id)->setPublic(true);
+        }
+        $container->addCompilerPass(new WarnOnSharedJournalConnectionPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 20);
+        // Kept public so that the removing passes, with no RegisterListenersPass here, leave it be.
+        $container->addCompilerPass(new class implements CompilerPassInterface {
+            public function process(ContainerBuilder $container): void
+            {
+                $container->getDefinition(WarnOnSharedJournalConnectionListener::class)->setPublic(true);
+            }
+        }, PassConfig::TYPE_BEFORE_OPTIMIZATION, 10);
+
+        $container->compile();
+
+        self::assertInstanceOf(WarnOnSharedJournalConnectionListener::class, $container->get(WarnOnSharedJournalConnectionListener::class));
+    }
+
     private function container(string $journal): ContainerBuilder
     {
         $container = new ContainerBuilder();
-        $container->setDefinition('logger', new Definition(\stdClass::class));
+        $container->setDefinition('logger', new Definition(NullLogger::class));
         // What DoctrineBundle registers for `default_connection: app` and a second `durable` one.
         $container->setDefinition('doctrine.dbal.app_connection', new Definition(\stdClass::class));
         $container->setDefinition('doctrine.dbal.durable_connection', new Definition(\stdClass::class));
