@@ -6,6 +6,8 @@ namespace Gplanchat\Durable\Plugin\Tests\Integration;
 
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\BackendHealth;
+use Gplanchat\Durable\Observation\NexusOperationState;
+use Gplanchat\Durable\Observation\NexusOperationSummary;
 use Gplanchat\Durable\Observation\RunDashboard;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
 use Gplanchat\Durable\Observation\WorkflowRunEvent;
@@ -14,6 +16,7 @@ use Gplanchat\Durable\Observation\WorkflowRunEventPhase;
 use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunPage;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
+use Gplanchat\Durable\Port\NexusOperationCatalogInterface;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
@@ -142,6 +145,45 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', ['backend' => $run['backend'], 'selectedRun' => $run['run']]);
 
         self::assertStringContainsString('<code>order/42</code> <small class="text-secondary">run run-1 on the backend</small>', $page);
+    }
+
+    public function testTheRunPageSaysWhereANexusOperationWaitsAndThatItIsInFlight(): void
+    {
+        // #671: a Nexus operation is the wait served by someone else; in flight is not a failure.
+        $page = $this->renderNexus([new NexusOperationSummary('demo-shop-stock', 'stock', 'reserve', NexusOperationState::InFlight)]);
+
+        foreach (['Nexus operations', '<code>demo-shop-stock</code>', '<td>stock</td>', '<td>reserve</td>', 'durable-nexus-state in_flight">in flight<'] as $shown) {
+            self::assertStringContainsString($shown, $page);
+        }
+    }
+
+    public function testEachSettledOutcomeIsShownAsItsOwnState(): void
+    {
+        $states = ['completed' => NexusOperationState::Completed, 'failed' => NexusOperationState::Failed, 'timed out' => NexusOperationState::TimedOut, 'cancelled' => NexusOperationState::Cancelled];
+        $page = $this->renderNexus(array_map(static fn(NexusOperationState $state): NexusOperationSummary => new NexusOperationSummary('demo-business-billing', 'billing', 'charge', $state), array_values($states)));
+
+        foreach ($states as $label => $state) {
+            self::assertStringContainsString("durable-nexus-state {$state->value}\">{$label}<", $page);
+        }
+        self::assertStringNotContainsString('in flight', $page);
+    }
+
+    public function testTheNexusOperationsSpeakFrenchWhenTheAdminDoes(): void
+    {
+        $page = $this->renderNexus([new NexusOperationSummary('demo-shop-stock', 'stock', 'reserve', NexusOperationState::InFlight)], 'fr');
+
+        self::assertStringContainsString('Opérations Nexus', $page);
+        self::assertStringContainsString('>en cours<', $page);
+    }
+
+    /**
+     * @param list<NexusOperationSummary> $operations
+     */
+    private function renderNexus(array $operations, string $locale = 'en'): string
+    {
+        $run = (new RunDashboard(new RenderingCatalog(nexusOperations: $operations)))->run('run-1');
+
+        return $this->twig($locale)->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', ['backend' => $run['backend'], 'selectedRun' => $run['run']]);
     }
 
     public function testTheRunPageIsTheRunAloneWithAWayBackToItsList(): void
@@ -400,7 +442,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
     }
 }
 
-final class RenderingCatalog implements WorkflowRunCatalogInterface
+final class RenderingCatalog implements WorkflowRunCatalogInterface, NexusOperationCatalogInterface
 {
     public function __construct(
         private readonly bool $ephemeral = false,
@@ -409,6 +451,8 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         private readonly bool $secrets = false,
         private readonly ?string $waitingOn = null,
         private readonly ?string $executionId = null,
+        /** @var list<NexusOperationSummary> */
+        private readonly array $nexusOperations = [],
     ) {}
 
     public function canFilterRuns(?WorkflowRunFilter $filter = null): bool
@@ -465,6 +509,11 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
                 'orderApproved',
             ),
         ];
+    }
+
+    public function readNexusOperations(WorkflowRunDescription $run): array
+    {
+        return $this->nexusOperations;
     }
 
     public function checkHealth(): BackendHealth

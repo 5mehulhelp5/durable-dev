@@ -367,6 +367,16 @@ jobs:
                   DATABASE_URL: 'mysql://root@127.0.0.1/sylius_nexus?serverVersion=8&charset=utf8mb4'
               run: vendor/bin/phpunit --group nexus-bench --fail-on-skipped tests/Integration
 
+            # #671: the admin page of a real run whose Nexus operation is in flight on this server.
+            # The functional step above skips it, having no server yet; here it cannot skip.
+            - name: PHPUnit — the run page shows a Nexus operation in flight
+              working-directory: sylius
+              timeout-minutes: 5
+              env:
+                  APP_ENV: test
+                  DURABLE_TEMPORAL_DSN: 'temporal://127.0.0.1:7233?namespace=durable-test&tls=0'
+              run: vendor/bin/phpunit --fail-on-skipped tests/Functional/TheRunPageShowsANexusOperationInFlightTest.php
+
     magento-matrix:
         # The counterpart of the Symfony matrix, for the other foreign-container host. Same
         # principle: every entry is an **edge that has a reason**, not a cartesian product. What

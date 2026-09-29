@@ -41,6 +41,16 @@
             <trans-unit id="phase.started"><source>phase.started</source><target>pris en charge</target></trans-unit>
             <trans-unit id="phase.failed"><source>phase.failed</source><target>en échec</target></trans-unit>
             <trans-unit id="phase.settled"><source>phase.settled</source><target>réglé</target></trans-unit>
+            <trans-unit id="nexus.title"><source>nexus.title</source><target>Opérations Nexus</target></trans-unit>
+            <trans-unit id="nexus.endpoint"><source>nexus.endpoint</source><target>Endpoint</target></trans-unit>
+            <trans-unit id="nexus.service"><source>nexus.service</source><target>Service</target></trans-unit>
+            <trans-unit id="nexus.operation"><source>nexus.operation</source><target>Opération</target></trans-unit>
+            <trans-unit id="nexus.state"><source>nexus.state</source><target>État</target></trans-unit>
+            <trans-unit id="nexus.state.in_flight"><source>nexus.state.in_flight</source><target>en cours</target></trans-unit>
+            <trans-unit id="nexus.state.completed"><source>nexus.state.completed</source><target>terminée</target></trans-unit>
+            <trans-unit id="nexus.state.failed"><source>nexus.state.failed</source><target>en échec</target></trans-unit>
+            <trans-unit id="nexus.state.timed_out"><source>nexus.state.timed_out</source><target>expirée</target></trans-unit>
+            <trans-unit id="nexus.state.cancelled"><source>nexus.state.cancelled</source><target>annulée</target></trans-unit>
         </body>
     </file>
 </xliff>
