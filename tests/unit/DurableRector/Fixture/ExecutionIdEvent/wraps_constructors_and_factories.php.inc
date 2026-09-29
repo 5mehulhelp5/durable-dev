@@ -25,6 +25,8 @@ final class JournalWriter
             ActivityCatastrophicFailure::fromStoredPayload($executionId, []),
             ActivityTaskFailed::forThrowable($executionId, 'a1', 'charge', 1, $e),
             ActivityFailed::fromEnvelope($executionId, 'a1', $envelope),
+            \Gplanchat\Durable\Failure\WorkflowFailureClassifier::classify($executionId, $e),
+            \Gplanchat\Durable\Failure\ActivityFailureEventFactory::fromActivityThrowable($executionId, 'a1', 'charge', 1, $e),
         ];
     }
 }
@@ -58,6 +60,8 @@ final class JournalWriter
             ActivityCatastrophicFailure::fromStoredPayload(\Gplanchat\Durable\ExecutionId::fromString($executionId), []),
             ActivityTaskFailed::forThrowable(\Gplanchat\Durable\ExecutionId::fromString($executionId), 'a1', 'charge', 1, $e),
             ActivityFailed::fromEnvelope(\Gplanchat\Durable\ExecutionId::fromString($executionId), 'a1', $envelope),
+            \Gplanchat\Durable\Failure\WorkflowFailureClassifier::classify(\Gplanchat\Durable\ExecutionId::fromString($executionId), $e),
+            \Gplanchat\Durable\Failure\ActivityFailureEventFactory::fromActivityThrowable(\Gplanchat\Durable\ExecutionId::fromString($executionId), 'a1', 'charge', 1, $e),
         ];
     }
 }
