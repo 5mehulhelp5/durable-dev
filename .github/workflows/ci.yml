@@ -976,8 +976,16 @@ jobs:
                   docker network create oldest
                   docker run -d --name oldest-pg --network oldest -e POSTGRES_USER=temporal -e POSTGRES_PASSWORD=temporal postgres:13
                   timeout 60 bash -c 'until docker exec oldest-pg pg_isready -U temporal >/dev/null 2>&1; do sleep 1; done'
+                  # Every test registers a fresh namespace, and 1.20's operator service and visibility
+                  # learn of it on the namespace cache's refresh, every 10 s by default: two refreshes
+                  # per test, 18 of this job's 19 minutes. 1 s is not the server's default: it only
+                  # shortens setup. The tests keep their waits and assert the same things; the lag is
+                  # still there, just 1 s instead of 10.
+                  printf 'system.namespaceCacheRefreshInterval:\n  - value: 1s\n' > "$RUNNER_TEMP/temporal-dc.yaml"
                   docker run -d --name oldest-temporal --network oldest -p 7233:7233 \
                     -e DB=postgres12 -e DB_PORT=5432 -e POSTGRES_USER=temporal -e POSTGRES_PWD=temporal -e POSTGRES_SEEDS=oldest-pg \
+                    -e DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/ci.yaml \
+                    -v "$RUNNER_TEMP/temporal-dc.yaml:/etc/temporal/config/dynamicconfig/ci.yaml:ro" \
                     temporalio/auto-setup:1.20
                   # Probe the server, not a log line: 1.20 does not always print "Search attributes have been
                   # added" (#650). The attributes Durable needs are registered, with a retry, by the next step.
