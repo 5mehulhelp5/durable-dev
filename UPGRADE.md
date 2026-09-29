@@ -24,6 +24,28 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### An inline child starts at its parent's virtual time in the in-memory runner (#652)
+
+`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
+backend) started a child's virtual time at the real now. After the parent had skipped ahead to a
+timer, the child's instants (timer due times, `first_queued_at`) lagged behind the parent's. The
+child now starts at the parent's virtual now, and its activity queue keeps the transport's clock.
+`InMemoryWorkflowRunner` gains an optional last argument `?ClockInterface $virtualTimeStartsAt`,
+and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
+migrate.
+
+### A workflow goes on after a timer beats a retrying activity in `any()` (#678)
+
+On the event-store backends (in-memory, DBAL, Illuminate, Magento), an activity cancelled because
+it lost a race (`ActivityCancelled` with reason `race_superseded`) now reads back on replay as
+unsettled, as a losing timer already did. It used to read back as a rejection. Because it was
+the first member of `any()` to settle, the next resume failed with `Workflow did not handle
+superseded activity`. Replay cancels the loser again, and the journal records that cancellation
+once, not once per resume. A later outcome recorded for the cancelled activity is ignored.
+Nothing to migrate: journals written before this change replay under the new rule.
+
+## 0.1.0-beta1
+
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
 
 **Who is affected**: code that reads journal events by type (a custom mapper, a `match` without a
@@ -1201,26 +1223,6 @@ final class Kernel extends BaseKernel implements CompilerPassInterface
 No Rector rule. Turning `$container->get(ExecutionRuntime::class)` into constructor injection adds
 a parameter to the caller, and to every place that builds it, and needs the caller to be a service.
 That is not a rewrite of one expression, and no rule can find those places.
-
-### An inline child starts at its parent's virtual time in the in-memory runner (#652)
-
-`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
-backend) started a child's virtual time at the real now. After the parent had skipped ahead to a
-timer, the child's instants (timer due times, `first_queued_at`) lagged behind the parent's. The
-child now starts at the parent's virtual now, and its activity queue keeps the transport's clock.
-`InMemoryWorkflowRunner` gains an optional last argument `?ClockInterface $virtualTimeStartsAt`,
-and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
-migrate.
-
-### A workflow goes on after a timer beats a retrying activity in `any()` (#678)
-
-On the event-store backends (in-memory, DBAL, Illuminate, Magento), an activity cancelled because
-it lost a race (`ActivityCancelled` with reason `race_superseded`) now reads back on replay as
-unsettled, as a losing timer already did. It used to read back as a rejection. Because it was
-the first member of `any()` to settle, the next resume failed with `Workflow did not handle
-superseded activity`. Replay cancels the loser again, and the journal records that cancellation
-once, not once per resume. A later outcome recorded for the cancelled activity is ignored.
-Nothing to migrate: journals written before this change replay under the new rule.
 
 ## 0.1.0-alpha10
 
