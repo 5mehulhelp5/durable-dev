@@ -172,7 +172,10 @@ migrations never reached those. With `connection => null`, nothing changes.
 1. Run `php artisan migrate`. Migrations not yet run now land on `durable.connection`.
 2. Tables the stores created before a later schema change may lack it: `picked_up_at`,
    `waiting_on`, the status index, `durable_execution_heads`. The four migrations that bring them
-   check before they alter, so running them on that connection is safe and leaves data in place:
+   check before they alter, so running them on that connection is safe. The only rows they touch
+   are those of a missing `picked_up_at`, filled from `started_at`. They alter tables that must
+   exist: if the journal's database has none yet, run `php artisan migrate` first (step 1).
+   Then:
 
    ```bash
    php artisan migrate --database=<connection> \

@@ -37,6 +37,7 @@ final class MigrationsRunOnTheDurableConnectionTest extends TestCase
     {
         Facade::clearResolvedInstances();
         Facade::setFacadeApplication(null);
+        parent::tearDown();
     }
 
     public function testTheTablesLandOnTheConfiguredConnectionAndNotOnTheApplications(): void
