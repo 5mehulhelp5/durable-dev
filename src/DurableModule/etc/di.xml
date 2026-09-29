@@ -47,6 +47,8 @@
             <!-- The same shared instance the activities inject: on Temporal the factory points it at
                  the worker's sender (#510). Optional arguments are not autowired, hence here. -->
             <argument name="heartbeat" xsi:type="object">Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface</argument>
+            <!-- Optional too: without it the Temporal client built by the factory logs nothing. -->
+            <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
             <argument name="activityHandlers" xsi:type="array">
             </argument>
         </arguments>
