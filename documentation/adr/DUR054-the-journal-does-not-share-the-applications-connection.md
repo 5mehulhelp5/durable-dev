@@ -68,9 +68,15 @@ keyed to be idempotent.
 
 1. **The recommended setup is a dedicated connection** for Durable's stores. On Symfony, a Doctrine
    DBAL connection of its own, named in `durable.dbal.connection`. On Laravel, a connection
-   of its own in `config/database.php`, named in `durable.connection`. Both already work today and
-   cost only configuration. `DurableSchema` already handles the journal living on a connection
-   other than the ORM's.
+   of its own in `config/database.php`, named in `durable.connection`.
+   - On Symfony this costs only configuration. `DurableSchema` already keeps the journal's tables
+     out of the ORM's schema when they live on another database; there they come from the first
+     write or from `bin/console durable:setup`, not from `doctrine:migrations:diff`.
+   - On Laravel it does not, yet. The shipped migrations run on the default connection, whatever
+     `durable.connection` names: `php artisan migrate` builds the tables in the application's
+     database, the stores create their own copies on the journal's at the first write, and every
+     later schema migration misses the journal's database. Fixing that is a condition of this
+     recommendation, listed below.
 2. **Sharing the application's connection is strongly discouraged.** The documentation says so
    wherever it shows the connection setting, with the mechanisms above.
 3. **The shared transaction is no longer a feature.** Every place listed under Context stops selling
@@ -112,5 +118,7 @@ connection out of the box. These choices close that gap, and none is decided yet
   (Illuminate section), `documentation/ost/OST003-php-ecosystem-integrations.md` §3,
   `hugo-docs/layouts/index.html` and `index.fr.html`, and the `hugo-docs/variant-b-narrative*`
   drafts.
+- Make the shipped Laravel migrations run on `durable.connection`, with an UPGRADE entry for the
+  applications that already set it.
 - Show a dedicated connection in the configuration examples of both hosts.
 - Implement whatever "Open for approval" settles.
