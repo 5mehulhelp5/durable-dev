@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Tests\Functional\Fixture\NapWorkflow;
 use Gplanchat\Durable\Event\ExecutionCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -27,7 +28,7 @@ final class TimerDrainedByWorkerTest extends KernelTestCase
         self::bootKernel();
         $executionId = 'nap-' . bin2hex(random_bytes(4));
 
-        self::getContainer()->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($executionId, NapWorkflow::TYPE, []);
+        self::getContainer()->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), NapWorkflow::TYPE, []);
 
         $worker = new CommandTester((new Application(self::$kernel))->find('durable:worker'));
         // Long enough for the one-second timer to come due and be consumed.

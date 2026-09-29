@@ -7,6 +7,7 @@ namespace unit\Gplanchat\DurableBundle\Messenger;
 use Gplanchat\Durable\Bundle\Messenger\MessengerWorkflowResumeDispatcher;
 use Gplanchat\Durable\Bundle\Messenger\WorkflowRunDispatchProfilerMiddleware;
 use Gplanchat\Durable\Bundle\Profiler\DurableExecutionTrace;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\MessageBus;
@@ -23,7 +24,7 @@ final class WorkflowRunDispatchProfilerMiddlewareTest extends TestCase
     {
         [$dispatcher, $trace] = $this->dispatcher();
 
-        $dispatcher->dispatchNewWorkflowRun('exec-1', 'App\\OrderWorkflow', ['order' => 42]);
+        $dispatcher->dispatchNewWorkflowRun(ExecutionId::fromString('exec-1'), 'App\\OrderWorkflow', ['order' => 42]);
 
         $dispatch = $trace->getTimeline()[0];
         self::assertFalse($dispatch['isResume']);
@@ -34,7 +35,7 @@ final class WorkflowRunDispatchProfilerMiddlewareTest extends TestCase
     {
         [$dispatcher, $trace] = $this->dispatcher();
 
-        $dispatcher->dispatchResume('exec-1');
+        $dispatcher->dispatchResume(ExecutionId::fromString('exec-1'));
 
         $dispatch = $trace->getTimeline()[0];
         self::assertTrue($dispatch['isResume']);

@@ -60,7 +60,7 @@ final class DurableDistributedMessengerIntegrationTest extends KernelTestCase
         // Starting is no longer a message: `ResumeWorkflowMessage` only ever *resumes*.
         // Starting goes through the dispatcher, which persists the metadata before publishing the
         // resume — which is also what the example application does.
-        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($executionId, 'OrderWait', []);
+        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), 'OrderWait', []);
 
         self::assertSame(false, $meta->get(ExecutionId::fromString($executionId))['completed'] ?? null, 'workflow suspended');
         self::assertNull($this->lastExecutionCompletedResult($store, $executionId));

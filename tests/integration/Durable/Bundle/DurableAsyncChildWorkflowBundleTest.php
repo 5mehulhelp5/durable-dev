@@ -11,6 +11,7 @@ use Gplanchat\Durable\Event\ChildWorkflowFailed;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
@@ -66,7 +67,7 @@ final class DurableAsyncChildWorkflowBundleTest extends KernelTestCase
         /** @var InMemoryTransport $workflowTransport */
         $workflowTransport = $container->get('messenger.transport.workflow_jobs');
 
-        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($parentId, 'ParentOfAsyncChild', []);
+        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($parentId), 'ParentOfAsyncChild', []);
 
         $this->flushWorkflowQueueUntilIdle(
             $bus,
@@ -104,7 +105,7 @@ final class DurableAsyncChildWorkflowBundleTest extends KernelTestCase
         /** @var InMemoryTransport $workflowTransport */
         $workflowTransport = $container->get('messenger.transport.workflow_jobs');
 
-        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($parentId, 'ParentOfBoom', []);
+        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($parentId), 'ParentOfBoom', []);
 
         $this->flushWorkflowQueueUntilIdleIgnoringHandlerFailures(
             $bus,

@@ -60,7 +60,7 @@ final class TemporalBackendTest extends TestCase
         $client->expects(self::once())->method('startAsync')->with('Greeting', ['who' => 'world'], ExecutionId::fromString('exec-1'))->willReturnArgument(2);
         $app->instance(WorkflowClientInterface::class, $client);
 
-        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun('exec-1', 'Greeting', ['who' => 'world']);
+        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString('exec-1'), 'Greeting', ['who' => 'world']);
     }
 
     public function testSearchAttributesAreOffUntilTheApplicationTurnsThemOn(): void
