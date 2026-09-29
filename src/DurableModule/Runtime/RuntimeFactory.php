@@ -113,8 +113,12 @@ class RuntimeFactory
          * The application's PSR-18 client and its PSR-17 factory, for `transport=http` (the JSON
          * gateway) instead of curl; any other transport ignores it. Set in `di.xml` with an
          * `<argument name="jsonGateway" xsi:type="object">`.
+         *
+         * Typed `?object` and narrowed in `client()`, because Magento reflects every constructor
+         * type, optional ones included: a `Psr18Http` here kills `setup:install` on a host
+         * without the Temporal bridge (#725). No other bridge type may appear in this signature.
          */
-        private readonly ?Psr18Http $jsonGateway = null,
+        private readonly ?object $jsonGateway = null,
         /**
          * The sender the activities inject, from `di.xml`'s preference. On Temporal it is pointed
          * at the worker's sender, so their heartbeats carry the task's token (#510).
@@ -300,6 +304,10 @@ class RuntimeFactory
 
     private function client(TemporalConnection $settings): WorkflowServiceClientInterface
     {
+        if (null !== $this->jsonGateway && !$this->jsonGateway instanceof Psr18Http) {
+            throw new \InvalidArgumentException(\sprintf('RuntimeFactory\'s jsonGateway must be a %s, %s given.', Psr18Http::class, get_debug_type($this->jsonGateway)));
+        }
+
         return $this->client ??= WorkflowServiceClientFactory::create($settings, $this->logger, $this->guzzle, $this->jsonGateway);
     }
 
