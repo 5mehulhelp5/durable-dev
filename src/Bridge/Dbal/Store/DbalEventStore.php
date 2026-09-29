@@ -46,8 +46,9 @@ final class DbalEventStore implements FencedEventStoreInterface
         $this->connection->insert($this->table, $this->row($event), ['recorded_at' => 'datetime_immutable']);
     }
 
-    public function claimPass(string $executionId): PassFence
+    public function claimPass(ExecutionId|string $executionId): PassFence
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
         $heads = $this->schema->headsTable();
 

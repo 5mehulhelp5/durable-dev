@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
 use Gplanchat\Durable\Exception\ExceptionInterface;
 use Gplanchat\Durable\Exception\UnsupportedByBackendException;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\ChildWorkflowRunnerInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -48,7 +49,7 @@ final class TheBufferRefusesWhatTemporalCannotHonourTest extends TestCase
                 return false;
             }
 
-            public function runChild(string $childExecutionId, string $workflowType, array $input, ?string $parentExecutionId = null): mixed
+            public function runChild(ExecutionId|string $childExecutionId, string $workflowType, array $input, ExecutionId|string|null $parentExecutionId = null): mixed
             {
                 return 'done';
             }

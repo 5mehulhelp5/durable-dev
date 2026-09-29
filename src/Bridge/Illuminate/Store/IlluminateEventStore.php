@@ -54,8 +54,9 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         $this->connection->table($this->table)->insert($this->row($event));
     }
 
-    public function claimPass(string $executionId): PassFence
+    public function claimPass(ExecutionId|string $executionId): PassFence
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
         $heads = $this->connection->table($this->schema->headsTable());
 
