@@ -92,6 +92,17 @@ final class TheListingBannerSaysWhatTheGridCannotTest extends TestCase
         self::assertStringContainsString('durable-workflows', $page);
     }
 
+    public function testAQueueTheClusterWouldNotDescribeIsAWarningNotAMissingWorker(): void
+    {
+        $page = $this->renderBanner($this->health(), workers: [
+            'activity' => new TaskQueuePollers(TaskQueueKind::Activity, 'durable-activities', 0, null, 'deadline exceeded'),
+        ]);
+
+        self::assertStringContainsString('message-warning', $page);
+        self::assertStringContainsString('deadline exceeded', $page);
+        self::assertStringNotContainsString('--role=activity', $page);
+    }
+
     /**
      * @param array<string, TaskQueuePollers> $workers
      */
@@ -153,7 +164,7 @@ final class BannerBlockDouble
 
     public function getWorkerSilenceSeconds(): int
     {
-        return 120;
+        return \Gplanchat\DurableModule\Runtime\RuntimeFactory::WORKER_SILENCE_SECONDS;
     }
 
     public function getHealth(): BackendHealth

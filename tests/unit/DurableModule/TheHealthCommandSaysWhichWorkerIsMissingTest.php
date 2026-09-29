@@ -32,8 +32,8 @@ final class TheHealthCommandSaysWhichWorkerIsMissingTest extends TestCase
         $tester = $this->probe(['durable-workflows' => time(), 'durable-activities' => time()]);
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        self::assertStringContainsString('journal', $tester->getDisplay());
-        self::assertStringContainsString('activity', $tester->getDisplay());
+        self::assertStringContainsString('poller(s) on durable-workflows', $tester->getDisplay());
+        self::assertStringContainsString('poller(s) on durable-activities', $tester->getDisplay());
     }
 
     public function testAnActivityWorkerThatStoppedFailsAndIsNamed(): void
@@ -51,6 +51,16 @@ final class TheHealthCommandSaysWhichWorkerIsMissingTest extends TestCase
         $tester = $this->probe([], answering: false);
 
         self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertStringNotContainsString('--role=', $tester->getDisplay(), 'no worker to start when the cluster is the problem');
+    }
+
+    public function testAQueueTheClusterWouldNotDescribeFailsWithoutBlamingTheWorker(): void
+    {
+        $tester = $this->probe(['durable-workflows' => time()], refusing: 'durable-activities');
+
+        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertStringContainsString('could not ask', $tester->getDisplay());
+        self::assertStringNotContainsString('--role=activity', $tester->getDisplay());
     }
 
     public function testWithoutAClusterThereIsNoWorkerToMiss(): void
@@ -65,9 +75,9 @@ final class TheHealthCommandSaysWhichWorkerIsMissingTest extends TestCase
     /**
      * @param array<string, int> $lastPolls queue name => unix time of its one poller's last poll
      */
-    private function probe(array $lastPolls, bool $answering = true): CommandTester
+    private function probe(array $lastPolls, bool $answering = true, ?string $refusing = null): CommandTester
     {
-        $cluster = static function (RequestInterface $request, array $options) use ($lastPolls, $answering): PromiseInterface {
+        $cluster = static function (RequestInterface $request, array $options) use ($lastPolls, $answering, $refusing): PromiseInterface {
             if (!$answering) {
                 // PERMISSION_DENIED: refused at once, where UNAVAILABLE would be retried for seconds.
                 return self::reply($options, '', '7');
@@ -77,6 +87,9 @@ final class TheHealthCommandSaysWhichWorkerIsMissingTest extends TestCase
             }
             $asked = new DescribeTaskQueueRequest();
             $asked->mergeFromString(GrpcWire::unframe((string) $request->getBody()));
+            if ($asked->getTaskQueue()?->getName() === $refusing) {
+                return self::reply($options, '', '7');
+            }
             $response = new DescribeTaskQueueResponse();
             $at = $lastPolls[$asked->getTaskQueue()?->getName() ?? ''] ?? null;
             if (null !== $at) {

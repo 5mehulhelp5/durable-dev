@@ -36,6 +36,9 @@ class ProcessHistory extends Template
 {
     private ?BackendHealth $health = null;
 
+    /** @var array<string, TaskQueuePollers>|null */
+    private ?array $workers = null;
+
     /** @var array<string, int>|null */
     private ?array $counters = null;
 
@@ -66,13 +69,14 @@ class ProcessHistory extends Template
 
     /**
      * Who polls each role's queue, when there is a cluster that answers: a missing worker leaves
-     * executions stopped without a single failure, so the grid alone would look healthy.
+     * executions stopped without a single failure, so the grid alone would look healthy. At worst
+     * a cluster that answers the health check then hangs costs two 5 s probes on this render.
      *
      * @return array<string, TaskQueuePollers> keyed by `durable:worker --role`
      */
     public function getWorkers(): array
     {
-        return $this->isReachable() && !$this->isEphemeral() ? $this->runtimeFactory->workers() : [];
+        return $this->workers ??= $this->isReachable() && !$this->isEphemeral() ? $this->runtimeFactory->workers() : [];
     }
 
     public function getWorkerSilenceSeconds(): int

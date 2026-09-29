@@ -184,9 +184,10 @@ That second line is the failure this integration exists to remove, put back by h
 or supervise neither.
 
 **Alert on `bin/magento durable:health`.** It exits non-zero when the cluster does not answer, or
-when a role's queue has gone two minutes without a poll, and names the `--role` to start. The admin
-screen shows the same state above the grid. Two minutes, because a live worker polls about once a
-minute and the server keeps listing a stopped one for several.
+when a role's queue has gone two minutes without a poll, and names the `--role` to start. Without a
+DSN it exits zero: there is no worker to miss. With a DSN, the admin screen shows the same state
+above the grid. Two minutes, because a live worker polls about once a minute and the server keeps
+listing a stopped one for several.
 
 **The bounds are for the supervisor, not for you.** `--time-limit` and `--max-tasks` make the
 process end so that whatever restarts it can restart it. A worker without them is an immortal

@@ -6,6 +6,7 @@ namespace Gplanchat\DurableModule\Console\Command;
 
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -39,7 +40,7 @@ class HealthCommand extends Command
             return Command::SUCCESS;
         }
         if (!$health->reachable) {
-            $output->writeln(\sprintf('<error>%s</error>', $health->message));
+            $output->writeln(\sprintf('<error>%s</error>', OutputFormatter::escape($health->message)));
 
             return Command::FAILURE;
         }
@@ -53,8 +54,9 @@ class HealthCommand extends Command
                 continue;
             }
             $healthy = false;
-            $why = null === $queue->error ? '' : ' (' . $queue->error . ')';
-            $output->writeln(\sprintf('<error>%s: no worker has polled %s in %ds%s. Start bin/magento durable:worker --role=%1$s.</error>', $role, $queue->taskQueue, RuntimeFactory::WORKER_SILENCE_SECONDS, $why));
+            $output->writeln(null !== $queue->error
+                ? \sprintf('<error>%s: could not ask the cluster who polls %s: %s</error>', $role, $queue->taskQueue, OutputFormatter::escape($queue->error))
+                : \sprintf('<error>%s: no worker has polled %s in %ds. Start bin/magento durable:worker --role=%1$s.</error>', $role, $queue->taskQueue, RuntimeFactory::WORKER_SILENCE_SECONDS));
         }
 
         return $healthy ? Command::SUCCESS : Command::FAILURE;
