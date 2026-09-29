@@ -9,6 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\RunDashboard;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -279,7 +280,7 @@ final class DurableDashboardTest extends WebTestCase
 
         // The name comes from the metadata store, the outcome from the journal: the two pens of
         // DUR035, exercised here through the real container rather than assembled by hand.
-        $container->get(WorkflowMetadataStore::class)->save($executionId, $workflowType, []);
+        $container->get(WorkflowMetadataStore::class)->save(ExecutionId::fromString($executionId), $workflowType, []);
 
         $journal = $container->get(EventStoreInterface::class);
         $journal->append(new ExecutionStarted($executionId, []));
