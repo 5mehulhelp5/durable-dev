@@ -34,6 +34,25 @@ Two facts shape the answer:
   of a request and of a response, and skips search attributes, which the server must be able to
   index.
 
+### Not the serializer
+
+A codec is not a serializer, and does not compete with Symfony's:
+
+- **A serializer turns objects into data.** In Durable the Symfony serializer serves Messenger
+  alone: three normalizers (`Duration`, `RetryLimit`, `TaskQueue`), registered when the
+  application has `symfony/serializer`, carry activity messages on the DBAL and Messenger
+  backends. The Temporal bridge does not use it: `JsonPlainPayload` builds its payloads, with no
+  framework involved.
+- **A codec turns bytes into bytes, after that conversion.** It transforms a payload already
+  built, just before it leaves for the server. Temporal separates the two stages the same way: a
+  *payload converter* for the data, a *payload codec* for the bytes. This ADR is about the second.
+- **Messenger is outside its scope.** The codec sits in the Temporal workflow service client, and
+  Messenger messages never pass through it. They stay in the application's own infrastructure,
+  its database or its broker. Encrypting them for a broker run by a third party would belong to
+  Messenger's transport serializer, and would be another decision.
+- **Symfony's secrets meet it at one point only:** they are how a Symfony application hands the
+  codec its key.
+
 ## Decision
 
 1. **The bridge defines `PayloadCodecInterface`**: `encode(Payload): Payload` and
