@@ -336,8 +336,9 @@ Ce n'est **pas une quatrième valeur de `backend`**, et ça ne le sera jamais : 
 application Laravel ne lit pas le YAML de cette page. Le pont est la moitié stockage, et **ce qui le
 lie, c'est `gplanchat/durable-laravel`**, par son propre `config/durable.php` publié.
 
-Ce paquet porte aussi le côté file : activités et reprises en jobs, un minuteur comme reprise
-différée sur le délai natif de la file, et l'exclusion par exécution que décrit la section DBAL. Son
+Ce paquet porte aussi le côté file : activités et reprises en jobs, un minuteur comme job de
+déclenchement différé sur le délai natif de la file, et l'exclusion par exécution que décrit la
+section DBAL. Son
 [entrée dans la page Paquets](../packages/#gplanchatdurable-laravel--lintégration-laravel)
 donne la configuration, les trois réglages qu'il refuse plutôt que de les tolérer, et les deux
 comportements qui ressemblent à des bugs sans en être.

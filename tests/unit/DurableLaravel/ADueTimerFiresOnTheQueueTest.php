@@ -66,14 +66,14 @@ final class ADueTimerFiresOnTheQueueTest extends TestCase
         $clock->advance(2.0);
 
         $store->lock(ResumeLock::nameFor('exec-nap'), 300)->get();
-        $this->work($app, $queue, new ResumeLock($store), $firing);
+        $this->work($app, $queue, new ResumeLock($store), $firing, new ResumeDeferral(3));
 
         foreach ($app->make(EventStoreInterface::class)->readStream($id) as $event) {
             self::assertNotInstanceOf(TimerCompleted::class, $event, 'fired while another worker held the turn');
         }
         self::assertCount(1, $queue->pushed);
         self::assertInstanceOf(FireWorkflowTimersJob::class, $queue->pushed[0]['job']);
-        self::assertNotNull($queue->pushed[0]['delay']);
+        self::assertSame(3, $queue->pushed[0]['delay'], 'put back after durable.lock.backoff, like a resume');
     }
 
     /** @return array{Container, FrozenClock, FakeQueue} */
@@ -97,8 +97,8 @@ final class ADueTimerFiresOnTheQueueTest extends TestCase
     }
 
     /** One job taken by `queue:work`: its `handle()` resolved by the container, as Laravel does. */
-    private function work(Container $app, FakeQueue $queue, ResumeLock $lock, object $job): void
+    private function work(Container $app, FakeQueue $queue, ResumeLock $lock, object $job, ResumeDeferral $deferral = new ResumeDeferral()): void
     {
-        $app->call([$job, 'handle'], ['lock' => $lock, 'queue' => new FakeQueueFactory($queue), 'deferral' => new ResumeDeferral()]);
+        $app->call([$job, 'handle'], ['lock' => $lock, 'queue' => new FakeQueueFactory($queue), 'deferral' => $deferral]);
     }
 }

@@ -314,8 +314,8 @@ not read this page's YAML. The bridge is the storage half, and **what binds it i
 `gplanchat/durable-laravel`**, through its own published `config/durable.php`.
 
 That package carries the queue side too: activities and resumes as jobs, a timer as a deferred
-resume on the queue's own delay, and the per-execution exclusion the DBAL section describes. Its
-own [Packages entry](../packages/#gplanchatdurable-laravel--the-laravel-integration) has the
+timer-firing job on the queue's own delay, and the per-execution exclusion the DBAL section
+describes. Its own [Packages entry](../packages/#gplanchatdurable-laravel--the-laravel-integration) has the
 configuration, the three settings it refuses rather than tolerates, and the two behaviours that read
 like bugs and are not.
 
