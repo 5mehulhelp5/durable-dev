@@ -29,8 +29,8 @@ directly: the runtime records each completed step in a **journal**, and after a 
 the method, returning recorded results instead of running those steps again. The process resumes on
 the line it was on.
 
-A worker can be redeployed mid-process. Nothing is charged twice, nothing is lost, and no cron is
-involved.
+A worker can be redeployed mid-process. No completed step runs again, nothing is lost, and no cron
+is involved.
 
 ## What it replaces
 
@@ -41,7 +41,7 @@ One method, and the journal behind it, instead of:
 | A state column and the migration that adds the next state | The line the method is on. The journal holds the position |
 | A scheduler that polls for what is due | The next statement; timers and signals wake the execution |
 | A retry counter and a dead-letter table | `RetryLimit::ofAttempts(3)`, an option on the activity stub |
-| Idempotency keys, so a retry does not double-charge | A recorded step returns its recorded result. It cannot run twice |
+| Idempotency keys, so a retry does not double-charge | A recorded step returns its recorded result and does not run again. An attempt cut off before its result is recorded is retried: the call it makes still needs [a stable key](../activities/#idempotency) |
 | Reading logs to learn why an execution stopped | Replay its journal: every step, every result, every attempt |
 
 The [home page](/) walks through the same order, step by step, showing what happens with and
