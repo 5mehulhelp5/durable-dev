@@ -145,6 +145,27 @@ $this->strict = $env->activityStub(PricingActivities::class, ActivityOptions::of
 > `@param ActivityStub<Contrat>` pour la même raison.
 
 
+## Idempotence
+
+Le journal empêche une activité **terminée** de s'exécuter à nouveau. Il ne peut rien pour une
+tentative qui s'arrête entre son effet de bord et l'enregistrement de son résultat : le prestataire
+de paiement a débité la carte, puis la tentative a expiré ou le worker est mort. Cette tentative a
+échoué, et elle est relancée. Une activité s'exécute **au moins une fois**.
+
+Tout ce qu'une activité fait au monde extérieur a donc besoin d'une clé identique d'une tentative à
+l'autre. Le workflow passe les mêmes arguments à chaque tentative : construisez la clé à partir
+d'eux et du nom de l'étape, jamais d'une valeur aléatoire ni de l'heure :
+
+```php
+public function charge(string $orderId): string
+{
+    return $this->psp->charge($orderId, idempotencyKey: 'charge-' . $orderId);
+}
+```
+
+Un `RetryLimit` borne le nombre de tentatives qui atteignent le prestataire ; il ne rend pas la
+deuxième sûre.
+
 ## Injection de dépendances
 
 Contrairement aux workflows, l'**implémentation d'activité** **peut** avoir un constructeur ordinaire avec **injection de dépendances** : clients HTTP, bases de données, journaux, etc., tels que les fournit l'hôte du **worker d'activités** (par exemple le conteneur Symfony dans le processus du worker).

@@ -145,6 +145,26 @@ $this->strict = $env->activityStub(PricingActivities::class, ActivityOptions::of
 > `@param ActivityStub<Contract>` docblock for the same reason.
 
 
+## Idempotency
+
+The journal keeps a **completed** activity from running again. It cannot do the same for an
+attempt that stops between its side effect and the recording of its result: the payment provider
+charged the card, then the attempt timed out or the worker died. That attempt failed, and it is
+retried. An activity runs **at least once**.
+
+Anything an activity does to the outside world therefore needs a key that is the same on every
+attempt. The workflow passes the same arguments to each attempt, so build the key from them and
+the step's name, never from a random value or the time:
+
+```php
+public function charge(string $orderId): string
+{
+    return $this->psp->charge($orderId, idempotencyKey: 'charge-' . $orderId);
+}
+```
+
+A `RetryLimit` bounds how many attempts reach the provider; it does not make the second one safe.
+
 ## Dependency injection
 
 Unlike workflows, the **activity implementation** **may** use a normal constructor with **dependency injection**: HTTP clients, databases, loggers, etc., as provided by the **activity worker** host (for example the Symfony container in the worker process).
