@@ -23,9 +23,8 @@ final class DbalWorkflowMetadataStore implements WorkflowMetadataStore
         private readonly string $table = 'durable_workflow_metadata',
     ) {}
 
-    public function save(ExecutionId|string $executionId, string $workflowType, array $payload): void
+    public function save(ExecutionId $executionId, string $workflowType, array $payload): void
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $row = [
@@ -47,32 +46,30 @@ final class DbalWorkflowMetadataStore implements WorkflowMetadataStore
         // key. One more round trip, but the same behaviour everywhere.
         $exists = false !== $this->connection->fetchOne(
             \sprintf('SELECT 1 FROM %s WHERE execution_id = ?', $this->table),
-            [$executionId],
+            [$executionId->toString()],
         );
 
         if ($exists) {
-            $this->connection->update($this->table, $row, ['execution_id' => $executionId], $types);
+            $this->connection->update($this->table, $row, ['execution_id' => $executionId->toString()], $types);
         } else {
-            $this->connection->insert($this->table, $row + ['execution_id' => $executionId], $types);
+            $this->connection->insert($this->table, $row + ['execution_id' => $executionId->toString()], $types);
         }
     }
 
-    public function markCompleted(ExecutionId|string $executionId): void
+    public function markCompleted(ExecutionId $executionId): void
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
-        $this->connection->update($this->table, ['completed' => true], ['execution_id' => $executionId], ['completed' => 'boolean']);
+        $this->connection->update($this->table, ['completed' => true], ['execution_id' => $executionId->toString()], ['completed' => 'boolean']);
     }
 
-    public function get(ExecutionId|string $executionId): ?array
+    public function get(ExecutionId $executionId): ?array
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $row = $this->connection->fetchAssociative(
             \sprintf('SELECT workflow_type, payload, completed FROM %s WHERE execution_id = ?', $this->table),
-            [$executionId],
+            [$executionId->toString()],
         );
 
         if (false === $row) {
@@ -88,19 +85,17 @@ final class DbalWorkflowMetadataStore implements WorkflowMetadataStore
         ];
     }
 
-    public function hasActiveWorkflowMetadata(ExecutionId|string $executionId): bool
+    public function hasActiveWorkflowMetadata(ExecutionId $executionId): bool
     {
-        $executionId = (string) $executionId;
         $metadata = $this->get($executionId);
 
         return null !== $metadata && true !== ($metadata['completed'] ?? false);
     }
 
-    public function delete(ExecutionId|string $executionId): void
+    public function delete(ExecutionId $executionId): void
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
-        $this->connection->delete($this->table, ['execution_id' => $executionId]);
+        $this->connection->delete($this->table, ['execution_id' => $executionId->toString()]);
     }
 }

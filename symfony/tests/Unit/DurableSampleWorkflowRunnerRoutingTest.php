@@ -151,7 +151,7 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $executionId = 'routing-test-exec-001';
         $eventStore->append(new ExecutionStarted($executionId, []));
         $eventStore->append(new ExecutionCompleted($executionId, 'in-memory-result'));
-        $metadataStore->markCompleted($executionId);
+        $metadataStore->markCompleted(ExecutionId::fromString($executionId));
 
         $result = $runner->waitForWorkflowCompletion($executionId);
 
