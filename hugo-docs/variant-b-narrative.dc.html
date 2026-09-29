@@ -487,11 +487,11 @@
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 12px;">With Durable, the same redeploy</div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">charge</code>
-            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. Charged exactly once.</span>
+            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. Not charged again.</span>
           </div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">reserve-stock</code>
-            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. Reserved exactly once.</span>
+            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. Not reserved again.</span>
           </div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">send-receipt</code>
@@ -529,7 +529,7 @@
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); margin-bottom: 8px;">10:02:13</div>
             <div style="font-family: 'JetBrains Mono', monospace; font-size: calc(15.5px * var(--ts, 1));">reserve-stock</div>
           </div>
-          <div style="font-size: calc(15px * var(--ts, 1)); color: var(--fg2, #6c6459); line-height: 1.6; text-wrap: pretty;">Recorded. The reservation exists exactly once.</div>
+          <div style="font-size: calc(15px * var(--ts, 1)); color: var(--fg2, #6c6459); line-height: 1.6; text-wrap: pretty;">Recorded. A replay reads it back instead of reserving again.</div>
         </div>
       </div>
       <div data-journal-step data-reveal data-delay="0.36" style="display: flex; gap: 22px; align-items: stretch;">
@@ -559,7 +559,7 @@
         </div>
       </div>
     </div>
-    <p style="margin: 22px 0 0; font-size: 15px; color: var(--fg2, #6c6459);">Nothing was charged twice. Nothing was lost. No cron was involved.</p>
+    <p style="margin: 22px 0 0; font-size: 15px; color: var(--fg2, #6c6459);">No completed step ran again. Nothing was lost. No cron was involved.</p>
   </section>
 
   <section id="code" style="border-top: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df);">
@@ -637,7 +637,7 @@
         </tr>
         <tr>
           <td style="vertical-align: top; padding: 20px 24px; border-bottom: 1px solid var(--line, #ddd6ca); font-size: calc(16.5px * var(--ts, 1)); line-height: 1.55; text-wrap: pretty; background: var(--bg2, #efe9df); color: var(--fg2, #6c6459); border-right: 1px solid var(--line, #ddd6ca); width: 50%;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--fg2, #6c6459); padding-right: 12px;">−</span>A guard against the job that ran twice</td>
-          <td style="vertical-align: top; padding: 20px 24px; border-bottom: 1px solid var(--line, #ddd6ca); font-size: calc(16.5px * var(--ts, 1)); line-height: 1.55; text-wrap: pretty; width: 50%;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--accent, #b4552f); padding-right: 12px;">+</span>A recorded step returns its recorded result. It cannot run twice.</td>
+          <td style="vertical-align: top; padding: 20px 24px; border-bottom: 1px solid var(--line, #ddd6ca); font-size: calc(16.5px * var(--ts, 1)); line-height: 1.55; text-wrap: pretty; width: 50%;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--accent, #b4552f); padding-right: 12px;">+</span>A recorded step returns its recorded result and does not run again.</td>
         </tr>
         <tr>
           <td style="vertical-align: top; padding: 20px 24px; border-bottom: 1px solid var(--line, #ddd6ca); font-size: calc(16.5px * var(--ts, 1)); line-height: 1.55; text-wrap: pretty; background: var(--bg2, #efe9df); color: var(--fg2, #6c6459); border-right: 1px solid var(--line, #ddd6ca); width: 50%;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--fg2, #6c6459); padding-right: 12px;">−</span>A way to know why order 4242 stopped three days ago</td>
@@ -1185,7 +1185,7 @@ class Component extends DCLogic {
       ['#[WorkflowMethod]', 'Marks the entry point. One per workflow class, and this is the method that gets replayed.'],
       ['run(string $orderId)', 'Receives the business input and returns the business result. Nothing about the engine appears in its signature.'],
       ['charge($orderId)', 'First step. Its result is written to the journal; on every later replay it returns from there instead of charging again.'],
-      ['reserveStock($orderId)', 'Same rule. The reservation is made exactly once, however many times the method re-runs.'],
+      ['reserveStock($orderId)', 'Same rule. Once recorded, the reservation is not made again, however many times the method re-runs.'],
       ['sleep(Duration::minutes(5))', 'Not PHP sleep(): the worker is free to stop here entirely. The execution resumes when the deadline passes, wherever a worker is available.'],
       ['sendReceipt($payment)', 'After the restart, this is the first step with no recorded result, so it is the first one that actually runs.'],
       ['return $payment', 'The workflow result, readable by whoever started the execution and kept in the journal.']

@@ -145,6 +145,35 @@ $this->strict = $env->activityStub(PricingActivities::class, ActivityOptions::of
 > `@param ActivityStub<Contrat>` pour la même raison.
 
 
+## Idempotence
+
+Le journal empêche une activité **terminée** de s'exécuter à nouveau. Il ne peut rien pour une
+tentative qui s'arrête entre son effet de bord et l'enregistrement de son résultat : le prestataire
+de paiement a débité la carte, puis la tentative a expiré ou le worker est mort. Cette tentative a
+échoué et elle est réessayée. Une activité s'exécute **au moins une fois**.
+
+Tout ce qu'une activité fait au monde extérieur a donc besoin d'une clé identique d'une tentative à
+l'autre. Le workflow passe les mêmes arguments à chaque tentative : construisez la clé à partir
+d'eux et d'un préfixe fixe qui nomme l'opération (`charge-`, `refund-`), jamais d'une valeur
+aléatoire ni de l'heure :
+
+```php
+public function charge(string $orderId): string
+{
+    return $this->psp->charge($orderId, idempotencyKey: 'charge-' . $orderId);
+}
+```
+
+La clé est la même pour toutes les tentatives d'une même opération, et différente pour deux
+opérations distinctes. `charge-<orderId>` ne convient que si une commande n'est débitée qu'une fois.
+Si elle peut l'être de nouveau (une seconde échéance, une nouvelle exécution pour la même commande),
+ajoutez ce qui distingue les débits, comme le numéro d'échéance. Vérifiez aussi combien de temps
+votre prestataire retient une clé.
+
+Un `RetryLimit` limite le nombre de tentatives qui atteignent le prestataire ; il ne rend pas la
+deuxième sûre. Avec `RetryLimit::once()`, une tentative interrompue n'est pas réessayée : l'appel a
+pu avoir lieu ou non, et le workflow voit un échec.
+
 ## Injection de dépendances
 
 Contrairement aux workflows, l'**implémentation d'activité** **peut** avoir un constructeur ordinaire avec **injection de dépendances** : clients HTTP, bases de données, journaux, etc., tels que les fournit l'hôte du **worker d'activités** (par exemple le conteneur Symfony dans le processus du worker).
