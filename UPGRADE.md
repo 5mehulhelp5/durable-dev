@@ -199,7 +199,8 @@ migrated by hand, calls to the other ports included.
 **What to do**, in this order:
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at
-   each call left. An empty string is refused.
+   each call left. An empty string is refused, including by `WorkflowFiberDriver::run()` and
+   `PassEventStore::open()`, which keep a `string` parameter for now and convert inside.
 2. **In a class that implements one of these interfaces**, change each listed parameter to
    `ExecutionId` (`?ExecutionId` for the parent of `runChild()`). Call `->toString()` where the
    body stores, binds, formats or compares the id, for instance a SQL parameter, a lock name or an
