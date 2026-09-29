@@ -37,9 +37,9 @@ rien n'a tourné du tout.
 Un cluster qui répond peut malgré tout n'avoir **aucun worker** sur la file d'un rôle. Rien n'échoue
 alors : une exécution s'arrête à sa première tâche de ce type. Sur Temporal,
 `bin/console durable:health` sort en erreur quand la file d'un rôle n'a été interrogée par personne
-depuis deux minutes, et nomme le `durable:worker --role` à démarrer : c'est sur elle qu'il faut
-alerter. Elle vérifie workflow et activity quand Temporal tient le journal, et nexus dès que
-l'application sert un gestionnaire Nexus.
+depuis deux minutes, et nomme le `durable:worker --role` à démarrer : c'est ce code de sortie qu'il
+faut surveiller. La commande vérifie workflow et activity quand Temporal tient le journal, et nexus
+dès que l'application sert un gestionnaire Nexus.
 
 ### 2. Les exécutions
 

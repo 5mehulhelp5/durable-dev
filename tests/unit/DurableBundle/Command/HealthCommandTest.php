@@ -28,6 +28,7 @@ final class HealthCommandTest extends TestCase
         $tester = $this->probe(['workflow', 'activity'], [TaskQueueType::TASK_QUEUE_TYPE_WORKFLOW => time(), TaskQueueType::TASK_QUEUE_TYPE_ACTIVITY => time()]);
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringContainsString('poller(s) on durable-workflows', $tester->getDisplay());
         self::assertStringContainsString('poller(s) on durable-activities', $tester->getDisplay());
     }
 
@@ -36,8 +37,8 @@ final class HealthCommandTest extends TestCase
         $tester = $this->probe(['workflow', 'activity'], [TaskQueueType::TASK_QUEUE_TYPE_WORKFLOW => time(), TaskQueueType::TASK_QUEUE_TYPE_ACTIVITY => time() - 300]);
 
         self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('durable:worker --role=activity', $tester->getDisplay());
-        self::assertStringNotContainsString('--role=workflow', $tester->getDisplay());
+        self::assertStringContainsString('durable:worker --role=activity', $tester->getErrorOutput(), 'an alert script reads stderr');
+        self::assertStringNotContainsString('--role=workflow', $tester->getDisplay() . $tester->getErrorOutput());
     }
 
     public function testNexusIsCheckedOnlyWhenTheApplicationServesIt(): void
@@ -45,7 +46,7 @@ final class HealthCommandTest extends TestCase
         $tester = $this->probe(['workflow', 'activity', 'nexus'], [TaskQueueType::TASK_QUEUE_TYPE_WORKFLOW => time(), TaskQueueType::TASK_QUEUE_TYPE_ACTIVITY => time()]);
 
         self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('durable:worker --role=nexus', $tester->getDisplay());
+        self::assertStringContainsString('durable:worker --role=nexus', $tester->getErrorOutput());
     }
 
     public function testAnUnansweredProbeBlamesNoWorker(): void
@@ -53,8 +54,8 @@ final class HealthCommandTest extends TestCase
         $tester = $this->probe(['workflow'], [], failing: true);
 
         self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('could not ask', $tester->getDisplay());
-        self::assertStringNotContainsString('--role=', $tester->getDisplay());
+        self::assertStringContainsString('could not ask', $tester->getErrorOutput());
+        self::assertStringNotContainsString('--role=', $tester->getDisplay() . $tester->getErrorOutput());
     }
 
     public function testNoRoleOnTheClusterHasNothingToCheck(): void
@@ -85,7 +86,7 @@ final class HealthCommandTest extends TestCase
         });
 
         $tester = new CommandTester(new HealthCommand(new TemporalTaskQueueProbe($client, new TemporalConnection('localhost:7233', 'default')), $roles));
-        $tester->execute([]);
+        $tester->execute([], ['capture_stderr_separately' => true]);
 
         return $tester;
     }
