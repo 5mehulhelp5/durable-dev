@@ -66,6 +66,14 @@ final class GreeterNamingItsContract implements GreetActivities, CountActivities
     }
 }
 
+#[AsActivityHandler(GreetActivities::class)]
+final class GreeterWithoutTheMethod {}
+
+final class ServesNothing {}
+
+#[AsActivityHandler('App\Contracts\Missing')]
+final class NamesAMissingContract {}
+
 /** #713: activity handlers declared in `activity_handlers`, as Symfony and Magento declare theirs. */
 final class DeclaredActivityHandlersTest extends TestCase
 {
@@ -103,6 +111,24 @@ final class DeclaredActivityHandlersTest extends TestCase
         self::assertSame('named ada', $executor->execute('greet.hello', ['who' => 'ada']));
         $this->expectExceptionMessage('No handler registered for activity "count.one"');
         $executor->execute('count.one', []);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function refused(): iterable
+    {
+        yield 'a missing class' => ['App\Activities\Missing', 'App\Activities\Missing'];
+        yield 'a handler serving no activity' => [ServesNothing::class, ServesNothing::class];
+        yield 'a contract that does not exist' => [NamesAMissingContract::class, 'App\Contracts\Missing'];
+        yield 'a handler lacking a method of its contract' => [GreeterWithoutTheMethod::class, GreetActivities::class . '::hello()'];
+    }
+
+    #[DataProvider('refused')]
+    public function testAWrongDeclarationIsRefusedByNameAtBoot(string $handler, string $named): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($named);
+
+        $this->registered('memory', [$handler]);
     }
 
     /** @param list<string> $handlers */
