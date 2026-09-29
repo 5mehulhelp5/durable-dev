@@ -134,7 +134,7 @@ class RuntimeFactory
          * no method for are fulfilled by a workflow of `workflowClasses` that carries
          * `#[FulfilsNexusOperation]`.
          *
-         * @var list<object>
+         * @var array<array-key, object>
          */
         private readonly array $nexusHandlers = [],
     ) {}
@@ -305,8 +305,9 @@ class RuntimeFactory
     }
 
     /**
-     * The Nexus operations the module serves. Routed by the cluster when a DSN is set; without
-     * one, a listed handler is refused here, at startup, since memory cannot route (DUR036).
+     * The Nexus operations the module serves, built when the Nexus worker starts. Routed by the
+     * cluster when a DSN is set; without one, a listed handler is refused here, since memory cannot
+     * route (DUR036). The worker asks for a cluster first, so its own refusal is the one users see.
      */
     public function nexusRegistry(): NexusOperationRegistry
     {

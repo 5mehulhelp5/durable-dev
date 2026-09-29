@@ -126,9 +126,11 @@ final class BillingHandler implements BillingServed
 An operation the handler has no method for is fulfilled by a workflow that carries
 `#[FulfilsNexusOperation(BillingContract::class, 'charge')]` and is listed in `workflowClasses`.
 Magento discovers nothing on its own, so the class is still listed; the attribute spares you writing
-the contract by hand. Serving needs a cluster: without `durable/temporal/dsn`, a listed handler is
-refused at startup, and so is a handler without the attribute. The endpoint points at the DSN's
-`nexus_task_queue`, which defaults to the workflow task queue.
+the contract by hand. Serving needs a cluster: `durable:worker --role=nexus` refuses to start
+without `durable/temporal/dsn`. The declarations are checked when that worker starts, not before:
+a handler without the attribute, or one that does not match its contract, stops it there, naming
+the class. The endpoint points at the DSN's `nexus_task_queue`, which defaults to the workflow task
+queue.
 
 ## Workers are commands, not queue consumers
 
