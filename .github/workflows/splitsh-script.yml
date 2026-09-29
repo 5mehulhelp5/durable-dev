@@ -1,0 +1,31 @@
+name: Splitsh script
+
+# `bin/splitsh-publish.sh` pushes every tag to ten satellites, and in tag mode it rewrites their
+# `self.version` requirements in a commit of its own (#347). Like the release script, it runs a
+# handful of times a year, so a regression would only show on a tag already published. Its test
+# runs on a throwaway repository with a stub `splitsh-lite`, with no network and no token.
+on:
+  pull_request:
+    paths:
+      - 'bin/splitsh-publish.sh'
+      - 'bin/splitsh-publish-test.sh'
+      - '.github/workflows/splitsh-script.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splitsh-script-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  splitsh-script:
+    name: bin/splitsh-publish.sh on a throwaway repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the splitsh script
+        run: bin/splitsh-publish-test.sh
