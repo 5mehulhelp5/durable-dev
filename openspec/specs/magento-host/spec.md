@@ -84,3 +84,32 @@ already installed the wrong thing; this one arrives before.
 - **WHEN** an execution is running against a Temporal cluster
 - **AND** every Magento process is restarted
 - **THEN** the execution continues from its recorded history
+
+### Requirement: A module serves Nexus operations from its di.xml
+
+A module SHALL serve a Nexus operation by listing its handler in `di.xml`, as it lists its activity
+handlers, the handler naming the contract it serves with `#[AsNexusServiceHandler]` — the attribute
+the Symfony bundle reads. Magento has no autoconfiguration, so the class is listed; the attribute
+carries the contract. The operations the handler has no method for SHALL be fulfilled by a workflow
+the module declares, carrying `#[FulfilsNexusOperation]`. The worker SHALL be a role of
+`bin/magento durable:worker`, bounded and supervised like the others.
+
+Unlike the configuration-only host of the `nexus-operations` requirement "Serving is host work",
+the operation is declared on the handler class here, by that attribute.
+
+#### Scenario: A listed handler answers on the task
+
+- **WHEN** a module lists a handler whose attribute names a contract
+- **AND** a caller invokes an operation of that contract
+- **THEN** the handler answers on the task
+
+#### Scenario: A module workflow fulfils an operation
+
+- **WHEN** the contract declares an operation the handler has no method for
+- **AND** a workflow the module declares claims it with `#[FulfilsNexusOperation]`
+- **THEN** the caller receives that workflow's result when it completes
+
+#### Scenario: A mistake is refused at startup
+
+- **WHEN** a listed handler carries no `#[AsNexusServiceHandler]`, or no cluster is configured
+- **THEN** the Nexus registry refuses at startup, naming the handler or the missing cluster

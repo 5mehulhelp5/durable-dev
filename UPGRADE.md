@@ -187,6 +187,15 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 }
 ```
 
+### New: a Magento module serves Nexus operations (#668)
+
+**Who is affected**: nobody has to change anything. A Magento module can now serve a Nexus contract:
+list the handler in `di.xml` under `nexusHandlers` on `RuntimeFactory`, name its contract with
+`#[AsNexusServiceHandler(contract: …)]` as on Symfony, declare the workflows that fulfil the rest in
+`workflowClasses` with `#[FulfilsNexusOperation]`, and run `bin/magento durable:worker --role=nexus`.
+The module's README shows it. Laravel's `DeclaredNexusOperations` now delegates to the core's
+`NexusHandlerDeclarations`, which both hosts share; its behaviour and messages are unchanged.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

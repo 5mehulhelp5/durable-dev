@@ -104,14 +104,41 @@ attributes'.
 A workflow class written for the Symfony bundle runs here unmodified — everything below the ports is
 the same component.
 
+## Serving Nexus operations
+
+A module serves a Nexus contract the way it declares activities: the handler is listed in `di.xml`,
+and it names the contract it serves with the attribute the Symfony bundle reads.
+
+```xml
+<argument name="nexusHandlers" xsi:type="array">
+    <item name="billing" xsi:type="object">Acme\Shop\Nexus\BillingHandler</item>
+</argument>
+```
+
+```php
+#[AsNexusServiceHandler(contract: BillingContract::class)]
+final class BillingHandler implements BillingServed
+{
+    public function verify(string $order, int $amount, string $currency): array { /* … */ }
+}
+```
+
+An operation the handler has no method for is fulfilled by a workflow that carries
+`#[FulfilsNexusOperation(BillingContract::class, 'charge')]` and is listed in `workflowClasses`.
+Magento discovers nothing on its own, so the class is still listed; the attribute spares you writing
+the contract by hand. Serving needs a cluster: without `durable/temporal/dsn`, a listed handler is
+refused at startup, and so is a handler without the attribute. The endpoint points at the DSN's
+`nexus_task_queue`, which defaults to the workflow task queue.
+
 ## Workers are commands, not queue consumers
 
 ```bash
 bin/magento durable:worker --role=journal   --time-limit=3600
 bin/magento durable:worker --role=activity  --time-limit=3600
+bin/magento durable:worker --role=nexus     --time-limit=3600   # only if the module serves Nexus
 ```
 
-One process, one role: these are two distinct Temporal task queues, and their concurrency is tuned
+One process, one role: these are distinct Temporal task queues, and their concurrency is tuned
 apart. An operator supervises them with whatever already supervises every other long-running Magento
 process.
 
