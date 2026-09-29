@@ -24,9 +24,11 @@ process, ships the workers as `bin/magento` commands, and adds a read-only admin
 `v0.1.0-alpha8` is the first tagged release of this package, and it is the whole suite's version —
 the monorepo tags once and every satellite receives the same tag.
 
-⚠ **It is an alpha, and Composer's default stability will refuse it.** A project on
-`minimum-stability: stable` needs either the constraint spelled out on the line, as below, or
-`"minimum-stability": "alpha"` with `"prefer-stable": true` in its own `composer.json`.
+⚠ **The suite is on its beta line, and Composer's default stability will refuse it.** A project on
+`minimum-stability: stable` needs `"minimum-stability": "beta"` with `"prefer-stable": true` in its
+own `composer.json`, which the two `composer config` lines below write. A `@beta` flag on the
+require line is not enough: it reaches only the package it is written on, not `gplanchat/durable`
+underneath.
 
 ## Requirements
 
@@ -70,7 +72,9 @@ already ships. To hand it the application's client — its proxy, its TLS option
 ## Installation
 
 ```bash
-composer require gplanchat/durable-magento:^0.1.0@alpha gplanchat/durable-bridge-temporal:^0.1.0@alpha
+composer config minimum-stability beta
+composer config prefer-stable true
+composer require gplanchat/durable-magento gplanchat/durable-bridge-temporal
 bin/magento module:enable Gplanchat_DurableModule
 bin/magento setup:upgrade
 ```

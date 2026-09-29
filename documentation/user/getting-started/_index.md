@@ -34,14 +34,15 @@ its own configuration file and its own worker:
 The concepts, the workflow API and the activity API are identical on all four; only the wiring
 below is Symfony's.
 
-Every block below opens with two `composer config` lines. Durable is on its alpha line, and each
-package requires the others at its own exact version: `@alpha` on the require line does not reach
-them, so a project on the default `stable` floor refuses the install until it allows alpha.
+Every block below opens with two `composer config` lines. Durable is on its beta line, and each
+package pulls in its siblings from that same line. A stability flag such as `@beta` on the require
+line reaches only the package it is written on, never what that package depends on, so a project
+on the default `stable` floor refuses the install until it allows beta.
 
 ### Core component only (framework-agnostic)
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable
 ```
@@ -49,7 +50,7 @@ composer require gplanchat/durable
 ### Symfony integration
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer config extra.symfony.allow-contrib true
 composer require gplanchat/durable-bundle
@@ -361,7 +362,7 @@ behind the `doctrine://` queues below. DoctrineBundle's recipe also configures t
 `doctrine/orm`; or remove the `orm:` section of `config/packages/doctrine.yaml` if you don't use the ORM.
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal doctrine/doctrine-bundle doctrine/orm symfony/doctrine-messenger
 ```

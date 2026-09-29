@@ -42,7 +42,7 @@ The last two are **development-time tools**, `require-dev` rather than `require`
 ## `gplanchat/durable`, the library {#gplanchatdurable--the-library}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable
 ```
@@ -67,7 +67,7 @@ tests use, and it needs nothing installed.
 ## `gplanchat/durable-bundle`, the Symfony integration {#gplanchatdurable-bundle--the-symfony-integration}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bundle
 ```
@@ -94,7 +94,7 @@ Configuration is one file, documented key by key in the
 ## `gplanchat/durable-bridge-temporal`, the Temporal driver {#gplanchatdurable-bridge-temporal--the-temporal-driver}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bridge-temporal
 ```
@@ -125,7 +125,7 @@ temporal server start-dev --namespace durable-test --port 7233
 ## `gplanchat/durable-bridge-dbal`, the SQL backend {#gplanchatdurable-bridge-dbal--the-sql-backend}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal
 ```
@@ -153,7 +153,7 @@ up, one migration, and no extension to compile.
 ## `gplanchat/durable-bridge-illuminate`, the Laravel backend {#gplanchatdurable-bridge-illuminate--the-laravel-backend}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable gplanchat/durable-bridge-illuminate
 php artisan migrate
@@ -194,7 +194,7 @@ worker can all use it.
 ## `gplanchat/durable-laravel`, the Laravel integration {#gplanchatdurable-laravel--the-laravel-integration}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-laravel
 php artisan migrate
@@ -306,7 +306,7 @@ require, suggest or detect Filament.
 ## `gplanchat/durable-plugin`, the Sylius dashboard {#gplanchatdurable-plugin--the-sylius-dashboard}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-plugin
 ```
@@ -331,7 +331,7 @@ catalog it reads, so the command above is the whole install.
 ## `gplanchat/durable-magento`, the Magento integration {#gplanchatdurable-magento--the-magento-integration}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-magento
 ```
@@ -451,10 +451,10 @@ rather than forced, so an old link degrades to the default instead of showing a 
 does not exist. Choosing in the page rewrites the address bar, so the link to share is the one you
 are already looking at.
 
-Every command in the table assumes the project allows the alpha line first:
+Every command in the table assumes the project allows the beta line first:
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 ```
 
