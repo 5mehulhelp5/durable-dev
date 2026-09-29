@@ -114,14 +114,14 @@ final class AnEarlyResumeWhileARetryIsQueuedTest extends TestCase
             /** @param list<string> $announced */
             public function __construct(private array &$announced) {}
 
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void {}
 
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
             {
                 $this->announced[] = $fact->describe();
             }
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
     }
 

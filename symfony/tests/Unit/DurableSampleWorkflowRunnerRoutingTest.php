@@ -78,10 +78,10 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         };
 
         $resume = new class implements WorkflowResumeDispatcher {
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
 
         $runner = new DurableSampleWorkflowRunner(
@@ -118,10 +118,10 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $registry = new WorkflowRegistry();
 
         $resume = new class implements WorkflowResumeDispatcher {
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
 
         $bus = new class implements MessageBusInterface {
@@ -172,13 +172,12 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
 
         $resume = new class ($dispatched) implements WorkflowResumeDispatcher {
             public function __construct(private array &$dispatched) {}
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
             {
-                $executionId = (string) $executionId;
-                $this->dispatched[] = ['executionId' => $executionId, 'type' => $workflowType];
+                $this->dispatched[] = ['executionId' => $executionId->toString(), 'type' => $workflowType];
             }
         };
 
@@ -216,13 +215,12 @@ final class DurableSampleWorkflowRunnerRoutingTest extends TestCase
         $dispatched = [];
         $resume = new class ($dispatched) implements WorkflowResumeDispatcher {
             public function __construct(private array &$dispatched) {}
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void {}
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
             {
-                $executionId = (string) $executionId;
-                $this->dispatched[] = $executionId;
+                $this->dispatched[] = $executionId->toString();
             }
         };
 

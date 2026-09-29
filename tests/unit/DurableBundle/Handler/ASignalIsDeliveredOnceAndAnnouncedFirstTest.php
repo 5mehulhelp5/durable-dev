@@ -52,17 +52,15 @@ final class RecordingResumes implements WorkflowResumeDispatcher
 
     public function __construct(private readonly InMemoryEventStore $journal) {}
 
-    public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
-        $executionId = (string) $executionId;
         $this->sent[] = \sprintf('resume with %d events', $this->journal->countEventsInStream($executionId));
     }
 
-    public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
     {
-        $executionId = (string) $executionId;
         $this->sent[] = \sprintf('awaiting %s with %d events', $fact->describe(), $this->journal->countEventsInStream($executionId));
     }
 
-    public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
 }

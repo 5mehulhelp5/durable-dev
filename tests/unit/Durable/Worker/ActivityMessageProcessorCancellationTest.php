@@ -36,15 +36,14 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
             /** @param list<string> $resumed */
             public function __construct(private array &$resumed) {}
 
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
             {
-                $executionId = (string) $executionId;
-                $this->resumed[] = $executionId;
+                $this->resumed[] = $executionId->toString();
             }
 
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
 
         $heartbeatSender = new class implements ActivityHeartbeatSenderInterface {
@@ -107,15 +106,14 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
             /** @param list<string> $resumed */
             public function __construct(private array &$resumed) {}
 
-            public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
             {
-                $executionId = (string) $executionId;
-                $this->resumed[] = $executionId;
+                $this->resumed[] = $executionId->toString();
             }
 
-            public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
 
         $heartbeatSender = new class implements ActivityHeartbeatSenderInterface {

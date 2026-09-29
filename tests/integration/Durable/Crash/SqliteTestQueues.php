@@ -37,23 +37,20 @@ final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResu
         $this->push('activities', $message);
     }
 
-    public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
-        $executionId = (string) $executionId;
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, $pendingUpdates));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId->toString(), $pendingUpdates));
     }
 
-    public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
     {
-        $executionId = (string) $executionId;
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], $fact));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId->toString(), [], $fact));
     }
 
-    public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
     {
-        $executionId = (string) $executionId;
-        $this->metadata->save(ExecutionId::fromString($executionId), $workflowType, $payload);
-        $this->push('resumes', new ResumeWorkflowMessage($executionId));
+        $this->metadata->save($executionId, $workflowType, $payload);
+        $this->push('resumes', new ResumeWorkflowMessage($executionId->toString()));
     }
 
     /** The bench fires timers by hand: the delay is not honoured, the `timer` step comes later. */

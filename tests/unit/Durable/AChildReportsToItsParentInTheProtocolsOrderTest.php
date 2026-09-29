@@ -96,19 +96,17 @@ final class ChildRecordingResumes implements WorkflowResumeDispatcher
         private readonly InMemoryChildWorkflowParentLinkStore $links,
     ) {}
 
-    public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
-        $executionId = (string) $executionId;
-        $this->sent[] = \sprintf('resume %s with %d events, %s', $executionId, $this->journal->countEventsInStream(ExecutionId::fromString($executionId)), $this->linked());
+        $this->sent[] = \sprintf('resume %s with %d events, %s', $executionId->toString(), $this->journal->countEventsInStream($executionId), $this->linked());
     }
 
-    public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
     {
-        $executionId = (string) $executionId;
-        $this->sent[] = \sprintf('awaiting %s on %s with %d events, %s', $fact->describe(), $executionId, $this->journal->countEventsInStream(ExecutionId::fromString($executionId)), $this->linked());
+        $this->sent[] = \sprintf('awaiting %s on %s with %d events, %s', $fact->describe(), $executionId->toString(), $this->journal->countEventsInStream($executionId), $this->linked());
     }
 
-    public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
 
     private function linked(): string
     {
