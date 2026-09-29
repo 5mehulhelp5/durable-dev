@@ -47,6 +47,10 @@ return [
         'history' => 'Historique',
         'no_history' => 'Aucun historique enregistré pour cette exécution.',
     ],
+    'frieze' => [
+        'key_waiting' => 'Hachuré : en attente d’être pris en charge. Le travail avait été demandé, mais personne ne l’avait encore commencé.',
+        'key_failed' => 'Rouge : ce qui a échoué. Une annulation n’est pas peinte en rouge : c’est une issue, pas une panne.',
+    ],
     'phase' => [
         'requested' => 'demandé',
         'started' => 'pris en charge',

@@ -47,6 +47,10 @@ return [
         'history' => 'History',
         'no_history' => 'No recorded history for this run.',
     ],
+    'frieze' => [
+        'key_waiting' => 'Hatched: waiting to be picked up — the work had been asked for, but nobody had started it yet.',
+        'key_failed' => 'Red: what failed. A cancellation is not painted red — it is an outcome, not a breakdown.',
+    ],
     'phase' => [
         'requested' => 'requested',
         'started' => 'started',

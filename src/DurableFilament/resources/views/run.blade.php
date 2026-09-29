@@ -43,6 +43,7 @@
             @if ([] === $run['timeline']->actions)
                 <p>{{ $t('run.no_history') }}</p>
             @else
+                @include('durable-filament::frieze', ['timeline' => $run['timeline']])
                 {{-- One block per action, grouped, ordered and timed by the core's RunTimeline. --}}
                 @foreach ($run['timeline']->actions as $action)
                     <div style="margin-bottom: 1rem">

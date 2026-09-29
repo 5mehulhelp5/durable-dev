@@ -35,10 +35,7 @@ It observes and never runs a workflow.
 
 ## Tests
 
-The tests boot a Laravel application with one panel over the `vendor/` of an application that
-installed this package with Filament 3 or 4, and that maps `Gplanchat\Durable\Filament\Tests\`
-to this package's `tests/` in its `autoload-dev`:
-
-```bash
-vendor/bin/phpunit -c vendor/gplanchat/durable-filament/phpunit.xml --bootstrap vendor/autoload.php
-```
+The tests are not in the package archive: they run from the monorepo. They boot a Laravel
+application with one panel over the `vendor/` of a project that installs this package through path
+repositories, with Filament 3 or 4, and maps `Gplanchat\Durable\Filament\Tests\` to
+`src/DurableFilament/tests/` in its `autoload-dev`.
