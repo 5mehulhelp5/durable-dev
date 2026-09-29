@@ -25,7 +25,7 @@ final class ProjectingEventStorePickupTest extends TestCase
 
         self::assertNotNull($catalog->listRuns()->runs[0]->waitingForWorkerSince, 'dispatched, nobody consumed it');
 
-        (new ProjectingEventStore($events, $catalog))->append(new ExecutionStarted('exec-1', []));
+        (new ProjectingEventStore($events, $catalog))->append(new ExecutionStarted(ExecutionId::fromString('exec-1'), []));
 
         self::assertNull($catalog->listRuns()->runs[0]->waitingForWorkerSince);
     }

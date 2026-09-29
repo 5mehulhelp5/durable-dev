@@ -42,7 +42,7 @@ final class InMemoryWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
     protected function startRun(string $executionId, string $workflowType): void
     {
         $this->catalog->recordStart(ExecutionId::fromString($executionId), $workflowType);
-        $this->events->append(new ExecutionStarted($executionId, []));
+        $this->events->append(new ExecutionStarted(ExecutionId::fromString($executionId), []));
     }
 
     protected function canTellAPickup(): bool
@@ -68,10 +68,10 @@ final class InMemoryWorkflowRunCatalogConformanceTest extends WorkflowRunCatalog
     protected function endRun(string $executionId, WorkflowRunStatus $outcome): void
     {
         $this->events->append(match ($outcome) {
-            WorkflowRunStatus::Completed => new ExecutionCompleted($executionId, 'ok'),
-            WorkflowRunStatus::Cancelled => new WorkflowExecutionCancelled($executionId, 'cancelled'),
-            WorkflowRunStatus::ContinuedAsNew => new WorkflowContinuedAsNew($executionId, 'App\\NextWorkflow', []),
-            WorkflowRunStatus::Failed => WorkflowExecutionFailed::fromStoredPayload($executionId, [
+            WorkflowRunStatus::Completed => new ExecutionCompleted(ExecutionId::fromString($executionId), 'ok'),
+            WorkflowRunStatus::Cancelled => new WorkflowExecutionCancelled(ExecutionId::fromString($executionId), 'cancelled'),
+            WorkflowRunStatus::ContinuedAsNew => new WorkflowContinuedAsNew(ExecutionId::fromString($executionId), 'App\\NextWorkflow', []),
+            WorkflowRunStatus::Failed => WorkflowExecutionFailed::fromStoredPayload(ExecutionId::fromString($executionId), [
                 'kind' => WorkflowExecutionFailed::KIND_WORKFLOW_HANDLER,
                 'failureClass' => \RuntimeException::class,
                 'failureMessage' => 'boom',
