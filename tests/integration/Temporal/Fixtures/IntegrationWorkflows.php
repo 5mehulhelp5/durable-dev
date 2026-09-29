@@ -156,6 +156,23 @@ final class IntegrationWorkflows
             timeouts: self::attemptTimeout(),
         ))->boom()));
 
+        // The timer wins the race while the activity waits out its 30 s backoff, and the workflow
+        // then awaits something else: the next task replays the race (#681).
+        $registry->registerFactory('LostRace', static fn(array $input) => static function (WorkflowEnvironment $env): array {
+            $winner = $env->await($env->any(
+                $env->activityStub(IntegrationActivities::class, new ActivityOptions(
+                    RetryLimit::ofAttempts(5),
+                    initialInterval: Duration::seconds(30),
+                    backoffCoefficient: 1.0,
+                    timeouts: self::attemptTimeout(),
+                ))->boom(),
+                $env->timer(Duration::seconds(2)),
+            ));
+            $env->await($env->timer(Duration::seconds(1)));
+
+            return ['winner' => null === $winner ? 'timer' : 'activity', 'after' => true];
+        });
+
         $registry->registerFactory('Compensating', static fn(array $input) => static function (WorkflowEnvironment $env) use ($input): mixed {
             try {
                 return $env->await($env->activityStub(IntegrationActivities::class, new ActivityOptions(
