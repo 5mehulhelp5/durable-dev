@@ -6,7 +6,7 @@
 #
 # **Why these images exist, when CI does not need them.** Measured on this repository:
 # `shivammathur/setup-php` installs `grpc` in **five seconds**, on the strength of a prebuilt
-# binary — the "Temporal integration tests" job starts PHP as fast as the Sylius one, which does
+# binary — the "Temporal · ext-grpc, bench, TLS" job starts PHP as fast as the Sylius one, which does
 # not ask for the extension. For GitHub Actions the problem is settled, and a build chain would be
 # a restatement.
 #

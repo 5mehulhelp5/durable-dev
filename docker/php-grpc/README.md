@@ -56,14 +56,14 @@ mod_php, and for FrankenPHP (which is thread-safe, hence `zts`):
 ## What these images are not there to solve
 
 **GitHub Actions does not need them.** Measured on this repository: `shivammathur/setup-php`
-installs `grpc` in **five seconds**, on the strength of a prebuilt binary. The "Temporal
-integration tests" job, which asks for the extension, starts PHP as fast as the Sylius one, which
+installs `grpc` in **five seconds**, on the strength of a prebuilt binary. The "Temporal ·
+ext-grpc, bench, TLS" job, which asks for the extension, starts PHP as fast as the Sylius one, which
 does not:
 
 | job | "Setup PHP" step | asks for `grpc` |
 |---|---|---|
-| Temporal integration tests | 5 s | yes |
-| Sylius shop | 6 s | no |
+| Temporal · ext-grpc, bench, TLS | 5 s | yes |
+| Sylius · dashboard, rendered | 6 s | no |
 
 In a workflow, then, write `extensions: …, grpc` and think no more of it. These images are for
 **Docker**, where `install-php-extensions` compiles from source on every build.
