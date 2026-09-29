@@ -62,7 +62,7 @@ What follows from sharing, as mechanisms:
 
 What an activity that writes and dies actually needs is not a shared transaction. It needs the
 at-least-once contract every durable engine has: an activity may run again, so its side effects are
-keyed to be idempotent. PR #689 documents that contract.
+keyed to be idempotent.
 
 ## Decision
 
@@ -75,7 +75,7 @@ keyed to be idempotent. PR #689 documents that contract.
    wherever it shows the connection setting, with the mechanisms above.
 3. **The shared transaction is no longer a feature.** Every place listed under Context stops selling
    it. Where the documentation needs an answer to "an activity wrote and then died", the answer is
-   idempotent activities (#689).
+   idempotent activities.
 4. **Durable never opens a transaction that spans business code**, and never documents doing so as
    a pattern.
 
