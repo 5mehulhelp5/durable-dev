@@ -74,15 +74,16 @@ final class NexusBenchTest extends TestCase
             '--transport=' . self::$connection->transport,
         ]);
         $deadline = microtime(true) + 60.0;
-        while (!str_contains((string) file_get_contents($harness['log']), 'ready')) {
+        while (1 !== preg_match('/^ready$/m', (string) file_get_contents($harness['log']))) {
             if (microtime(true) > $deadline || !proc_get_status($harness['process'])['running']) {
                 self::fail("The demo harness never said ready:\n" . file_get_contents($harness['log']));
             }
             usleep(200_000);
         }
 
-        self::spawn('serves-stock', 'demo', ['bin/console', 'messenger:consume', 'durable_nexus', '--no-interaction']);
-        self::spawn('runs-workflows', 'demo_caller', ['bin/console', 'messenger:consume', 'durable_workflows', '--no-interaction']);
+        // -vv: what each task did is in the log a failure prints.
+        self::spawn('serves-stock', 'demo', ['bin/console', 'messenger:consume', 'durable_nexus', '--no-interaction', '-vv']);
+        self::spawn('runs-workflows', 'demo_caller', ['bin/console', 'messenger:consume', 'durable_workflows', '--no-interaction', '-vv']);
         sleep(3); // for a worker whose receiver is missing to die before the first test looks
     }
 
@@ -139,7 +140,7 @@ final class NexusBenchTest extends TestCase
         ]);
         self::assertSame(0, $run['code'], $run['output'] . self::logs());
 
-        return json_decode($run['output'], true, flags: \JSON_THROW_ON_ERROR);
+        return json_decode((string) strrchr(trim($run['output']), "\n") ?: $run['output'], true, flags: \JSON_THROW_ON_ERROR);
     }
 
     private static function harnessScript(): string
