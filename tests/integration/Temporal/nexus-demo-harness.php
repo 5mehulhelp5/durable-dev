@@ -37,9 +37,11 @@ use Temporal\Api\Operatorservice\V1\DeleteNexusEndpointResponse;
 
 require __DIR__ . '/../../../vendor/autoload.php';
 
+// `?? []`: the CLI always defines $argv, and PHPStan on PHP 8.5 doubts it.
+$arguments = array_slice($argv ?? [], 1);
 $options = [];
 $positional = [];
-foreach (array_slice($argv, 1) as $argument) {
+foreach ($arguments as $argument) {
     if (1 === preg_match('/^--([a-z]+)=(.*)$/', $argument, $match)) {
         $options[$match[1]] = $match[2];
     } else {
@@ -125,7 +127,7 @@ foreach ($services as $service) {
 
 $workers = [];
 foreach (['nexus', 'workflow'] as $role) {
-    $workers[$role] = proc_open([PHP_BINARY, __FILE__, ...array_slice($argv, 1), '--role=' . $role, '--parent=' . (int) getmypid()], [1 => STDOUT, 2 => STDERR], $pipes);
+    $workers[$role] = proc_open([PHP_BINARY, __FILE__, ...$arguments, '--role=' . $role, '--parent=' . (int) getmypid()], [1 => STDOUT, 2 => STDERR], $pipes);
 }
 $stop = static function (int $code) use (&$workers, $deleteEndpoints): never {
     foreach ($workers as $worker) {
