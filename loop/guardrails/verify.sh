@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The gate. The final vote belongs to a deterministic script — the one party in this system that
 # cannot be talked into anything. It runs exactly what CI runs (.github/workflows/ci.yml, jobs
-# "QA (CS + tests)" and "Analyse statique"), so a tick that passes here passes on the PR.
+# "Core · CS + tests" and "Core · static analysis"), so a tick that passes here passes on the PR.
 #
 # Exit 0 = the work is done. Nothing else may declare that, per CLAUDE.md.
 set -euo pipefail
