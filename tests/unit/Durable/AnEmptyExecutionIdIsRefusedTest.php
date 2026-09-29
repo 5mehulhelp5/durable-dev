@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Port\WorkflowLifecycleInterface;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -19,11 +20,25 @@ use Gplanchat\Durable\WorkflowEnvironment;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * M8 (#329): an empty identifier names no execution, and every store would file it under "".
+ *
  * Two helpers keep a string id until #682's last part, and convert it on entry: an empty id is
- * refused there, whatever the store behind (UPGRADE).
+ * refused there too, whatever the store behind (UPGRADE).
  */
 final class AnEmptyExecutionIdIsRefusedTest extends TestCase
 {
+    public function testAnEmptyStringIsNotAnExecutionId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        ExecutionId::fromString('');
+    }
+
+    public function testAnyOtherStringIs(): void
+    {
+        self::assertSame('exec-1', ExecutionId::fromString('exec-1')->toString());
+    }
+
     public function testAPassOverAFencedStoreRefusesAnEmptyId(): void
     {
         $this->expectException(\InvalidArgumentException::class);
