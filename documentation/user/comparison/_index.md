@@ -550,12 +550,12 @@ and [DUR045](https://github.com/gplanchat/durable-dev/blob/main/documentation/ad
 | | |
 |---|---|
 | **Maintenance** | Official Temporal project, kept in parity with the other language SDKs |
-| **Maturity** | Long production track record. Durable is `0.1.0-alpha`, with breaking changes between alphas |
+| **Maturity** | Long production track record. Durable is `0.1.0-beta`, a pre-release: breaking changes between releases remain possible |
 | **API coverage** | Broad. Durable covers search attributes, cron schedules, updates, deadlines and child workflows, but search attributes are **start options** here, where the SDK also lets a running workflow upsert its own; anything beyond that is worth checking against the [Configuration reference](../configuration/) before you commit |
 
 A comparison with no losses column is marketing. These are real, and **maturity** is the one that
-weighs most: `0.1.0-alpha` means breaking changes between versions, each shipped with its migration
-procedure, but breaking changes all the same.
+weighs most: `0.1.0-beta` is still a pre-release, where breaking changes between versions remain
+possible, each shipped with its migration procedure, but breaking changes all the same.
 
 ---
 
@@ -576,8 +576,8 @@ migration is open to you at all.
 **Use Durable** when you want durable execution without adding a second runtime to your
 application, when a single SQL database is the right operational footprint, when you want workflow
 logic covered by unit tests that need no infrastructure, or when you need to **call** Nexus
-operations from PHP at all, and when an alpha with breaking changes between releases is a trade you
-can make.
+operations from PHP at all, and when a pre-release with possible breaking changes between releases is a trade
+you can make.
 
 ---
 

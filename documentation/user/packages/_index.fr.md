@@ -44,7 +44,7 @@ Les deux derniers sont des **outils de développement**, en `require-dev` plutô
 ## `gplanchat/durable`, la bibliothèque {#gplanchatdurable--la-bibliothèque}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable
 ```
@@ -71,7 +71,7 @@ qu'emploient vos tests unitaires, et cela ne demande rien à installer.
 ## `gplanchat/durable-bundle`, l'intégration Symfony {#gplanchatdurable-bundle--lintégration-symfony}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bundle
 ```
@@ -100,7 +100,7 @@ La configuration tient en un fichier, documenté clé par clé dans la
 ## `gplanchat/durable-bridge-temporal`, le pilote Temporal {#gplanchatdurable-bridge-temporal--le-pilote-temporal}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bridge-temporal
 ```
@@ -135,7 +135,7 @@ temporal server start-dev --namespace durable-test --port 7233
 ## `gplanchat/durable-bridge-dbal`, le backend SQL {#gplanchatdurable-bridge-dbal--le-backend-sql}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal
 ```
@@ -163,7 +163,7 @@ sauvegardez déjà, une migration, et aucune extension à compiler.
 ## `gplanchat/durable-bridge-illuminate`, le backend Laravel {#gplanchatdurable-bridge-illuminate--le-backend-laravel}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable gplanchat/durable-bridge-illuminate
 php artisan migrate
@@ -205,7 +205,7 @@ commande artisan ou un worker écrit à la main peuvent tous s'en servir.
 ## `gplanchat/durable-laravel`, l'intégration Laravel {#gplanchatdurable-laravel--lintégration-laravel}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-laravel
 php artisan migrate
@@ -322,7 +322,7 @@ suggérera ni ne détectera jamais Filament.
 ## `gplanchat/durable-plugin`, le tableau de bord Sylius {#gplanchatdurable-plugin--le-tableau-de-bord-sylius}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-plugin
 ```
@@ -347,7 +347,7 @@ d'exécutions qu'il lit : la commande ci-dessus est donc toute l'installation.
 ## `gplanchat/durable-magento`, l'intégration Magento {#gplanchatdurable-magento--lintégration-magento}
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 composer require gplanchat/durable-magento
 ```
@@ -473,10 +473,10 @@ plutôt que forcée** : un vieux lien retombe sur le choix par défaut au lieu d
 combinaison qui n'existe pas. Et choisir dans la page réécrit la barre d'adresse, donc le lien à
 partager est celui qu'on a déjà sous les yeux.
 
-Chaque commande du tableau suppose que le projet accepte d'abord la ligne alpha :
+Chaque commande du tableau suppose que le projet accepte d'abord la ligne bêta :
 
 ```bash
-composer config minimum-stability alpha
+composer config minimum-stability beta
 composer config prefer-stable true
 ```
 

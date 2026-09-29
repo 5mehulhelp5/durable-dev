@@ -566,12 +566,12 @@ et [DUR045](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr
 | | |
 |---|---|
 | **Maintenance** | Projet officiel de Temporal, tenu en parité avec les SDK des autres langages |
-| **Maturité** | Un long historique en production. Durable est en `0.1.0-alpha`, avec des ruptures d'une alpha à l'autre |
+| **Maturité** | Un long historique en production. Durable est en `0.1.0-beta`, une préversion : des ruptures d'une version à l'autre restent possibles |
 | **Couverture de l'API** | Large. Durable couvre les attributs de recherche, les planifications cron, les mises à jour, les échéances et les workflows enfants, mais les attributs de recherche sont ici des **options de démarrage**, là où le SDK laisse aussi un workflow en cours mettre à jour les siens ; au-delà, cela vaut d'être vérifié dans la [référence de configuration](../configuration/) avant de s'engager |
 
 Une comparaison sans colonne de pertes est du marketing. Celles-ci sont réelles, et la maturité
-est celle qui pèse le plus lourd : `0.1.0-alpha` veut dire des ruptures entre versions, chacune
-livrée avec sa procédure de migration, mais des ruptures tout de même.
+est celle qui pèse le plus lourd : `0.1.0-beta` reste une préversion, où des ruptures entre versions
+restent possibles, chacune livrée avec sa procédure de migration, mais des ruptures tout de même.
 
 ---
 
@@ -592,8 +592,8 @@ le commente, pour que vous sachiez avant de commencer si la migration vous est s
 **Prenez Durable** quand vous voulez l'exécution durable sans ajouter un second moteur à votre
 application, quand une seule base SQL est la bonne empreinte opérationnelle, quand vous
 voulez une logique de workflow couverte par des tests unitaires sans infrastructure, ou quand vous
-avez besoin d'**appeler** des opérations Nexus depuis PHP tout court, et quand une alpha avec des
-ruptures entre versions est un échange que vous pouvez faire.
+avez besoin d'**appeler** des opérations Nexus depuis PHP tout court, et quand une préversion aux
+ruptures possibles entre versions est un échange que vous pouvez faire.
 
 ---
 
