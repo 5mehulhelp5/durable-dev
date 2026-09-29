@@ -35,6 +35,19 @@ final class NexusBenchTest extends TestCase
         }
         self::$connection = TemporalConnection::fromDsn(self::$dsn);
 
+        try {
+            self::startTheBenchAndTheHarness();
+        } catch (\Throwable $e) {
+            // PHPUnit skips tearDownAfterClass() when this method fails: what started would outlive
+            // the run and hold the CI step open.
+            self::tearDownAfterClass();
+
+            throw $e;
+        }
+    }
+
+    private static function startTheBenchAndTheHarness(): void
+    {
         // Rebuilt once: the workers run without debug, so a stale dev container would go unnoticed,
         // and three of them compiling it at the same time would race.
         self::assertSame(0, self::execute(['bin/console', 'cache:clear', '--no-interaction'])['code']);
@@ -57,6 +70,8 @@ final class NexusBenchTest extends TestCase
         foreach (['durable_nexus', 'durable_workflows', 'durable_activities'] as $transport) {
             self::spawn($transport, ['bin/console', 'messenger:consume', $transport, '--no-interaction']);
         }
+        // Long enough for a worker whose receiver is missing to die before the first test looks.
+        sleep(3);
     }
 
     protected function setUp(): void
@@ -144,7 +159,8 @@ final class NexusBenchTest extends TestCase
     private static function spawn(string $name, array $command): array
     {
         $log = sys_get_temp_dir() . '/durable-nexus-bench-' . $name . '-' . getmypid() . '.log';
-        $process = proc_open([\PHP_BINARY, ...$command], [1 => ['file', $log, 'w'], 2 => ['file', $log, 'a']], $pipes, \dirname(__DIR__, 3), self::environment());
+        is_file($log) && unlink($log);
+        $process = proc_open([\PHP_BINARY, ...$command], [1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']], $pipes, \dirname(__DIR__, 3), self::environment());
         self::assertIsResource($process);
 
         return self::$processes[] = ['name' => $name, 'process' => $process, 'log' => $log];

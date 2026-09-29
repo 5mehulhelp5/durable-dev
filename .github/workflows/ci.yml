@@ -834,6 +834,7 @@ jobs:
             # attributes the bench's dev env writes on every start.
             - name: PHPUnit — the bench serves and calls Nexus operations
               working-directory: symfony
+              timeout-minutes: 10
               env:
                   DURABLE_DSN: 'temporal://127.0.0.1:7333?namespace=durable-test&nexus_task_queue=symfony-bench-nexus&tls=0'
               run: php bin/phpunit --testdox --fail-on-skipped --display-skipped --group nexus-bench tests/Integration/Temporal/

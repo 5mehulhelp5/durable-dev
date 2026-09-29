@@ -35,6 +35,7 @@ use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\WorkflowRegistry;
 use integration\Temporal\Fixtures\DemoHarness;
 use Temporal\Api\Nexus\V1\EndpointSpec;
@@ -71,8 +72,8 @@ foreach (array_filter(explode(',', $options['bench'] ?? '')) as $route) {
     $bench[$service] = $queue;
 }
 $services = isset($options['serve']) ? explode(',', $options['serve']) : array_values(array_diff(array_keys(DemoHarness::ENDPOINTS), array_keys($bench)));
-if ([] !== ($unknown = array_diff([...$services, ...array_keys($bench)], array_keys(DemoHarness::ENDPOINTS))) || in_array('', $bench, true)) {
-    fwrite(STDERR, 'unknown service(s) in --serve or --bench, or a --bench without its queue: ' . implode(', ', $unknown) . "\n");
+if ([] !== ($unknown = array_diff([...$services, ...array_keys($bench)], array_keys(DemoHarness::ENDPOINTS))) || in_array('', $bench, true) || [] !== array_intersect($services, array_keys($bench))) {
+    fwrite(STDERR, 'unknown service(s) in --serve or --bench, a --bench without its queue, or a service in both: ' . implode(', ', $unknown) . "\n");
     exit(2);
 }
 
@@ -97,7 +98,7 @@ if (isset($options['call'])) {
             'service' => $service,
             'operation' => $operation,
             'payload' => json_decode($options['input'] ?? '{}', true, flags: JSON_THROW_ON_ERROR),
-        ], $executionId);
+        ], ExecutionId::fromString($executionId));
         echo json_encode($workflows->pollForCompletion($executionId, 250, 360), JSON_THROW_ON_ERROR), "\n";
         exit(0);
     } catch (Throwable $e) {
