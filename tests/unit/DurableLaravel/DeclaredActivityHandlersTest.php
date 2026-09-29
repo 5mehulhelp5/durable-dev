@@ -105,10 +105,13 @@ final class DeclaredActivityHandlersTest extends TestCase
 
         $app->make(ActivityMessageProcessor::class)->process(new ActivityMessage('exec-1', 'act-1', 'greet.hello', ['who' => 'ada']));
 
-        $events = [...$app->make(EventStoreInterface::class)->readStream(ExecutionId::fromString('exec-1'))];
-        $completed = array_values(array_filter($events, static fn(object $e): bool => $e instanceof ActivityCompleted));
-        self::assertCount(1, $completed);
-        self::assertSame('hello ada', $completed[0]->result());
+        $results = [];
+        foreach ($app->make(EventStoreInterface::class)->readStream(ExecutionId::fromString('exec-1')) as $event) {
+            if ($event instanceof ActivityCompleted) {
+                $results[] = $event->result();
+            }
+        }
+        self::assertSame(['hello ada'], $results);
     }
 
     public function testTheHandlerIsBuiltWhenItsActivityRunsNotBefore(): void
