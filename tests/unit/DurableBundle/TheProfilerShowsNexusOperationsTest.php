@@ -64,8 +64,9 @@ final class TheProfilerShowsNexusOperationsTest extends TestCase
 
         self::assertSame(array_keys($outcomes), array_column($collector->getExecutionsDetail()[0]['nexusOperations'], 'stateLabel'));
         $panel = $this->renderPanel($collector);
-        foreach (array_keys($outcomes) as $label) {
-            self::assertStringContainsString($label, $panel);
+        foreach (['completed' => 'completed', 'failed' => 'failed', 'timed out' => 'timed_out', 'cancelled' => 'cancelled'] as $label => $state) {
+            // The badge itself: "failed" alone appears elsewhere in the panel.
+            self::assertStringContainsString("durable-nexus-state--{$state}\">{$label}<", $panel);
         }
         self::assertStringNotContainsString('in flight', $panel);
     }
@@ -89,7 +90,7 @@ final class TheProfilerShowsNexusOperationsTest extends TestCase
         $twig = new Environment(new ChainLoader([
             new ArrayLoader(['@WebProfiler/Profiler/layout.html.twig' => '{% block head %}{% endblock %}{% block panel %}{% endblock %}']),
             $views,
-        ]), ['strict_variables' => false]);
+        ]), ['strict_variables' => true]);
 
         return $twig->load('@Durable/Collector/durable.html.twig')->renderBlock('panel', ['collector' => $collector]);
     }

@@ -24,7 +24,7 @@ final class NexusOperationsOfARunTest extends TestCase
 {
     public function testAnOperationWithNoOutcomeIsInFlightNotFailed(): void
     {
-        $operations = NexusOperationSummary::ofHistory([
+        $operations = NexusOperationSummary::of([
             new ExecutionStarted('exec-1', []),
             new NexusOperationScheduled('exec-1', 5, 'demo-shop-stock', 'stock', 'reserve'),
         ]);
@@ -50,7 +50,7 @@ final class NexusOperationsOfARunTest extends TestCase
     #[DataProvider('outcomes')]
     public function testAnOutcomeSettlesItsOwnOperationOnly(\Closure $outcome, NexusOperationState $state, string $label): void
     {
-        $operations = NexusOperationSummary::ofHistory([
+        $operations = NexusOperationSummary::of([
             new NexusOperationScheduled('exec-1', 5, 'demo-business-billing', 'billing', 'verify'),
             new NexusOperationScheduled('exec-1', 9, 'demo-business-billing', 'billing', 'charge'),
             $outcome(5),
@@ -63,6 +63,6 @@ final class NexusOperationsOfARunTest extends TestCase
 
     public function testARunWithoutNexusHasNoOperations(): void
     {
-        self::assertSame([], NexusOperationSummary::ofHistory([new ExecutionStarted('exec-1', [])]));
+        self::assertSame([], NexusOperationSummary::of([new ExecutionStarted('exec-1', [])]));
     }
 }
