@@ -349,9 +349,9 @@ Les mêmes quatre stockages existent sur `Illuminate\Database\Connection`, sous 
 [`gplanchat/durable-bridge-illuminate`](../packages/#gplanchatdurable-bridge-illuminate--le-backend-laravel)
 avec le même journal et le même échange face à Temporal.
 
-**L'échange face à Temporal est celui du pont DBAL, mot pour mot.** Ce qui change est la connexion,
-et pourquoi : un stockage sur `DB::connection()` est dans `DB::transaction()` par construction, ce
-qu'exige DUR030. Voir [DUR047](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR047-laravel-the-host-that-measured-before-it-wired.md).
+**L'échange face à Temporal est celui du pont DBAL, mot pour mot.** Ce qui change est la connexion :
+`Illuminate\Database\Connection` plutôt que celle de Doctrine. Donnez-lui une connexion à elle, pas
+celle de l'application (DUR054). Voir [DUR047](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR047-laravel-the-host-that-measured-before-it-wired.md).
 
 ### Ce qui le lie n'est pas le YAML de cette page
 

@@ -149,7 +149,7 @@ ignoré sinon, le laisser à ses défauts ne coûte donc rien.
 
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `connection` | identifiant de service | `doctrine.dbal.default_connection` | La `Doctrine\DBAL\Connection` dans laquelle les magasins écrivent. |
+| `connection` | identifiant de service | `doctrine.dbal.default_connection` | La `Doctrine\DBAL\Connection` dans laquelle les magasins écrivent. Donnez-leur une connexion à eux : partager celle de l'application est fortement déconseillé (DUR054), car les transactions de Durable s'imbriquent alors dans les transactions métier. |
 | `auto_setup` | booléen | `true` | Crée les tables manquantes à la première écriture, jamais dans une transaction ouverte. Passez-la à `false` dès que Doctrine Migrations tient le schéma, pour que les deux ne l'écrivent pas l'un derrière l'autre. `bin/console durable:setup` crée les tables dans tous les cas. |
 | `lock_factory` | identifiant de service | `lock.factory` | La `LockFactory` qui sérialise les reprises d'une même exécution. **Elle ne vaut que ce que vaut votre magasin de verrous** : une fabrique en mémoire ou locale au processus, avec plusieurs workers, vous redonne la panne que le verrou existe pour empêcher. |
 | `allow_local_lock` | booléen | `false` | Le conteneur refuse un magasin local au processus (`flock`, `semaphore`, `in-memory`, `null`) derrière `lock_factory` : à la compilation pour un DSN littéral, à la première construction du verrou pour un DSN lu dans une variable d'environnement. `true` l'accepte, pour un seul worker. `framework.lock` attend une URL DBAL (`pgsql://…`, `mysql://…`), pas un nom de connexion Doctrine. |
