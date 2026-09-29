@@ -98,8 +98,9 @@ final class RecordingTimerDispatcher implements WorkflowTimerDispatcher
     /** @var list<string> */
     public array $executionIds = [];
 
-    public function dispatchTimerFire(string $executionId, int $delayMs = 0): void
+    public function dispatchTimerFire(ExecutionId|string $executionId, int $delayMs = 0): void
     {
+        $executionId = (string) $executionId;
         $this->executionIds[] = $executionId;
     }
 }
