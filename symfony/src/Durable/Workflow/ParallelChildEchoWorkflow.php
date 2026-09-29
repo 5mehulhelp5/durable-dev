@@ -26,7 +26,7 @@ final class ParallelChildEchoWorkflow
     public function run(string $first = 'alpha', string $second = 'beta', float $pauseSeconds = 0.0): array
     {
         if ($pauseSeconds > 0.0) {
-            $this->environment->sleep($pauseSeconds, 'pause before the parallel child workflows');
+            $this->environment->sleep($pauseSeconds, timerSummary: 'pause before the parallel child workflows');
         }
 
         // Two children started, neither awaited, then both assembled: that is exactly what

@@ -169,6 +169,24 @@ with `Activity <id> was superseded (Cancelled by Temporal)`. Replay no longer se
 `RequestCancelActivityTask` again for an activity whose `ACTIVITY_TASK_CANCEL_REQUESTED` is in the
 history, and an outcome the activity records after that request is ignored. Nothing to migrate.
 
+### `WorkflowServiceClientInterface` gains `DescribeTaskQueue()`
+
+**Who is affected**: only whoever **implements** `WorkflowServiceClientInterface` without extending
+`AbstractWorkflowServiceClient`. The bundled transports extend it and have nothing to change.
+
+**Why.** It is how the bridge learns whether a worker polls a task queue: an absent worker
+otherwise shows only once an execution has stalled.
+
+**What to write.** Forward the call like the other RPCs, or extend `AbstractWorkflowServiceClient`,
+which inherits it from `WorkflowRpcMethods`. Both message classes are in `Temporal\Api\Workflowservice\V1`:
+
+```php
+public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $metadata = [], array $options = []): DescribeTaskQueueResponse
+{
+    return $this->call(__FUNCTION__, $request, DescribeTaskQueueResponse::class, $metadata, $options);
+}
+```
+
 ### The runtime ports take an `ExecutionId` too: projections, observers, lifecycle, transport (#682)
 
 **Who is affected**: an application that calls one of the thirteen interfaces below with a string
@@ -1000,7 +1018,7 @@ plays. Rector can do nothing here: only you know which branches the code still c
 
 ```php
 // The DEFAULT_VERSION branch is still in the code: say so.
-$version = $env->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+$version = $env->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
 ### `version()` no longer switches an in-flight execution
@@ -1107,7 +1125,7 @@ started before the change:
 
 ```php
 } catch (DurableActivityFailedException $e) {
-    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', ChangePoint::DEFAULT_VERSION, 1)
+    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1)
         ? 1                  // started before the upgrade: the history recorded attempt 1
         : $e->attempt();
 

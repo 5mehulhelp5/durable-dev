@@ -33,7 +33,7 @@ final class GraceWorkflow
     #[AsWorkflowMethod]
     public function run(WorkflowEnvironment $env): string
     {
-        $env->sleep(3600, 'grace period');
+        $env->sleep(3600, timerSummary: 'grace period');
 
         return 'done';
     }

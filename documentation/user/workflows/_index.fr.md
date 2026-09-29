@@ -72,7 +72,7 @@ s'imbrique dans un autre et, c'est ce qui compte le plus, un assemblage peut êt
 échéance.
 
 ```php
-$quotes = $env->await($env->some(3, ...$providers), Duration::seconds(2));
+$quotes = $env->await($env->some(3, ...$providers), deadline: Duration::seconds(2));
 ```
 
 `some()` ne compte que les membres qui **réussissent** : un fournisseur qui échoue ne rapproche pas
@@ -98,7 +98,7 @@ saga qui compense au dépassement compenserait aussi sur une réponse vide.
 use Gplanchat\Durable\Exception\DeadlineExceededException;
 
 try {
-    $quote = $env->await($activities->callProvider($orderId), Duration::seconds(30));
+    $quote = $env->await($activities->callProvider($orderId), deadline: Duration::seconds(30));
 } catch (DeadlineExceededException $e) {
     // Le fournisseur n'a pas répondu à temps. Chemin de compensation.
     // $e->deadline() est l'échéance écoulée, $e->awaited() ce qu'elle bornait.
@@ -122,7 +122,7 @@ réveille :
 $env->onSignal(OrderSignal::Approve, fn(array $p) => $this->approvals[] = $p);
 
 try {
-    $env->await(fn(): bool => [] !== $this->approvals, Duration::hours(1));
+    $env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1));
 } catch (DeadlineExceededException) {
     return $this->expire($orderId);
 }
@@ -137,7 +137,7 @@ plutôt que l'endroit où la closure est écrite : `waiting on signal approve` a
 la [page du tableau de bord](../dashboard/)).
 
 ```php
-$env->await(fn(): bool => [] !== $this->approvals, Duration::hours(1), label: 'signal approve');
+$env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1), label: 'signal approve');
 ```
 
 Le libellé est un texte d'affichage. Rien ne l'enregistre pendant que le workflow attend. Si l'échéance
@@ -178,7 +178,7 @@ final class OrderWorkflow
     /** @return array<string, mixed> */
     private function waitApproval(Duration $deadline): array
     {
-        $this->env->await(fn(): bool => [] !== $this->approvals, $deadline);
+        $this->env->await(fn(): bool => [] !== $this->approvals, deadline: $deadline);
 
         return array_shift($this->approvals);
     }

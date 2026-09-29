@@ -93,7 +93,7 @@ final class AwaitLabelTest extends TestCase
     {
         [$engine, $store] = self::engine();
         $workflow = static function (WorkflowEnvironment $wf) use ($label): void {
-            $wf->await(static fn(): bool => false, Duration::hours(1), label: $label);
+            $wf->await(static fn(): bool => false, deadline: Duration::hours(1), label: $label);
         };
         foreach (['start', 'resume'] as $pass) {
             try {

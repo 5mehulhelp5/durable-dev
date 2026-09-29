@@ -156,7 +156,7 @@ final class SideEffectSlotPresenceTest extends TestCase
         $after = static fn(WorkflowEnvironment $wf): array => [
             'first' => $wf->sideEffect(static fn(): mixed => null),
             // The old behaviour is still supported: the minimum is the original version.
-            'version' => $wf->version('change-1', ChangePoint::DEFAULT_VERSION, 3),
+            'version' => $wf->version('change-1', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 3),
             'second' => $wf->sideEffect(static fn(): string => 'after'),
         ];
 

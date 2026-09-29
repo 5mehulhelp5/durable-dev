@@ -70,7 +70,7 @@ final class ALoserCancellationTheJournalRefusesIsNotSwallowedTest extends TestCa
             });
             $wf->await(static function () use (&$ticks): bool {
                 return [] !== $ticks;
-            }, Duration::seconds(30));
+            }, deadline: Duration::seconds(30));
 
             return 'satisfied';
         });
