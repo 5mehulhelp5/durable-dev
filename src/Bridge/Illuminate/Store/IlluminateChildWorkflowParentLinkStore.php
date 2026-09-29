@@ -27,53 +27,48 @@ final class IlluminateChildWorkflowParentLinkStore implements ChildWorkflowParen
         private readonly string $table = 'durable_child_workflow_parent_link',
     ) {}
 
-    public function link(ExecutionId|string $childExecutionId, ExecutionId|string $parentExecutionId): void
+    public function link(ExecutionId $childExecutionId, ExecutionId $parentExecutionId): void
     {
-        $childExecutionId = (string) $childExecutionId;
-        $parentExecutionId = (string) $parentExecutionId;
         $this->schema->ensure();
 
         // Linking an already linked child **moves** it, it does not duplicate it: the primary key
         // is the child, and that is what conformance checks.
         $this->connection->table($this->table)->updateOrInsert(
-            ['child_execution_id' => $childExecutionId],
-            ['parent_execution_id' => $parentExecutionId],
+            ['child_execution_id' => $childExecutionId->toString()],
+            ['parent_execution_id' => $parentExecutionId->toString()],
         );
     }
 
-    public function getParentExecutionId(ExecutionId|string $childExecutionId): ?string
+    public function getParentExecutionId(ExecutionId $childExecutionId): ?ExecutionId
     {
-        $childExecutionId = (string) $childExecutionId;
         $this->schema->ensure();
 
         $parent = $this->connection->table($this->table)
-            ->where('child_execution_id', $childExecutionId)
+            ->where('child_execution_id', $childExecutionId->toString())
             ->value('parent_execution_id');
 
-        return null === $parent ? null : (string) $parent;
+        return null === $parent ? null : ExecutionId::fromString((string) $parent);
     }
 
-    public function getChildExecutionIdsForParent(ExecutionId|string $parentExecutionId): array
+    public function getChildExecutionIdsForParent(ExecutionId $parentExecutionId): array
     {
-        $parentExecutionId = (string) $parentExecutionId;
         $this->schema->ensure();
 
         return array_map(
-            static fn(mixed $id): string => (string) $id,
+            static fn(mixed $id): ExecutionId => ExecutionId::fromString((string) $id),
             $this->connection->table($this->table)
-                ->where('parent_execution_id', $parentExecutionId)
+                ->where('parent_execution_id', $parentExecutionId->toString())
                 ->pluck('child_execution_id')
                 ->all(),
         );
     }
 
-    public function unlink(ExecutionId|string $childExecutionId): void
+    public function unlink(ExecutionId $childExecutionId): void
     {
-        $childExecutionId = (string) $childExecutionId;
         $this->schema->ensure();
 
         $this->connection->table($this->table)
-            ->where('child_execution_id', $childExecutionId)
+            ->where('child_execution_id', $childExecutionId->toString())
             ->delete();
     }
 }

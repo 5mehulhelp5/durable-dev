@@ -14,6 +14,7 @@ use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\SideEffectRecorded;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -110,21 +111,21 @@ final class DbalStoresTest extends TestCase
     {
         $store = new DbalChildWorkflowParentLinkStore($this->connection, $this->schema());
 
-        self::assertNull($store->getParentExecutionId('child-1'));
+        self::assertNull($store->getParentExecutionId(ExecutionId::fromString('child-1')));
 
-        $store->link('child-1', 'parent-1');
-        $store->link('child-2', 'parent-1');
-        $store->link('child-3', 'parent-2');
+        $store->link(ExecutionId::fromString('child-1'), ExecutionId::fromString('parent-1'));
+        $store->link(ExecutionId::fromString('child-2'), ExecutionId::fromString('parent-1'));
+        $store->link(ExecutionId::fromString('child-3'), ExecutionId::fromString('parent-2'));
 
-        self::assertSame('parent-1', $store->getParentExecutionId('child-1'));
+        self::assertSame('parent-1', $store->getParentExecutionId(ExecutionId::fromString('child-1'))?->toString());
 
-        $children = $store->getChildExecutionIdsForParent('parent-1');
+        $children = array_map(strval(...), $store->getChildExecutionIdsForParent(ExecutionId::fromString('parent-1')));
         sort($children);
         self::assertSame(['child-1', 'child-2'], $children);
 
-        $store->unlink('child-1');
-        self::assertNull($store->getParentExecutionId('child-1'));
-        self::assertSame(['child-2'], $store->getChildExecutionIdsForParent('parent-1'));
+        $store->unlink(ExecutionId::fromString('child-1'));
+        self::assertNull($store->getParentExecutionId(ExecutionId::fromString('child-1')));
+        self::assertEquals([ExecutionId::fromString('child-2')], $store->getChildExecutionIdsForParent(ExecutionId::fromString('parent-1')));
     }
 
     public function testSchemaCreationIsIdempotentAcrossStores(): void
