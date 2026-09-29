@@ -216,9 +216,10 @@ jobs:
 
     laravel-bench:
         # The Laravel bench's probe (#360): `config/durable.php` → the core's Nexus registry → the
-        # handler, through the very method the Nexus worker calls. No cluster: the DSN names a
-        # closed port and nothing connects to it. The `laravel` job above tests the package; this
-        # one tests the application that installs it, from `laravel/`'s own lock.
+        # handler, through the very method the Nexus worker calls, with no cluster (the job's DSN
+        # names a closed port). Then the round trip (#666), against a dev server started below. The
+        # `laravel` job above tests the package; this one tests the application that installs it,
+        # from `laravel/`'s own lock.
         name: Laravel · bench, Nexus probe
         runs-on: ubuntu-latest
         timeout-minutes: 15
@@ -252,6 +253,26 @@ jobs:
             - name: Probe — the bench serves delivery/schedule and delivery/ship
               working-directory: laravel
               run: php probe-nexus.php
+
+            # #666: the same two operations, now served by artisan's workers to the root's demo harness
+            # on a start-dev server. It needs the root's vendor/ and Durable's search attributes, which
+            # the bench writes on every start.
+            - name: Composer install (root, for the demo harness)
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Start a Temporal dev server
+              run: |
+                  docker run -d --name temporal-dev -p 7233:7233 temporalio/temporal:1.9.1 \
+                    server start-dev --ip 0.0.0.0 --port 7233 --namespace durable-test --headless \
+                    --search-attribute DurableWorkflowName=Keyword --search-attribute DurableExecutionId=Keyword
+                  timeout 60 bash -c 'until nc -z 127.0.0.1 7233; do sleep 1; done'
+
+            - name: PHPUnit — the bench serves delivery against a server
+              working-directory: laravel
+              timeout-minutes: 10
+              env:
+                  DURABLE_DSN: 'temporal://127.0.0.1:7233?namespace=durable-test&nexus_task_queue=laravel-bench-nexus&workflow_task_queue=laravel-bench-workflows&tls=0'
+              run: vendor/bin/phpunit --testdox --fail-on-skipped
 
     sylius-shop:
         # The only check in the repository that really renders a page. Everything else proves the
@@ -323,6 +344,28 @@ jobs:
               env:
                   APP_ENV: test
               run: vendor/bin/phpunit tests/Functional
+
+            # #665: the shop serves stock and calls billing through its own workers, with the root's
+            # demo harness on the other side: the root's vendor/ for the harness, and a start-dev
+            # server, since serving Nexus needs one with Nexus on.
+            - name: Composer install (root, for the demo harness)
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Start a Temporal dev server
+              run: |
+                  docker run -d --name temporal-dev -p 7233:7233 temporalio/temporal:1.9.1 \
+                    server start-dev --ip 0.0.0.0 --port 7233 --namespace durable-test --headless
+                  timeout 60 bash -c 'until nc -z 127.0.0.1 7233; do sleep 1; done'
+
+            # Its own database, shared by the demo and demo_caller profiles as in demo/run.sh; the
+            # test creates the schema and the stock it reserves.
+            - name: PHPUnit — the shop serves and calls Nexus operations
+              working-directory: sylius
+              timeout-minutes: 10
+              env:
+                  DURABLE_TEMPORAL_DSN: 'temporal://127.0.0.1:7233?namespace=durable-test&nexus_task_queue=shop-bench-nexus&tls=0'
+                  DATABASE_URL: 'mysql://root@127.0.0.1/sylius_nexus?serverVersion=8&charset=utf8mb4'
+              run: vendor/bin/phpunit --group nexus-bench --fail-on-skipped tests/Integration
 
     magento-matrix:
         # The counterpart of the Symfony matrix, for the other foreign-container host. Same
@@ -609,6 +652,34 @@ jobs:
                   cat /tmp/run.html; tail -n 50 /tmp/httpd.log; tail -n 50 /tmp/temporal.log
                   exit 1
                 fi
+
+            # #667: Magento calls the three demo services through Nexus. The root's demo harness serves
+            # them on the same dev server and namespace, over curl as everything in this job; the
+            # bench's journal worker advances OrderNexusWorkflow.
+            - name: The demo harness serves stock, billing and delivery
+              timeout-minutes: 2
+              run: |
+                  php tests/integration/Temporal/nexus-demo-harness.php 127.0.0.1:7233 default --transport=grpc-curl > /tmp/harness.log 2>&1 &
+                  harness=$!
+                  # Fails at once if the harness dies before it is ready, rather than after the minute.
+                  timeout 60 bash -c "until grep -qx ready /tmp/harness.log; do kill -0 $harness 2>/dev/null || exit 1; sleep 1; done" || { cat /tmp/harness.log; exit 1; }
+
+            # durable:demo:nexus exits non-zero unless the order was shipped; the order of the calls is
+            # read from the run's history, not from the command's output.
+            - name: Magento calls verify, schedule, reserve, then charge and ship
+              working-directory: magento
+              timeout-minutes: 5
+              run: |
+                  bin/magento durable:worker --role=journal > /tmp/magento-worker.log 2>&1 &
+                  order="MAG-NX-${GITHUB_RUN_ID}"
+                  if ! timeout 180 bin/magento durable:demo:nexus "$order" 1200 MUG_BLUE=1 --timeout=150; then
+                    tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness.log; exit 1
+                  fi
+                  calls=$(temporal workflow show --namespace default -w "durable-${order}" -o json \
+                    | jq -r '[.events[] | select(.eventType == "EVENT_TYPE_NEXUS_OPERATION_SCHEDULED") | .nexusOperationScheduledEventAttributes | "\(.service)/\(.operation)"] | join(" ")')
+                  echo "calls: $calls"
+                  test "$calls" = 'billing/verify delivery/schedule stock/reserve billing/charge delivery/ship' \
+                    || { tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness.log; exit 1; }
 
     static-analysis:
         # Was the required status check on `main` until 2026-09-16; `ci-ok` below is now. Its steps

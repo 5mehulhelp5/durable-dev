@@ -116,7 +116,7 @@ $winner = $this->environment->await(
         $this->quotes->callProvider($orderId),
         $this->quotes->callFallbackProvider($orderId),
     ),
-    Duration::seconds(30),
+    deadline: Duration::seconds(30),
 );
 ```
 

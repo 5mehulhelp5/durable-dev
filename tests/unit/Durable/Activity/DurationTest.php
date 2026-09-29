@@ -44,7 +44,7 @@ final class DurationTest extends TestCase
         $from = new \DateTimeImmutable('2026-01-01 12:00:00');
         $deadline = new \DateTimeImmutable('2026-01-01 12:01:30');
 
-        self::assertSame(90.0, Duration::until($deadline, $from)->toSeconds());
+        self::assertSame(90.0, Duration::until($deadline, from: $from)->toSeconds());
     }
 
     public function testBoundaryCoercionAcceptsWhatTheCallerHas(): void

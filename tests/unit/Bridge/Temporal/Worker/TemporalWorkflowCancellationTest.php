@@ -21,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\ActivityType;
 use Temporal\Api\Enums\V1\CommandType;
 use Temporal\Api\Enums\V1\EventType;
+use Temporal\Api\History\V1\ActivityTaskCanceledEventAttributes;
+use Temporal\Api\History\V1\ActivityTaskCancelRequestedEventAttributes;
 use Temporal\Api\History\V1\ActivityTaskScheduledEventAttributes;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\MarkerRecordedEventAttributes;
@@ -119,8 +121,8 @@ final class TemporalWorkflowCancellationTest extends TestCase
     public function testDeliveryIsRecordedAndReplaysAsTheSameFailure(): void
     {
         // The Temporal history does not carry the reason for an operation cancellation: without
-        // a marker, an ACTIVITY_TASK_CANCELED would be read back as an ActivitySupersededException
-        // and the workflow's catch would no longer match at replay.
+        // a marker, an ACTIVITY_TASK_CANCELED would be read back as a race loser, unsettled, and
+        // the workflow's catch would no longer match at replay.
         $history = TemporalExecutionHistory::fromEvents([
             $this->activityScheduled(17, 'act-7', 'charge'),
             $this->cancelRequestedEvent('operator'),
@@ -153,6 +155,25 @@ final class TemporalWorkflowCancellationTest extends TestCase
         self::assertTrue($replayed->cancellationAlreadyDelivered());
         $slot = $replayed->findActivitySlotResult(0);
         self::assertInstanceOf(WorkflowCancelledFailure::class, $slot?->failed);
+
+        // As a real server records it: the activity's own cancellation follows the marker. The
+        // marker takes priority over the race-loser rule (#681), or the compensation is lost.
+        $withActivityCancel = TemporalExecutionHistory::fromEvents([
+            $this->activityScheduled(17, 'act-7', 'charge'),
+            $this->cancelRequestedEvent('operator'),
+            $this->markerRecorded(21, $marker->getMarkerName(), $marker->getDetails()),
+            new HistoryEvent([
+                'event_id' => 22,
+                'event_type' => EventType::EVENT_TYPE_ACTIVITY_TASK_CANCEL_REQUESTED,
+                'activity_task_cancel_requested_event_attributes' => new ActivityTaskCancelRequestedEventAttributes(['scheduled_event_id' => 17]),
+            ]),
+            new HistoryEvent([
+                'event_id' => 23,
+                'event_type' => EventType::EVENT_TYPE_ACTIVITY_TASK_CANCELED,
+                'activity_task_canceled_event_attributes' => new ActivityTaskCanceledEventAttributes(['scheduled_event_id' => 17]),
+            ]),
+        ]);
+        self::assertInstanceOf(WorkflowCancelledFailure::class, $withActivityCancel->findActivitySlotResult(0)?->failed);
     }
 
     public function testADeliveryOnAConditionCountsAsDeliveredAndIsPlacedInTheHistory(): void

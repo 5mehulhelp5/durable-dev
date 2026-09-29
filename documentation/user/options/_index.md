@@ -42,7 +42,7 @@ It also accepts native and Carbon values, without depending on Carbon:
 Duration::of(new DateInterval('PT90S'));          // CarbonInterval extends DateInterval
 Duration::of(CarbonInterval::minutes(5));
 Duration::until($deadline);                       // Carbon implements DateTimeInterface
-Duration::until($deadline, $from);
+Duration::until($deadline, from: $from);
 Duration::from($anything);                        // Duration|DateInterval|DateTimeInterface|int|float
 $duration->toDateInterval();
 ```

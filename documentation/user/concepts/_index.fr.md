@@ -219,7 +219,7 @@ Une chaîne nue reste acceptée, et doit l'être : un signal peut arriver de `cu
 >
 > // Après
 > $env->onSignal(OrderSignal::Approve, fn(array $p) => $this->approvals[] = $p);
-> $env->await(fn(): bool => [] !== $this->approvals, Duration::hours(1));
+> $env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1));
 > $approval = array_shift($this->approvals);
 > ```
 >

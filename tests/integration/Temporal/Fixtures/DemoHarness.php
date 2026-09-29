@@ -101,7 +101,7 @@ final class DemoHarness
         // One operation, for `--call`: what the bench under test serves, with the bench's own data.
         // Bounded: an operation nobody serves would otherwise keep the caller waiting forever.
         $registry->registerFactory('DemoHarnessCall', static fn(array $input) => static fn(WorkflowEnvironment $env): mixed => $env->await(
-            $env->nexusOperation($input['endpoint'], $input['service'], $input['operation'], $input['payload'], new NexusOperationTimeouts(scheduleToClose: Duration::seconds(90))),
+            $env->nexusOperation($input['endpoint'], $input['service'], $input['operation'], payload: $input['payload'], timeouts: new NexusOperationTimeouts(scheduleToClose: Duration::seconds(90))),
         ));
 
         // The caller a bench's workflow would be: stubs on the contracts, one per endpoint.

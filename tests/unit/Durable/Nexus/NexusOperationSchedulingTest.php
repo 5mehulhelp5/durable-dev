@@ -124,7 +124,7 @@ final class NexusOperationSchedulingTest extends TestCase
 
         // Raw strings on the way in: boundary coercion is what makes the call writable without
         // importing three classes, and without giving up validation.
-        $awaitable = $environment->nexusOperation('billing-endpoint', 'billing', 'charge', ['amount' => 10]);
+        $awaitable = $environment->nexusOperation('billing-endpoint', 'billing', 'charge', payload: ['amount' => 10]);
 
         self::assertInstanceOf(NexusOperationAwaitable::class, $awaitable);
         self::assertCount(1, $this->scheduled);
@@ -158,8 +158,8 @@ final class NexusOperationSchedulingTest extends TestCase
             NexusEndpoint::named('billing-endpoint'),
             NexusService::named('billing'),
             NexusOperationName::named('charge'),
-            ['amount' => 10],
-            NexusOperationTimeouts::none(),
+            payload: ['amount' => 10],
+            timeouts: NexusOperationTimeouts::none(),
         );
 
         self::assertInstanceOf(NexusOperationAwaitable::class, $awaitable);

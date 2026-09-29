@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace integration\Temporal\Http;
 
+use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
@@ -117,6 +118,26 @@ final class JsonGatewayRoundTripTest extends TestCase
             self::fail('Describing an unknown execution must fail.');
         } catch (\RuntimeException $e) {
             self::assertSame(5, $e->getCode(), $e->getMessage());
+        }
+    }
+
+    /**
+     * The one GET route whose query carries an enum (the queue type): the gateway must read it,
+     * or it describes the wrong queue without a word.
+     */
+    public function testATaskQueueNobodyServesIsDescribedOverJson(): void
+    {
+        $unserved = new TemporalConnection(
+            target: $this->connection->target,
+            namespace: $this->connection->namespace,
+            workflowTaskQueue: 'json-gateway-unserved-' . bin2hex(random_bytes(6)),
+            activityTaskQueue: 'json-gateway-unserved-' . bin2hex(random_bytes(6)),
+            transport: TemporalConnection::TRANSPORT_HTTP,
+        );
+
+        foreach ((new TemporalTaskQueueProbe($this->client, $unserved))->describe() as $queue) {
+            self::assertNull($queue->error, $queue->kind->value);
+            self::assertSame(0, $queue->pollers, $queue->kind->value);
         }
     }
 }
