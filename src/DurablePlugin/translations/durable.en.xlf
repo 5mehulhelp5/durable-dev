@@ -6,7 +6,7 @@
             <trans-unit id="dashboard.title"><source>dashboard.title</source><target>Durable Workflow Dashboard</target></trans-unit>
             <trans-unit id="dashboard.intro"><source>dashboard.intro</source><target>Observe workflow runs, outcomes and recorded history from the Sylius back-office.</target></trans-unit>
             <trans-unit id="dashboard.backend_checked"><source>dashboard.backend_checked</source><target>%name% · checked at %time%</target></trans-unit>
-            <trans-unit id="dashboard.worker_polling"><source>dashboard.worker_polling</source><target>%role% worker: %count% poller(s)</target></trans-unit>
+            <trans-unit id="dashboard.worker_polling"><source>dashboard.worker_polling</source><target>The %role% worker is polling.</target></trans-unit>
             <trans-unit id="dashboard.worker_missing"><source>dashboard.worker_missing</source><target>No %role% worker has polled in %seconds% seconds: executions stop at their first %role% task. Start bin/console durable:worker --role=%role%.</target></trans-unit>
             <trans-unit id="dashboard.worker_unknown"><source>dashboard.worker_unknown</source><target>Could not ask the backend whether a %role% worker polls: %error%</target></trans-unit>
             <trans-unit id="dashboard.outcomes_heading"><source>dashboard.outcomes_heading</source><target>Outcomes across the %count% runs on this page</target></trans-unit>

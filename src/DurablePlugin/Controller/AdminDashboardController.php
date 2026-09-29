@@ -98,7 +98,9 @@ final class AdminDashboardController
 
     /**
      * A missing worker fails nothing: executions stop at their first task of its kind, and the list
-     * alone looks healthy. Asked only of a backend that answers.
+     * alone looks healthy. Asked only of a backend that answers, and only on the list page: the run
+     * page is about one run. Uncached, like Magento's banner: a cluster that answers the health
+     * check and then hangs costs one 5 s probe per role on this render.
      *
      * @param array<string, mixed> $backend
      *

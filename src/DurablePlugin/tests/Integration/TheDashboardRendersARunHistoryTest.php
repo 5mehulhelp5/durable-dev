@@ -190,6 +190,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         ]);
 
         self::assertStringContainsString('durable:worker --role=activity', $page);
+        self::assertStringContainsString('workflow worker is polling', $page);
         self::assertStringNotContainsString('--role=workflow', $page);
         self::assertStringContainsString('alert-danger', $page);
     }
@@ -198,6 +199,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
     {
         $page = $this->renderWorkers([['role' => 'activity', 'pollers' => 0, 'polling' => false, 'error' => 'deadline exceeded', 'seconds' => 120]], 'fr');
 
+        self::assertStringContainsString('Impossible de demander au backend', $page);
         self::assertStringContainsString('deadline exceeded', $page);
         self::assertStringNotContainsString('--role=', $page);
         self::assertStringNotContainsString('alert-danger', $page);
