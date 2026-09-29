@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\DurableBundle\DependencyInjection;
 
+use Gplanchat\Durable\Bundle\DataCollector\DurableDataCollector;
 use Gplanchat\Durable\Bundle\DependencyInjection\DurableExtension;
+use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -93,12 +95,75 @@ final class DurableContainerSurfaceTest extends TestCase
     }
 
     /**
+     * Every backend, the profiler on and off.
+     *
+     * @return iterable<string, array{0: array<string, mixed>, 1: bool}>
+     */
+    public static function everyBackend(): iterable
+    {
+        $dsn = 'temporal://127.0.0.1:7233?namespace=default&tls=0';
+        $backends = [
+            'in_memory' => ['backend' => 'in_memory'],
+            'in_memory, Messenger activity transport' => ['backend' => 'in_memory', 'activity_transport' => ['type' => 'messenger']],
+            'dbal, Messenger activity transport' => ['backend' => 'dbal', 'activity_transport' => ['type' => 'messenger']],
+            'dbal' => ['backend' => 'dbal'],
+            'dbal, legacy keys' => ['event_store' => ['type' => 'dbal'], 'workflow_metadata' => ['type' => 'dbal']],
+            'dbal journal, in-memory metadata' => ['event_store' => ['type' => 'dbal']],
+            'temporal' => ['backend' => 'temporal', 'temporal' => ['dsn' => $dsn]],
+            'dbal with a Temporal DSN' => ['backend' => 'dbal', 'temporal' => ['dsn' => $dsn]],
+        ];
+        foreach ($backends as $backend => $config) {
+            yield $backend . ', profiler on' => [$config, true];
+            yield $backend . ', profiler off' => [$config, false];
+        }
+    }
+
+    /**
+     * The public surface is what the user documentation names and what the shipped
+     * `DurableBundleTestTrait` fetches, nothing more (#342, decided 2026-09-29). Everything else is
+     * reached by autowiring its interface or class, which stays an alias.
+     *
      * @param array<string, mixed> $config
      */
-    private function load(array $config): ContainerBuilder
+    #[\PHPUnit\Framework\Attributes\DataProvider('everyBackend')]
+    public function testOnlyTheDocumentedSurfaceIsPublic(array $config, bool $profiler): void
+    {
+        $container = $this->load($config, $profiler);
+
+        $public = [];
+        foreach ($container->getDefinitions() as $id => $definition) {
+            if ($definition->isPublic() && 'service_container' !== $id) {
+                $public[] = $id;
+            }
+        }
+        foreach ($container->getAliases() as $id => $alias) {
+            if ($alias->isPublic()) {
+                $public[] = $id;
+            }
+        }
+        sort($public);
+
+        $expected = [
+            EventStoreInterface::class,
+            WorkflowRunCatalogInterface::class,
+            WorkflowResumeDispatcher::class,
+            WorkflowMetadataStore::class,
+        ];
+        if ($profiler) {
+            $expected[] = DurableDataCollector::class;
+        }
+        sort($expected);
+
+        self::assertSame($expected, $public);
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    private function load(array $config, bool $debug = false): ContainerBuilder
     {
         $container = new ContainerBuilder();
-        $container->setParameter('kernel.debug', false);
+        $container->setParameter('kernel.debug', $debug);
         (new DurableExtension())->load([$config], $container);
 
         return $container;

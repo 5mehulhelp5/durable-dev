@@ -82,6 +82,8 @@ final class AsWorkflowAutoconfigurationTest extends TestCase
         $container = new ContainerBuilder();
         $container->setParameter('kernel.debug', false);
         (new DurableExtension())->load([[]], $container);
+        // Private since #342: kept public here so that compiling leaves the registry under its alias.
+        $container->getAlias(WorkflowRegistry::class)->setPublic(true);
 
         // What FrameworkExtension provides and this synthetic container lacks: the default bus,
         // referenced by the resume dispatcher.
