@@ -32,7 +32,7 @@ final class AwaitableCompositionTest extends TestCase
         $result = $env->run(
             static fn(WorkflowEnvironment $wf): mixed => $wf->await(
                 $wf->all($wf->activityStub(SuiteActivities::class)->fast(), $wf->activityStub(SuiteActivities::class)->slow()),
-                Duration::hours(1),
+                deadline: Duration::hours(1),
             ),
             'compose-1',
         );
@@ -110,7 +110,7 @@ final class AwaitableCompositionTest extends TestCase
             $env->run(
                 static fn(WorkflowEnvironment $wf): mixed => $wf->await(
                     $wf->all($wf->timer(Duration::hours(1)), $wf->timer(Duration::hours(2))),
-                    Duration::seconds(0.0),
+                    deadline: Duration::seconds(0.0),
                 ),
                 'compose-3',
             );

@@ -44,7 +44,7 @@ final class WorkflowDeadlineTest extends TestCase
         $env = WorkflowTestEnvironment::inMemory(['fast' => static fn(): string => 'answer']);
 
         $result = $env->run(
-            static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->fast(), Duration::hours(1)),
+            static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->fast(), deadline: Duration::hours(1)),
             'deadline-1',
         );
 
@@ -60,7 +60,7 @@ final class WorkflowDeadlineTest extends TestCase
         $env = WorkflowTestEnvironment::inMemory(['empty' => static fn(): mixed => null]);
 
         $result = $env->run(
-            static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->emptyResult(), Duration::hours(1)),
+            static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->emptyResult(), deadline: Duration::hours(1)),
             'deadline-2',
         );
 
@@ -73,7 +73,7 @@ final class WorkflowDeadlineTest extends TestCase
 
         $result = $env->run(static function (WorkflowEnvironment $wf): string {
             try {
-                $wf->await($wf->timer(Duration::hours(2)), Duration::seconds(30));
+                $wf->await($wf->timer(Duration::hours(2)), deadline: Duration::seconds(30));
 
                 return 'settled';
             } catch (DeadlineExceededException $e) {
@@ -99,7 +99,7 @@ final class WorkflowDeadlineTest extends TestCase
             try {
                 $wf->await(static function () use (&$approvals): bool {
                     return [] !== $approvals;
-                }, Duration::hours(1));
+                }, deadline: Duration::hours(1));
 
                 return 'approved';
             } catch (DeadlineExceededException) {
@@ -118,7 +118,7 @@ final class WorkflowDeadlineTest extends TestCase
     {
         $store = new InMemoryEventStore();
         $engine = $this->engine($store);
-        $handler = static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->slow(), Duration::seconds(30));
+        $handler = static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->slow(), deadline: Duration::seconds(30));
 
         try {
             $engine->start('deadline-4', $handler);
@@ -142,7 +142,7 @@ final class WorkflowDeadlineTest extends TestCase
     {
         $store = new InMemoryEventStore();
         $engine = $this->engine($store);
-        $handler = static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->slow(), Duration::seconds(30));
+        $handler = static fn(WorkflowEnvironment $wf): mixed => $wf->await($wf->activityStub(SuiteActivities::class)->slow(), deadline: Duration::seconds(30));
 
         try {
             $engine->start('deadline-5', $handler);
@@ -233,7 +233,7 @@ final class WorkflowDeadlineTest extends TestCase
             };
 
             try {
-                $wf->await($pending, Duration::seconds(30));
+                $wf->await($pending, deadline: Duration::seconds(30));
 
                 return ['unexpected'];
             } catch (DeadlineExceededException) {
@@ -280,7 +280,7 @@ final class WorkflowDeadlineTest extends TestCase
             try {
                 $wf->await(static function () use (&$approvals): bool {
                     return [] !== $approvals;
-                }, Duration::seconds(30));
+                }, deadline: Duration::seconds(30));
 
                 return ['signal', array_shift($approvals)];
             } catch (DeadlineExceededException) {
