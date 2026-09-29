@@ -80,6 +80,8 @@ final class ActivityHandlersAreLazyTest extends TestCase
         $container->setParameter('kernel.debug', false);
         (new DurableExtension())->load([[]], $container);
         $container->register('messenger.default_bus', \stdClass::class)->setPublic(true);
+        // Private since #342; this test fetches it, the way an application's compiler pass would.
+        $container->getAlias(ActivityExecutor::class)->setPublic(true);
 
         foreach ([FirstHandler::class, SecondHandler::class] as $class) {
             $container->register($class, $class)->setAutoconfigured(true)->setPublic(false);

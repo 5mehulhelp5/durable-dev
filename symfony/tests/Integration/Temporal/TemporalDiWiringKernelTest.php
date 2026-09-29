@@ -10,6 +10,8 @@ use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
  * Verifies that the Temporal DI wiring is correct when DURABLE_DSN is configured.
@@ -32,13 +34,19 @@ final class TemporalDiWiringKernelTest extends KernelTestCase
      *
      * Note: in the 'dev' env, framework.test is not active, so self::getContainer() (which requires
      * test.service_container) is not available. We use self::$kernel->getContainer() instead,
-     * which only gives access to the public services — enough for our check.
+     * which only gives access to the public services. The workers are private since #342, so the
+     * kernel makes them public the way UPGRADE.md tells an application to.
      */
     protected static function createKernel(array $options = []): \Symfony\Component\HttpKernel\KernelInterface
     {
         $options['environment'] ??= 'dev';
 
         return parent::createKernel($options);
+    }
+
+    protected static function getKernelClass(): string
+    {
+        return TemporalWorkersPublicKernel::class;
     }
 
     public static function setUpBeforeClass(): void
@@ -62,7 +70,7 @@ final class TemporalDiWiringKernelTest extends KernelTestCase
 
         self::assertTrue(
             $container->has('durable.temporal.activity_worker'),
-            'The public durable.temporal.activity_worker service must be registered in the '
+            'The durable.temporal.activity_worker service must be registered in the '
             . 'dev env. Check DurableExtension::registerTemporalMirrorInfrastructure().',
         );
     }
@@ -95,7 +103,7 @@ final class TemporalDiWiringKernelTest extends KernelTestCase
 
         self::assertTrue(
             $container->has('durable.temporal.nexus_worker'),
-            'The public durable.temporal.nexus_worker service must be registered in the dev env.',
+            'The durable.temporal.nexus_worker service must be registered in the dev env.',
         );
         self::assertInstanceOf(
             TemporalNexusWorker::class,
@@ -119,5 +127,21 @@ final class TemporalDiWiringKernelTest extends KernelTestCase
             ['durable_workflows', 'durable_activities', 'durable_nexus'],
             json_decode($tester->getDisplay(), true, 512, \JSON_THROW_ON_ERROR)['uncountable_transports'] ?? [],
         );
+    }
+}
+
+/**
+ * The bench's kernel, with the two workers this test fetches made public: an application that
+ * still pulls a bundle service from the container does the same (UPGRADE.md, #342).
+ */
+final class TemporalWorkersPublicKernel extends \App\Kernel implements CompilerPassInterface
+{
+    public function process(ContainerBuilder $container): void
+    {
+        foreach (['durable.temporal.activity_worker', 'durable.temporal.nexus_worker'] as $id) {
+            if ($container->hasDefinition($id)) {
+                $container->getDefinition($id)->setPublic(true);
+            }
+        }
     }
 }
