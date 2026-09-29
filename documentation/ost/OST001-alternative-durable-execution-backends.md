@@ -147,10 +147,10 @@ That is very likely the cheapest path to "durable execution in production withou
 
 ## 6. PHP ecosystem — where Durable stands
 
-- **`durable-workflow/workflow`** (ex `laravel-workflow/laravel-workflow`) — durable execution on Laravel queues, explicitly inspired by Temporal and Azure Durable Functions, `yield` as the checkpoint. No server. 1 000+ stars. This is Durable's closest competitor in PHP, and it validates the class-C thesis above: its selling point is precisely "no cluster".
+- **`durable-workflow/workflow`** (ex `laravel-workflow/laravel-workflow`) — Durable's closest competitor in PHP, explicitly inspired by Temporal and Azure Durable Functions, 1 200+ stars. Up to 1.x it was durable execution on Laravel queues, `yield` as the checkpoint, no server, which validated the class-C thesis above: its selling point was precisely "no cluster". **2.0 (2026-09-01) widened it into a platform**: straight-line workflow methods backed by Fibers, and three deployment modes — embedded in a Laravel application (the 1.x model), a standalone Durable Workflow Server (itself a Laravel application, on SQLite, MySQL or PostgreSQL plus Redis), and a managed Durable Workflow Cloud — with first-party PHP, Python and Rust SDKs speaking Avro to that server. It is a Temporal *alternative*, not a Temporal client.
 - **`keepsuit/laravel-temporal`** — Laravel wrapper over the official Temporal PHP SDK, i.e. RoadRunner-based. Out of scope under **DUR006** as a matter of project policy, not merit.
 
-Durable's differentiator remains: **Symfony-native, no RoadRunner, no official SDK dependency**. Nothing surveyed occupies that square.
+"No RoadRunner, Fibers rather than generators" is no longer a differentiator on its own: Durable Workflow 2.0 has both. What still nobody surveyed occupies is **Temporal itself as a backend without the official SDK** — history the Temporal UI and the other SDKs read, Nexus included — **and the same workflow class across Symfony, Sylius, Magento and Laravel**.
 
 ---
 

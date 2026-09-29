@@ -220,14 +220,18 @@ worker. Activities and resumes are jobs; a timer is a deferred resume on the que
 ### It is not a durable engine for Laravel, and that square is taken
 
 [`durable-workflow/workflow`](https://github.com/durable-workflow/workflow), formerly
-`laravel-workflow/laravel-workflow`, is durable execution **on Laravel queues**: `yield` as the
-checkpoint, its own storage, no server, explicitly inspired by Temporal and Azure Durable Functions,
-a thousand stars and more. It is good at what it does, and if an engine on your existing queue is
+`laravel-workflow/laravel-workflow`, is durable execution **on Laravel queues**, with its own
+storage, explicitly inspired by Temporal and Azure Durable Functions, more than a thousand stars.
+Since 2.0 it writes workflows as straight-line methods on Fibers, and it runs embedded in your
+application, on its own standalone server, or on its managed Cloud, with PHP, Python and Rust SDKs.
+It ships a monitoring UI, Waterline. It is good at what it does, and if a Laravel-first engine is
 what you want, take it.
 
-What this package sells is the **backend choice**: the same workflow code against a Temporal cluster
-*or* against one SQL database, and a mixed Symfony / Sylius / Laravel estate sharing a single engine.
-A workflow class written for `gplanchat/durable-bundle` runs here unmodified. That is the whole
+What this package sells is a **different backend choice**: the same workflow code against a
+Temporal cluster — Temporal Cloud and Nexus included, with a history the Temporal UI reads — *or*
+against the SQL connection your application already owns, so the journal append and the business
+write share one transaction. And a mixed Symfony / Sylius / Laravel estate shares a single engine:
+a workflow class written for `gplanchat/durable-bundle` runs here unmodified. That is the whole
 claim, and it is the one the other package does not make.
 
 Two neighbouring names on Packagist deserve the sentence rather than the hope that nobody notices.
