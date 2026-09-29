@@ -65,10 +65,12 @@ final class AChildStartsAtItsParentsVirtualTimeTest extends TestCase
             return $wf->await($wf->childWorkflowStub(ChildThatRetries::class)->run());
         });
 
+        // The retry is stamped on, and dequeued against, the transport's (real) clock. Had the
+        // child's queue run on the virtual clock an hour ahead, the drain would see the retry as
+        // due while dequeue() handed nothing out, and the run would end as budget exhausted.
         self::assertSame('done', $result);
         self::assertSame(2, $attempts);
-        // The retry is stamped on the transport's (real) clock: the child waits its backoff out,
-        // rather than finding it due at once on a virtual clock an hour ahead.
+        // The backoff itself is still waited out.
         self::assertGreaterThanOrEqual(0.2, ((float) (hrtime(true) - $startedAt)) / 1e9);
     }
 

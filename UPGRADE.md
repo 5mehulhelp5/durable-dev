@@ -1209,7 +1209,7 @@ child now starts at the parent's virtual now, and its activity queue keeps the t
 and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
 migrate.
 
-### In-memory runner: a timer due during an activity's backoff wins `any()`, as on Temporal (#653)
+### In-memory runner: a timer due during an activity's backoff wins `any()` (#653)
 
 **Who is affected**: a workflow run by `InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`,
 `DurableTestCase` and Magento's memory backend) that races a retrying activity against a timer.
@@ -1217,10 +1217,14 @@ migrate.
 The drain used to run every remaining attempt of a retrying activity before it fired a timer, so
 in `any(activity, timer)` the activity won even when the timer fell due during its backoff. The
 drain now waits only until that timer is due, fires it and resumes the workflow before the next
-attempt. The timer wins, the activity is cancelled and its queued retry removed: the history
-reads `TimerCompleted ActivityCancelled`, where it read `ActivityCompleted TimerCompleted`. An
-attempt that is running is never cut short, and the virtual clock still never follows the wall
-clock on its own, so a timer shorter than a slow attempt that succeeds does not win.
+attempt. The timer wins, as it does on Temporal, the activity is cancelled and its queued retry
+removed: the history reads `TimerCompleted ActivityCancelled`, where it read
+`ActivityCompleted TimerCompleted`.
+
+One difference with Temporal remains. On Temporal, the server's clock runs during an attempt, so
+a timer shorter than a slow attempt that succeeds wins. Here an attempt that is running is never
+cut short, and the virtual clock never follows the wall clock on its own: that timer does not
+win, and the history reads `ActivityCompleted TimerCancelled`.
 
 **What to do**: a test that expected the retrying activity to win now sees the timer win, as it
 would on Temporal. Update its expectation. No Rector rule: this is a behaviour change, not an
