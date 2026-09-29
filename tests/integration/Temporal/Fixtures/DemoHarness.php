@@ -96,6 +96,11 @@ final class DemoHarness
             'tracking' => 'TRK-' . $input['order'],
         ]);
 
+        // One operation, for `--call`: what the bench under test serves, with the bench's own data.
+        $registry->registerFactory('DemoHarnessCall', static fn(array $input) => static fn(WorkflowEnvironment $env): mixed => $env->await(
+            $env->nexusOperation($input['endpoint'], $input['service'], $input['operation'], $input['payload']),
+        ));
+
         // The caller a bench's workflow would be: stubs on the contracts, one per endpoint.
         $registry->registerFactory('DemoHarnessCaller', static fn(array $input) => static function (WorkflowEnvironment $env) use ($input): array {
             $prefix = (string) ($input['prefix'] ?? '');
