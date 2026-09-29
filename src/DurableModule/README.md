@@ -123,7 +123,7 @@ An observer that hands the execution to Temporal and returns:
 $this->runtimeFactory->workflowClient()->startAsync(
     PlaceOrder::class,
     ['orderId' => $order->getIncrementId()],
-    'order-' . $order->getIncrementId(),
+    ExecutionId::fromString('order-' . $order->getIncrementId()),
 );
 ```
 
