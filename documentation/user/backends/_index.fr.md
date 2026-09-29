@@ -278,10 +278,11 @@ d'`ext-grpc`. Voir **DUR030**.
 ### Configuration
 
 Donnez au journal une connexion à lui. Partager celle de l'application est fortement déconseillé
-(DUR054) : les transactions de Durable s'imbriquent alors dans les transactions métier. Un worker qui démarre avec le journal sur la
-connexion par défaut de l'application l'écrit dans un avertissement. Mieux encore : faites pointer
-cette connexion vers une base (ou un schéma) et un utilisateur SQL propres à Durable, pour que le
-code métier ne puisse pas du tout atteindre les tables du journal.
+(DUR054) : les transactions de Durable s'imbriquent alors dans les transactions métier. Un worker
+qui démarre avec le journal sur la connexion par défaut de l'application le signale par un
+avertissement dans les logs. Mieux encore : faites pointer cette connexion vers une base (ou un
+schéma) et un utilisateur SQL propres à Durable, pour que le code métier ne puisse pas du tout
+atteindre les tables du journal.
 
 ```yaml
 # config/packages/doctrine.yaml — le journal sur une connexion à lui

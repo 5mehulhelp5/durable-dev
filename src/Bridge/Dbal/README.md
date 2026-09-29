@@ -54,11 +54,10 @@ journal uses — rows and gRPC journal items share one shape.
 
 ## Configuration
 
-Give the journal a connection of its own (DUR054): on the application's, Durable's transactions
-nest inside business ones. A worker that starts with the journal on the
-application's default connection logs a warning saying so. Better still, point that connection at
-a database (or a schema) and a database user of Durable's own, so that business code cannot reach
-the journal's tables at all.
+Give the journal a connection of its own (DUR054): on the application's, Durable's transactions nest
+inside business ones. A worker that starts with the journal on the application's default connection
+logs a warning saying so. Better still, point that connection at a database (or a schema) and a
+database user of Durable's own, so that business code cannot reach the journal's tables at all.
 
 ```yaml
 # config/packages/doctrine.yaml — the journal on a connection of its own

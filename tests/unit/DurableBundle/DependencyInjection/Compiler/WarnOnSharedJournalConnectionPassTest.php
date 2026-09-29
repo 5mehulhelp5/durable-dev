@@ -59,9 +59,20 @@ final class WarnOnSharedJournalConnectionPassTest extends TestCase
         self::assertFalse($container->hasDefinition(WarnOnSharedJournalConnectionListener::class));
     }
 
+    public function testWithoutALoggerThereIsNothingToWarnThrough(): void
+    {
+        $container = $this->container('doctrine.dbal.default_connection');
+        $container->removeDefinition('logger');
+
+        (new WarnOnSharedJournalConnectionPass())->process($container);
+
+        self::assertFalse($container->hasDefinition(WarnOnSharedJournalConnectionListener::class));
+    }
+
     private function container(string $journal): ContainerBuilder
     {
         $container = new ContainerBuilder();
+        $container->setDefinition('logger', new Definition(\stdClass::class));
         // What DoctrineBundle registers for `default_connection: app` and a second `durable` one.
         $container->setDefinition('doctrine.dbal.app_connection', new Definition(\stdClass::class));
         $container->setDefinition('doctrine.dbal.durable_connection', new Definition(\stdClass::class));
