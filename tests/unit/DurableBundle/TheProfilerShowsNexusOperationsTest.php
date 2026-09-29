@@ -58,7 +58,7 @@ final class TheProfilerShowsNexusOperationsTest extends TestCase
         $id = 0;
         foreach ($outcomes as $label => $outcome) {
             $events->append(new NexusOperationScheduled(ExecutionId::fromString('exec-1'), ++$id, 'demo-business-billing', 'billing', 'op-' . $id));
-            $events->append(new $outcome('exec-1', $id));
+            $events->append(new $outcome(ExecutionId::fromString('exec-1'), $id));
         }
 
         $collector = $this->collect($events);
