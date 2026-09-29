@@ -52,11 +52,11 @@
                 <table style="width: 100%; text-align: start; border-collapse: collapse">
                     <thead>
                         <tr>
-                            <th style="text-align: start">{{ $t('runs.execution') }}</th>
-                            <th style="text-align: start">{{ $t('runs.workflow') }}</th>
-                            <th style="text-align: start">{{ $t('runs.status') }}</th>
-                            <th style="text-align: start">{{ $t('runs.started_at') }}</th>
-                            <th style="text-align: start">{{ $t('runs.notes') }}</th>
+                            <th scope="col" style="text-align: start">{{ $t('runs.execution') }}</th>
+                            <th scope="col" style="text-align: start">{{ $t('runs.workflow') }}</th>
+                            <th scope="col" style="text-align: start">{{ $t('runs.status') }}</th>
+                            <th scope="col" style="text-align: start">{{ $t('runs.started_at') }}</th>
+                            <th scope="col" style="text-align: start">{{ $t('runs.notes') }}</th>
                         </tr>
                     </thead>
                     <tbody>

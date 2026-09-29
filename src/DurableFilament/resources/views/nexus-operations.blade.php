@@ -4,10 +4,10 @@
         <table style="width: 100%; border-collapse: collapse">
             <thead>
                 <tr>
-                    <th style="text-align: start">{{ __('durable-filament::durable.nexus.endpoint') }}</th>
-                    <th style="text-align: start">{{ __('durable-filament::durable.nexus.service') }}</th>
-                    <th style="text-align: start">{{ __('durable-filament::durable.nexus.operation') }}</th>
-                    <th style="text-align: start">{{ __('durable-filament::durable.nexus.state') }}</th>
+                    <th scope="col" style="text-align: start">{{ __('durable-filament::durable.nexus.endpoint') }}</th>
+                    <th scope="col" style="text-align: start">{{ __('durable-filament::durable.nexus.service') }}</th>
+                    <th scope="col" style="text-align: start">{{ __('durable-filament::durable.nexus.operation') }}</th>
+                    <th scope="col" style="text-align: start">{{ __('durable-filament::durable.nexus.state') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -17,7 +17,7 @@
                         <td>{{ $operation->service }}</td>
                         <td>{{ $operation->operation }}</td>
                         <td>
-                            <x-filament::badge :color="match ($operation->state->value) { 'in_flight' => 'warning', 'completed' => 'success', 'cancelled' => 'gray', default => 'danger' }">
+                            <x-filament::badge :color="match ($operation->state->value) { 'in_flight' => 'info', 'completed' => 'success', 'cancelled' => 'gray', default => 'danger' }">
                                 {{ __('durable-filament::durable.nexus.states.' . $operation->state->value) }}
                             </x-filament::badge>
                         </td>
