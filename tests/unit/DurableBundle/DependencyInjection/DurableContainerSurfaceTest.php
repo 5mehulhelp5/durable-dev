@@ -104,6 +104,8 @@ final class DurableContainerSurfaceTest extends TestCase
         $dsn = 'temporal://127.0.0.1:7233?namespace=default&tls=0';
         $backends = [
             'in_memory' => ['backend' => 'in_memory'],
+            'in_memory, Messenger activity transport' => ['backend' => 'in_memory', 'activity_transport' => ['type' => 'messenger']],
+            'dbal, Messenger activity transport' => ['backend' => 'dbal', 'activity_transport' => ['type' => 'messenger']],
             'dbal' => ['backend' => 'dbal'],
             'dbal, legacy keys' => ['event_store' => ['type' => 'dbal'], 'workflow_metadata' => ['type' => 'dbal']],
             'dbal journal, in-memory metadata' => ['event_store' => ['type' => 'dbal']],

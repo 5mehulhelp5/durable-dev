@@ -263,7 +263,8 @@ on one of the bundle's class or interface ids: `ExecutionEngine`, `ExecutionRunt
 `WorkflowRegistry`, `ActivityExecutor`, `WorkflowResumeDispatcher`, the Durable handlers and
 commands, `DurableDataCollector`, the Temporal client, RPCs and task runner, and the others listed
 in #342. Those ids are now aliases of `durable.*` definitions, with the visibility they had, so
-autowiring, `->get()` and `decorates:` are unchanged. In the pass:
+autowiring, `->get()` and `decorates:` are unchanged. Most of them then became private, see "Only the
+documented services stay public" below. In the pass:
 
 ```php
 $container->getDefinition(ExecutionEngine::class); // throws: the id is an alias
@@ -1150,12 +1151,12 @@ Five ids stay **public**, the ones the documentation names and `DurableBundleTes
 | `Gplanchat\Durable\Transport\ActivityTransportInterface`                             | every backend              |
 | `Gplanchat\Durable\Worker\ActivityMessageProcessor`                                  | every backend              |
 | `Gplanchat\Durable\Store\ChildWorkflowParentLinkStoreInterface`                      | every backend              |
-| `durable.child_workflow_parent_link_store`                                           | every backend              |
+| `durable.child_workflow_parent_link_store` (a definition)                            | every backend              |
 | `Gplanchat\Durable\Debug\WorkflowExecutionObserverInterface`                         | every backend              |
-| `durable.execution_trace`                                                            | profiler on                |
-| `Gplanchat\Durable\Bundle\Handler\ActivityRunHandler`                                | `dbal`                     |
+| `durable.execution_trace` (a definition)                                             | profiler on                |
+| `Gplanchat\Durable\Bundle\Handler\ActivityRunHandler`                                | `activity_transport.type: messenger`, no Temporal journal |
 | `Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner`                                | a Temporal DSN             |
-| `durable.temporal.activity_worker`, `durable.temporal.nexus_worker`                  | a Temporal DSN             |
+| `durable.temporal.activity_worker`, `durable.temporal.nexus_worker` (definitions)    | a Temporal DSN             |
 
 **What to do**, in this order:
 
@@ -1164,7 +1165,8 @@ Five ids stay **public**, the ones the documentation names and `DurableBundleTes
    a private service as long as something injects it. An id nothing injects is removed at compile
    time; `WorkflowBackendInterface` and `WorkflowQueryRunner` are two the bundle never injects.
 3. If you must still fetch an id by name, make it public in your own compiler pass. A kernel that
-   implements `CompilerPassInterface` is registered as one:
+   implements `CompilerPassInterface` is registered as one. The class and interface ids are aliases
+   (`getAlias()`); the four marked as definitions in the table take `getDefinition()`:
 
 ```php
 final class Kernel extends BaseKernel implements CompilerPassInterface
@@ -1173,7 +1175,13 @@ final class Kernel extends BaseKernel implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        $container->getAlias(\Gplanchat\Durable\ExecutionRuntime::class)->setPublic(true);
+        foreach ([\Gplanchat\Durable\ExecutionRuntime::class, 'durable.execution_trace'] as $id) {
+            if ($container->hasAlias($id)) {
+                $container->getAlias($id)->setPublic(true);
+            } elseif ($container->hasDefinition($id)) {
+                $container->getDefinition($id)->setPublic(true);
+            }
+        }
     }
 }
 ```
