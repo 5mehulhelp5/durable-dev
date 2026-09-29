@@ -40,7 +40,7 @@ final class AChildReportsToItsParentInTheProtocolsOrderTest extends TestCase
             'awaiting child child-1 on parent-1 with 0 events, linked',
             'resume parent-1 with 1 events, linked',
         ], $resumes->sent);
-        self::assertNull($links->getParentExecutionId('child-1'), 'unlinked once the parent is resumed');
+        self::assertNull($links->getParentExecutionId(ExecutionId::fromString('child-1')), 'unlinked once the parent is resumed');
     }
 
     /**
@@ -54,7 +54,7 @@ final class AChildReportsToItsParentInTheProtocolsOrderTest extends TestCase
 
         $handler(new ResumeWorkflowMessage('child-1'));
 
-        $outcomes = array_filter(iterator_to_array($journal->readStream('parent-1'), false), static fn(object $e): bool => $e instanceof ChildWorkflowCompleted);
+        $outcomes = array_filter(iterator_to_array($journal->readStream(ExecutionId::fromString('parent-1')), false), static fn(object $e): bool => $e instanceof ChildWorkflowCompleted);
         self::assertCount(1, $outcomes, 'the parent holds the outcome once');
         self::assertSame(['resume parent-1 with 1 events, linked'], $resumes->sent);
     }
@@ -69,8 +69,8 @@ final class AChildReportsToItsParentInTheProtocolsOrderTest extends TestCase
         $links = new InMemoryChildWorkflowParentLinkStore();
         $registry = new WorkflowRegistry();
         $registry->registerClass(ImmediateWorkflow::class);
-        $metadata->save('child-1', ImmediateWorkflow::class, ['name' => 'Ada']);
-        $links->link('child-1', $parentId);
+        $metadata->save(ExecutionId::fromString('child-1'), ImmediateWorkflow::class, ['name' => 'Ada']);
+        $links->link(ExecutionId::fromString('child-1'), ExecutionId::fromString($parentId));
         $resumes = new ChildRecordingResumes($journal, $links);
 
         return [$journal, $links, $resumes, new ResumeWorkflowHandler(
@@ -99,19 +99,19 @@ final class ChildRecordingResumes implements WorkflowResumeDispatcher
     public function dispatchResume(ExecutionId|string $executionId, array $pendingUpdates = []): void
     {
         $executionId = (string) $executionId;
-        $this->sent[] = \sprintf('resume %s with %d events, %s', $executionId, $this->journal->countEventsInStream($executionId), $this->linked());
+        $this->sent[] = \sprintf('resume %s with %d events, %s', $executionId, $this->journal->countEventsInStream(ExecutionId::fromString($executionId)), $this->linked());
     }
 
     public function dispatchResumeAwaiting(ExecutionId|string $executionId, AwaitedFact $fact): void
     {
         $executionId = (string) $executionId;
-        $this->sent[] = \sprintf('awaiting %s on %s with %d events, %s', $fact->describe(), $executionId, $this->journal->countEventsInStream($executionId), $this->linked());
+        $this->sent[] = \sprintf('awaiting %s on %s with %d events, %s', $fact->describe(), $executionId, $this->journal->countEventsInStream(ExecutionId::fromString($executionId)), $this->linked());
     }
 
     public function dispatchNewWorkflowRun(ExecutionId|string $executionId, string $workflowType, array $payload): void {}
 
     private function linked(): string
     {
-        return null !== $this->links->getParentExecutionId('child-1') ? 'linked' : 'unlinked';
+        return null !== $this->links->getParentExecutionId(ExecutionId::fromString('child-1')) ? 'linked' : 'unlinked';
     }
 }
