@@ -14,6 +14,7 @@ use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\ActivityTaskStarted;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\TimerScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WaitReason;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -82,7 +83,7 @@ final class WaitReasonTest extends TestCase
         $journal = new InMemoryEventStore();
         $catalog = new InMemoryWorkflowRunCatalog($journal);
         $store = new ProjectingEventStore($journal, $catalog);
-        $catalog->recordStart('exec', 'App\\OrderWorkflow');
+        $catalog->recordStart(ExecutionId::fromString('exec'), 'App\\OrderWorkflow');
         $store->append(new ExecutionStarted('exec', []));
 
         $store->append(new ActivityTaskStarted('exec', 'act-1', 'charge', 2));
