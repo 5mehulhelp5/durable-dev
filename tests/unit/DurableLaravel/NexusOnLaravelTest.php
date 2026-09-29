@@ -127,6 +127,64 @@ final class NexusOnLaravelTest extends TestCase
         self::assertInstanceOf(NexusOperationRegistry::class, $app->make(NexusOperationRegistry::class));
     }
 
+    /** Ported from Symfony's NexusHandlerPassTest (#714). */
+    public function testAnOperationNobodyCoversIsRefusedAtStartup(): void
+    {
+        // `settle` has no method on the handler and no workflow claims it.
+        $app = $this->container('temporal', [DeferredBillingHandler::class => DeferredBillingService::class]);
+        (new DurableServiceProvider($app))->register();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/settle/');
+        $this->expectExceptionMessageMatches('/no workflow claims it/');
+
+        $app->make(NexusOperationRegistry::class);
+    }
+
+    public function testAMissingWorkflowClassIsRefusedByName(): void
+    {
+        // @phpstan-ignore argument.type (a workflow class that does not exist, on purpose)
+        $app = $this->container('temporal', [BillingHandler::class => BillingService::class], ['App\\Workflows\\Missing']);
+        (new DurableServiceProvider($app))->register();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('App\\Workflows\\Missing');
+
+        $app->make(NexusOperationRegistry::class);
+    }
+
+    public function testAHandlerListedAloneServesTheContractItsAttributeNames(): void
+    {
+        $app = $this->container('temporal', [BillingHandler::class]);
+        (new DurableServiceProvider($app))->register();
+
+        self::assertTrue($app->make(NexusOperationRegistry::class)->serves(NexusService::named('billing'), NexusOperationName::named('charge')));
+    }
+
+    public function testAHandlerListedAloneWithoutTheAttributeIsRefusedByName(): void
+    {
+        $app = $this->container('temporal', [DeferredBillingHandler::class]);
+        (new DurableServiceProvider($app))->register();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(DeferredBillingHandler::class);
+        $this->expectExceptionMessage('#[AsNexusServiceHandler]');
+
+        $app->make(NexusOperationRegistry::class);
+    }
+
+    public function testAContractThatDisagreesWithTheAttributeIsRefused(): void
+    {
+        $app = $this->container('temporal', [BillingHandler::class => DeferredBillingService::class]);
+        (new DurableServiceProvider($app))->register();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(BillingService::class);
+        $this->expectExceptionMessage(DeferredBillingService::class);
+
+        $app->make(NexusOperationRegistry::class);
+    }
+
     public function testTheNexusWorkerIsAssembledUnderTemporal(): void
     {
         $app = $this->container('temporal', []);
@@ -136,8 +194,8 @@ final class NexusOnLaravelTest extends TestCase
     }
 
     /**
-     * @param array<class-string, class-string> $handlers
-     * @param list<class-string>                $workflows
+     * @param array<array-key, class-string> $handlers
+     * @param list<class-string>             $workflows
      */
     private function container(string $backend, array $handlers, array $workflows = []): Container
     {

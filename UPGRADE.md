@@ -187,6 +187,26 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 }
 ```
 
+### Laravel: an unserved Nexus operation and a missing workflow class now fail at registration (#714)
+
+**Who is affected**: a Laravel application that serves Nexus (`nexus.handlers`, `backend:
+temporal`). Resolving `NexusOperationRegistry` used to succeed in two cases where it now throws
+`InvalidArgumentException`, naming what is wrong:
+
+- an operation of a declared contract that neither a handler method nor a workflow carrying
+  `#[FulfilsNexusOperation]` serves. It used to be skipped, so a caller waited on a result nothing
+  produced. Symfony's `NexusHandlerPass` already refused it at compile time.
+- a class in `workflows` that does not exist. It used to be skipped while looking for the
+  operations workflows fulfil.
+
+**What to do**: give the handler a method for the operation, or list the workflow that fulfils it
+in `workflows`. Fix or remove a misspelt workflow class.
+
+`nexus.handlers` also accepts a handler class on its own, whose contract its
+`#[AsNexusServiceHandler]` names: `'handlers' => [App\Nexus\BillingHandler::class]`. The
+`handler => contract` form keeps working, and is refused if it names another contract than the
+attribute.
+
 ### Laravel: the shipped migrations run on `durable.connection`
 
 **Who is affected**: a Laravel application whose `config/durable.php` names a `connection` other
