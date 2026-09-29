@@ -449,7 +449,7 @@ jobs:
               run: composer update --dry-run --no-interaction --no-audit --no-progress
 
     magento-boot:
-        # The counterpart of "Sylius shop" for the other host: a single, unmatrixed job that
+        # The counterpart of "Sylius shop" for the other host: the job that
         # really **boots** Magento. It exists because until now every claim about this module
         # rested on a transcript produced by hand on a workstation's bench — and the Mage-OS × PHP
         # matrix, for its part, only proves the resolution.
