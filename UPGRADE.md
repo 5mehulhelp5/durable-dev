@@ -1130,6 +1130,16 @@ No Rector rule. The closures being replaced read captured, often mutable, state
 class in your code for every call site. Choosing a clock is a one-line decision, and it is
 yours to make.
 
+### Satellites require each other with caret ranges from beta1 on (#347)
+
+From `v0.1.0-beta1` on, a published satellite requires its siblings as `^0.1.0-beta1` (the
+caret range on its own tag) instead of `self.version`. `bin/splitsh-publish.sh` rewrites them
+when it splits a tag; the monorepo and the satellites' `main` branch keep `self.version`. A
+satellite no longer pins its siblings at exactly its own tag, so packages from different tags of
+the same line install together. Stability flags still do not propagate: a root on a `stable`
+floor keeps `composer config minimum-stability beta` (or a `@beta` flag on every `gplanchat/*`
+package it lists). Nothing to migrate.
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract

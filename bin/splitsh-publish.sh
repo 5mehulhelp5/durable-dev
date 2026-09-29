@@ -5,6 +5,8 @@
 #       Split current HEAD (typically main) and push each split SHA to refs/heads/$SPLITSH_TARGET_BRANCH.
 #   ./bin/splitsh-publish.sh tag <tag>
 #       Checkout <tag>, split each prefix, push each split SHA to refs/tags/<tag> on satellites.
+#       Each sibling `self.version` requirement becomes `^<tag without v>` in one extra commit on
+#       top of the split (rewrite_self_version); the monorepo keeps `self.version`.
 # Environment:
 #   SPLITSH_PUSH_TOKEN — GitHub PAT with contents:write on each satellite (optional; dry-run if unset).
 #   SPLITSH_GITHUB_ORG — GitHub org or user (default: gplanchat).
@@ -144,6 +146,37 @@ split_sha() {
     printf '%s' "$sha"
 }
 
+# Prints a commit on top of <split-sha> whose composer.json requires every gplanchat/* sibling
+# declared as `self.version` at `^<version>` instead, or <split-sha> itself when there is none.
+# `self.version` resolves the sibling at exactly the tag, and a root `@beta` flag does not reach a
+# transitive requirement, so a stable-floor root rejected it (#347). Built with plumbing on a
+# throwaway index: no checkout, no ref. Author, committer and dates come from the split commit, so
+# a re-run yields the same SHA and the "already at" skip of tag mode still holds.
+rewrite_self_version() {
+    local split="$1" version="${2#v}" json blob mode tree index who
+    json="$(git cat-file blob "$split:composer.json")"
+    if ! jq -e '[(.require, ."require-dev") // {} | to_entries[]
+        | select((.key | startswith("gplanchat/")) and .value == "self.version")] | length > 0' \
+        >/dev/null <<<"$json"; then
+        printf '%s' "$split"
+        return 0
+    fi
+    blob="$(jq --indent 4 --arg v "^$version" 'reduce ("require", "require-dev") as $k (.;
+        if has($k) then .[$k] |= with_entries(
+            if (.key | startswith("gplanchat/")) and .value == "self.version" then .value = $v else . end)
+        else . end)' <<<"$json" | git hash-object -w --stdin)"
+    mode="$(git ls-tree "$split" composer.json | cut -d' ' -f1)"
+    index="$(mktemp)"
+    GIT_INDEX_FILE="$index" git read-tree "$split"
+    GIT_INDEX_FILE="$index" git update-index --cacheinfo "$mode,$blob,composer.json"
+    tree="$(GIT_INDEX_FILE="$index" git write-tree)"
+    rm -f "$index"
+    mapfile -t who < <(git log -1 --date=raw --format='%an%n%ae%n%ad%n%cn%n%ce%n%cd' "$split")
+    GIT_AUTHOR_NAME="${who[0]}" GIT_AUTHOR_EMAIL="${who[1]}" GIT_AUTHOR_DATE="${who[2]}" \
+        GIT_COMMITTER_NAME="${who[3]}" GIT_COMMITTER_EMAIL="${who[4]}" GIT_COMMITTER_DATE="${who[5]}" \
+        git commit-tree "$tree" -p "$split" -m "Require siblings at ^$version"
+}
+
 require_clean_tree() {
     if [[ -n "$(git status --porcelain)" ]]; then
         echo "Working tree is not clean; commit or stash before running tag mode." >&2
@@ -198,7 +231,7 @@ push_tag_mode() {
 
     for entry in "${SPLITS[@]}"; do
         IFS='|' read -r prefix repo <<<"$entry"
-        sha="$(split_sha "$prefix")"
+        sha="$(rewrite_self_version "$(split_sha "$prefix")" "$tag")"
         if [[ -z "$TOKEN" ]]; then
             echo "[tag] $repo split SHA=$sha for $tag (dry-run, set SPLITSH_PUSH_TOKEN to push)"
             continue
@@ -220,7 +253,10 @@ push_tag_mode() {
     report_failures "${failed[@]+"${failed[@]}"}"
 }
 
-if [[ "${1:-}" == "tag" ]]; then
+# Sourced (bin/splitsh-publish-test.sh): define the functions, run nothing.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+elif [[ "${1:-}" == "tag" ]]; then
     push_tag_mode "${2:-}"
 else
     push_branch_mode
