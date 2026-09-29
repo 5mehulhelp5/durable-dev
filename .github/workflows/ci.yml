@@ -1121,6 +1121,11 @@ jobs:
                   extensions: mbstring, sqlite3, pdo_sqlite, grpc
                   coverage: none
 
+            # The root lock against the path packages' manifests (#640). No vendor needed, so it
+            # runs before the install and fails fast; its test runs on throwaway fixtures.
+            - name: The root composer.lock matches the path packages
+              run: bin/check-root-lock.sh && bin/check-root-lock-test.sh
+
             # setup-php's `tools:` input fails on it without saying why: the release phar, pinned.
             - name: Install composer-require-checker 4.24.0
               run: |
