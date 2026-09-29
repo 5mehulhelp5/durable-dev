@@ -1122,10 +1122,7 @@ waiting out a retry's backoff. Both count towards the bounds. It never follows t
 on its own. Hand the runner the same clock as its activity transport, or delayed retries never
 fall due.
 
-A timer that falls due during a backoff is now recorded as fired once the drain is idle. The
-activity's remaining attempts still run first, so the timer cannot win against an activity that
-is retrying. In `any(activity, timer)`, the losing timer's history changes from
-`ActivityCompleted TimerCancelled` to `ActivityCompleted TimerCompleted`.
+A timer that falls due during a backoff fires before the retry: see the #653 section below.
 
 No Rector rule. The closures being replaced read captured, often mutable, state
 (`static fn(): float => $clock->now`). A mechanical rewrite would have to generate a clock
@@ -1201,6 +1198,23 @@ final class Kernel extends BaseKernel implements CompilerPassInterface
 No Rector rule. Turning `$container->get(ExecutionRuntime::class)` into constructor injection adds
 a parameter to the caller, and to every place that builds it, and needs the caller to be a service.
 That is not a rewrite of one expression, and no rule can find those places.
+
+### In-memory runner: a timer due during an activity's backoff wins `any()`, as on Temporal (#653)
+
+**Who is affected**: a workflow run by `InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`,
+`DurableTestCase` and Magento's memory backend) that races a retrying activity against a timer.
+
+The drain used to run every remaining attempt of a retrying activity before it fired a timer, so
+in `any(activity, timer)` the activity won even when the timer fell due during its backoff. The
+drain now waits only until that timer is due, fires it and resumes the workflow before the next
+attempt. The timer wins, the activity is cancelled and its queued retry removed: the history
+reads `TimerCompleted ActivityCancelled`, where it read `ActivityCompleted TimerCompleted`. An
+attempt that is running is never cut short, and the virtual clock still never follows the wall
+clock on its own, so a timer shorter than a slow attempt that succeeds does not win.
+
+**What to do**: a test that expected the retrying activity to win now sees the timer win, as it
+would on Temporal. Update its expectation. No Rector rule: this is a behaviour change, not an
+API change.
 
 ## 0.1.0-alpha10
 
