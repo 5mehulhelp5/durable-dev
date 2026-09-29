@@ -459,17 +459,22 @@ jobs:
               run: composer update --dry-run --no-interaction --no-audit --no-progress
 
     magento-boot:
-        # The counterpart of "Sylius shop" for the other host: a single, unmatrixed job that
+        # The counterpart of "Sylius shop" for the other host: the job that
         # really **boots** Magento. It exists because until now every claim about this module
         # rested on a transcript produced by hand on a workstation's bench — and the Mage-OS × PHP
         # matrix, for its part, only proves the resolution.
         #
         # It is expensive: the distribution weighs ~1 GB and the install takes minutes. That is
-        # precisely why it is not matrixed — one edge, the bench's, pinned by the tracked lock of
-        # `magento/`.
-        name: Magento · bench + dashboard (Mage-OS 2.2.0 / PHP 8.2)
+        # why it is matrixed on PHP alone, over the one Mage-OS line pinned by the tracked lock of
+        # `magento/`: the floor the bench was measured on, and 8.4, which a merchant on Magento
+        # 2.4.8 runs and the lock accepts (Mage-OS 2.2.0 requires ~8.2.0||~8.3.0||~8.4.0).
+        name: Magento · bench + dashboard (Mage-OS 2.2.0 / PHP ${{ matrix.php-version }})
         runs-on: ubuntu-latest
         timeout-minutes: 60
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version: ['8.2', '8.4']
         services:
             mysql:
                 image: mysql:8.4
@@ -504,8 +509,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  # The bench's floor, and the one on which all its measurements were made.
-                  php-version: '8.2'
+                  php-version: ${{ matrix.php-version }}
                   extensions: bcmath, ctype, curl, dom, gd, iconv, intl, mbstring, openssl, pdo_mysql, simplexml, soap, sodium, xsl, zip
                   ini-values: memory_limit=-1
                   coverage: none
