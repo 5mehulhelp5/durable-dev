@@ -311,8 +311,7 @@ Durable tourne sur quatre backends qui partagent le même code de workflows et d
 ### Illuminate
 
 - Les mêmes quatre magasins et le même compromis, sur `Illuminate\Database\Connection` plutôt que
-  sur celle de Doctrine ; un magasin sur `DB::connection()` est dans `DB::transaction()` par
-  construction.
+  sur celle de Doctrine, sur une connexion à elle plutôt que celle de l'application (DUR054).
 - Ce n'est pas une quatrième valeur de `backend`, et ce ne le sera jamais : une application
   Laravel ne lit pas le YAML du bundle. Ce qui le branche, c'est `gplanchat/durable-laravel`, par son
   propre `config/durable.php`.
