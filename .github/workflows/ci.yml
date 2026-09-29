@@ -681,6 +681,30 @@ jobs:
                   test "$calls" = 'billing/verify delivery/schedule stock/reserve billing/charge delivery/ship' \
                     || { tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness.log; exit 1; }
 
+            # #669: now Magento serves. The probe module lists a billing handler in its di.xml and a
+            # workflow fulfilling charge; a second, prefixed harness routes billing to the bench's
+            # Nexus queue (the DSN names none, so durable-workflows) and calls it. The journal
+            # worker of the step above runs the fulfilling workflow.
+            - name: Magento serves billing to the demo harness
+              working-directory: magento
+              timeout-minutes: 5
+              run: |
+                  harness="php ../tests/integration/Temporal/nexus-demo-harness.php 127.0.0.1:7233 default --prefix=mg- --transport=grpc-curl"
+                  $harness --bench=billing@durable-workflows > /tmp/harness-mg.log 2>&1 &
+                  pid=$!
+                  timeout 60 bash -c "until grep -qx ready /tmp/harness-mg.log; do kill -0 $pid 2>/dev/null || exit 1; sleep 1; done" || { cat /tmp/harness-mg.log; exit 1; }
+                  bin/magento durable:worker --role=nexus > /tmp/magento-nexus.log 2>&1 &
+                  logs() { tail -n 50 /tmp/magento-nexus.log; tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness-mg.log; }
+                  # Answers only the probe's handler and workflow give, not the harness's own.
+                  verify=$(timeout 120 $harness --call=billing/verify --input='{"order":"MAG-SV-1","amount":1200,"currency":"USD"}') || { logs; exit 1; }
+                  verify=$(tail -n 1 <<< "$verify")
+                  echo "verify: $verify"
+                  test "$(jq -c . <<< "$verify")" = '{"accepted":false,"reason":"the Magento bench bills in EUR, not USD"}' || { logs; exit 1; }
+                  charge=$(timeout 120 $harness --call=billing/charge --input='{"order":"MAG-SV-2","amount":1200,"currency":"EUR"}') || { logs; exit 1; }
+                  charge=$(tail -n 1 <<< "$charge")
+                  echo "charge: $charge"
+                  test "$(jq -c . <<< "$charge")" = '{"receipt":"MAGENTO-BENCH-EUR-MAG-SV-2","charged":1200}' || { logs; exit 1; }
+
     static-analysis:
         # Was the required status check on `main` until 2026-09-16; `ci-ok` below is now. Its steps
         # are what `loop/guardrails/verify.sh` mirrors: change one, change the other.
