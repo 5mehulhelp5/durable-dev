@@ -6,13 +6,18 @@ declare(strict_types=1);
  * Serves the demo Nexus contracts on a Temporal server, for the bench jobs (#663).
  *
  * Usage: php nexus-demo-harness.php <address> <namespace> [--serve=stock,billing,delivery]
- *                                   [--prefix=] [--transport=auto]
+ *                                   [--bench=billing@<task queue>] [--prefix=] [--transport=auto]
+ *        php nexus-demo-harness.php <address> <namespace> --call=billing/verify --input='{...}'
  *
  * Creates the endpoints the benches call (`demo-shop-stock`, `demo-business-billing`,
  * `demo-laravel-delivery`, each behind the prefix), prints "ready", and serves until SIGTERM, which
  * deletes them. Exits 1 if an endpoint cannot be created — one that already exists included, since
- * something else then serves it — or if one of its two workers dies. `--serve` leaves out what the
- * bench under test serves itself.
+ * something else then serves it — or if one of its two workers dies.
+ *
+ * `--bench=service@queue` is what the bench under test serves: the harness creates that endpoint,
+ * pointed at the bench's Nexus queue, and serves the rest. `--call` asks a running harness (same
+ * address, namespace and prefix) to call one operation, prints its answer as JSON, and exits 1 if
+ * the call fails or has no answer within 90 s.
  *
  * Runs from the repository root's vendor/ (`composer install` there), since the fixture it serves
  * lives in the root's autoload-dev. Needs ext-pcntl, for SIGTERM to reach the endpoint cleanup.
@@ -22,12 +27,15 @@ declare(strict_types=1);
  */
 
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
+use Gplanchat\Bridge\Temporal\Grpc\WorkflowServiceExecutionRpc;
 use Gplanchat\Bridge\Temporal\Grpc\WorkflowServiceNexusRpc;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\Worker\TemporalNexusWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
+use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\WorkflowRegistry;
 use integration\Temporal\Fixtures\DemoHarness;
 use Temporal\Api\Nexus\V1\EndpointSpec;
@@ -57,9 +65,15 @@ if ('' === $address || '' === $namespace) {
     exit(2);
 }
 $prefix = $options['prefix'] ?? '';
-$services = explode(',', $options['serve'] ?? implode(',', array_keys(DemoHarness::ENDPOINTS)));
-if ([] !== ($unknown = array_diff($services, array_keys(DemoHarness::ENDPOINTS)))) {
-    fwrite(STDERR, 'unknown service(s) in --serve: ' . implode(', ', $unknown) . "\n");
+/** @var array<string, string> $bench service => the bench's Nexus task queue */
+$bench = [];
+foreach (array_filter(explode(',', $options['bench'] ?? '')) as $route) {
+    [$service, $queue] = explode('@', $route, 2) + ['', ''];
+    $bench[$service] = $queue;
+}
+$services = isset($options['serve']) ? explode(',', $options['serve']) : array_values(array_diff(array_keys(DemoHarness::ENDPOINTS), array_keys($bench)));
+if ([] !== ($unknown = array_diff([...$services, ...array_keys($bench)], array_keys(DemoHarness::ENDPOINTS))) || in_array('', $bench, true) || [] !== array_intersect($services, array_keys($bench))) {
+    fwrite(STDERR, 'unknown service(s) in --serve or --bench, a --bench without its queue, or a service in both: ' . implode(', ', $unknown) . "\n");
     exit(2);
 }
 
@@ -72,6 +86,26 @@ $connection = new TemporalConnection(
     transport: $options['transport'] ?? TemporalConnection::TRANSPORT_AUTO,
 );
 $client = WorkflowServiceClientFactory::create($connection);
+
+if (isset($options['call'])) {
+    [$service, $operation] = explode('/', $options['call'], 2) + ['', ''];
+    $workflows = new WorkflowClient($client, $connection, new TemporalHistoryCursor($client, $connection), new WorkflowServiceExecutionRpc($client));
+    $executionId = 'demo-harness-call-' . bin2hex(random_bytes(4));
+
+    try {
+        $workflows->startAsync('DemoHarnessCall', [
+            'endpoint' => $prefix . (DemoHarness::ENDPOINTS[$service] ?? throw new InvalidArgumentException("unknown service in --call: {$service}")),
+            'service' => $service,
+            'operation' => $operation,
+            'payload' => json_decode($options['input'] ?? '{}', true, flags: JSON_THROW_ON_ERROR),
+        ], ExecutionId::fromString($executionId));
+        echo json_encode($workflows->pollForCompletion($executionId, 250, 360), JSON_THROW_ON_ERROR), "\n";
+        exit(0);
+    } catch (Throwable $e) {
+        fwrite(STDERR, "the call {$options['call']} failed: " . $e::class . ': ' . $e->getMessage() . "\n");
+        exit(1);
+    }
+}
 
 if (isset($options['role'])) {
     $worker = 'nexus' === $options['role']
@@ -127,18 +161,18 @@ $onSignal = static function () use (&$workers, $stop): never {
 pcntl_signal(SIGTERM, $onSignal);
 pcntl_signal(SIGINT, $onSignal);
 
-foreach ($services as $service) {
+foreach ([...array_fill_keys($services, $connection->nexusTaskQueue->name()), ...$bench] as $service => $queue) {
     $name = $prefix . DemoHarness::ENDPOINTS[$service];
     $spec = new EndpointSpec(['name' => $name, 'target' => new EndpointTarget(['worker' => new Worker([
         'namespace' => $namespace,
-        'task_queue' => $connection->nexusTaskQueue->name(),
+        'task_queue' => $queue,
     ])])]);
     $deadline = microtime(true) + 30.0;
     while (true) {
         try {
             $endpoint = $transport->unary($operator . 'CreateNexusEndpoint', new CreateNexusEndpointRequest(['spec' => $spec]), CreateNexusEndpointResponse::class, [], 10_000)->getEndpoint();
             $created[] = [(string) $endpoint?->getId(), (int) $endpoint?->getVersion()];
-            echo "endpoint {$name} -> {$namespace} / {$connection->nexusTaskQueue->name()}\n";
+            echo "endpoint {$name} -> {$namespace} / {$queue}\n";
             break;
         } catch (RuntimeException $e) {
             // 6, already exists: someone else serves this name, and waiting will not change that.

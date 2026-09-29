@@ -102,13 +102,40 @@ final class NexusDemoHarnessTest extends TestCase
         self::assertNotSame(0, $status['exitcode']);
     }
 
+    public function testTheCallModePrintsOneOperationsAnswer(): void
+    {
+        $this->awaitReady($this->startHarness());
+
+        $call = proc_open(
+            [\PHP_BINARY, __DIR__ . '/nexus-demo-harness.php', $this->address, $this->namespace, '--prefix=' . $this->prefix, '--transport=' . TemporalServerTestCase::transportFromEnv(),
+                '--call=billing/verify', '--input={"order":"ORD-9","amount":5,"currency":"EUR"}'],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+        );
+        self::assertIsResource($call);
+        $stdout = (string) stream_get_contents($pipes[1]);
+        $stderr = (string) stream_get_contents($pipes[2]);
+
+        self::assertSame(0, proc_close($call), $stderr);
+        self::assertSame(['accepted' => true, 'reason' => null], json_decode($stdout, true, flags: \JSON_THROW_ON_ERROR));
+    }
+
+    public function testTheBenchModeRoutesAServiceToTheBenchInsteadOfServingIt(): void
+    {
+        $harness = $this->startHarness('--bench=billing@' . $this->prefix . 'bench-nexus');
+        $output = $this->awaitReady($harness);
+
+        self::assertStringContainsString("endpoint {$this->prefix}demo-business-billing -> {$this->namespace} / {$this->prefix}bench-nexus", $output);
+        self::assertStringContainsString("endpoint {$this->prefix}demo-shop-stock -> {$this->namespace} / {$this->prefix}demo-harness-nexus", $output);
+    }
+
     /**
      * @return array{process: resource, pipes: array<int, resource>}
      */
-    private function startHarness(): array
+    private function startHarness(string ...$options): array
     {
         $process = proc_open(
-            [\PHP_BINARY, __DIR__ . '/nexus-demo-harness.php', $this->address, $this->namespace, '--prefix=' . $this->prefix, '--transport=' . TemporalServerTestCase::transportFromEnv()],
+            [\PHP_BINARY, __DIR__ . '/nexus-demo-harness.php', $this->address, $this->namespace, '--prefix=' . $this->prefix, '--transport=' . TemporalServerTestCase::transportFromEnv(), ...$options],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
         );
@@ -120,7 +147,7 @@ final class NexusDemoHarnessTest extends TestCase
     /**
      * @param array{process: resource, pipes: array<int, resource>} $harness
      */
-    private function awaitReady(array $harness): void
+    private function awaitReady(array $harness): string
     {
         $output = '';
         $deadline = microtime(true) + 60.0;
@@ -128,7 +155,7 @@ final class NexusDemoHarnessTest extends TestCase
         while (microtime(true) < $deadline) {
             $output .= (string) stream_get_contents($harness['pipes'][1]);
             if (str_contains($output, 'ready')) {
-                return;
+                return $output;
             }
             if (!proc_get_status($harness['process'])['running']) {
                 break;
