@@ -17,6 +17,7 @@ use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Activity\ActivityContractResolver;
 use Gplanchat\Durable\Activity\PayloadToContractMethodInvoker;
+use Gplanchat\Durable\Attribute\AsActivityHandler;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -113,8 +114,12 @@ class RuntimeFactory
          * The application's PSR-18 client and its PSR-17 factory, for `transport=http` (the JSON
          * gateway) instead of curl; any other transport ignores it. Set in `di.xml` with an
          * `<argument name="jsonGateway" xsi:type="object">`.
+         *
+         * Typed `?object` and narrowed in `client()`, because Magento reflects every constructor
+         * type, optional ones included: a `Psr18Http` here kills `setup:install` on a host
+         * without the Temporal bridge (#725). No other bridge type may appear in this signature.
          */
-        private readonly ?Psr18Http $jsonGateway = null,
+        private readonly ?object $jsonGateway = null,
         /**
          * The sender the activities inject, from `di.xml`'s preference. On Temporal it is pointed
          * at the worker's sender, so their heartbeats carry the task's token (#510).
@@ -300,6 +305,10 @@ class RuntimeFactory
 
     private function client(TemporalConnection $settings): WorkflowServiceClientInterface
     {
+        if (null !== $this->jsonGateway && !$this->jsonGateway instanceof Psr18Http) {
+            throw new \InvalidArgumentException(\sprintf('RuntimeFactory\'s jsonGateway must be a %s, %s given.', Psr18Http::class, get_debug_type($this->jsonGateway)));
+        }
+
         return $this->client ??= WorkflowServiceClientFactory::create($settings, $this->logger, $this->guzzle, $this->jsonGateway);
     }
 
@@ -393,8 +402,17 @@ class RuntimeFactory
         $bindings = [];
 
         foreach ($this->activityHandlers as $handler) {
-            foreach (\class_implements($handler) ?: [] as $contract) {
+            // `#[AsActivityHandler(contract)]` narrows the handler to that one contract, as
+            // Symfony's ActivityHandlerPass does; without it, every activity interface it implements.
+            $named = (new \ReflectionClass($handler))->getAttributes(AsActivityHandler::class)[0] ?? null;
+            $contracts = null !== $named ? [$named->newInstance()->contract] : (\class_implements($handler) ?: []);
+
+            foreach ($contracts as $contract) {
                 foreach ($resolver->resolveActivityMethods($contract) as $method => $activityName) {
+                    if (null !== $named && !\method_exists($handler, $method)) {
+                        throw new \LogicException(\sprintf('Handler "%s" must implement %s::%s() for #[AsActivityHandler] (contract %s).', $handler::class, $contract, $method, $contract));
+                    }
+
                     $bindings[$activityName] = new PayloadToContractMethodInvoker($handler, $contract, $method);
                 }
             }
