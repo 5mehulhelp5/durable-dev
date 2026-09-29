@@ -12,9 +12,12 @@ trap 'rm -rf "$TMP"' EXIT
 failures=0
 
 # $1 case name · $2 the path package's require, as JSON · $3 expected: "pass" or "fail"
-# $4 "hash-stale": the composer stub reports a stale content-hash
+# $4 variant: "hash-stale", the composer stub reports a stale content-hash; "no-jq", jq is
+#    absent from PATH; "no-path", the lock records no path package at all
 case_() {
-    local name="$1" require="$2" expected="$3" hash="${4:-}"
+    local name="$1" require="$2" expected="$3" variant="${4:-}"
+    local hash="" path="$PATH"
+    [ "$variant" = hash-stale ] && hash=1
     local box="$TMP/$name"
     mkdir -p "$box/bin" "$box/src/Pkg"
     cp "$ROOT/bin/check-root-lock.sh" "$box/bin/"
@@ -37,9 +40,19 @@ case_() {
     "packages-dev": []
 }
 LOCK
+    if [ "$variant" = no-path ]; then
+        sed -i 's/"type": "path"/"type": "zip"/' "$box/composer.lock"
+    fi
+    if [ "$variant" = no-jq ]; then
+        # Only what the script needs besides jq.
+        mkdir "$box/path"
+        ln -s "$(command -v dirname)" "$(command -v diff)" "$box/path/"
+        path="$box/path"
+    fi
 
     local output code
-    output=$(STUB_HASH_STALE="$hash" COMPOSER_BIN="$box/composer" bash "$box/bin/check-root-lock.sh" 2>&1)
+    output=$(PATH="$path" STUB_HASH_STALE="$hash" COMPOSER_BIN="$box/composer" \
+        "$BASH" "$box/bin/check-root-lock.sh" 2>&1)
     code=$?
 
     local got=pass
@@ -59,10 +72,12 @@ case_ added-requirement      '{"php": ">=8.2", "psr/log": "^3.0", "psr/clock": "
 case_ removed-requirement    '{"php": ">=8.2"}'                                    fail
 case_ moved-constraint       '{"php": ">=8.2", "psr/log": "^2.0 || ^3.0"}'         fail
 case_ stale-content-hash     '{"php": ">=8.2", "psr/log": "^3.0"}'                 fail hash-stale
+case_ jq-missing             '{"php": ">=8.2", "psr/log": "^3.0"}'                 fail no-jq
+case_ no-path-package        '{"php": ">=8.2", "psr/log": "^3.0"}'                 fail no-path
 
 echo
 if [ "$failures" -eq 0 ]; then
-    echo "check-root-lock: 6 cases, all conforming"
+    echo "check-root-lock: 8 cases, all conforming"
 else
     echo "check-root-lock: $failures failing case(s)"
 fi
