@@ -34,8 +34,8 @@ traitement directement : le runtime enregistre chaque étape terminée dans un *
 un redémarrage il rejoue la méthode en rendant les résultats enregistrés au lieu de refaire ces
 étapes. Le traitement reprend sur la ligne où il en était.
 
-Un worker peut être redéployé en plein traitement. Rien n'est débité deux fois, rien n'est perdu, et
-aucun cron n'intervient.
+Un worker peut être redéployé en plein traitement. Aucune étape terminée ne se rejoue, rien n'est
+perdu, et aucun cron n'intervient.
 
 ## Ce que ça remplace
 
@@ -46,7 +46,7 @@ Une méthode, et le journal derrière elle, au lieu de :
 | Une colonne d'état, et la migration qui ajoute l'état suivant | La ligne où la méthode en est. Le journal tient la position |
 | Un planificateur qui interroge ce qui est dû | L'instruction suivante ; minuteries et signaux réveillent l'exécution |
 | Un compteur de réessais et une table de rebut | `RetryLimit::ofAttempts(3)`, une option sur le stub d'activité |
-| Des clés d'idempotence, pour qu'un réessai ne débite pas deux fois | Une étape enregistrée rend son résultat enregistré. Elle ne peut pas s'exécuter deux fois |
+| Des clés d'idempotence, pour qu'un réessai ne débite pas deux fois | Une étape enregistrée rend son résultat enregistré et ne s'exécute plus. Une tentative interrompue avant l'enregistrement de son résultat est réessayée : l'appel qu'elle effectue a toujours besoin d'[une clé stable](../activities/#idempotence) |
 | Relire les journaux pour savoir pourquoi une exécution s'est arrêtée | Rejouer son journal : chaque étape, chaque résultat, chaque tentative |
 
 La [page d'accueil](/fr/) déroule la même commande, étape par étape, en montrant ce qui se passe
