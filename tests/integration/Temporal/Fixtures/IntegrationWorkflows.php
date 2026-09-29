@@ -199,8 +199,8 @@ final class IntegrationWorkflows
                 2,
                 $env->activityStub(IntegrationActivities::class, self::options())->double(1),
                 $env->activityStub(IntegrationActivities::class, self::options())->double(2),
-                $env->timer(Duration::hours(1), 'loser-1'),
-                $env->timer(Duration::hours(2), 'loser-2'),
+                $env->timer(Duration::hours(1), timerSummary: 'loser-1'),
+                $env->timer(Duration::hours(2), timerSummary: 'loser-2'),
             ));
 
             return ['keys' => array_keys($reached), 'values' => array_values($reached)];

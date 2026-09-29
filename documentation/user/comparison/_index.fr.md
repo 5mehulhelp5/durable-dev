@@ -450,7 +450,7 @@ une exécution voit :
 $v = yield Workflow::getVersion('add-discount', Workflow::DEFAULT_VERSION, 1);
 
 // Durable
-$v = $this->environment->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+$v = $this->environment->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
 Le format sur le fil est le même, et pas par imitation : il a été lu dans un historique produit par

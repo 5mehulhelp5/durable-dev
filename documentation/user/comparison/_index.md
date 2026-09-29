@@ -438,7 +438,7 @@ Both let one class carry two behaviours and let history decide which a run sees:
 $v = yield Workflow::getVersion('add-discount', Workflow::DEFAULT_VERSION, 1);
 
 // Durable
-$v = $this->environment->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+$v = $this->environment->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
 The wire format is the same one, and not by imitation: it was read off a history the Go SDK

@@ -68,7 +68,7 @@ final class EveryCaseWorkflow
         $trace = [];
         $trace['succeed'] = $this->environment->await($steady->succeed($caseId));
 
-        $this->environment->sleep(Duration::seconds(5), 'cooling down before retry');
+        $this->environment->sleep(Duration::seconds(5), timerSummary: 'cooling down before retry');
         $trace['timer'] = 'slept 5 s';
 
         // Caught as well, and not on principle: on the in-memory backend it retries and returns

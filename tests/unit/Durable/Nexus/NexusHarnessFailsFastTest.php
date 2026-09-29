@@ -28,7 +28,7 @@ final class NexusHarnessFailsFastTest extends TestCase
         $this->expectException(NexusUnsupportedByBackendException::class);
 
         $env->run(static fn(WorkflowEnvironment $wf): mixed => $wf->await(
-            $wf->nexusOperation('billing-endpoint', 'billing', 'charge', ['amount' => 10]),
+            $wf->nexusOperation('billing-endpoint', 'billing', 'charge', payload: ['amount' => 10]),
         ));
     }
 

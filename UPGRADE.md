@@ -952,7 +952,7 @@ plays. Rector can do nothing here: only you know which branches the code still c
 
 ```php
 // The DEFAULT_VERSION branch is still in the code: say so.
-$version = $env->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+$version = $env->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
 ### `version()` no longer switches an in-flight execution
@@ -1059,7 +1059,7 @@ started before the change:
 
 ```php
 } catch (DurableActivityFailedException $e) {
-    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', ChangePoint::DEFAULT_VERSION, 1)
+    $attempt = ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1)
         ? 1                  // started before the upgrade: the history recorded attempt 1
         : $e->attempt();
 
