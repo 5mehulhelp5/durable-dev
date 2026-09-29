@@ -3,9 +3,8 @@
 **These files are not covered by the repository's MIT licence.**
 
 Every SVG in this directory but two (`api-platform` and `illuminate`, see below) reproduces a mark
-belonging to its owner. They are used **nominatively**,
-to name the projects Durable integrates with, in a picker whose whole purpose is to say *which
-stack are you on*. Naming a project that way is ordinary and expected. Shipping its mark under a
+belonging to its owner. They are used **nominatively**, to name the projects Durable integrates
+with, in a picker whose whole purpose is to say *which stack are you on*. Naming a project that way is ordinary and expected. Shipping its mark under a
 grant that says "do what you like with this" is a different act, and [WA004](../../../documentation/wa/WA004-mit-license-distribution.md)
 declares the repository and its Composer packages MIT without carving anything out.
 
@@ -14,7 +13,8 @@ to the marks below, which remain the property of their respective owners.**
 
 ## They are all modified, and that is the part to check
 
-Not one of these files is the mark as its owner publishes it. Each has had its brand colour replaced
+Not one of the marks here is as its owner publishes it (the two glyphs of our own are not marks at
+all). Each has had its brand colour replaced
 by `currentColor`, its background dropped, and its artwork cropped to a square 24 box. That is what
 lets a mark follow the page's theme and accent instead of sitting on a white rectangle in dark mode,
 and it is also precisely what a brand guideline is most likely to forbid.
@@ -54,7 +54,7 @@ three-tier database glyph written for this repository, reproducing nothing.
 The chip says "API Platform", which the project's policy permits in as many words (below). Its
 icon is a pair of curly braces, the shape a reader associates with an API payload, drawn here and
 reproducing nothing of API Platform's artwork. It replaced Webby on 2026-08-28 (164ad79b); see
-the last section for why, and for the request that could bring Webby back.
+"Webby: asked for, not shipped" below for why, and for the request that could bring Webby back.
 
 ## What was checked, and what it said
 
