@@ -256,6 +256,50 @@ migrated by hand, calls to the other ports included.
    fails loudly with a `TypeError`. Pass the object on unchanged to another port.
 3. A test double that records the ids it heard can record `->toString()` and keep its assertions.
 
+### Journal events are built from an `ExecutionId`, and `Event::executionId()` returns one (#682)
+
+**Who is affected**: code that builds a journal event, such as a custom command buffer, a test or a
+fixture that appends events, or a custom `Event` class. Also code that reads `executionId()` from an
+event. **Nothing stored or sent changes.** `EventDataMapper::fromDomainEvent()` still writes the
+string under `execution_id`, the Temporal activity input still carries it as a string, payloads hold
+only plain data, and `InMemoryEventStore` still files each stream under the string.
+
+| Where                                                   | Changes                                                        |
+|---------------------------------------------------------|----------------------------------------------------------------|
+| `Event\Event::executionId()`                            | returns `ExecutionId`                                          |
+| The constructor of every class in `Gplanchat\Durable\Event` | first argument `ExecutionId` (the parent id for the three `ChildWorkflow*` events) |
+| `WorkflowExecutionFailed::fromStoredPayload()`, `unhandled…()`, `deadlineExceeded()`, `workflowHandlerFailure()`, `terminatedByParent()` | first argument `ExecutionId` |
+| `ActivityCatastrophicFailure::fromStoredPayload()`, `forThrowable()`; `ActivityTaskFailed::forThrowable()`; `ActivityFailed::fromEnvelope()` | first argument `ExecutionId` |
+| `Failure\WorkflowFailureClassifier::classify()`, `Failure\ActivityFailureEventFactory::fromActivityThrowable()` | first argument `ExecutionId` |
+
+The other ids an event carries keep their string type for now: the child id of the `ChildWorkflow*`
+events, `WorkflowCancellationRequested::sourceParentExecutionId()`, the next id of
+`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They follow in the last part
+of #682.
+
+**Reading back is stricter in one case.** `EventDataMapper::toDomainEvent()` converts the stored
+`execution_id` with `ExecutionId::fromString()`, so a row stored with an empty id now throws
+`InvalidArgumentException` instead of producing an event for the empty execution. A store only holds
+such a row if a run was started under an empty id.
+
+**Rector does the building side it can prove.** The `durable-upgrade` set carries a new rule,
+`ExecutionIdEventArgumentRector`. It wraps the first argument in `ExecutionId::fromString()` in
+`new <Event>(...)`, for any class that implements `Event`, including your own, and in the static
+factories listed above, when that argument is typed `string`. It leaves a named, unpacked, nullable,
+`mixed` or unknown argument alone, and it does not touch code that reads `executionId()`.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id left in
+   `ExecutionId::fromString()`. An empty string is refused.
+2. Where you read `$event->executionId()`, call `->toString()` when a string is needed: an array
+   key, a JSON field, a log line or a comparison with a string. `json_encode()` turns the object
+   into `{}`, and `===` against a string is always false. Compare two ids with `->equals()`.
+3. **In a custom `Event` class**, type the constructor's id `ExecutionId` and return it from
+   `executionId()`. If you map it to storage yourself, write `->toString()`, not the object.
+4. In a test, compare ids with `->toString()` or `->equals()`, not `assertSame()` on the objects:
+   two value objects with the same id are equal, not identical.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
