@@ -52,6 +52,8 @@ Two facts shape the answer:
    The walk reads the generated descriptors, so a message added by a later API version is covered
    without a list to maintain. It skips `temporal.api.common.v1.SearchAttributes` by message type.
    It visits singular, repeated and map fields, which covers `Header.fields` and `Memo.fields`.
+   It unpacks a `google.protobuf.Any`, walks it and packs it again: the update protocol carries its
+   requests and results that way. An `Any` of an unknown type fails rather than pass in clear.
    `WorkflowServiceClientFactory::create()` takes an optional codec and wraps its client when one is
    given. Without a codec, nothing changes.
 3. **Durable ships the interface, not a cipher.** Key handling, algorithm and rotation are the
