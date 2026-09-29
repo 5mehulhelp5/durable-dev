@@ -71,7 +71,8 @@ final class GreeterWithoutTheMethod {}
 
 final class ServesNothing {}
 
-#[AsActivityHandler('App\Contracts\Missing')]
+/** @psalm-suppress UndefinedClass a contract that does not exist: deliberate */
+#[AsActivityHandler('App\Contracts\Missing')] // @phpstan-ignore argument.type (a contract that does not exist: deliberate)
 final class NamesAMissingContract {}
 
 /** #713: activity handlers declared in `activity_handlers`, as Symfony and Magento declare theirs. */

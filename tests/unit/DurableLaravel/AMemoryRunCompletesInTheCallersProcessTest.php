@@ -29,6 +29,12 @@ final class TwoStepHandler implements TwoStepActivities
     /** @var list<string> */
     public static array $ran = [];
 
+    /** @return list<string> */
+    public static function ran(): array
+    {
+        return self::$ran;
+    }
+
     public function first(): string
     {
         self::$ran[] = 'first';
@@ -87,7 +93,7 @@ final class AMemoryRunCompletesInTheCallersProcessTest extends TestCase
         $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString('run-1'), 'two-step', []);
 
         self::assertTrue($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-1'))['completed'] ?? false);
-        self::assertSame(['first', 'second'], TwoStepHandler::$ran);
+        self::assertSame(['first', 'second'], TwoStepHandler::ran());
     }
 
     public function testARunThatSleepsWakesInTheCall(): void
