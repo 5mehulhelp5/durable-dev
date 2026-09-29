@@ -255,11 +255,26 @@ SQL database** through Doctrine DBAL. There is no orchestration server, no sidec
 
 ### Configuration
 
+Give the journal a connection of its own. Sharing the application's is strongly discouraged
+(DUR054): Durable's transactions then nest inside business ones.
+
+```yaml
+# config/packages/doctrine.yaml — the journal on a connection of its own
+doctrine:
+    dbal:
+        default_connection: default
+        connections:
+            default:
+                url: '%env(resolve:DATABASE_URL)%'
+            durable:
+                url: '%env(resolve:DURABLE_DATABASE_URL)%'
+```
+
 ```yaml
 # config/packages/durable.yaml
 durable:
     dbal:
-        connection: doctrine.dbal.default_connection
+        connection: doctrine.dbal.durable_connection
         lock_factory: lock.factory
     backend: dbal
     activity_transport:
@@ -270,6 +285,10 @@ framework:
     lock:
         default: '%env(LOCK_DSN)%'   # a DBAL URL (postgresql://…, mysql://…), redis://…; not Messenger's doctrine://; shared across workers
 ```
+
+DoctrineBundle names each connection's service `doctrine.dbal.<name>_connection`. On a database
+other than the ORM's, `doctrine:migrations:diff` does not see Durable's tables: they come from the
+first write, or from `bin/console durable:setup`.
 
 Adding a `temporal.dsn` keeps the journal in SQL and uses the cluster only to serve Nexus operations.
 `backend: temporal` would hand the cluster the journal instead: there is never a second source of

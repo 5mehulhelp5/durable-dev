@@ -54,11 +54,26 @@ journal uses — rows and gRPC journal items share one shape.
 
 ## Configuration
 
+Give the journal a connection of its own (DUR054): on the application's, Durable's transactions
+nest inside business ones.
+
+```yaml
+# config/packages/doctrine.yaml — the journal on a connection of its own
+doctrine:
+    dbal:
+        default_connection: default
+        connections:
+            default:
+                url: '%env(resolve:DATABASE_URL)%'
+            durable:
+                url: '%env(resolve:DURABLE_DATABASE_URL)%'
+```
+
 ```yaml
 # config/packages/durable.yaml
 durable:
     dbal:
-        connection: doctrine.dbal.default_connection
+        connection: doctrine.dbal.durable_connection
         lock_factory: lock.factory
     backend: dbal
     event_store:
