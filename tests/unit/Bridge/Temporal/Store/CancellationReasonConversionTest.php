@@ -118,6 +118,21 @@ final class CancellationReasonConversionTest extends TestCase
         ], $reasons);
     }
 
+    /**
+     * The caller converts the same history after the scan: a generator would be used up by then.
+     * The list type refuses it up front instead of failing on the caller's second loop.
+     */
+    public function testTheScanTakesAListNotAGenerator(): void
+    {
+        $history = (static function (): \Generator {
+            yield self::activityScheduled(5, 'act-1');
+        })();
+
+        $this->expectException(\TypeError::class);
+        /** @psalm-suppress InvalidArgument — the wrong type is the point of the test */
+        TemporalEventConverter::forHistory('exec-1', $history); // @phpstan-ignore argument.type
+    }
+
     private static function activityScheduled(int $eventId, string $activityId): HistoryEvent
     {
         $event = self::event($eventId, EventType::EVENT_TYPE_ACTIVITY_TASK_SCHEDULED);
