@@ -13,9 +13,11 @@ use Gplanchat\Durable\Demo\Contracts\Billing\BillingServed;
  * attribute the Symfony bundle reads. `charge` has no body here: ProbeChargeWorkflow fulfils it.
  *
  * Its answers are the bench's own, so a caller can tell them from any other server's.
+ *
+ * Not `final`: Magento's container instantiates it, so it may generate an `Interceptor` extending it.
  */
 #[AsNexusServiceHandler(contract: BillingContract::class)]
-final class ProbeBillingHandler implements BillingServed
+class ProbeBillingHandler implements BillingServed
 {
     public function verify(string $order, int $amount, string $currency): array
     {
