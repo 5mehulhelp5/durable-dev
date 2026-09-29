@@ -227,12 +227,13 @@ migrated by hand, calls to the other ports included.
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at
    each call left. An empty string is refused, including by `WorkflowFiberDriver::run()` and
-   `PassEventStore::open()`, which keep a `string` parameter for now and convert inside.
+   `PassEventStore::open()` (over any store), which keep a `string` parameter for now and convert
+   on entry.
 2. **In a class that implements one of these interfaces**, change each listed parameter to
    `ExecutionId` (`?ExecutionId` for the parent of `runChild()`). Call `->toString()` where the
-   body stores, binds, formats or compares the id, for instance a SQL parameter, a lock name or an
-   array key: a DBAL or Eloquent binding does not convert the object for you. Pass the object on
-   unchanged to another port.
+   body stores, binds, formats, serialises or compares the id. `json_encode()` turns the object
+   into `{}`, and `===` or a strict `in_array()` against a string is always false; an array key
+   fails loudly with a `TypeError`. Pass the object on unchanged to another port.
 3. A test double that records the ids it heard can record `->toString()` and keep its assertions.
 
 ## 0.1.0-beta1
