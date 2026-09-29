@@ -273,6 +273,22 @@ final class NexusHandlerPassTest extends TestCase
         return $argument->getArgument(0);
     }
 
+    /**
+     * `durable:health` checks the Nexus queue only once something serves it: a queue nobody is
+     * meant to poll would fail the check forever.
+     */
+    public function testAServedContractAddsTheNexusRoleToTheHealthCheck(): void
+    {
+        $container = $this->containerWithRegistry();
+        $container->register('durable.command.health')->setArguments([null, ['workflow', 'activity']]);
+        $container->register('app.billing', BillingFixture::class)
+            ->addTag(NexusHandlerPass::TAG, ['contract' => BillingServedFixture::class]);
+
+        (new NexusHandlerPass())->process($container);
+
+        self::assertSame(['workflow', 'activity', 'nexus'], $container->getDefinition('durable.command.health')->getArgument(1));
+    }
+
     private function containerWithRegistry(): ContainerBuilder
     {
         $container = new ContainerBuilder();
