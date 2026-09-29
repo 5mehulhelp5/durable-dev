@@ -8,6 +8,7 @@ use Gplanchat\Durable\Activity\ActivityStub;
 use Gplanchat\Durable\Attribute\Activities;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Nexus\Serving\NexusFulfilmentParameterNames;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
@@ -200,7 +201,7 @@ final class WorkflowMethodArgumentsTest extends TestCase
         $env->runWorkflowClass(GreetWithOptionsWorkflow::class, ['name' => 'Ada'], 'exec-options');
 
         $scheduled = array_values(array_filter(
-            iterator_to_array($env->getEventStore()->readStream('exec-options'), false),
+            iterator_to_array($env->getEventStore()->readStream(ExecutionId::fromString('exec-options')), false),
             static fn(object $e): bool => $e instanceof \Gplanchat\Durable\Event\ActivityScheduled,
         ));
         self::assertCount(1, $scheduled);

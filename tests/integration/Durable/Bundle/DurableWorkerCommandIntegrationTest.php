@@ -7,6 +7,7 @@ namespace integration\Durable\Bundle;
 use Gplanchat\Durable\Bundle\Command\DurableWorkerCommand;
 use Gplanchat\Durable\Bundle\DurableBundle;
 use Gplanchat\Durable\Event\ExecutionCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use integration\Durable\Bundle\Support\GreetByWorkerWorkflow;
@@ -50,7 +51,7 @@ final class DurableWorkerCommandIntegrationTest extends KernelTestCase
         $container->get(\Gplanchat\Durable\ActivityExecutor::class)->register('greet', static fn(array $p): string => 'Hello, ' . $p['name'] . '!');
 
         $executionId = '01900000-0000-7000-8000-0000000000d1';
-        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($executionId, 'greet-by-worker', ['name' => 'Ada']);
+        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), 'greet-by-worker', ['name' => 'Ada']);
 
         $application = new Application($kernel);
         $application->setAutoExit(false);
@@ -98,7 +99,7 @@ final class DurableWorkerCommandIntegrationTest extends KernelTestCase
 
     private function completedWith(EventStoreInterface $store, string $executionId): mixed
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ExecutionCompleted) {
                 return $event->result();
             }

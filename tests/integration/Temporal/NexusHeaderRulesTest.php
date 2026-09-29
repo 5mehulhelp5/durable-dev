@@ -14,6 +14,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Command\V1\Command;
@@ -189,7 +190,7 @@ final class NexusHeaderRulesTest extends TestCase
             new TemporalHistoryCursor($this->client, $this->connection),
             new WorkflowServiceExecutionRpc($this->client),
         );
-        $this->workflowId = $client->startAsync('NexusHeaderProbe', [], 'nexushdr-' . bin2hex(random_bytes(4)));
+        $this->workflowId = $client->workflowId($client->startAsync('NexusHeaderProbe', [], ExecutionId::fromString('nexushdr-' . bin2hex(random_bytes(4)))));
 
         $poll = new PollWorkflowTaskQueueRequest();
         $poll->setNamespace($this->connection->namespace->name());

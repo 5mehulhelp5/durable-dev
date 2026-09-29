@@ -16,6 +16,7 @@ use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Nexus\NexusEndpoint;
 use Gplanchat\Durable\Nexus\NexusOperationHeaders;
 use Gplanchat\Durable\Nexus\NexusOperationName;
@@ -235,7 +236,7 @@ final class NexusServedOperationTest extends TestCase
             new TemporalHistoryCursor($this->client, $this->connection),
             new WorkflowServiceExecutionRpc($this->client),
         );
-        $callerId = $client->startAsync('NexusServedCaller', [], 'nxserved-' . bin2hex(random_bytes(4)));
+        $callerId = $client->workflowId($client->startAsync('NexusServedCaller', [], ExecutionId::fromString('nxserved-' . bin2hex(random_bytes(4)))));
         $this->started[] = $callerId;
 
         $task = $this->pollWorkflowTask();

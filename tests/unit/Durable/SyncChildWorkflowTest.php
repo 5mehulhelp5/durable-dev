@@ -13,6 +13,7 @@ use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Exception\DurableChildWorkflowFailedException;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\ParentChildWorkflowCoordinator;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -67,7 +68,7 @@ final class SyncChildWorkflowTest extends TestCase
 
         // A single ExecutionCompleted, and it carries the PARENT's result.
         $completed = array_values(array_filter(
-            iterator_to_array($this->eventStore->readStream('parent-1'), false),
+            iterator_to_array($this->eventStore->readStream(ExecutionId::fromString('parent-1')), false),
             static fn(object $e): bool => $e instanceof ExecutionCompleted,
         ));
         self::assertCount(1, $completed);
@@ -82,9 +83,9 @@ final class SyncChildWorkflowTest extends TestCase
         $this->engine->start('parent-3', static fn(WorkflowEnvironment $env): string
             => $env->await($env->childWorkflowStub(EchoingChild::class)->run()));
 
-        foreach ($this->eventStore->readStream('parent-3') as $event) {
+        foreach ($this->eventStore->readStream(ExecutionId::fromString('parent-3')) as $event) {
             if ($event instanceof ChildWorkflowScheduled) {
-                $started = iterator_to_array($this->eventStore->readStream($event->childExecutionId()), false)[0];
+                $started = iterator_to_array($this->eventStore->readStream(ExecutionId::fromString($event->childExecutionId())), false)[0];
                 self::assertInstanceOf(ExecutionStarted::class, $started);
                 self::assertSame($event->childWorkflowType(), $started->payload()['workflowType'] ?? null);
 
@@ -132,7 +133,7 @@ final class SyncChildWorkflowTest extends TestCase
         self::assertNotContains('ExecutionCompleted', $types);
 
         $failed = array_values(array_filter(
-            iterator_to_array($this->eventStore->readStream('parent-3'), false),
+            iterator_to_array($this->eventStore->readStream(ExecutionId::fromString('parent-3')), false),
             static fn(object $e): bool => $e instanceof ChildWorkflowFailed,
         ));
         self::assertStringContainsString('child exploded', $failed[0]->failureMessage());
@@ -183,7 +184,7 @@ final class SyncChildWorkflowTest extends TestCase
 
         self::assertTrue($seenActive, 'the parent must not be seen as finished during its own run');
         self::assertNotEmpty(array_filter(
-            iterator_to_array($this->eventStore->readStream('parent-4'), false),
+            iterator_to_array($this->eventStore->readStream(ExecutionId::fromString('parent-4')), false),
             static fn(object $e): bool => $e instanceof ChildWorkflowCompleted,
         ));
     }
@@ -192,7 +193,7 @@ final class SyncChildWorkflowTest extends TestCase
     private function shortNames(string $executionId): array
     {
         $out = [];
-        foreach ($this->eventStore->readStream($executionId) as $event) {
+        foreach ($this->eventStore->readStream(ExecutionId::fromString($executionId)) as $event) {
             $out[] = (new \ReflectionClass($event))->getShortName();
         }
 

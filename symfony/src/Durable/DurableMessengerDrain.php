@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Durable;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Query\WorkflowQueryEvaluator;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -68,11 +69,11 @@ final class DurableMessengerDrain
             }
 
             ++$idleStreak;
-            if ($hadMessage && $idleStreak > 30 && !$workflowMetadataStore->hasActiveWorkflowMetadata($executionId)) {
+            if ($hadMessage && $idleStreak > 30 && !$workflowMetadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
                 return false;
             }
 
-            if ($workflowMetadataStore->hasActiveWorkflowMetadata($executionId)) {
+            if ($workflowMetadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
                 usleep(100_000);
             } else {
                 usleep(1_000);
@@ -119,11 +120,11 @@ final class DurableMessengerDrain
             }
 
             ++$idleStreak;
-            if ($hadMessage && $idleStreak > 30 && !$workflowMetadataStore->hasActiveWorkflowMetadata($executionId)) {
+            if ($hadMessage && $idleStreak > 30 && !$workflowMetadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
                 return 'timeout';
             }
 
-            if ($workflowMetadataStore->hasActiveWorkflowMetadata($executionId)
+            if ($workflowMetadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))
                 && null === WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)
                 && $idleStreak >= 5
                 && !WorkflowQueryEvaluator::hasPendingTimer($eventStore, $executionId)
@@ -131,7 +132,7 @@ final class DurableMessengerDrain
                 return 'signal_wait';
             }
 
-            if ($workflowMetadataStore->hasActiveWorkflowMetadata($executionId)) {
+            if ($workflowMetadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
                 usleep(100_000);
             } else {
                 usleep(1_000);

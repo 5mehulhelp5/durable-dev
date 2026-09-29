@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable\Laravel;
 
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\LaravelWorkflowResumeDispatcher;
 use Gplanchat\Durable\Laravel\Queue\ResumeWorkflowJob;
@@ -35,7 +36,7 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
             'durable',
         );
 
-        $dispatcher->dispatchResume('exec-1', [['name' => 'approve', 'arguments' => []]]);
+        $dispatcher->dispatchResume(ExecutionId::fromString('exec-1'), [['name' => 'approve', 'arguments' => []]]);
 
         self::assertCount(1, $queue->pushed);
         /** @var ResumeWorkflowJob $job */
@@ -50,7 +51,7 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $queue = new FakeQueue();
 
         (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore()))
-            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
+            ->dispatchResumeAwaiting(ExecutionId::fromString('exec-1'), AwaitedFact::activity('act-1'));
 
         self::assertCount(1, $queue->pushed);
         self::assertEquals(AwaitedFact::activity('act-1'), $queue->pushed[0]['job']->message->awaited);
@@ -65,7 +66,7 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $queue = new FakeQueue();
 
         (new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), new InMemoryWorkflowMetadataStore(), runsInline: true))
-            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
+            ->dispatchResumeAwaiting(ExecutionId::fromString('exec-1'), AwaitedFact::activity('act-1'));
 
         self::assertSame([], $queue->pushed);
     }
@@ -76,10 +77,10 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $dispatcher = new LaravelWorkflowResumeDispatcher(new FakeQueueFactory($queue), $metadata);
 
-        $dispatcher->dispatchNewWorkflowRun('exec-2', 'Greeting', ['who' => 'world']);
+        $dispatcher->dispatchNewWorkflowRun(ExecutionId::fromString('exec-2'), 'Greeting', ['who' => 'world']);
 
         // A resume that arrived before the metadata would not know what to replay.
-        $saved = $metadata->get('exec-2');
+        $saved = $metadata->get(ExecutionId::fromString('exec-2'));
         self::assertNotNull($saved);
         self::assertSame('Greeting', $saved['workflowType']);
         self::assertCount(1, $queue->pushed);
@@ -91,9 +92,9 @@ final class LaravelWorkflowResumeDispatcherTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $dispatcher = new LaravelWorkflowResumeDispatcher(new FakeQueueFactory(new FakeQueue()), $metadata);
 
-        $dispatcher->dispatchNewWorkflowRun('exec-3', GreetingWorkflow::class, []);
+        $dispatcher->dispatchNewWorkflowRun(ExecutionId::fromString('exec-3'), GreetingWorkflow::class, []);
 
-        self::assertSame('test.greeting', $metadata->get('exec-3')['workflowType'] ?? null);
+        self::assertSame('test.greeting', $metadata->get(ExecutionId::fromString('exec-3'))['workflowType'] ?? null);
     }
 
     public function testAQueueThatRunsInlineIsRefusedAtBoot(): void

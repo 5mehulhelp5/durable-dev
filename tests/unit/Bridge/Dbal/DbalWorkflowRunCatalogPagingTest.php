@@ -14,6 +14,7 @@ use Gplanchat\Bridge\Dbal\Store\DbalWorkflowRunProjection;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Store\ProjectingEventStore;
 use Gplanchat\Durable\Store\ProjectingWorkflowMetadataStore;
@@ -142,7 +143,7 @@ final class DbalWorkflowRunCatalogPagingTest extends TestCase
      */
     private function startRun(string $executionId, string $workflowType, int $startedAt = 1_700_000_000): void
     {
-        $this->metadataStore()->save($executionId, $workflowType, []);
+        $this->metadataStore()->save(ExecutionId::fromString($executionId), $workflowType, []);
 
         $this->connection->update(
             'durable_workflow_runs',

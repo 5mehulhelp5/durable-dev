@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Bridge\Temporal\Port;
 use Gplanchat\Bridge\Temporal\Port\TemporalWorkflowResumeDispatcher;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
 use Gplanchat\Durable\Debug\WorkflowDispatchObserverInterface;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -31,13 +32,15 @@ final class TemporalWorkflowResumeDispatcherTest extends TestCase
             }
         };
 
+        $client = $this->createStub(WorkflowClientInterface::class);
+        $client->method('startAsync')->willReturnArgument(2);
         $dispatcher = new TemporalWorkflowResumeDispatcher(
-            $this->createStub(WorkflowClientInterface::class),
+            $client,
             new InMemoryWorkflowMetadataStore(),
             new WorkflowDefinitionLoader(),
             $observer,
         );
-        $dispatcher->dispatchNewWorkflowRun('exec-1', 'Order', ['id' => 7]);
+        $dispatcher->dispatchNewWorkflowRun(ExecutionId::fromString('exec-1'), 'Order', ['id' => 7]);
 
         self::assertSame([['exec-1', 'Order', false, 'temporal']], $observer->heard);
     }

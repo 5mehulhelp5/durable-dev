@@ -15,6 +15,7 @@ use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
 use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\Store\ProjectingEventStore;
@@ -45,7 +46,7 @@ final class DbalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConf
 
     protected function startRun(string $executionId, string $workflowType): void
     {
-        $this->metadataStore()->save($executionId, $workflowType, []);
+        $this->metadataStore()->save(ExecutionId::fromString($executionId), $workflowType, []);
         $this->eventStore()->append(new ExecutionStarted($executionId, []));
     }
 
@@ -76,7 +77,7 @@ final class DbalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConf
      */
     protected function dispatchRun(string $executionId, string $workflowType): void
     {
-        $this->metadataStore()->save($executionId, $workflowType, []);
+        $this->metadataStore()->save(ExecutionId::fromString($executionId), $workflowType, []);
     }
 
     /**

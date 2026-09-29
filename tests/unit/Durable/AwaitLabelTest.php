@@ -8,6 +8,7 @@ use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -110,7 +111,7 @@ final class AwaitLabelTest extends TestCase
             }
 
             return $row;
-        }, iterator_to_array($store->readStream('exec-1'), false));
+        }, iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false));
     }
 
     /**

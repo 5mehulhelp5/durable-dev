@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -44,7 +45,7 @@ final class AFailedRunKeepsWhatItWasStartedWithTest extends TestCase
     public function testAFailedRunKeepsItsStartPayload(): void
     {
         $metadata = new InMemoryWorkflowMetadataStore();
-        $metadata->save('exec-failed', ThrowingWorkflow::class, ['owner' => 'ada']);
+        $metadata->save(ExecutionId::fromString('exec-failed'), ThrowingWorkflow::class, ['owner' => 'ada']);
 
         try {
             ($this->handlerFor($metadata))(new ResumeWorkflowMessage('exec-failed'));
@@ -53,12 +54,12 @@ final class AFailedRunKeepsWhatItWasStartedWithTest extends TestCase
             // The failure still propagates: that is not what changes.
         }
 
-        $row = $metadata->get('exec-failed');
+        $row = $metadata->get(ExecutionId::fromString('exec-failed'));
 
         self::assertNotNull($row, 'A failed run lost the only record of what it was started with.');
         self::assertSame(['owner' => 'ada'], $row['payload']);
         self::assertTrue($row['completed'] ?? false, 'Kept, but marked finished: no resume may pick it up again.');
-        self::assertFalse($metadata->hasActiveWorkflowMetadata('exec-failed'));
+        self::assertFalse($metadata->hasActiveWorkflowMetadata(ExecutionId::fromString('exec-failed')));
     }
 
     private function handlerFor(InMemoryWorkflowMetadataStore $metadata): ResumeWorkflowHandler

@@ -11,6 +11,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
@@ -163,7 +164,7 @@ final class RuntimeFactoryTest extends TestCase
         $runtime->eventStore()->append(new WorkflowSignalReceived('exec-1', 'go', []));
 
         $stamps = [];
-        foreach ($runtime->eventStore()->readStreamWithRecordedAt('exec-1') as $row) {
+        foreach ($runtime->eventStore()->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')) as $row) {
             $stamps[] = $row['recordedAt']->format('U');
         }
         self::assertSame(['1700000000'], $stamps);

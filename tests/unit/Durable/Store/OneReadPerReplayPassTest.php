@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable\Store;
 
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -53,7 +54,7 @@ final class OneReadPerReplayPassTest extends TestCase
                 $this->inner->append($event);
             }
 
-            public function readStream(string $executionId): iterable
+            public function readStream(ExecutionId $executionId): iterable
             {
                 // Only the history source's reads: the lifecycle's own checks are not replay cost.
                 foreach (debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
@@ -66,12 +67,12 @@ final class OneReadPerReplayPassTest extends TestCase
                 return $this->inner->readStream($executionId);
             }
 
-            public function readStreamWithRecordedAt(string $executionId): iterable
+            public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
             {
                 return $this->inner->readStreamWithRecordedAt($executionId);
             }
 
-            public function countEventsInStream(string $executionId): int
+            public function countEventsInStream(ExecutionId $executionId): int
             {
                 return $this->inner->countEventsInStream($executionId);
             }

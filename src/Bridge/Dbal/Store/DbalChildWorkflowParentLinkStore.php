@@ -6,6 +6,7 @@ namespace Gplanchat\Bridge\Dbal\Store;
 
 use Doctrine\DBAL\Connection;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\ChildWorkflowParentLinkStoreInterface;
 
 /**
@@ -22,7 +23,7 @@ final class DbalChildWorkflowParentLinkStore implements ChildWorkflowParentLinkS
         private readonly string $table = 'durable_child_workflow_parent_link',
     ) {}
 
-    public function link(string $childExecutionId, string $parentExecutionId): void
+    public function link(ExecutionId $childExecutionId, ExecutionId $parentExecutionId): void
     {
         $this->schema->ensure();
 
@@ -31,52 +32,52 @@ final class DbalChildWorkflowParentLinkStore implements ChildWorkflowParentLinkS
         // the primary key (#327). The metadata store met the same trap first.
         $exists = false !== $this->connection->fetchOne(
             \sprintf('SELECT 1 FROM %s WHERE child_execution_id = ?', $this->table),
-            [$childExecutionId],
+            [$childExecutionId->toString()],
         );
 
         if ($exists) {
             $this->connection->update(
                 $this->table,
-                ['parent_execution_id' => $parentExecutionId],
-                ['child_execution_id' => $childExecutionId],
+                ['parent_execution_id' => $parentExecutionId->toString()],
+                ['child_execution_id' => $childExecutionId->toString()],
             );
         } else {
             $this->connection->insert($this->table, [
-                'child_execution_id' => $childExecutionId,
-                'parent_execution_id' => $parentExecutionId,
+                'child_execution_id' => $childExecutionId->toString(),
+                'parent_execution_id' => $parentExecutionId->toString(),
             ]);
         }
     }
 
-    public function getParentExecutionId(string $childExecutionId): ?string
+    public function getParentExecutionId(ExecutionId $childExecutionId): ?ExecutionId
     {
         $this->schema->ensure();
 
         $parent = $this->connection->fetchOne(
             \sprintf('SELECT parent_execution_id FROM %s WHERE child_execution_id = ?', $this->table),
-            [$childExecutionId],
+            [$childExecutionId->toString()],
         );
 
-        return false === $parent || null === $parent ? null : (string) $parent;
+        return false === $parent || null === $parent ? null : ExecutionId::fromString((string) $parent);
     }
 
-    public function getChildExecutionIdsForParent(string $parentExecutionId): array
+    public function getChildExecutionIdsForParent(ExecutionId $parentExecutionId): array
     {
         $this->schema->ensure();
 
         return array_map(
-            static fn(mixed $id): string => (string) $id,
+            static fn(mixed $id): ExecutionId => ExecutionId::fromString((string) $id),
             $this->connection->fetchFirstColumn(
                 \sprintf('SELECT child_execution_id FROM %s WHERE parent_execution_id = ?', $this->table),
-                [$parentExecutionId],
+                [$parentExecutionId->toString()],
             ),
         );
     }
 
-    public function unlink(string $childExecutionId): void
+    public function unlink(ExecutionId $childExecutionId): void
     {
         $this->schema->ensure();
 
-        $this->connection->delete($this->table, ['child_execution_id' => $childExecutionId]);
+        $this->connection->delete($this->table, ['child_execution_id' => $childExecutionId->toString()]);
     }
 }

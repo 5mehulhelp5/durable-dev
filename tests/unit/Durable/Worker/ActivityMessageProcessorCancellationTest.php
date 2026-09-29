@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Worker;
 use Gplanchat\Durable\ActivityExecutor;
 use Gplanchat\Durable\Event\ActivityCancelled;
 use Gplanchat\Durable\Event\ActivityCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -35,14 +36,14 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
             /** @param list<string> $resumed */
             public function __construct(private array &$resumed) {}
 
-            public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
             {
-                $this->resumed[] = $executionId;
+                $this->resumed[] = $executionId->toString();
             }
 
-            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
 
         $heartbeatSender = new class implements ActivityHeartbeatSenderInterface {
@@ -76,7 +77,7 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
         ));
 
         $cancelled = false;
-        foreach ($eventStore->readStream('exec-1') as $e) {
+        foreach ($eventStore->readStream(ExecutionId::fromString('exec-1')) as $e) {
             if ($e instanceof ActivityCancelled && $e->activityId() === 'act-1') {
                 $cancelled = true;
             }
@@ -105,14 +106,14 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
             /** @param list<string> $resumed */
             public function __construct(private array &$resumed) {}
 
-            public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+            public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
             {
-                $this->resumed[] = $executionId;
+                $this->resumed[] = $executionId->toString();
             }
 
-            public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+            public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-            public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+            public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
         };
 
         $heartbeatSender = new class implements ActivityHeartbeatSenderInterface {
@@ -151,7 +152,7 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
 
         $completed = false;
         $cancelled = false;
-        foreach ($eventStore->readStream('exec-2') as $e) {
+        foreach ($eventStore->readStream(ExecutionId::fromString('exec-2')) as $e) {
             if ($e instanceof ActivityCompleted && $e->activityId() === 'act-2') {
                 $completed = true;
             }

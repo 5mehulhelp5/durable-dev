@@ -7,6 +7,7 @@ namespace integration\Durable\Bundle;
 use Gplanchat\Durable\Bundle\DurableBundle;
 use Gplanchat\Durable\Bundle\Handler\DeliverWorkflowSignalHandler;
 use Gplanchat\Durable\Event\ExecutionCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -59,9 +60,9 @@ final class DurableDistributedMessengerIntegrationTest extends KernelTestCase
         // Starting is no longer a message: `ResumeWorkflowMessage` only ever *resumes*.
         // Starting goes through the dispatcher, which persists the metadata before publishing the
         // resume — which is also what the example application does.
-        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($executionId, 'OrderWait', []);
+        $container->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), 'OrderWait', []);
 
-        self::assertSame(false, $meta->get($executionId)['completed'] ?? null, 'workflow suspended');
+        self::assertSame(false, $meta->get(ExecutionId::fromString($executionId))['completed'] ?? null, 'workflow suspended');
         self::assertNull($this->lastExecutionCompletedResult($store, $executionId));
 
         $bus->dispatch(new DeliverWorkflowSignalMessage($executionId, 'approved', ['ref' => 'PO-9']));
@@ -69,14 +70,14 @@ final class DurableDistributedMessengerIntegrationTest extends KernelTestCase
         // The metadata no longer disappears on completion: DUR037 turned the observation of a run
         // into a projection, and a finished run remains a fact one can read. The marker replaces
         // the erasure.
-        self::assertTrue($meta->get($executionId)['completed'] ?? false, 'workflow finished');
+        self::assertTrue($meta->get(ExecutionId::fromString($executionId))['completed'] ?? false, 'workflow finished');
         self::assertSame(['ref' => 'PO-9'], $this->lastExecutionCompletedResult($store, $executionId));
     }
 
     private function lastExecutionCompletedResult(EventStoreInterface $store, string $executionId): mixed
     {
         $last = null;
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ExecutionCompleted) {
                 $last = $event->result();
             }

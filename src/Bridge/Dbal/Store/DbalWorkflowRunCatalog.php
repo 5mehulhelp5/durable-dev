@@ -7,6 +7,7 @@ namespace Gplanchat\Bridge\Dbal\Store;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\RunPageCursor;
@@ -102,10 +103,10 @@ final class DbalWorkflowRunCatalog implements WorkflowRunCatalogInterface
         );
     }
 
-    public function findRun(string $executionId): ?WorkflowRunDescription
+    public function findRun(ExecutionId $executionId): ?WorkflowRunDescription
     {
         $this->schema->ensure();
-        $rows = $this->select(['execution_id = ?'], [$executionId], 1);
+        $rows = $this->select(['execution_id = ?'], [$executionId->toString()], 1);
 
         return [] === $rows ? null : self::describe($rows[0]);
     }

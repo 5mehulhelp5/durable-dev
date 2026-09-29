@@ -7,6 +7,7 @@ namespace Gplanchat\Bridge\Illuminate\Store;
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Exception\SupersededPassException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use Gplanchat\Durable\Store\FencedEventStoreInterface;
 use Gplanchat\Durable\Store\PassFence;
@@ -163,14 +164,14 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         ];
     }
 
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
         foreach ($this->readStreamWithRecordedAt($executionId) as $entry) {
             yield $entry['event'];
         }
     }
 
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
         $this->schema->ensure();
 
@@ -179,14 +180,14 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         // explicitly requires.
         $rows = $this->connection->table($this->table)
             ->select(['event_type', 'payload', 'recorded_at'])
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->orderBy('id')
             ->cursor();
 
         foreach ($rows as $row) {
             yield [
                 'event' => EventDataMapper::toDomainEvent([
-                    'execution_id' => $executionId,
+                    'execution_id' => $executionId->toString(),
                     'event_type' => $row->event_type,
                     'payload' => $row->payload,
                 ]),
@@ -195,12 +196,12 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         }
     }
 
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
         $this->schema->ensure();
 
         return $this->connection->table($this->table)
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->count();
     }
 }

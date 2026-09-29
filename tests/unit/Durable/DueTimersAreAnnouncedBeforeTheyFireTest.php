@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\Event\TimerCancelled;
 use Gplanchat\Durable\Event\TimerScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
@@ -67,7 +68,7 @@ final class DueTimersAreAnnouncedBeforeTheyFireTest extends TestCase
         $this->fire($journal, now: 500.0, resumes: $resumes);
 
         self::assertSame(['awaiting timer timer-1 with 1 events'], $resumes->sent, 'announced, then neither fired nor resumed');
-        self::assertSame(1, $journal->countEventsInStream('exec-1'), 'no TimerCompleted from the superseded pass');
+        self::assertSame(1, $journal->countEventsInStream(ExecutionId::fromString('exec-1')), 'no TimerCompleted from the superseded pass');
     }
 
     private function fire(InMemoryEventStore $journal, float $now, ?TimerRecordingResumes $resumes = null): TimerRecordingResumes
@@ -92,18 +93,18 @@ final class TimerRecordingResumes implements WorkflowResumeDispatcher
         private readonly bool $takeOverOnAnnouncement = false,
     ) {}
 
-    public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
         $this->sent[] = \sprintf('resume with %d events', $this->journal->countEventsInStream($executionId));
     }
 
-    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
     {
         $this->sent[] = \sprintf('awaiting %s with %d events', $fact->describe(), $this->journal->countEventsInStream($executionId));
         if ($this->takeOverOnAnnouncement) {
-            PassEventStore::open($this->journal, $executionId);
+            PassEventStore::open($this->journal, $executionId->toString());
         }
     }
 
-    public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
 }

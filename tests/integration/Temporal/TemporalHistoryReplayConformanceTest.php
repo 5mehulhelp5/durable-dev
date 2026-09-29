@@ -7,6 +7,7 @@ namespace integration\Temporal;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use Gplanchat\Bridge\Temporal\Store\TemporalReadThroughEventStore;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Port\WorkflowHistorySourceInterface;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -101,11 +102,11 @@ final class TemporalHistoryReplayConformanceTest extends TemporalServerTestCase
         self::assertSame($reference->childWorkflowTypeForSlot(0), $subject->childWorkflowTypeForSlot(0));
         self::assertEquals($reference->childWorkflowInputForSlot(0), $subject->childWorkflowInputForSlot(0));
         self::assertEquals($reference->findChildWorkflowForSlot(0)?->result, $subject->findChildWorkflowForSlot(0)?->result);
-        self::assertSame($childId, $subject->findChildWorkflowForSlot(0)?->childExecutionId);
+        self::assertSame($childId->toString(), $subject->findChildWorkflowForSlot(0)?->childExecutionId);
         self::assertTrue($subject->hasChildExecutionId($childId));
         self::assertTrue($subject->hasChildExecutionCompletedSuccessfully($childId));
-        self::assertFalse($subject->hasChildExecutionId('never-started'));
-        self::assertFalse($subject->hasChildExecutionCompletedSuccessfully('never-started'));
+        self::assertFalse($subject->hasChildExecutionId(ExecutionId::fromString('never-started')));
+        self::assertFalse($subject->hasChildExecutionCompletedSuccessfully(ExecutionId::fromString('never-started')));
         self::assertNull($subject->childWorkflowTypeForSlot(1));
 
         // What this workflow never does reads back as absent on both sides.

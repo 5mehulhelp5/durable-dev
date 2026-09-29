@@ -7,6 +7,7 @@ namespace Gplanchat\Bridge\Temporal\Store;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
 use Gplanchat\Durable\Event\Event;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\History\V1\HistoryEvent;
@@ -43,7 +44,7 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
      * @return iterable<Event>
      */
     #[\Override]
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
         if ($this->localStore->countEventsInStream($executionId) > 0) {
             return $this->localStore->readStream($executionId);
@@ -56,7 +57,7 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
      * @return iterable<array{event: Event, recordedAt: \DateTimeImmutable|null}>
      */
     #[\Override]
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
         if ($this->localStore->countEventsInStream($executionId) > 0) {
             return $this->localStore->readStreamWithRecordedAt($executionId);
@@ -66,7 +67,7 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
     }
 
     #[\Override]
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
         $local = $this->localStore->countEventsInStream($executionId);
         if ($local > 0) {
@@ -84,9 +85,9 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
     /**
      * @return \Generator<int, Event>
      */
-    private function streamFromTemporal(string $executionId): \Generator
+    private function streamFromTemporal(ExecutionId $executionId): \Generator
     {
-        $converter = new TemporalEventConverter($executionId);
+        $converter = new TemporalEventConverter($executionId->toString());
 
         foreach ($this->historyOf($executionId) as $historyEvent) {
             $durableEvent = $converter->convert($historyEvent);
@@ -99,9 +100,9 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
     /**
      * @return \Generator<int, array{event: Event, recordedAt: \DateTimeImmutable|null}>
      */
-    private function streamFromTemporalWithTimestamps(string $executionId): \Generator
+    private function streamFromTemporalWithTimestamps(ExecutionId $executionId): \Generator
     {
-        $converter = new TemporalEventConverter($executionId);
+        $converter = new TemporalEventConverter($executionId->toString());
 
         foreach ($this->historyOf($executionId) as $historyEvent) {
             $durableEvent = $converter->convert($historyEvent);
@@ -123,7 +124,7 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
      *
      * @return \Generator<int, HistoryEvent>
      */
-    private function historyOf(string $executionId): \Generator
+    private function historyOf(ExecutionId $executionId): \Generator
     {
         $found = false;
         foreach ($this->cursor->events(new WorkflowExecution(['workflow_id' => $this->workflowClient->workflowId($executionId)])) as $historyEvent) {
@@ -132,7 +133,7 @@ final class TemporalReadThroughEventStore implements EventStoreInterface
         }
 
         if (!$found) {
-            yield from $this->cursor->events(new WorkflowExecution(['workflow_id' => $executionId]));
+            yield from $this->cursor->events(new WorkflowExecution(['workflow_id' => $executionId->toString()]));
         }
     }
 }

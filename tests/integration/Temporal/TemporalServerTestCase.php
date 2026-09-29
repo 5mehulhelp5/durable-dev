@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\WorkflowStartOptions;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\WorkflowExecution;
@@ -163,7 +164,7 @@ abstract class TemporalServerTestCase extends TestCase
     protected function runWorkflow(string $workflowType, array $input, float $timeoutSeconds = 30.0): mixed
     {
         $executionId = strtolower($workflowType) . '-' . bin2hex(random_bytes(4));
-        $this->workflowClient()->startAsync($workflowType, $input, $executionId);
+        $this->workflowClient()->startAsync($workflowType, $input, ExecutionId::fromString($executionId));
 
         return $this->workflowClient()->pollForCompletion($executionId, 250, (int) ($timeoutSeconds * 4.0));
     }
@@ -174,7 +175,7 @@ abstract class TemporalServerTestCase extends TestCase
     protected function startWorkflow(string $workflowType, array $input, ?WorkflowStartOptions $options = null): string
     {
         $executionId = strtolower($workflowType) . '-' . bin2hex(random_bytes(4));
-        $this->workflowClient()->startAsync($workflowType, $input, $executionId, $options);
+        $this->workflowClient()->startAsync($workflowType, $input, ExecutionId::fromString($executionId), $options);
         $this->startedExecutionIds[] = $executionId;
 
         return $executionId;
@@ -182,7 +183,7 @@ abstract class TemporalServerTestCase extends TestCase
 
     protected function workflowId(string $executionId): string
     {
-        return $this->workflowClient()->workflowId($executionId);
+        return $this->workflowClient()->workflowId(ExecutionId::fromString($executionId));
     }
 
     /**

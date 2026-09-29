@@ -277,6 +277,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
@@ -288,12 +289,12 @@ final class GreetController
 
     public function __invoke(string $name): JsonResponse
     {
-        $executionId = 'greet-'.uniqid();
+        $executionId = ExecutionId::fromString('greet-'.uniqid());
         $this->dispatcher->dispatchNewWorkflowRun($executionId, 'greet', ['name' => $name]);
 
         // 202 : le run est en file, pas terminé. Répondre 200 ici est la première chose qui
         // fait attendre un résultat qu'aucun consommateur n'a encore produit.
-        return new JsonResponse(['executionId' => $executionId], JsonResponse::HTTP_ACCEPTED);
+        return new JsonResponse(['executionId' => $executionId->toString()], JsonResponse::HTTP_ACCEPTED);
     }
 }
 ```

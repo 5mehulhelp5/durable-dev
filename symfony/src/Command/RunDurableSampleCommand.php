@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Durable\DurableMessengerDrain;
 use App\Durable\DurableSampleWorkflows;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Query\WorkflowQueryEvaluator;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -120,7 +121,7 @@ HELP
         $payload = $this->buildPayload($workflowType, $input);
         $executionId = (string) ($input->getOption('execution-id') ?: Uuid::v4());
 
-        $this->workflowResumeDispatcher->dispatchNewWorkflowRun($executionId, $workflowType, $payload);
+        $this->workflowResumeDispatcher->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, $payload);
 
         if ($input->getOption('no-drain')) {
             $io->note('ResumeWorkflowMessage dispatched. Run for instance:');

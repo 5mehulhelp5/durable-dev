@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Versioning;
 use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
 use Gplanchat\Durable\Store\EventStoreHistorySource;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -49,13 +50,13 @@ final class ChangePointOnAnOlderRunTest extends TestCase
     {
         $store = new InMemoryEventStore();
         $this->seedTwoActivities($store);
-        $before = iterator_count($store->readStream(self::EXECUTION));
+        $before = iterator_count($store->readStream(ExecutionId::fromString(self::EXECUTION)));
 
         $this->context($store)->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
 
         self::assertSame(
             $before,
-            iterator_count($store->readStream(self::EXECUTION)),
+            iterator_count($store->readStream(ExecutionId::fromString(self::EXECUTION))),
             'nothing is written: the answer is deduced from the history, it is not added to it',
         );
     }

@@ -14,6 +14,7 @@ use Gplanchat\Durable\Exception\ActivitySupersededException;
 use Gplanchat\Durable\Exception\DurableActivityFailedException;
 use Gplanchat\Durable\Exception\DurableNexusOperationFailedException;
 use Gplanchat\Durable\Exception\WorkflowCancelledFailure;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Failure\FailureEnvelope;
 use Gplanchat\Durable\Nexus\NexusOperationFailureKind;
 use Gplanchat\Durable\Port\History\CancellationDelivery;
@@ -721,9 +722,11 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         return new ChildWorkflowOutcome($childId, $outcome['result']);
     }
 
-    public function findScheduledChildExecutionId(int $slot): ?string
+    public function findScheduledChildExecutionId(int $slot): ?ExecutionId
     {
-        return $this->childExecutionIds[$slot] ?? null;
+        $childId = $this->childExecutionIds[$slot] ?? null;
+
+        return null === $childId ? null : ExecutionId::fromString($childId);
     }
 
     public function childWorkflowTypeForSlot(int $slot): ?string
@@ -775,14 +778,14 @@ final class TemporalExecutionHistory implements WorkflowHistorySourceInterface
         return $this->firedTimerIds[$timerId] ?? null;
     }
 
-    public function hasChildExecutionId(string $childExecutionId): bool
+    public function hasChildExecutionId(ExecutionId $childExecutionId): bool
     {
-        return \in_array($childExecutionId, $this->childExecutionIds, true);
+        return \in_array($childExecutionId->toString(), $this->childExecutionIds, true);
     }
 
-    public function hasChildExecutionCompletedSuccessfully(string $childExecutionId): bool
+    public function hasChildExecutionCompletedSuccessfully(ExecutionId $childExecutionId): bool
     {
-        $outcome = $this->childOutcomes[$childExecutionId] ?? null;
+        $outcome = $this->childOutcomes[$childExecutionId->toString()] ?? null;
 
         return null !== $outcome && !$outcome['failed'];
     }

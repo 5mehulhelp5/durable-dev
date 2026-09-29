@@ -12,6 +12,7 @@ use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\ChildWorkflowScheduled;
 use Gplanchat\Durable\Event\TimerScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
@@ -65,16 +66,18 @@ final class AChildStartsAtItsParentsVirtualTimeTest extends TestCase
             return $wf->await($wf->childWorkflowStub(ChildThatRetries::class)->run());
         });
 
+        // The retry is stamped on, and dequeued against, the transport's (real) clock. Had the
+        // child's queue run on the virtual clock an hour ahead, the drain would see the retry as
+        // due while dequeue() handed nothing out, and the run would end as budget exhausted.
         self::assertSame('done', $result);
         self::assertSame(2, $attempts);
-        // The retry is stamped on the transport's (real) clock: the child waits its backoff out,
-        // rather than finding it due at once on a virtual clock an hour ahead.
+        // The backoff itself is still waited out.
         self::assertGreaterThanOrEqual(0.2, ((float) (hrtime(true) - $startedAt)) / 1e9);
     }
 
     private static function firstTimer(EventStoreInterface $store, string $executionId): TimerScheduled
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof TimerScheduled) {
                 return $event;
             }
@@ -84,7 +87,7 @@ final class AChildStartsAtItsParentsVirtualTimeTest extends TestCase
 
     private static function childOf(EventStoreInterface $store, string $executionId): string
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ChildWorkflowScheduled) {
                 return $event->childExecutionId();
             }

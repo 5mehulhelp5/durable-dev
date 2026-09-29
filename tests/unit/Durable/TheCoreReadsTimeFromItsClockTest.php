@@ -12,6 +12,7 @@ use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Event\ActivityFailed;
 use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
@@ -46,10 +47,10 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         $store = new InMemoryEventStore(new FrozenClock(1_700_000_000.5));
         $store->append(new WorkflowSignalReceived('exec-1', 'go', []));
 
-        foreach ($store->readStreamWithRecordedAt('exec-1') as $row) {
+        foreach ($store->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')) as $row) {
             self::assertSame('1700000000.500000', $row['recordedAt']->format('U.u'));
         }
-        self::assertSame(1, $store->countEventsInStream('exec-1'));
+        self::assertSame(1, $store->countEventsInStream(ExecutionId::fromString('exec-1')));
     }
 
     public function testTheInMemoryCatalogStampsTheClocksInstants(): void
@@ -60,7 +61,7 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         $clock->advance(42.0);
         $catalog->recordOutcome('exec-1', WorkflowRunStatus::Completed);
 
-        $run = $catalog->findRun('exec-1');
+        $run = $catalog->findRun(ExecutionId::fromString('exec-1'));
         self::assertNotNull($run);
         self::assertSame('1700000000', $run->startedAt?->format('U'));
         self::assertSame('1700000042', $run->endedAt?->format('U'));
@@ -129,7 +130,7 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         });
 
         $scheduledAt = [];
-        foreach ($store->readStream('exec-1') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $event) {
             if ($event instanceof TimerScheduled) {
                 $scheduledAt[] = $event->scheduledAt();
             }
@@ -149,7 +150,7 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
         });
 
         $scheduledAt = [];
-        foreach ($store->readStream('exec-1') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $event) {
             if ($event instanceof TimerScheduled) {
                 $scheduledAt[] = $event->scheduledAt();
             }

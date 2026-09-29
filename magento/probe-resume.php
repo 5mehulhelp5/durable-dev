@@ -46,7 +46,7 @@ switch ($mode) {
         // Task 5's path: the execution is started **on the cluster** and carried by the workers.
         // That is the only way an activity becomes a task that somebody else can resume after a
         // death.
-        $factory->workflowClient()->startAsync($workflow, $input, $executionId);
+        $factory->workflowClient()->startAsync($workflow, $input, \Gplanchat\Durable\ExecutionId::fromString($executionId));
         printf("%s started on the cluster (pause %ds)\n", $executionId, $pauseSeconds);
         break;
 

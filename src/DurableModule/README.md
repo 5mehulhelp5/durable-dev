@@ -120,10 +120,12 @@ process.
 An observer that hands the execution to Temporal and returns:
 
 ```php
+use Gplanchat\Durable\ExecutionId;
+
 $this->runtimeFactory->workflowClient()->startAsync(
     PlaceOrder::class,
     ['orderId' => $order->getIncrementId()],
-    'order-' . $order->getIncrementId(),
+    ExecutionId::fromString('order-' . $order->getIncrementId()),
 );
 ```
 

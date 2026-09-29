@@ -8,6 +8,7 @@ use Gplanchat\Durable\Activity\ActivityOptions;
 use Gplanchat\Durable\Activity\RetryLimit;
 use Gplanchat\Durable\Attribute\AsActivityMethod;
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
 use PHPUnit\Framework\TestCase;
@@ -42,7 +43,7 @@ final class ALostRaceLetsTheWorkflowGoOnTest extends TestCase
         self::assertSame('after', $result);
 
         $recorded = [];
-        foreach ($env->getEventStore()->readStream('lost-race') as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString('lost-race')) as $event) {
             $name = (new \ReflectionClass($event))->getShortName();
             if (\in_array($name, ['ActivityCancelled', 'TimerCompleted', 'ExecutionCompleted'], true)) {
                 $recorded[] = $name;

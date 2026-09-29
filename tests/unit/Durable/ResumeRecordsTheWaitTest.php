@@ -8,6 +8,7 @@ use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Awaitable\Deferred;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -82,7 +83,7 @@ final class ResumeRecordsTheWaitTest extends TestCase
         $metadata = new ProjectingWorkflowMetadataStore(new InMemoryWorkflowMetadataStore(), $catalog);
         $registry = new WorkflowRegistry();
         $registry->registerClass($workflowClass);
-        $metadata->save('exec', $workflowClass, []);
+        $metadata->save(ExecutionId::fromString('exec'), $workflowClass, []);
         if (null !== $previousWait) {
             $catalog->recordWait('exec', $previousWait);
         }

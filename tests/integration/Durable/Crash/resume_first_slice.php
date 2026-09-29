@@ -34,6 +34,7 @@ use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Exception\ResumeArrivedBeforeItsOutcome;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
@@ -93,19 +94,19 @@ $killing = new class ($journal, (string) getenv('SLICE_KILL')) implements EventS
         }
     }
 
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
-        return $this->inner->readStream($executionId);
+        return $this->inner->readStream(ExecutionId::fromString($executionId->toString()));
     }
 
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
-        return $this->inner->readStreamWithRecordedAt($executionId);
+        return $this->inner->readStreamWithRecordedAt(ExecutionId::fromString($executionId->toString()));
     }
 
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
-        return $this->inner->countEventsInStream($executionId);
+        return $this->inner->countEventsInStream(ExecutionId::fromString($executionId->toString()));
     }
 };
 $runtime = new ExecutionRuntime($killing, $queues, $executor, 0, null, true);
@@ -113,19 +114,19 @@ $acksOnDequeue = 'on-dequeue' === getenv('SLICE_ACK');
 
 switch ($step) {
     case 'start':
-        $queues->dispatchNewWorkflowRun(EXECUTION, 'resume-first', []);
+        $queues->dispatchNewWorkflowRun(ExecutionId::fromString(EXECUTION), 'resume-first', []);
         exit(0);
 
     case 'start-parent':
-        $queues->dispatchNewWorkflowRun('parent', 'ParentOfAsyncChild', []);
+        $queues->dispatchNewWorkflowRun(ExecutionId::fromString('parent'), 'ParentOfAsyncChild', []);
         exit(0);
 
     case 'start-timer':
-        $queues->dispatchNewWorkflowRun('timer', 'resume-timer', []);
+        $queues->dispatchNewWorkflowRun(ExecutionId::fromString('timer'), 'resume-timer', []);
         exit(0);
 
     case 'status':
-        echo ($metadata->get(getenv('SLICE_EXECUTION') ?: EXECUTION)['completed'] ?? false) ? 'completed' : 'running', "\n";
+        echo ($metadata->get(ExecutionId::fromString(getenv('SLICE_EXECUTION') ?: EXECUTION))['completed'] ?? false) ? 'completed' : 'running', "\n";
         exit(0);
 
     case 'count-resumes':

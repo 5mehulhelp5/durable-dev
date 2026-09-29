@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -53,7 +54,7 @@ final class ResumeRecordsThePickupTest extends TestCase
         $metadata = new ProjectingWorkflowMetadataStore(new InMemoryWorkflowMetadataStore(), $catalog);
         $registry = new WorkflowRegistry();
         $registry->registerClass(NapWorkflow::class);
-        $metadata->save('exec-1', NapWorkflow::class, []);
+        $metadata->save(ExecutionId::fromString('exec-1'), NapWorkflow::class, []);
 
         self::assertNotNull($catalog->listRuns()->runs[0]->waitingForWorkerSince, 'dispatched, not consumed yet');
 

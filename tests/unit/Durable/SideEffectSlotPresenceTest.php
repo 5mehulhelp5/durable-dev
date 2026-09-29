@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Durable;
 
 use Gplanchat\Durable\Event\SideEffectRecorded;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -120,7 +121,7 @@ final class SideEffectSlotPresenceTest extends TestCase
     private static function countSideEffects(InMemoryEventStore $store, string $executionId): int
     {
         $total = 0;
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof SideEffectRecorded) {
                 ++$total;
             }
