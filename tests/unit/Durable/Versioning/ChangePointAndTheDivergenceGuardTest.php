@@ -39,7 +39,7 @@ final class ChangePointAndTheDivergenceGuardTest extends TestCase
         $store->append(new ActivityCompleted(self::EXECUTION, 'act-1', 90));
 
         $context = $this->context($store);
-        $version = $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+        $version = $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 
         self::assertSame(1, $version);
 
@@ -64,7 +64,7 @@ final class ChangePointAndTheDivergenceGuardTest extends TestCase
         $store->append(new ActivityCompleted(self::EXECUTION, 'act-2', 'shipped'));
 
         $context = $this->context($store);
-        $version = $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+        $version = $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 
         self::assertSame(ChangePoint::DEFAULT_VERSION, $version);
 
@@ -88,7 +88,7 @@ final class ChangePointAndTheDivergenceGuardTest extends TestCase
         $store->append(new ActivityCompleted(self::EXECUTION, 'act-2', 'shipped'));
 
         $context = $this->context($store);
-        $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+        $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
         $context->activity('discountedCharge', []);
 
         $this->expectException(WorkflowTaskFailure::class);
@@ -103,7 +103,7 @@ final class ChangePointAndTheDivergenceGuardTest extends TestCase
         $store = new InMemoryEventStore();
         $context = $this->context($store);
 
-        $version = $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+        $version = $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
         $context->activity(1 === $version ? 'discountedCharge' : 'plainCharge', []);
 
         $kinds = array_map(

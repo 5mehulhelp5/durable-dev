@@ -732,7 +732,7 @@ final class WorkflowTaskRunnerTest extends TestCase
     public function testTheVersionedWayOutReplaysARunRecordedUnderTheOldReading(): void
     {
         $result = $this->replayRetriedThenFailed('attempt-1', static fn(DurableActivityFailedException $e, WorkflowEnvironment $env): string => 'attempt-' . (
-            ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', ChangePoint::DEFAULT_VERSION, 1) ? 1 : $e->attempt()
+            ChangePoint::DEFAULT_VERSION === $env->version('real-activity-attempt', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1) ? 1 : $e->attempt()
         ));
 
         self::assertSame([], array_filter($result->commands, static fn($c): bool => CommandType::COMMAND_TYPE_FAIL_WORKFLOW_EXECUTION === $c->getCommandType()));

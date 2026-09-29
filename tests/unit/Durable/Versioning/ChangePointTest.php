@@ -33,7 +33,7 @@ final class ChangePointTest extends TestCase
         $store = new InMemoryEventStore();
         $context = $this->context($store);
 
-        $version = $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+        $version = $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 
         self::assertSame(1, $version, 'a fresh execution takes the most recent version');
 
@@ -52,7 +52,7 @@ final class ChangePointTest extends TestCase
         $store->append(new VersionMarked(self::EXECUTION, 'add-discount', 1));
 
         // The deployed code can go up to version 3; the execution, though, is on 1.
-        $version = $this->context($store)->version('add-discount', ChangePoint::DEFAULT_VERSION, 3);
+        $version = $this->context($store)->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 3);
 
         self::assertSame(1, $version, 'the history decides, not the deployed code');
     }
@@ -61,9 +61,9 @@ final class ChangePointTest extends TestCase
     {
         $store = new InMemoryEventStore();
 
-        $first = $this->context($store)->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
-        $second = $this->context($store)->version('add-discount', ChangePoint::DEFAULT_VERSION, 5);
-        $third = $this->context($store)->version('add-discount', ChangePoint::DEFAULT_VERSION, 5);
+        $first = $this->context($store)->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
+        $second = $this->context($store)->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 5);
+        $third = $this->context($store)->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 5);
 
         self::assertSame(1, $first);
         self::assertSame($first, $second, 'newer code does not move an execution in flight');
@@ -79,7 +79,7 @@ final class ChangePointTest extends TestCase
         $this->expectException(WorkflowTaskFailure::class);
         $this->expectExceptionMessageMatches('/version 1 of change point "add-discount".*2\.\.3/');
 
-        $this->context($store)->version('add-discount', 2, 3);
+        $this->context($store)->version('add-discount', minSupported: 2, maxSupported: 3);
     }
 
     public function testTheOriginalBehaviourIsRefusedOnceItsBranchIsGone(): void
@@ -90,7 +90,7 @@ final class ChangePointTest extends TestCase
 
         $this->expectException(WorkflowTaskFailure::class);
 
-        $this->context($store)->version('add-discount', 1, 2);
+        $this->context($store)->version('add-discount', minSupported: 1, maxSupported: 2);
     }
 
     public function testARecordedVersionAboveMaxSupportedIsRefused(): void
@@ -101,7 +101,7 @@ final class ChangePointTest extends TestCase
         // A rollback: the history was written by code that knew version 3.
         $this->expectException(WorkflowTaskFailure::class);
 
-        $this->context($store)->version('add-discount', ChangePoint::DEFAULT_VERSION, 2);
+        $this->context($store)->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 2);
     }
 
     public function testTheSameRunIsNotMarkedTwice(): void
@@ -109,8 +109,8 @@ final class ChangePointTest extends TestCase
         $store = new InMemoryEventStore();
         $context = $this->context($store);
 
-        $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
-        $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+        $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
+        $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 
         $marks = array_filter(
             iterator_to_array($store->readStream(ExecutionId::fromString(self::EXECUTION))),
@@ -125,10 +125,10 @@ final class ChangePointTest extends TestCase
         $store->append(new VersionMarked(self::EXECUTION, 'add-discount', 1));
         $context = $this->context($store);
 
-        self::assertSame(1, $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 2));
+        self::assertSame(1, $context->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 2));
         self::assertSame(
             2,
-            $context->version('add-vat', ChangePoint::DEFAULT_VERSION, 2),
+            $context->version('add-vat', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 2),
             'an execution can be on the old side of one point and the new side of another',
         );
     }

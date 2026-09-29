@@ -67,7 +67,7 @@ it started on:
 ```php
 use Gplanchat\Durable\Versioning\ChangePoint;
 
-$version = $this->environment->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
+$version = $this->environment->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 
 if (ChangePoint::DEFAULT_VERSION === $version) {
     $total = $this->await($this->billing->totalWithoutDiscount($cart));   // runs already in flight

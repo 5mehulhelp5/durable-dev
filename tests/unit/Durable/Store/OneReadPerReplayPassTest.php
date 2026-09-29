@@ -32,7 +32,7 @@ final class OneReadPerReplayPassTest extends TestCase
         $executor->register('double', static fn(array $p): int => ($p['value'] ?? 0) * 2);
 
         $handler = static function (WorkflowEnvironment $env): int {
-            $sum = $env->version('bonus', -1, 1);
+            $sum = $env->version('bonus', minSupported: -1, maxSupported: 1);
             for ($i = 0; $i < self::N; ++$i) {
                 $sum += $env->await($env->activityStub(SuiteActivities::class)->double($i));
                 $env->await($env->timer(1.0));
