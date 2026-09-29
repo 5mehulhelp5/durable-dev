@@ -85,7 +85,7 @@ final class ResumeRecordsTheWaitTest extends TestCase
         $registry->registerClass($workflowClass);
         $metadata->save(ExecutionId::fromString('exec'), $workflowClass, []);
         if (null !== $previousWait) {
-            $catalog->recordWait('exec', $previousWait);
+            $catalog->recordWait(ExecutionId::fromString('exec'), $previousWait);
         }
 
         (new ResumeWorkflowHandler(

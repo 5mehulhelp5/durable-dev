@@ -85,7 +85,7 @@ final class DbalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConf
      */
     protected function pickUp(string $executionId): void
     {
-        $this->projection()->recordPickup($executionId);
+        $this->projection()->recordPickup(ExecutionId::fromString($executionId));
     }
 
     protected function canTellAWait(): bool
@@ -95,7 +95,7 @@ final class DbalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConf
 
     protected function recordWait(string $executionId, ?string $waitingOn): void
     {
-        $this->projection()->recordWait($executionId, $waitingOn);
+        $this->projection()->recordWait(ExecutionId::fromString($executionId), $waitingOn);
     }
 
     private function schema(): DurableSchema

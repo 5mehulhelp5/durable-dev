@@ -56,8 +56,8 @@ final class APassWritesThroughItsFenceTest extends TestCase
             }
         };
         $store = new ProjectingEventStore(new InMemoryEventStore(), $projection);
-        $older = $store->claimPass('exec-1');
-        $store->claimPass('exec-1');
+        $older = $store->claimPass(ExecutionId::fromString('exec-1'));
+        $store->claimPass(ExecutionId::fromString('exec-1'));
 
         try {
             $store->appendFenced(new ExecutionCompleted('exec-1', null), $older);
@@ -97,7 +97,7 @@ final class APassWritesThroughItsFenceTest extends TestCase
         $store = new ProjectingEventStore($inner, $this->createStub(WorkflowRunProjectionInterface::class));
         self::assertInstanceOf(FencedEventStoreInterface::class, $store);
 
-        $fence = $store->claimPass('exec-1');
+        $fence = $store->claimPass(ExecutionId::fromString('exec-1'));
         $store->appendFenced(new TimerCompleted('exec-1', 'timer-1'), $fence);
 
         self::assertFalse($fence->fences());

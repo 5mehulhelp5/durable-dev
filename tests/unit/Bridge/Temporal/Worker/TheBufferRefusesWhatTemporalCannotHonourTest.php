@@ -23,7 +23,7 @@ final class TheBufferRefusesWhatTemporalCannotHonourTest extends TestCase
 {
     public function testRecordingAnInlineChildOutcomeIsRefused(): void
     {
-        $refusal = $this->refusalOf(static fn(TemporalWorkflowCommandBuffer $buffer) => $buffer->completeChildWorkflow('child-1', 'done'));
+        $refusal = $this->refusalOf(static fn(TemporalWorkflowCommandBuffer $buffer) => $buffer->completeChildWorkflow(ExecutionId::fromString('child-1'), 'done'));
 
         self::assertStringContainsString('Temporal', $refusal->getMessage());
         self::assertStringContainsString('completeChildWorkflow', $refusal->getMessage());
@@ -31,7 +31,7 @@ final class TheBufferRefusesWhatTemporalCannotHonourTest extends TestCase
 
     public function testRecordingAnInlineChildFailureIsRefused(): void
     {
-        $refusal = $this->refusalOf(static fn(TemporalWorkflowCommandBuffer $buffer) => $buffer->failChildWorkflow('child-1', new \RuntimeException('boom')));
+        $refusal = $this->refusalOf(static fn(TemporalWorkflowCommandBuffer $buffer) => $buffer->failChildWorkflow(ExecutionId::fromString('child-1'), new \RuntimeException('boom')));
 
         self::assertStringContainsString('failChildWorkflow', $refusal->getMessage());
     }
