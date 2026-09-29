@@ -97,10 +97,8 @@ final class AFailedRetryEnqueueIsSentAgainTest extends TestCase
                 return $this->inner->nextDueAt();
             }
 
-            public function removePendingFor(ExecutionId|string $executionId, string $activityId): bool
+            public function removePendingFor(ExecutionId $executionId, string $activityId): bool
             {
-                $executionId = (string) $executionId;
-
                 return $this->inner->removePendingFor($executionId, $activityId);
             }
         };
