@@ -380,11 +380,11 @@ for writing the pipeline integration first rather than second: it is the one tha
 | Target | Tier | What it needs | Verdict |
 |---|---|---|---|
 | Shopware 6, Sulu | 0 | Wiring and an admin view | **Planned.** Cheap — the bundle does the work — but announced as planned, not as working today (§2). |
-| API Platform | — | One state processor, two adapters | **Planned**, and the one to write before Laravel: it is the same class on both frameworks, and it gives the Laravel package a promise nobody else is making (§3). |
+| API Platform | — | One state processor, two adapters | **Planned**, and Laravel shipped without it: it is the same class on both frameworks, and it gives the Laravel package a promise nobody else is making (§3). |
 | Akeneo | 2 | A `BatchBundle` bundle | **Planned.** Blocked on the checkpoint-granularity decision. |
 | Pimcore | 2 | A bundle under the Generic Execution Engine | **Planned.** Same decision, same blocker — and its own documentation makes the case (§4). |
 | `php-etl/pipeline` | 2 | A durable step runner | **Strongest fit.** Shares §4's decision; internal product, so the feedback loop is short. |
-| Laravel | 1 | Service provider, resume lock, published migrations | **The store family is written** — `gplanchat/durable-bridge-illuminate`, four ports, four suites (§3). What remains is the Laravel plumbing around it, the resume lock that no storage choice supplies, and the positioning: it has to answer `durable-workflow/workflow` first, and API Platform is the cheapest answer available. |
+| Laravel | 1 | Service provider, resume lock, published migrations | **Written** — `gplanchat/durable-laravel` ([DUR047](../adr/DUR047-laravel-the-host-that-measured-before-it-wired.md)) on `gplanchat/durable-bridge-illuminate`, serving the `illuminate` and `temporal` backends and Nexus. Its answer to `durable-workflow/workflow` 2.0 is what that platform does not offer: Temporal as a backend, Nexus, and one workflow class across hosts (§3). API Platform would add a promise to that answer; it no longer has to be the answer. |
 | TYPO3 | 1 | An extension that redoes the bundle's wiring | **Planned.** Messenger, Doctrine DBAL and the Symfony container are already in the install; only the kernel is missing (§3). Cheapest package in the tier. |
 | Magento | 1 | Module, consumers | **Planned.** Bench already in the repository. |
 | WooCommerce | 1 | Everything, on a hostile platform | Not now. Right product (DBAL), wrong moment. |
