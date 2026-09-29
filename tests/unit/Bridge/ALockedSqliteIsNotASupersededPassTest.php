@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Illuminate\Schema\DurableSchema as IlluminateSchema;
 use Gplanchat\Bridge\Illuminate\Store\IlluminateEventStore;
 use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Exception\SupersededPassException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\FencedEventStoreInterface;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\QueryException;
@@ -59,7 +60,7 @@ final class ALockedSqliteIsNotASupersededPassTest extends TestCase
     public function testACurrentPassBlockedByAnotherWriterIsNotSuperseded(string $bridge, string $lock): void
     {
         $store = $this->store($bridge);
-        $fence = $store->claimPass('exec-1');
+        $fence = $store->claimPass(ExecutionId::fromString('exec-1'));
 
         $other = new \PDO('sqlite:' . $this->file);
         $other->exec('BEGIN ' . $lock); // an unrelated writer holds the database
@@ -81,8 +82,8 @@ final class ALockedSqliteIsNotASupersededPassTest extends TestCase
     public function testAStalePassBlockedByALockIsSuperseded(string $bridge): void
     {
         $store = $this->store($bridge);
-        $older = $store->claimPass('exec-1');
-        $store->claimPass('exec-1');
+        $older = $store->claimPass(ExecutionId::fromString('exec-1'));
+        $store->claimPass(ExecutionId::fromString('exec-1'));
 
         $other = new \PDO('sqlite:' . $this->file);
         $other->exec('BEGIN IMMEDIATE');

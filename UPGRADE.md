@@ -207,6 +207,55 @@ in `workflows`. Fix or remove a misspelt workflow class.
 `handler => contract` form keeps working, and is refused if it names another contract than the
 attribute.
 
+### The runtime ports take an `ExecutionId` too: projections, observers, lifecycle, transport (#682)
+
+**Who is affected**: an application that calls one of the thirteen interfaces below with a string
+execution id, or implements one of them: a custom run catalog or projection, a profiler or dispatch
+observer, an activity transport, a timer dispatcher, an attempt claim, a fenced event store, a
+lifecycle, a command buffer or a child runner, including a test double. This continues #638 on the
+next ring of ports. Nothing stored or sent changes: every implementation writes `toString()` to the
+same columns, lock keys, array keys and wire messages as before.
+
+| Interface                                            | Method                                                                   | Changes                        |
+|------------------------------------------------------|--------------------------------------------------------------------------|--------------------------------|
+| `Observation\WorkflowRunProjectionInterface`         | `recordStart()`, `recordOutcome()`                                        | argument                       |
+| `Observation\WorkflowRunWaitProjectionInterface`     | `recordWait()`                                                            | argument                       |
+| `Observation\WorkflowRunPickupProjectionInterface`   | `recordPickup()`                                                          | argument                       |
+| `Debug\WorkflowDispatchObserverInterface`            | `onWorkflowDispatchRequested()`                                           | argument                       |
+| `Debug\WorkflowExecutionObserverInterface`           | `onWorkflowRun()`, `onActivityExecuted()`                                 | argument                       |
+| `Transport\ActivityTransportInterface`               | `removePendingFor()`                                                      | argument                       |
+| `Port\ParentChildWorkflowCoordinatorInterface`       | `onParentClosed()`                                                        | argument                       |
+| `Port\WorkflowLifecycleInterface`                    | `onBeforeRun()`, `isCancellationPending()`, `onCancellationDelivered()`, `onCancelled()`, `onCompleted()`, `onSuspended()`, `onContinuedAsNew()`, `onFailed()` | argument |
+| `Port\WorkflowTimerDispatcher`                       | `dispatchTimerFire()`                                                     | argument                       |
+| `Port\WorkflowCommandBufferInterface`                | `scheduleChildWorkflow()`, `completeChildWorkflow()`, `failChildWorkflow()` | child id argument            |
+| `Port\ChildWorkflowRunnerInterface`                  | `runChild()`                                                              | child id; parent `?ExecutionId` |
+| `Port\ActivityAttemptClaimInterface`                 | `claim()`                                                                 | argument                       |
+| `Store\FencedEventStoreInterface`                    | `claimPass()`                                                             | argument                       |
+
+`WorkflowRunDescription::$runId` stays a `string`: it is the backend's own run id, possibly
+sanitised, not an id a port accepts. `PassFence` keeps its string id. The events, `ExecutionContext`
+and the public helpers still carry a string; they follow in the next parts of #682.
+
+**Rector does the calling side it can prove.** `ExecutionIdArgumentRector`, in the `durable-upgrade`
+set, now knows these thirteen interfaces. It wraps a `string` argument in `ExecutionId::fromString()`
+on a receiver typed as one of them, with the same limits as for #638: it skips an untyped receiver,
+a named, unpacked or nullable argument, and every call made inside a class that implements any port
+it knows. That last rule now covers more classes: a custom timer dispatcher or projection is
+migrated by hand, calls to the other ports included.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set, then PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at
+   each call left. An empty string is refused, including by `WorkflowFiberDriver::run()` and
+   `PassEventStore::open()` (over any store), which keep a `string` parameter for now and convert
+   on entry.
+2. **In a class that implements one of these interfaces**, change each listed parameter to
+   `ExecutionId` (`?ExecutionId` for the parent of `runChild()`). Call `->toString()` where the
+   body stores, binds, formats, serialises or compares the id. `json_encode()` turns the object
+   into `{}`, and `===` or a strict `in_array()` against a string is always false; an array key
+   fails loudly with a `TypeError`. Pass the object on unchanged to another port.
+3. A test double that records the ids it heard can record `->toString()` and keep its assertions.
+
 ### Laravel `illuminate` backend: a due timer fires (#726)
 
 `LaravelWorkflowTimerDispatcher` now queues a `FireWorkflowTimersJob`, which runs

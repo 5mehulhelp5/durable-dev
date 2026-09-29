@@ -57,9 +57,9 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
     {
         $clock = new FrozenClock(1_700_000_000.0);
         $catalog = new InMemoryWorkflowRunCatalog(new InMemoryEventStore($clock), $clock);
-        $catalog->recordStart('exec-1', 'Order');
+        $catalog->recordStart(ExecutionId::fromString('exec-1'), 'Order');
         $clock->advance(42.0);
-        $catalog->recordOutcome('exec-1', WorkflowRunStatus::Completed);
+        $catalog->recordOutcome(ExecutionId::fromString('exec-1'), WorkflowRunStatus::Completed);
 
         $run = $catalog->findRun(ExecutionId::fromString('exec-1'));
         self::assertNotNull($run);

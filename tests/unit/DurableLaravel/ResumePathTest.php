@@ -66,7 +66,7 @@ final class ResumePathTest extends TestCase
         $queue = new FakeQueue();
         $timers = new LaravelWorkflowTimerDispatcher(new FakeQueueFactory($queue), null, 'durable');
 
-        $timers->dispatchTimerFire('exec-1', 2400);
+        $timers->dispatchTimerFire(ExecutionId::fromString('exec-1'), 2400);
 
         // A plain resume replays without firing the timer: only the timer handler does that (#726).
         self::assertInstanceOf(FireWorkflowTimersJob::class, $queue->pushed[0]['job']);
@@ -79,7 +79,7 @@ final class ResumePathTest extends TestCase
     public function testATimerWithoutDelayIsPushedAtOnce(): void
     {
         $queue = new FakeQueue();
-        (new LaravelWorkflowTimerDispatcher(new FakeQueueFactory($queue)))->dispatchTimerFire('exec-1');
+        (new LaravelWorkflowTimerDispatcher(new FakeQueueFactory($queue)))->dispatchTimerFire(ExecutionId::fromString('exec-1'));
 
         self::assertNull($queue->pushed[0]['delay']);
     }
