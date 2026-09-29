@@ -9,6 +9,7 @@ use App\Samples\Workflow\Child\SamplesParentCallsEchoChildWorkflow;
 use App\Samples\Workflow\Exception\ExceptionHandledWorkflow;
 use App\Samples\Workflow\SimpleActivity\SimpleActivityGreetingWorkflow;
 use Gplanchat\Durable\Bundle\Testing\DurableBundleTestTrait;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -55,7 +56,7 @@ final class DurableBundleTestTraitDemoTest extends KernelTestCase
 
         $this->drainMessengerUntilSettled($executionId);
 
-        $events = iterator_to_array($this->getEventStoreService()->readStream($executionId));
+        $events = iterator_to_array($this->getEventStoreService()->readStream(ExecutionId::fromString($executionId)));
         self::assertNotEmpty($events, 'The event store should contain events for the settled execution.');
     }
 

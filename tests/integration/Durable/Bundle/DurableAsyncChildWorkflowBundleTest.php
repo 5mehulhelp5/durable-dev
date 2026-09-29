@@ -81,7 +81,7 @@ final class DurableAsyncChildWorkflowBundleTest extends KernelTestCase
         self::assertSame(28, $this->lastCompletedResult($store, $parentId));
 
         $childCompletedOnParent = false;
-        foreach ($store->readStream($parentId) as $e) {
+        foreach ($store->readStream(ExecutionId::fromString($parentId)) as $e) {
             if ($e instanceof ChildWorkflowCompleted && 28 === $e->result()) {
                 $childCompletedOnParent = true;
             }
@@ -117,7 +117,7 @@ final class DurableAsyncChildWorkflowBundleTest extends KernelTestCase
         );
 
         $failed = null;
-        foreach ($store->readStream($parentId) as $e) {
+        foreach ($store->readStream(ExecutionId::fromString($parentId)) as $e) {
             if ($e instanceof ChildWorkflowFailed) {
                 $failed = $e;
             }

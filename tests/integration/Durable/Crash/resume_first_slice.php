@@ -94,25 +94,19 @@ $killing = new class ($journal, (string) getenv('SLICE_KILL')) implements EventS
         }
     }
 
-    public function readStream(ExecutionId|string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
-        $executionId = (string) $executionId;
-
-        return $this->inner->readStream(ExecutionId::fromString($executionId));
+        return $this->inner->readStream(ExecutionId::fromString($executionId->toString()));
     }
 
-    public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
-        $executionId = (string) $executionId;
-
-        return $this->inner->readStreamWithRecordedAt(ExecutionId::fromString($executionId));
+        return $this->inner->readStreamWithRecordedAt(ExecutionId::fromString($executionId->toString()));
     }
 
-    public function countEventsInStream(ExecutionId|string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
-        $executionId = (string) $executionId;
-
-        return $this->inner->countEventsInStream(ExecutionId::fromString($executionId));
+        return $this->inner->countEventsInStream(ExecutionId::fromString($executionId->toString()));
     }
 };
 $runtime = new ExecutionRuntime($killing, $queues, $executor, 0, null, true);

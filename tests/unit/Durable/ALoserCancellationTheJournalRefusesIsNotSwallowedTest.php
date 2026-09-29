@@ -41,24 +41,18 @@ final class ALoserCancellationTheJournalRefusesIsNotSwallowedTest extends TestCa
                 $this->inner->append($event);
             }
 
-            public function readStream(ExecutionId|string $executionId): iterable
+            public function readStream(ExecutionId $executionId): iterable
             {
-                $executionId = (string) $executionId;
-
                 return $this->inner->readStream($executionId);
             }
 
-            public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
+            public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
             {
-                $executionId = (string) $executionId;
-
                 return $this->inner->readStreamWithRecordedAt($executionId);
             }
 
-            public function countEventsInStream(ExecutionId|string $executionId): int
+            public function countEventsInStream(ExecutionId $executionId): int
             {
-                $executionId = (string) $executionId;
-
                 return $this->inner->countEventsInStream($executionId);
             }
         };

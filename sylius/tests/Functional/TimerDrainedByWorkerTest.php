@@ -36,7 +36,7 @@ final class TimerDrainedByWorkerTest extends KernelTestCase
 
         self::assertStringContainsString('Consuming durable_workflows', $worker->getDisplay());
         $completed = array_values(array_filter(
-            [...self::getContainer()->get(EventStoreInterface::class)->readStream($executionId)],
+            [...self::getContainer()->get(EventStoreInterface::class)->readStream(ExecutionId::fromString($executionId))],
             static fn(object $event): bool => $event instanceof ExecutionCompleted,
         ));
         self::assertCount(1, $completed, 'the run must complete once, after its timer');

@@ -161,28 +161,26 @@ final class DbalEventStore implements FencedEventStoreInterface
         ];
     }
 
-    public function readStream(ExecutionId|string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
-        $executionId = (string) $executionId;
         foreach ($this->readStreamWithRecordedAt($executionId) as $entry) {
             yield $entry['event'];
         }
     }
 
-    public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $rows = $this->connection->executeQuery(
             \sprintf('SELECT event_type, payload, recorded_at FROM %s WHERE execution_id = ? ORDER BY id ASC', $this->table),
-            [$executionId],
+            [$executionId->toString()],
         );
 
         foreach ($rows->iterateAssociative() as $row) {
             yield [
                 'event' => EventDataMapper::toDomainEvent([
-                    'execution_id' => $executionId,
+                    'execution_id' => $executionId->toString(),
                     'event_type' => $row['event_type'],
                     'payload' => $row['payload'],
                 ]),
@@ -191,14 +189,13 @@ final class DbalEventStore implements FencedEventStoreInterface
         }
     }
 
-    public function countEventsInStream(ExecutionId|string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         return (int) $this->connection->fetchOne(
             \sprintf('SELECT COUNT(*) FROM %s WHERE execution_id = ?', $this->table),
-            [$executionId],
+            [$executionId->toString()],
         );
     }
 }

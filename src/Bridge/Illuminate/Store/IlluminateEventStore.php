@@ -164,17 +164,15 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         ];
     }
 
-    public function readStream(ExecutionId|string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
-        $executionId = (string) $executionId;
         foreach ($this->readStreamWithRecordedAt($executionId) as $entry) {
             yield $entry['event'];
         }
     }
 
-    public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         // `cursor()` rather than `get()`: the stream is read once, without materializing a long
@@ -182,14 +180,14 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         // explicitly requires.
         $rows = $this->connection->table($this->table)
             ->select(['event_type', 'payload', 'recorded_at'])
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->orderBy('id')
             ->cursor();
 
         foreach ($rows as $row) {
             yield [
                 'event' => EventDataMapper::toDomainEvent([
-                    'execution_id' => $executionId,
+                    'execution_id' => $executionId->toString(),
                     'event_type' => $row->event_type,
                     'payload' => $row->payload,
                 ]),
@@ -198,13 +196,12 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         }
     }
 
-    public function countEventsInStream(ExecutionId|string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
-        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         return $this->connection->table($this->table)
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->count();
     }
 }

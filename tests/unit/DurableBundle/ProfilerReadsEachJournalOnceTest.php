@@ -38,26 +38,23 @@ final class ProfilerReadsEachJournalOnceTest extends TestCase
                 $this->inner->append($event);
             }
 
-            public function readStream(ExecutionId|string $executionId): iterable
+            public function readStream(ExecutionId $executionId): iterable
             {
-                $executionId = (string) $executionId;
-                $this->calls[$executionId . ' read'] = ($this->calls[$executionId . ' read'] ?? 0) + 1;
+                $this->calls[$executionId->toString() . ' read'] = ($this->calls[$executionId->toString() . ' read'] ?? 0) + 1;
 
                 return $this->inner->readStream($executionId);
             }
 
-            public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
+            public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
             {
-                $executionId = (string) $executionId;
-                $this->calls[$executionId . ' read'] = ($this->calls[$executionId . ' read'] ?? 0) + 1;
+                $this->calls[$executionId->toString() . ' read'] = ($this->calls[$executionId->toString() . ' read'] ?? 0) + 1;
 
                 return $this->inner->readStreamWithRecordedAt($executionId);
             }
 
-            public function countEventsInStream(ExecutionId|string $executionId): int
+            public function countEventsInStream(ExecutionId $executionId): int
             {
-                $executionId = (string) $executionId;
-                $this->calls[$executionId . ' count'] = ($this->calls[$executionId . ' count'] ?? 0) + 1;
+                $this->calls[$executionId->toString() . ' count'] = ($this->calls[$executionId->toString() . ' count'] ?? 0) + 1;
 
                 return $this->inner->countEventsInStream($executionId);
             }
