@@ -169,6 +169,24 @@ with `Activity <id> was superseded (Cancelled by Temporal)`. Replay no longer se
 `RequestCancelActivityTask` again for an activity whose `ACTIVITY_TASK_CANCEL_REQUESTED` is in the
 history, and an outcome the activity records after that request is ignored. Nothing to migrate.
 
+### `WorkflowServiceClientInterface` gains `DescribeTaskQueue()`
+
+**Who is affected**: only whoever **implements** `WorkflowServiceClientInterface` without extending
+`AbstractWorkflowServiceClient`. The bundled transports extend it and have nothing to change.
+
+**Why.** It is how the bridge learns whether a worker polls a task queue: an absent worker
+otherwise shows only once an execution has stalled.
+
+**What to write.** Forward the call like the other RPCs, or extend `AbstractWorkflowServiceClient`,
+which inherits it from `WorkflowRpcMethods`. Both message classes are in `Temporal\Api\Workflowservice\V1`:
+
+```php
+public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $metadata = [], array $options = []): DescribeTaskQueueResponse
+{
+    return $this->call(__FUNCTION__, $request, DescribeTaskQueueResponse::class, $metadata, $options);
+}
+```
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
