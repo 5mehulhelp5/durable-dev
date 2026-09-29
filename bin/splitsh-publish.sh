@@ -5,6 +5,8 @@
 #       Split current HEAD (typically main) and push each split SHA to refs/heads/$SPLITSH_TARGET_BRANCH.
 #   ./bin/splitsh-publish.sh tag <tag>
 #       Checkout <tag>, split each prefix, push each split SHA to refs/tags/<tag> on satellites.
+#       Each sibling `self.version` requirement becomes `^<tag without v>` in one extra commit on
+#       top of the split (rewrite_self_version); the monorepo keeps `self.version`.
 # Environment:
 #   SPLITSH_PUSH_TOKEN — GitHub PAT with contents:write on each satellite (optional; dry-run if unset).
 #   SPLITSH_GITHUB_ORG — GitHub org or user (default: gplanchat).
@@ -13,7 +15,7 @@
 #   SPLITSH_FORCE — If 1, branch push uses --force (dangerous).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 SPLITSH_LITE="${SPLITSH_LITE:-splitsh-lite}"
@@ -144,6 +146,51 @@ split_sha() {
     printf '%s' "$sha"
 }
 
+# Prints a commit on top of <split-sha> whose composer.json requires every gplanchat/* sibling
+# declared as `self.version` at `^<version>` instead, or <split-sha> itself when there is none.
+# `self.version` pins the sibling at exactly the tag; the caret lets tags of the same line install
+# together (#347). It does not lift a root's stability floor: flags such as `@beta` still never
+# reach a transitive requirement. Built with plumbing on a
+# throwaway index: no checkout, no ref. Author, committer and dates come from the split commit, so
+# a re-run yields the same SHA and the "already at" skip of tag mode still holds.
+rewrite_self_version() {
+    local split="$1" version="${2#v}" json blob mode tree index who
+    local status=0
+    # An empty SHA would read composer.json from the index, the monorepo root's.
+    if [[ ! "$split" =~ ^[0-9a-f]{40}$ ]]; then
+        echo "not a split SHA: '$split'" >&2
+        return 1
+    fi
+    json="$(git cat-file blob "$split:composer.json")" || return 1
+    # A jq that is missing or fails must stop the publish: read as "nothing to rewrite", it would
+    # push `self.version`; read as an empty blob, a tag with an empty composer.json.
+    jq -e '[(.require, ."require-dev") // {} | to_entries[]
+        | select((.key | startswith("gplanchat/")) and .value == "self.version")] | length > 0' \
+        >/dev/null <<<"$json" || status=$?
+    if [[ $status -eq 1 ]]; then
+        printf '%s' "$split"
+        return 0
+    elif [[ $status -ne 0 ]]; then
+        echo "jq failed (exit $status) reading $split:composer.json" >&2
+        return 1
+    fi
+    json="$(jq --indent 4 --arg v "^$version" 'reduce ("require", "require-dev") as $k (.;
+        if has($k) then .[$k] |= with_entries(
+            if (.key | startswith("gplanchat/")) and .value == "self.version" then .value = $v else . end)
+        else . end)' <<<"$json")" && [[ -n "$json" ]] || { echo "jq failed rewriting $split:composer.json" >&2; return 1; }
+    blob="$(git hash-object -w --stdin <<<"$json")" || return 1
+    mode="$(git ls-tree "$split" composer.json | cut -d' ' -f1)"
+    index="$(mktemp)"
+    GIT_INDEX_FILE="$index" git read-tree "$split" || return 1
+    GIT_INDEX_FILE="$index" git update-index --cacheinfo "$mode,$blob,composer.json" || return 1
+    tree="$(GIT_INDEX_FILE="$index" git write-tree)"
+    rm -f "$index"
+    mapfile -t who < <(git log -1 --date=raw --format='%an%n%ae%n%ad%n%cn%n%ce%n%cd' "$split")
+    GIT_AUTHOR_NAME="${who[0]}" GIT_AUTHOR_EMAIL="${who[1]}" GIT_AUTHOR_DATE="${who[2]}" \
+        GIT_COMMITTER_NAME="${who[3]}" GIT_COMMITTER_EMAIL="${who[4]}" GIT_COMMITTER_DATE="${who[5]}" \
+        git commit-tree "$tree" -p "$split" -m "Require siblings at ^$version"
+}
+
 require_clean_tree() {
     if [[ -n "$(git status --porcelain)" ]]; then
         echo "Working tree is not clean; commit or stash before running tag mode." >&2
@@ -190,6 +237,12 @@ push_tag_mode() {
         echo "usage: $0 tag <tag>" >&2
         exit 1
     fi
+    # The tag becomes a caret range in every satellite: anything but a version would publish a
+    # constraint Composer cannot parse.
+    if [[ ! "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|RC)[0-9]+)?$ ]]; then
+        echo "not a version tag: $tag" >&2
+        exit 1
+    fi
 
     if [[ -z "${GITHUB_ACTIONS:-}" ]]; then
         require_clean_tree
@@ -198,7 +251,9 @@ push_tag_mode() {
 
     for entry in "${SPLITS[@]}"; do
         IFS='|' read -r prefix repo <<<"$entry"
-        sha="$(split_sha "$prefix")"
+        # Two checked assignments: a nested $(...) would drop a failing splitsh-lite.
+        sha="$(split_sha "$prefix")" || exit 1
+        sha="$(rewrite_self_version "$sha" "$tag")" || exit 1
         if [[ -z "$TOKEN" ]]; then
             echo "[tag] $repo split SHA=$sha for $tag (dry-run, set SPLITSH_PUSH_TOKEN to push)"
             continue
@@ -220,7 +275,10 @@ push_tag_mode() {
     report_failures "${failed[@]+"${failed[@]}"}"
 }
 
-if [[ "${1:-}" == "tag" ]]; then
+# Sourced (bin/splitsh-publish-test.sh): define the functions, run nothing.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+elif [[ "${1:-}" == "tag" ]]; then
     push_tag_mode "${2:-}"
 else
     push_branch_mode
