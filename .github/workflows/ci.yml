@@ -617,7 +617,9 @@ jobs:
               timeout-minutes: 2
               run: |
                   php tests/integration/Temporal/nexus-demo-harness.php 127.0.0.1:7233 default --transport=grpc-curl > /tmp/harness.log 2>&1 &
-                  timeout 60 bash -c 'until grep -qx ready /tmp/harness.log; do sleep 1; done' || { cat /tmp/harness.log; exit 1; }
+                  harness=$!
+                  # Fails at once if the harness dies before it is ready, rather than after the minute.
+                  timeout 60 bash -c "until grep -qx ready /tmp/harness.log; do kill -0 $harness 2>/dev/null || exit 1; sleep 1; done" || { cat /tmp/harness.log; exit 1; }
 
             # durable:demo:nexus exits non-zero unless the order was shipped; the order of the calls is
             # read from the run's history, not from the command's output.
@@ -633,7 +635,8 @@ jobs:
                   calls=$(temporal workflow show --namespace default -w "durable-${order}" -o json \
                     | jq -r '[.events[] | select(.eventType == "EVENT_TYPE_NEXUS_OPERATION_SCHEDULED") | .nexusOperationScheduledEventAttributes | "\(.service)/\(.operation)"] | join(" ")')
                   echo "calls: $calls"
-                  test "$calls" = 'billing/verify delivery/schedule stock/reserve billing/charge delivery/ship'
+                  test "$calls" = 'billing/verify delivery/schedule stock/reserve billing/charge delivery/ship' \
+                    || { tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness.log; exit 1; }
 
     static-analysis:
         # Was the required status check on `main` until 2026-09-16; `ci-ok` below is now. Its steps
