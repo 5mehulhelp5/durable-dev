@@ -594,7 +594,7 @@ final class WorkflowTaskRunnerTest extends TestCase
                 try {
                     $env->await(static function () use (&$approvals): bool {
                         return [] !== $approvals;
-                    }, Duration::seconds(30));
+                    }, deadline: Duration::seconds(30));
                     $verdict->value = ['signal', array_shift($approvals)];
                 } catch (DeadlineExceededException) {
                     $verdict->value = ['timeout'];

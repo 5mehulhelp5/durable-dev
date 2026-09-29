@@ -83,7 +83,7 @@ final class IntegrationWorkflows
             };
 
             try {
-                $env->await($pending, Duration::seconds(2));
+                $env->await($pending, deadline: Duration::seconds(2));
                 $first = ['signal', array_shift($approvals)];
             } catch (DeadlineExceededException) {
                 $first = ['timeout'];
@@ -94,7 +94,7 @@ final class IntegrationWorkflows
             $env->sleep(Duration::seconds(5));
 
             try {
-                $env->await($pending, Duration::seconds(10));
+                $env->await($pending, deadline: Duration::seconds(10));
                 $second = ['signal', array_shift($approvals)];
             } catch (DeadlineExceededException) {
                 $second = ['timeout'];
@@ -223,7 +223,7 @@ final class IntegrationWorkflows
         // once it closes, a heartbeat hears "not found", not "cancel requested".
         $registry->registerFactory('CancelsItsHeartbeatingActivity', static fn(array $input) => static function (WorkflowEnvironment $env) use ($input): array {
             try {
-                $env->await($env->activityStub(HeartbeatActivities::class, self::heartbeatOptions())->heartbeatUntilCancelled((string) ($input['marker'] ?? '')), Duration::seconds(3));
+                $env->await($env->activityStub(HeartbeatActivities::class, self::heartbeatOptions())->heartbeatUntilCancelled((string) ($input['marker'] ?? '')), deadline: Duration::seconds(3));
             } catch (DeadlineExceededException) {
                 $env->sleep(Duration::seconds(10));
 

@@ -71,7 +71,7 @@ Because they return an `Awaitable` and not a value, they **compose**: an assembl
 another, and, which matters most, an assembly can be bounded by a deadline.
 
 ```php
-$quotes = $env->await($env->some(3, ...$providers), Duration::seconds(2));
+$quotes = $env->await($env->some(3, ...$providers), deadline: Duration::seconds(2));
 ```
 
 `some()` counts only members that **succeed**: a provider that fails does not bring the quorum
@@ -97,7 +97,7 @@ would compensate on an empty answer too.
 use Gplanchat\Durable\Exception\DeadlineExceededException;
 
 try {
-    $quote = $env->await($activities->callProvider($orderId), Duration::seconds(30));
+    $quote = $env->await($activities->callProvider($orderId), deadline: Duration::seconds(30));
 } catch (DeadlineExceededException $e) {
     // The provider did not answer in time. Compensation path.
     // $e->deadline() is the deadline that elapsed, $e->awaited() what it was bounding.
@@ -120,7 +120,7 @@ takes an awaitable, with the same optional deadline. That is what a signal handl
 $env->onSignal(OrderSignal::Approve, fn(array $p) => $this->approvals[] = $p);
 
 try {
-    $env->await(fn(): bool => [] !== $this->approvals, Duration::hours(1));
+    $env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1));
 } catch (DeadlineExceededException) {
     return $this->expire($orderId);
 }
@@ -135,7 +135,7 @@ closure is written: `waiting on signal approve` rather than
 [dashboard page](../dashboard/)).
 
 ```php
-$env->await(fn(): bool => [] !== $this->approvals, Duration::hours(1), label: 'signal approve');
+$env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1), label: 'signal approve');
 ```
 
 The label is display text. Nothing records it while the workflow waits. If the deadline expires and
@@ -174,7 +174,7 @@ final class OrderWorkflow
     /** @return array<string, mixed> */
     private function waitApproval(Duration $deadline): array
     {
-        $this->env->await(fn(): bool => [] !== $this->approvals, $deadline);
+        $this->env->await(fn(): bool => [] !== $this->approvals, deadline: $deadline);
 
         return array_shift($this->approvals);
     }
