@@ -5,8 +5,8 @@ weight: 17
 
 # The dashboard
 
-There is **one** dashboard. Sylius and Magento render it in their own admin chrome, and two more
-surfaces are on the way, but what they show, how a run is grouped, and the words they use are
+There is **one** dashboard. Sylius, Magento and Filament render it in their own admin chrome, and an
+API Platform surface is on the way, but what they show, how a run is grouped, and the words they use are
 decided once, in `gplanchat/durable`, beside the observation model the pages read.
 
 That is not tidiness. A panel one surface has and another lacks is a question one application can
@@ -149,14 +149,18 @@ Two absences look alike and are not:
 
 The chrome, and only the chrome.
 
-| | Sylius | Magento |
-| --- | --- | --- |
-| Where | Admin menu → Durable | **System > Durable processes > Process history** |
-| The list | A Sylius grid, filtered by outcome, and by workflow name and execution id prefix where the backend can apply them; cursor paging | The standard grid: paging, bookmarks, column controls, export, and a status filter whose options come from the status enum |
-| Paging | Cursor, 20 a page | Offset inside a 200-run window, whose ceiling the screen states |
-| Read-only | Yes | Yes |
+| | Sylius | Magento | Filament |
+| --- | --- | --- | --- |
+| Where | Admin menu → Durable | **System > Durable processes > Process history** | Panel navigation → **Durable runs** |
+| The list | A Sylius grid, filtered by outcome, and by workflow name and execution id prefix where the backend can apply them; cursor paging | The standard grid: paging, bookmarks, column controls, export, and a status filter whose options come from the status enum | A table filtered by workflow name and execution id prefix where the backend can apply them; cursor paging |
+| Paging | Cursor, 20 a page | Offset inside a 200-run window, whose ceiling the screen states | Cursor, 20 a page |
+| Read-only | Yes | Yes | Yes |
 
-Both are **read-only**, and will stay so: what you come to a dashboard for is to know whether an
+The Filament list is a table in the panel's own components rather than a Filament table: on
+Filament 3 a table reads an Eloquent query and nothing else, and a catalog's cursor only goes
+forward. It renders the same on Filament 3 and 4.
+
+All three are **read-only**, and will stay so: what you come to a dashboard for is to know whether an
 order went through, not to restart it by hand. Resuming an execution from a browser would bypass the
 per-execution lock.
 
@@ -166,5 +170,5 @@ how wide its column is, and a surface that renders no markup has none. Everythin
 ## See also
 
 - [Packages](../packages/) covers `gplanchat/durable-plugin` for the Sylius chrome,
-  `gplanchat/durable-magento` for the Magento one
+  `gplanchat/durable-magento` for the Magento one, `gplanchat/durable-filament` for the Filament one
 - [Backends](../backends/) says which of them records what
