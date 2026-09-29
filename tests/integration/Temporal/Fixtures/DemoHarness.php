@@ -10,7 +10,9 @@ use Gplanchat\Durable\Demo\Contracts\Delivery\DeliveryContract;
 use Gplanchat\Durable\Demo\Contracts\Delivery\DeliveryServed;
 use Gplanchat\Durable\Demo\Contracts\Stock\StockContract;
 use Gplanchat\Durable\Demo\Contracts\Stock\StockServed;
+use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Nexus\NexusOperationName;
+use Gplanchat\Durable\Nexus\NexusOperationTimeouts;
 use Gplanchat\Durable\Nexus\NexusService;
 use Gplanchat\Durable\Nexus\Serving\NexusContractResolver;
 use Gplanchat\Durable\Nexus\Serving\NexusHandlerInvoker;
@@ -97,8 +99,9 @@ final class DemoHarness
         ]);
 
         // One operation, for `--call`: what the bench under test serves, with the bench's own data.
+        // Bounded: an operation nobody serves would otherwise keep the caller waiting forever.
         $registry->registerFactory('DemoHarnessCall', static fn(array $input) => static fn(WorkflowEnvironment $env): mixed => $env->await(
-            $env->nexusOperation($input['endpoint'], $input['service'], $input['operation'], $input['payload']),
+            $env->nexusOperation($input['endpoint'], $input['service'], $input['operation'], $input['payload'], new NexusOperationTimeouts(scheduleToClose: Duration::seconds(90))),
         ));
 
         // The caller a bench's workflow would be: stubs on the contracts, one per endpoint.
