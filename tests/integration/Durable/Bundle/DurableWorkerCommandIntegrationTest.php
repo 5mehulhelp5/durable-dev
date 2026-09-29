@@ -99,7 +99,7 @@ final class DurableWorkerCommandIntegrationTest extends KernelTestCase
 
     private function completedWith(EventStoreInterface $store, string $executionId): mixed
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ExecutionCompleted) {
                 return $event->result();
             }

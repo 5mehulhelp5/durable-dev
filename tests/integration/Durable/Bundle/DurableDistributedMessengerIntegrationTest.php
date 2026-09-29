@@ -77,7 +77,7 @@ final class DurableDistributedMessengerIntegrationTest extends KernelTestCase
     private function lastExecutionCompletedResult(EventStoreInterface $store, string $executionId): mixed
     {
         $last = null;
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ExecutionCompleted) {
                 $last = $event->result();
             }

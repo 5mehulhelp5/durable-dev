@@ -39,7 +39,7 @@ final class ASignalIsDeliveredOnceAndAnnouncedFirstTest extends TestCase
         $handler($message);
         $handler($message);
 
-        $signals = array_filter(iterator_to_array($journal->readStream('exec-1'), false), static fn(object $e): bool => $e instanceof WorkflowSignalReceived);
+        $signals = array_filter(iterator_to_array($journal->readStream(ExecutionId::fromString('exec-1')), false), static fn(object $e): bool => $e instanceof WorkflowSignalReceived);
         self::assertCount(1, $signals, 'the workflow sees the signal once');
         self::assertSame('resume with 1 events', $resumes->sent[array_key_last($resumes->sent)], 'the redelivery still resumes');
     }

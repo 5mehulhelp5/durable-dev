@@ -217,7 +217,7 @@ final class DurableAsyncChildWorkflowBundleTest extends KernelTestCase
     private function lastCompletedResult(EventStoreInterface $store, string $executionId): mixed
     {
         $last = null;
-        foreach ($store->readStream($executionId) as $e) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $e) {
             if ($e instanceof ExecutionCompleted) {
                 $last = $e->result();
             }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\DurableLaravel;
 
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -40,7 +41,7 @@ final class TheProviderWiresTheClockTest extends TestCase
 
         $journal = $app->make(EventStoreInterface::class);
         $journal->append(new \Gplanchat\Durable\Event\WorkflowSignalReceived('exec-1', 'go', []));
-        foreach ($journal->readStreamWithRecordedAt('exec-1') as $row) {
+        foreach ($journal->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')) as $row) {
             self::assertSame('1700000000', $row['recordedAt']->format('U'));
         }
     }

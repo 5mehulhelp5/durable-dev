@@ -6,6 +6,7 @@ namespace integration\Durable\Messenger;
 
 use Gplanchat\Durable\Bundle\Handler\DeliverWorkflowSignalHandler;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Transport\DeliverWorkflowSignalMessage;
@@ -75,7 +76,7 @@ final class WorkflowSignalUpdateMessengerHandlersTest extends TestCase
         self::assertSame(['ticket' => 'A-12'], $harness->lastCompletedResult());
 
         $signals = [];
-        foreach ($eventStore->readStream($executionId) as $e) {
+        foreach ($eventStore->readStream(ExecutionId::fromString($executionId)) as $e) {
             if ($e instanceof WorkflowSignalReceived) {
                 $signals[] = $e->signalName();
             }
