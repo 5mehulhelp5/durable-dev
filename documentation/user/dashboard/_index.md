@@ -131,7 +131,8 @@ strings truncated. Anyone with access to the admin can open a run, so this page 
 masking goes by key name, so personal data under other keys still shows. The run page masks with the
 same redactor as those two: on the Sylius plugin, the service an application aliases to
 `Gplanchat\Durable\Observation\PayloadRedactorInterface`; on Magento, a preference the application
-declares for that interface.
+declares for that interface; on Filament, what the application binds that interface to in its
+container.
 
 ## A fact a backend does not have is shown as absent
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\Durable\Filament;
 
+use Gplanchat\Durable\Observation\PayloadRedactorInterface;
 use Gplanchat\Durable\Observation\RunDashboard;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Illuminate\Support\ServiceProvider;
@@ -21,6 +22,8 @@ final class DurableFilamentServiceProvider extends ServiceProvider
         $this->app->singleton(RunDashboard::class, fn($app): RunDashboard => new RunDashboard(
             $app->bound(WorkflowRunCatalogInterface::class) ? $app->make(WorkflowRunCatalogInterface::class) : null,
             $app->bound('durable.clock') ? $app->make('durable.clock') : null,
+            // The application's own, as the profiler and diagnose use it (#507); the key pattern otherwise.
+            $app->bound(PayloadRedactorInterface::class) ? $app->make(PayloadRedactorInterface::class) : null,
         ));
     }
 
