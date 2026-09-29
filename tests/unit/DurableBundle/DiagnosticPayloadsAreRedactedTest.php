@@ -9,6 +9,7 @@ use Gplanchat\Durable\Bundle\DataCollector\DurableDataCollector;
 use Gplanchat\Durable\Bundle\DependencyInjection\DurableExtension;
 use Gplanchat\Durable\Bundle\Profiler\DurableExecutionTrace;
 use Gplanchat\Durable\Event\ActivityScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\PayloadRedactorInterface;
 use Gplanchat\Durable\Store\InMemoryChildWorkflowParentLinkStore;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -48,7 +49,7 @@ final class DiagnosticPayloadsAreRedactedTest extends TestCase
         $trace = new DurableExecutionTrace();
         $trace->onWorkflowDispatchRequested('password-reset-42', 'PasswordReset', ['password' => self::SECRET], false, 'async');
         $metadata = new InMemoryWorkflowMetadataStore();
-        $metadata->save('password-reset-42', 'PasswordReset', ['email' => 'ada@example.com', 'password' => self::SECRET]);
+        $metadata->save(ExecutionId::fromString('password-reset-42'), 'PasswordReset', ['email' => 'ada@example.com', 'password' => self::SECRET]);
 
         $collector = new DurableDataCollector($trace, $metadata, new InMemoryEventStore());
         $collector->collect(new Request(), new Response());
@@ -63,7 +64,7 @@ final class DiagnosticPayloadsAreRedactedTest extends TestCase
     public function testAnObjectInThePayloadIsMaskedToo(): void
     {
         $metadata = new InMemoryWorkflowMetadataStore();
-        $metadata->save('exec-1', 'Signup', ['user' => new SignupCredentials('ada', self::SECRET)]);
+        $metadata->save(ExecutionId::fromString('exec-1'), 'Signup', ['user' => new SignupCredentials('ada', self::SECRET)]);
         $trace = new DurableExecutionTrace();
         $trace->onWorkflowDispatchRequested('exec-1', 'Signup', [], false, 'async');
 
@@ -124,7 +125,7 @@ final class DiagnosticPayloadsAreRedactedTest extends TestCase
     private function storesWithASecret(): array
     {
         $metadata = new InMemoryWorkflowMetadataStore();
-        $metadata->save('exec-1', 'Signup', ['email' => 'ada@example.com', 'password' => self::SECRET]);
+        $metadata->save(ExecutionId::fromString('exec-1'), 'Signup', ['email' => 'ada@example.com', 'password' => self::SECRET]);
         $events = new InMemoryEventStore();
         $events->append(new ActivityScheduled('exec-1', 'act-1', 'createAccount', ['email' => 'ada@example.com', 'password' => self::SECRET]));
 

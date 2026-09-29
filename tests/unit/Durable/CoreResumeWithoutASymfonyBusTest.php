@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -40,13 +41,13 @@ final class CoreResumeWithoutASymfonyBusTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $registry = new WorkflowRegistry();
         $registry->registerClass(ImmediateWorkflow::class);
-        $metadata->save('exec-1', ImmediateWorkflow::class, ['name' => 'Ada']);
+        $metadata->save(ExecutionId::fromString('exec-1'), ImmediateWorkflow::class, ['name' => 'Ada']);
 
         $this->handlerFor($store, $metadata, $registry, new RecordingTimerDispatcher())(
             new ResumeWorkflowMessage('exec-1'),
         );
 
-        self::assertTrue($metadata->get('exec-1')['completed'] ?? false);
+        self::assertTrue($metadata->get(ExecutionId::fromString('exec-1'))['completed'] ?? false);
     }
 
     /**
@@ -60,7 +61,7 @@ final class CoreResumeWithoutASymfonyBusTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $registry = new WorkflowRegistry();
         $registry->registerClass(SleepingWorkflow::class);
-        $metadata->save('exec-2', SleepingWorkflow::class, []);
+        $metadata->save(ExecutionId::fromString('exec-2'), SleepingWorkflow::class, []);
         $timers = new RecordingTimerDispatcher();
 
         $this->handlerFor($store, $metadata, $registry, $timers)(new ResumeWorkflowMessage('exec-2'));

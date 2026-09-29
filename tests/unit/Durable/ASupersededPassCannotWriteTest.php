@@ -13,6 +13,7 @@ use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Exception\SupersededPassException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -94,14 +95,14 @@ final class ASupersededPassCannotWriteTest extends TestCase
         } catch (SupersededPassException) {
         }
 
-        self::assertSame([ExecutionStarted::class], array_map(static fn(object $e): string => $e::class, iterator_to_array($store->readStream('exec-1'), false)));
+        self::assertSame([ExecutionStarted::class], array_map(static fn(object $e): string => $e::class, iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false)));
         self::assertTrue($activities->isEmpty(), 'nothing was dispatched');
     }
 
     public function testTheResumeHandlerStopsWithoutEndingTheRun(): void
     {
         $metadata = new InMemoryWorkflowMetadataStore();
-        $metadata->save('exec-2', OvertakenWorkflow::class, []);
+        $metadata->save(ExecutionId::fromString('exec-2'), OvertakenWorkflow::class, []);
         $registry = new WorkflowRegistry();
         $registry->registerClass(OvertakenWorkflow::class);
 
@@ -118,8 +119,8 @@ final class ASupersededPassCannotWriteTest extends TestCase
             new WorkflowDefinitionLoader(),
         ))(new ResumeWorkflowMessage('exec-2'));
 
-        self::assertTrue($metadata->hasActiveWorkflowMetadata('exec-2'), 'the newer pass owns the run; it is not ended');
-        self::assertSame(0, $this->store->countEventsInStream('exec-2'));
+        self::assertTrue($metadata->hasActiveWorkflowMetadata(ExecutionId::fromString('exec-2')), 'the newer pass owns the run; it is not ended');
+        self::assertSame(0, $this->store->countEventsInStream(ExecutionId::fromString('exec-2')));
     }
 }
 

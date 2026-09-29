@@ -96,7 +96,7 @@ final class AnEarlyResumeWhileARetryIsQueuedTest extends TestCase
     private function queuedRetries(InMemoryEventStore $store): array
     {
         $attempts = [];
-        foreach ($store->readStream('exec-1') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $event) {
             if ($event instanceof ActivityRetryQueued) {
                 $attempts[] = $event->attempt();
             }
@@ -169,7 +169,7 @@ final class AnEarlyResumeWhileARetryIsQueuedTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $registry = new WorkflowRegistry();
         $registry->registerClass(ImmediateWorkflow::class);
-        $metadata->save('exec-1', ImmediateWorkflow::class, ['name' => 'Ada']);
+        $metadata->save(ExecutionId::fromString('exec-1'), ImmediateWorkflow::class, ['name' => 'Ada']);
         $engine = new ExecutionEngine($store, new ExecutionRuntime($store, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, null, true));
 
         return new ResumeWorkflowHandler(

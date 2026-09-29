@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable\Laravel;
 
 use Gplanchat\Bridge\Illuminate\Queue\ResumeLock;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\LaravelWorkflowTimerDispatcher;
@@ -47,7 +48,7 @@ final class ResumePathTest extends TestCase
         (new DurableServiceProvider($app))->register();
 
         $metadata = $app->make(WorkflowMetadataStore::class);
-        $metadata->save('exec-9', GreetingWorkflow::class, ['who' => 'Ada']);
+        $metadata->save(ExecutionId::fromString('exec-9'), GreetingWorkflow::class, ['who' => 'Ada']);
 
         (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-9')))->handle(
             $app->make(ResumeWorkflowHandler::class),
@@ -56,7 +57,7 @@ final class ResumePathTest extends TestCase
             new ResumeDeferral(),
         );
 
-        self::assertTrue($metadata->get('exec-9')['completed'] ?? false);
+        self::assertTrue($metadata->get(ExecutionId::fromString('exec-9'))['completed'] ?? false);
     }
 
     public function testATimerIsADeferredResumeOnTheQueuesOwnDelay(): void
