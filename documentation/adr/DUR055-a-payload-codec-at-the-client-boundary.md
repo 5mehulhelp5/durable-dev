@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — drafted by an agent. `documentation/adr/` is supervised: this ADR takes effect when the
+Proposed. `documentation/adr/` is supervised: this ADR takes effect when the
 user approves its text on its pull request. The shape (one codec at the workflow service client, an
 interface and no shipped cipher, the key delivered by the host, Nexus encoded like the rest, the
 plaintext remainder documented rather than closed) is the user's decision of 2026-09-30.
