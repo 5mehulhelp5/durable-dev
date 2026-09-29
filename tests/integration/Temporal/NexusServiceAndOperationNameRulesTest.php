@@ -11,6 +11,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
@@ -167,7 +168,7 @@ final class NexusServiceAndOperationNameRulesTest extends TestCase
             new TemporalHistoryCursor($this->client, $this->connection),
             new WorkflowServiceExecutionRpc($this->client),
         );
-        $workflowId = $client->startAsync('NexusNamesProbe', [], 'names-' . bin2hex(random_bytes(5)));
+        $workflowId = $client->workflowId($client->startAsync('NexusNamesProbe', [], ExecutionId::fromString('names-' . bin2hex(random_bytes(5)))));
         $this->started[] = $workflowId;
 
         $poll = new PollWorkflowTaskQueueRequest();

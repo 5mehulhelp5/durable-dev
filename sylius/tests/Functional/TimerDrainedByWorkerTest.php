@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Tests\Functional\Fixture\NapWorkflow;
 use Gplanchat\Durable\Event\ExecutionCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -27,7 +28,7 @@ final class TimerDrainedByWorkerTest extends KernelTestCase
         self::bootKernel();
         $executionId = 'nap-' . bin2hex(random_bytes(4));
 
-        self::getContainer()->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($executionId, NapWorkflow::TYPE, []);
+        self::getContainer()->get(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), NapWorkflow::TYPE, []);
 
         $worker = new CommandTester((new Application(self::$kernel))->find('durable:worker'));
         // Long enough for the one-second timer to come due and be consumed.
@@ -35,7 +36,7 @@ final class TimerDrainedByWorkerTest extends KernelTestCase
 
         self::assertStringContainsString('Consuming durable_workflows', $worker->getDisplay());
         $completed = array_values(array_filter(
-            [...self::getContainer()->get(EventStoreInterface::class)->readStream($executionId)],
+            [...self::getContainer()->get(EventStoreInterface::class)->readStream(ExecutionId::fromString($executionId))],
             static fn(object $event): bool => $event instanceof ExecutionCompleted,
         ));
         self::assertCount(1, $completed, 'the run must complete once, after its timer');

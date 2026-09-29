@@ -11,6 +11,7 @@ use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -130,7 +131,7 @@ final class DashboardTest extends WebTestCase
     private function record(string $executionId, Event $ending): void
     {
         $container = static::getContainer();
-        $container->get(WorkflowMetadataStore::class)->save($executionId, 'GreetingWorkflow', []);
+        $container->get(WorkflowMetadataStore::class)->save(ExecutionId::fromString($executionId), 'GreetingWorkflow', []);
         $journal = $container->get(EventStoreInterface::class);
         $journal->append(new ExecutionStarted($executionId, []));
         $journal->append(new ActivityScheduled($executionId, 'act-1', 'SendGreeting', []));

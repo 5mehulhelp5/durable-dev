@@ -10,6 +10,7 @@ use Gplanchat\Durable\Attribute\AsActivityMethod;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Event\ActivityScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\ActivitySpy;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
@@ -96,7 +97,7 @@ final class ActivitySchedulingPortTest extends TestCase
         $env->runWorkflowClass(TwiceCallingWorkflow::class, ['orderId' => 'ORD-8'], 'exec-options');
 
         $scheduled = [];
-        foreach ($env->getEventStore()->readStream('exec-options') as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString('exec-options')) as $event) {
             if ($event instanceof ActivityScheduled) {
                 $scheduled[] = $event;
             }
@@ -117,7 +118,7 @@ final class ActivitySchedulingPortTest extends TestCase
         $env->runWorkflowClass(PortWorkflow::class, ['orderId' => 'ORD-9'], 'exec-journal');
 
         $recorded = [];
-        foreach ($env->getEventStore()->readStream('exec-journal') as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString('exec-journal')) as $event) {
             $recorded[] = (new \ReflectionClass($event))->getShortName();
         }
 

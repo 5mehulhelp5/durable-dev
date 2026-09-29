@@ -12,6 +12,7 @@ use Gplanchat\Durable\Event\ActivityFailed;
 use Gplanchat\Durable\Event\ChildWorkflowCompleted;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\Exception\WorkflowStuckException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Failure\ActivityRetryState;
 use Gplanchat\Durable\ParentClosePolicy;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
@@ -127,7 +128,7 @@ final class HarnessParityTest extends TestCase
         }, 'parent-2');
 
         $scheduled = null;
-        foreach ($env->getEventStore()->readStream('parent-2') as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString('parent-2')) as $event) {
             if ($event instanceof \Gplanchat\Durable\Event\ChildWorkflowScheduled) {
                 $scheduled = $event->childExecutionId();
             }
@@ -155,7 +156,7 @@ final class HarnessParityTest extends TestCase
     private function shortNames(WorkflowTestEnvironment $env, string $executionId): array
     {
         $out = [];
-        foreach ($env->getEventStore()->readStream($executionId) as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString($executionId)) as $event) {
             $out[] = (new \ReflectionClass($event))->getShortName();
         }
 
@@ -171,7 +172,7 @@ final class HarnessParityTest extends TestCase
      */
     private function firstOf(WorkflowTestEnvironment $env, string $executionId, string $class): ?object
     {
-        foreach ($env->getEventStore()->readStream($executionId) as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof $class) {
                 return $event;
             }

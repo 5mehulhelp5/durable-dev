@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace integration\Durable\Crash;
 
 use Doctrine\DBAL\Connection;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\WorkflowTimerDispatcher;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -36,20 +37,20 @@ final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResu
         $this->push('activities', $message);
     }
 
-    public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, $pendingUpdates));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId->toString(), $pendingUpdates));
     }
 
-    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
     {
-        $this->push('resumes', new ResumeWorkflowMessage($executionId, [], $fact));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId->toString(), [], $fact));
     }
 
-    public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
     {
         $this->metadata->save($executionId, $workflowType, $payload);
-        $this->push('resumes', new ResumeWorkflowMessage($executionId));
+        $this->push('resumes', new ResumeWorkflowMessage($executionId->toString()));
     }
 
     /** The bench fires timers by hand: the delay is not honoured, the `timer` step comes later. */

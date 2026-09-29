@@ -9,6 +9,7 @@ use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\VersionMarked;
 use Gplanchat\Durable\Exception\WorkflowTaskFailure;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
 use Gplanchat\Durable\Store\EventStoreHistorySource;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -107,7 +108,7 @@ final class ChangePointAndTheDivergenceGuardTest extends TestCase
 
         $kinds = array_map(
             static fn(object $e): string => $e::class,
-            iterator_to_array($store->readStream(self::EXECUTION)),
+            iterator_to_array($store->readStream(ExecutionId::fromString(self::EXECUTION))),
         );
         $marker = array_search(VersionMarked::class, $kinds, true);
         $scheduled = array_search(ActivityScheduled::class, $kinds, true);

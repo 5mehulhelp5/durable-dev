@@ -16,6 +16,7 @@ use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\Exception\DeadlineExceededException;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -156,7 +157,7 @@ final class WorkflowDeadlineTest extends TestCase
 
         // The cancelled activity answers anyway: the verdict does not move.
         $activityId = null;
-        foreach ($store->readStream('deadline-5') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('deadline-5')) as $event) {
             if ($event instanceof ActivityScheduled) {
                 $activityId = $event->activityId();
             }
@@ -301,7 +302,7 @@ final class WorkflowDeadlineTest extends TestCase
 
     private function firstTimerId(InMemoryEventStore $store, string $executionId): string
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof TimerScheduled) {
                 return $event->timerId();
             }
@@ -318,7 +319,7 @@ final class WorkflowDeadlineTest extends TestCase
     private function eventsOf(InMemoryEventStore $store, string $executionId, string $class): array
     {
         $out = [];
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof $class) {
                 $out[] = $event;
             }

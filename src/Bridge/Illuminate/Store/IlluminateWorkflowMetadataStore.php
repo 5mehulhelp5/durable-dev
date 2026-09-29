@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gplanchat\Bridge\Illuminate\Store;
 
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Illuminate\Database\Connection;
 
@@ -28,7 +29,7 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         private readonly string $table = 'durable_workflow_metadata',
     ) {}
 
-    public function save(string $executionId, string $workflowType, array $payload): void
+    public function save(ExecutionId $executionId, string $workflowType, array $payload): void
     {
         $this->schema->ensure();
 
@@ -36,7 +37,7 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         // `completed` to false. `updateOrInsert()` queries before writing, so it does not depend on
         // the affected-row count — which SQLite and MySQL do not count the same way.
         $this->connection->table($this->table)->updateOrInsert(
-            ['execution_id' => $executionId],
+            ['execution_id' => $executionId->toString()],
             [
                 'workflow_type' => $workflowType,
                 'payload' => json_encode($payload, \JSON_THROW_ON_ERROR),
@@ -45,21 +46,21 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         );
     }
 
-    public function markCompleted(string $executionId): void
+    public function markCompleted(ExecutionId $executionId): void
     {
         $this->schema->ensure();
 
         $this->connection->table($this->table)
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->update(['completed' => true]);
     }
 
-    public function get(string $executionId): ?array
+    public function get(ExecutionId $executionId): ?array
     {
         $this->schema->ensure();
 
         $row = $this->connection->table($this->table)
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->first();
 
         if (null === $row) {
@@ -75,22 +76,22 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         ];
     }
 
-    public function hasActiveWorkflowMetadata(string $executionId): bool
+    public function hasActiveWorkflowMetadata(ExecutionId $executionId): bool
     {
         $this->schema->ensure();
 
         return $this->connection->table($this->table)
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->where('completed', false)
             ->exists();
     }
 
-    public function delete(string $executionId): void
+    public function delete(ExecutionId $executionId): void
     {
         $this->schema->ensure();
 
         $this->connection->table($this->table)
-            ->where('execution_id', $executionId)
+            ->where('execution_id', $executionId->toString())
             ->delete();
     }
 }

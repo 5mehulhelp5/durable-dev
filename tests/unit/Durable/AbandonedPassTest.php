@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -69,7 +70,7 @@ final class AbandonedPassTest extends TestCase
 
         self::assertSame(2, $finallyRuns, 'finally runs on each abandoned pass, as on a Temporal eviction');
         $scheduled = array_filter(
-            iterator_to_array($this->store->readStream('exec-2'), false),
+            iterator_to_array($this->store->readStream(ExecutionId::fromString('exec-2')), false),
             static fn(object $e): bool => $e instanceof ActivityScheduled,
         );
         self::assertCount(1, $scheduled, 'only the awaited activity is in the journal');

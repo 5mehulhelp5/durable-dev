@@ -7,6 +7,7 @@ namespace Gplanchat\Durable\Bundle\Testing;
 use Gplanchat\Durable\Bundle\DataCollector\DurableDataCollector;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Query\WorkflowQueryEvaluator;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -70,7 +71,7 @@ trait DurableBundleTestTrait
         $loader = new WorkflowDefinitionLoader();
         $workflowType = $loader->workflowTypeForClass($workflowClass);
 
-        $this->getWorkflowResumeDispatcher()->dispatchNewWorkflowRun($executionId, $workflowType, $input);
+        $this->getWorkflowResumeDispatcher()->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, $input);
 
         return $executionId;
     }
@@ -112,11 +113,11 @@ trait DurableBundleTestTrait
             }
 
             ++$idleStreak;
-            if ($hadMessage && $idleStreak > 30 && !$metadataStore->hasActiveWorkflowMetadata($executionId)) {
+            if ($hadMessage && $idleStreak > 30 && !$metadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
                 break;
             }
 
-            if ($metadataStore->hasActiveWorkflowMetadata($executionId)) {
+            if ($metadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
                 usleep(100_000);
             } else {
                 usleep(1_000);
@@ -127,7 +128,7 @@ trait DurableBundleTestTrait
         if (null === WorkflowQueryEvaluator::lastExecutionResult($eventStore, $executionId)) {
             // The workflow is allowed to fail (WorkflowExecutionFailed)
             $hasFailed = false;
-            foreach ($eventStore->readStream($executionId) as $event) {
+            foreach ($eventStore->readStream(ExecutionId::fromString($executionId)) as $event) {
                 if ($event instanceof WorkflowExecutionFailed) {
                     $hasFailed = true;
                     break;
@@ -152,7 +153,7 @@ trait DurableBundleTestTrait
     {
         $eventStore = $this->getEventStoreService();
         $completed = null;
-        foreach ($eventStore->readStream($executionId) as $event) {
+        foreach ($eventStore->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ExecutionCompleted) {
                 $completed = $event;
                 break;

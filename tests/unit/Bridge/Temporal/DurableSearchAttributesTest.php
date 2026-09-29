@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\ChildWorkflowOptions;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\SearchAttributes;
 use Gplanchat\Durable\WorkflowStartOptions;
 use PHPUnit\Framework\TestCase;
@@ -122,7 +123,7 @@ final class DurableSearchAttributesTest extends TestCase
         $connection = TemporalConnection::fromDsn('temporal://127.0.0.1:7233?namespace=default&tls=0', searchAttributes: true);
         $client = new WorkflowClient($grpc, $connection, new TemporalHistoryCursor($grpc, $connection), new WorkflowServiceExecutionRpc($grpc));
 
-        $client->startAsync('App\\OrderWorkflow', [], 'exec-1', new WorkflowStartOptions(searchAttributes: SearchAttributes::none()->keyword('CustomerId', 'c-7')));
+        $client->startAsync('App\\OrderWorkflow', [], ExecutionId::fromString('exec-1'), new WorkflowStartOptions(searchAttributes: SearchAttributes::none()->keyword('CustomerId', 'c-7')));
 
         self::assertInstanceOf(StartWorkflowExecutionRequest::class, $sent);
         self::assertSame(

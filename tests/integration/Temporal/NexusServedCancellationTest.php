@@ -16,6 +16,7 @@ use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Nexus\NexusEndpoint;
 use Gplanchat\Durable\Nexus\NexusOperationHeaders;
 use Gplanchat\Durable\Nexus\NexusOperationName;
@@ -224,7 +225,7 @@ final class NexusServedCancellationTest extends TestCase
             new TemporalHistoryCursor($this->client, $this->connection),
             new WorkflowServiceExecutionRpc($this->client),
         );
-        $callerId = $client->startAsync('NexusCancelCaller', [], 'nxcancel-' . bin2hex(random_bytes(4)));
+        $callerId = $client->workflowId($client->startAsync('NexusCancelCaller', [], ExecutionId::fromString('nxcancel-' . bin2hex(random_bytes(4)))));
         $this->started[] = $callerId;
 
         $task = $this->pollWorkflowTask();

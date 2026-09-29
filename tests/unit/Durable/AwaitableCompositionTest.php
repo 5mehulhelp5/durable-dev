@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Awaitable\Awaitable;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Exception\DeadlineExceededException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
@@ -226,7 +227,7 @@ final class AwaitableCompositionTest extends TestCase
     private function cancelledTimers(InMemoryEventStore $store, string $executionId): array
     {
         $out = [];
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof \Gplanchat\Durable\Event\TimerCancelled) {
                 $out[] = $event->timerId();
             }

@@ -11,6 +11,7 @@ use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Exception\WorkflowTaskFailure;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
 use Gplanchat\Durable\Store\EventStoreHistorySource;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -59,7 +60,7 @@ final class TimerSlotHasNoIdentityTest extends TestCase
         $store = new InMemoryEventStore();
         $store->append(new TimerScheduled(self::EXECUTION, 'timer-1', 1_000_000.0, ''));
 
-        $events = iterator_to_array($store->readStream(self::EXECUTION));
+        $events = iterator_to_array($store->readStream(ExecutionId::fromString(self::EXECUTION)));
         $recorded = $events[0];
 
         self::assertInstanceOf(TimerScheduled::class, $recorded);

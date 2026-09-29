@@ -11,6 +11,7 @@ use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Exception\SupersededPassException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use Gplanchat\Durable\Store\FencedEventStoreInterface;
 use Gplanchat\Durable\Store\PassFence;
@@ -160,26 +161,26 @@ final class DbalEventStore implements FencedEventStoreInterface
         ];
     }
 
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId $executionId): iterable
     {
         foreach ($this->readStreamWithRecordedAt($executionId) as $entry) {
             yield $entry['event'];
         }
     }
 
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId $executionId): iterable
     {
         $this->schema->ensure();
 
         $rows = $this->connection->executeQuery(
             \sprintf('SELECT event_type, payload, recorded_at FROM %s WHERE execution_id = ? ORDER BY id ASC', $this->table),
-            [$executionId],
+            [$executionId->toString()],
         );
 
         foreach ($rows->iterateAssociative() as $row) {
             yield [
                 'event' => EventDataMapper::toDomainEvent([
-                    'execution_id' => $executionId,
+                    'execution_id' => $executionId->toString(),
                     'event_type' => $row['event_type'],
                     'payload' => $row['payload'],
                 ]),
@@ -188,13 +189,13 @@ final class DbalEventStore implements FencedEventStoreInterface
         }
     }
 
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId $executionId): int
     {
         $this->schema->ensure();
 
         return (int) $this->connection->fetchOne(
             \sprintf('SELECT COUNT(*) FROM %s WHERE execution_id = ?', $this->table),
-            [$executionId],
+            [$executionId->toString()],
         );
     }
 }

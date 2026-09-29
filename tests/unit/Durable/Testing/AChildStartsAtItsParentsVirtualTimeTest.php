@@ -12,6 +12,7 @@ use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\ChildWorkflowScheduled;
 use Gplanchat\Durable\Event\TimerScheduled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
@@ -76,7 +77,7 @@ final class AChildStartsAtItsParentsVirtualTimeTest extends TestCase
 
     private static function firstTimer(EventStoreInterface $store, string $executionId): TimerScheduled
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof TimerScheduled) {
                 return $event;
             }
@@ -86,7 +87,7 @@ final class AChildStartsAtItsParentsVirtualTimeTest extends TestCase
 
     private static function childOf(EventStoreInterface $store, string $executionId): string
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ChildWorkflowScheduled) {
                 return $event->childExecutionId();
             }

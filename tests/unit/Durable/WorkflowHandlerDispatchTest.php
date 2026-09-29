@@ -11,6 +11,7 @@ use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\Event\WorkflowUpdateHandled;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Failure\FailureEnvelope;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -340,7 +341,7 @@ final class WorkflowHandlerDispatchTest extends TestCase
         }, null, [new PendingUpdate('approve', ['by' => 'alice'])]);
 
         $order = [];
-        foreach ($store->readStream('upd-4') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('upd-4')) as $event) {
             $order[] = (new \ReflectionClass($event))->getShortName();
         }
 
@@ -387,7 +388,7 @@ final class WorkflowHandlerDispatchTest extends TestCase
     private function eventsOf(InMemoryEventStore $store, string $executionId, string $class): array
     {
         $out = [];
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof $class) {
                 $out[] = $event;
             }

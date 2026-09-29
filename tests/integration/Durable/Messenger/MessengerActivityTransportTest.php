@@ -11,6 +11,7 @@ use Gplanchat\Durable\Event\ActivityTaskStarted;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -47,7 +48,7 @@ final class MessengerActivityTransportTest extends TestCase
 
         self::assertSame('hello messenger', $result);
 
-        $events = iterator_to_array($eventStore->readStream($executionId));
+        $events = iterator_to_array($eventStore->readStream(ExecutionId::fromString($executionId)));
         // The journal held four of them when this test was written. `ActivityTaskStarted` has
         // been added since: the pickup is recorded apart from the outcome, which is what makes it
         // possible to tell a queue from the work. A success settles in one event (#262). The sequence is written out in full rather than counted, so

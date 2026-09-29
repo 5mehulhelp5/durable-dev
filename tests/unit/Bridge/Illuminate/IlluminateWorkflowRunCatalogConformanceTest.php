@@ -13,6 +13,7 @@ use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
 use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\Store\ProjectingEventStore;
@@ -52,7 +53,7 @@ final class IlluminateWorkflowRunCatalogConformanceTest extends WorkflowRunCatal
             new IlluminateWorkflowMetadataStore($this->connection, $this->schema()),
             $this->catalog(),
         );
-        $metadata->save($executionId, $workflowType, []);
+        $metadata->save(ExecutionId::fromString($executionId), $workflowType, []);
         $this->journal()->append(new ExecutionStarted($executionId, []));
     }
 
@@ -83,7 +84,7 @@ final class IlluminateWorkflowRunCatalogConformanceTest extends WorkflowRunCatal
         (new ProjectingWorkflowMetadataStore(
             new IlluminateWorkflowMetadataStore($this->connection, $this->schema()),
             $this->catalog(),
-        ))->save($executionId, $workflowType, []);
+        ))->save(ExecutionId::fromString($executionId), $workflowType, []);
     }
 
     protected function pickUp(string $executionId): void

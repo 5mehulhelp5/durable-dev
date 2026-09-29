@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable\Worker;
 
 use Gplanchat\Durable\Exception\ActivityAttemptDeferred;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\ActivityAttemptClaimInterface;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
@@ -45,7 +46,7 @@ final class ACopyOfARunningAttemptIsDeferredTest extends TestCase
         }
 
         self::assertSame(0, $runs, 'the worker holding the attempt runs it');
-        self::assertSame([], iterator_to_array($store->readStream('exec-1'), false), 'and journals it');
+        self::assertSame([], iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false), 'and journals it');
     }
 
     public function testTheClaimIsReleasedEvenWhenTheMessageFails(): void

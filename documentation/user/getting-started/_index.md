@@ -275,6 +275,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
@@ -286,12 +287,12 @@ final class GreetController
 
     public function __invoke(string $name): JsonResponse
     {
-        $executionId = 'greet-'.uniqid();
+        $executionId = ExecutionId::fromString('greet-'.uniqid());
         $this->dispatcher->dispatchNewWorkflowRun($executionId, 'greet', ['name' => $name]);
 
         // 202: the run is queued, not done. Answering 200 here is the first thing that makes a
         // caller poll for a result that no consumer has produced yet.
-        return new JsonResponse(['executionId' => $executionId], JsonResponse::HTTP_ACCEPTED);
+        return new JsonResponse(['executionId' => $executionId->toString()], JsonResponse::HTTP_ACCEPTED);
     }
 }
 ```

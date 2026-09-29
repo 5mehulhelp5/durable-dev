@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\DurableLaravel;
 
 use Gplanchat\Bridge\Illuminate\Queue\ResumeLock;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\ResumeDeferral;
@@ -120,12 +121,12 @@ final class TheRunCatalogIsFedTest extends TestCase
     private function dispatch(Container $app, string $backend, string $executionId, string $workflowType): void
     {
         if ('illuminate' === $backend) {
-            $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun($executionId, $workflowType, []);
+            $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, []);
 
             return;
         }
 
-        $app->make(WorkflowMetadataStore::class)->save($executionId, $workflowType, []);
+        $app->make(WorkflowMetadataStore::class)->save(ExecutionId::fromString($executionId), $workflowType, []);
     }
 
     private function resume(Container $app, string $executionId): void

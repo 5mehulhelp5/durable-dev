@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\DurableModule\Block\Adminhtml;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\PayloadRedactorInterface;
 use Gplanchat\Durable\Observation\RunTimeline;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
@@ -62,7 +63,9 @@ class ProcessDetail extends Template
     {
         if (!$this->looked) {
             $this->looked = true;
-            $this->run = $this->runtimeFactory->catalog()->findRun($this->getRunId());
+            // An empty id is no execution: ExecutionId refuses it, and the page shows "not found".
+            $runId = $this->getRunId();
+            $this->run = '' === $runId ? null : $this->runtimeFactory->catalog()->findRun(ExecutionId::fromString($runId));
         }
 
         return $this->run;

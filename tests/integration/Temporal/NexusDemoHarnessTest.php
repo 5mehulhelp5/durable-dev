@@ -9,6 +9,7 @@ use Gplanchat\Bridge\Temporal\Grpc\WorkflowServiceExecutionRpc;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Enums\V1\EventType;
@@ -65,7 +66,7 @@ final class NexusDemoHarnessTest extends TestCase
         $workflows = new WorkflowClient($client, $connection, new TemporalHistoryCursor($client, $connection), new WorkflowServiceExecutionRpc($client));
 
         $executionId = 'demo-harness-caller-' . bin2hex(random_bytes(4));
-        $workflows->startAsync('DemoHarnessCaller', ['prefix' => $this->prefix], $executionId);
+        $workflows->startAsync('DemoHarnessCaller', ['prefix' => $this->prefix], ExecutionId::fromString($executionId));
         $answers = $workflows->pollForCompletion($executionId, 250, 240);
 
         self::assertSame([

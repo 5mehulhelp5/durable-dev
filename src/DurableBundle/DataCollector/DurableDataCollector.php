@@ -27,6 +27,7 @@ use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\Event\WorkflowUpdateHandled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\KeyPatternPayloadRedactor;
 use Gplanchat\Durable\Observation\PayloadRedactorInterface;
@@ -210,7 +211,7 @@ final class DurableDataCollector extends DataCollector implements ResetInterface
                 'payloadSummary' => $this->summarizePayload($payload),
                 'executionStatus' => $statusCode,
                 'executionStatusLabel' => $this->executionStatusLabel($statusCode),
-                'waitingOn' => $this->runCatalog?->findRun($eid)?->waitingOn,
+                'waitingOn' => $this->runCatalog?->findRun(ExecutionId::fromString($eid))?->waitingOn,
                 'storeEventCount' => max($storeCountFromIndex, $storeCountLive),
                 'storeTruncated' => $storeTl['truncated'] ?? false,
                 'processTraceCount' => \count($processTf['segments']),
@@ -254,7 +255,7 @@ final class DurableDataCollector extends DataCollector implements ResetInterface
             }
         }
 
-        if (null !== $metadata && ($metadata['completed'] ?? false) === false && $this->metadataStore->hasActiveWorkflowMetadata($executionId)) {
+        if (null !== $metadata && ($metadata['completed'] ?? false) === false && $this->metadataStore->hasActiveWorkflowMetadata(ExecutionId::fromString($executionId))) {
             return 'running';
         }
 
@@ -864,7 +865,7 @@ final class DurableDataCollector extends DataCollector implements ResetInterface
      */
     private function metadata(string $executionId): ?array
     {
-        $meta = $this->metadataStore->get($executionId);
+        $meta = $this->metadataStore->get(ExecutionId::fromString($executionId));
         if (null !== $meta) {
             $payload = $this->redacted($meta['payload']);
             $meta['payload'] = \is_array($payload) ? $payload : [];
@@ -881,9 +882,9 @@ final class DurableDataCollector extends DataCollector implements ResetInterface
         if (!isset($this->journals[$executionId])) {
             // An indexed COUNT, then a read that stops at the panel's limit: the SQL stores walk a
             // cursor, and breaking out of it spares hydrating the rest of a long journal.
-            $count = $this->eventStore->countEventsInStream($executionId);
+            $count = $this->eventStore->countEventsInStream(ExecutionId::fromString($executionId));
             $entries = [];
-            foreach ($this->eventStore->readStreamWithRecordedAt($executionId) as $entry) {
+            foreach ($this->eventStore->readStreamWithRecordedAt(ExecutionId::fromString($executionId)) as $entry) {
                 if (\count($entries) >= self::MAX_STORE_EVENTS_PER_STREAM) {
                     break;
                 }
