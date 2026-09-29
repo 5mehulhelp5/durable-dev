@@ -54,8 +54,14 @@ The script:
 
 ## Before and after
 
-- **Before:** tag only a commit whose CI is green. The script checks where the commit is, not
-  whether it passed.
+- **Before:**
+  - tag only a commit whose CI is green. The script checks where the commit is, not whether it
+    passed;
+  - cut `UPGRADE.md`: rename "Unreleased" to the version being tagged (`## 0.1.0-beta2`), open an
+    empty "Unreleased" above it, and merge that through a PR before tagging. Otherwise the next
+    version's entries pile onto sections the tag already shipped, and a PR can end up rewriting what
+    a published version said. v0.1.0-beta1 went out without this step, so its section was cut
+    afterwards (#684).
 - **After:**
   - check that every satellite received the tag;
   - update the "Latest release" line and the figures of the RFC symfony/symfony#66257, counted at

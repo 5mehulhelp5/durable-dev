@@ -24,6 +24,107 @@ only what Rector can do without guessing; everything else is written by hand bel
 
 ## Unreleased
 
+### An inline child starts at its parent's virtual time in the in-memory runner (#652)
+
+`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
+backend) started a child's virtual time at the real now. After the parent had skipped ahead to a
+timer, the child's instants (timer due times, `first_queued_at`) lagged behind the parent's. The
+child now starts at the parent's virtual now, and its activity queue keeps the transport's clock.
+`InMemoryWorkflowRunner` gains an optional last argument `?ClockInterface $virtualTimeStartsAt`,
+and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
+migrate.
+
+### A workflow goes on after a timer beats a retrying activity in `any()` (#678)
+
+On the event-store backends (in-memory, DBAL, Illuminate, Magento), an activity cancelled because
+it lost a race (`ActivityCancelled` with reason `race_superseded`) now reads back on replay as
+unsettled, as a losing timer already did. It used to read back as a rejection. Because it was
+the first member of `any()` to settle, the next resume failed with `Workflow did not handle
+superseded activity`. Replay cancels the loser again, and the journal records that cancellation
+once, not once per resume. A later outcome recorded for the cancelled activity is ignored.
+Nothing to migrate: journals written before this change replay under the new rule.
+
+### The ports take an `ExecutionId`, not a string (#638)
+
+**Who is affected**: an application that calls one of the eight ports below with a string execution
+id, reads an id one of them returns, or implements one of them, such as a custom store, dispatcher,
+catalog or Temporal client double. The database is untouched: every store writes `toString()` to the
+same `execution_id` columns and reads them back with `ExecutionId::fromString()`.
+
+| Port                                                    | Method                                                                  | Changes                                          |
+|---------------------------------------------------------|-------------------------------------------------------------------------|--------------------------------------------------|
+| `Store\EventStoreInterface`                             | `readStream()`, `readStreamWithRecordedAt()`, `countEventsInStream()`   | argument                                         |
+| `Store\WorkflowMetadataStore`                           | `save()`, `markCompleted()`, `get()`, `hasActiveWorkflowMetadata()`, `delete()` | argument                                 |
+| `Port\WorkflowRunCatalogInterface`                      | `findRun()`                                                             | argument                                         |
+| `Store\ChildWorkflowParentLinkStoreInterface`           | `link()` (both), `unlink()`                                             | arguments                                        |
+|                                                         | `getParentExecutionId()`                                                | argument; returns `?ExecutionId`                 |
+|                                                         | `getChildExecutionIdsForParent()`                                       | argument; returns `list<ExecutionId>`            |
+| `Port\WorkflowResumeDispatcher`                         | `dispatchResume()`, `dispatchResumeAwaiting()`, `dispatchNewWorkflowRun()` | argument                                      |
+| `Port\WorkflowHistorySourceInterface`                   | `hasChildExecutionId()`, `hasChildExecutionCompletedSuccessfully()`     | argument                                         |
+|                                                         | `findScheduledChildExecutionId()`                                       | returns `?ExecutionId`                           |
+| `Port\WorkflowBackendInterface`                         | `start()`                                                               | argument                                         |
+| `Bridge\Temporal\WorkflowClientInterface`               | `startSync()`, `workflowId()`                                           | argument                                         |
+|                                                         | `startAsync()`                                                          | argument; returns `ExecutionId` (see below)      |
+
+`signal()`, `query()`, `update()` and `pollForCompletion()` on the Temporal client keep their string
+ids: the first three take a Temporal workflow id, not an execution id. `WorkflowClient::startCron()`
+keeps its signature and still returns the workflow id. The conformance suites under
+`Gplanchat\Durable\Testing` pass the value object too, so a custom store that runs them has to be
+migrated first.
+
+**`startAsync()` changes what it returns, not only its type.** It used to return the Temporal
+workflow id it started the run under. It now returns the execution id it was given. The Temporal id
+is `workflowId($executionId)`. Passing the result straight to `signal()`, `query()` or `update()` is
+now a `TypeError` under `strict_types`. Without `strict_types`, PHP turns the object into the
+execution id string, and the call reaches a workflow id that does not exist.
+
+```php
+// before
+$workflowId = $client->startAsync('Order', $input, 'order-42');
+$client->signal($workflowId, 'paid');
+
+// after
+$executionId = $client->startAsync('Order', $input, ExecutionId::fromString('order-42'));
+$client->signal($client->workflowId($executionId), 'paid');
+```
+
+**Rector does the calling side it can prove.** The `durable-upgrade` set carries
+`ExecutionIdArgumentRector`. On a call whose receiver is typed as one of these ports, or as a class
+implementing one, it wraps an argument typed `string` in `ExecutionId::fromString()`, including
+through `?->`. It leaves alone:
+
+- a receiver it cannot type, such as `$container->get(EventStoreInterface::class)->readStream($id)`
+  or Laravel's `app(...)`. Static analysis may miss these too, and the `TypeError` shows up at run time;
+- a named or unpacked argument, a nullable one (`?string`), and one whose type is `mixed` or
+  unknown;
+- any code that **reads** an id a port returns (`getParentExecutionId()`,
+  `getChildExecutionIdsForParent()`, `findScheduledChildExecutionId()`, `startAsync()`), including
+  the `$client->signal($client->startAsync(...), ...)` pattern. What the value is for decides the
+  rewrite (`->toString()` for a string, `workflowId()` for a Temporal id, or keep the value object),
+  and no rule can guess it;
+- every call made inside a class that **implements** a port, including a decorator's
+  `$this->inner->readStream($executionId)` and its calls to itself. Step 4 turns those parameters
+  into `ExecutionId`, and a wrap written before would then be `fromString()` of an object.
+  Changing a parameter type makes the method body wrong wherever it relies on a string, which is a
+  review, not a rewrite.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set, then PHPStan or Psalm: what remains is listed.
+2. At each call Rector left, pass `ExecutionId::fromString($id)`. An empty string is refused:
+   `fromString('')` throws, where a store used to look up the empty id and find nothing. The
+   helpers that kept a `string` signature convert inside, so they refuse `''` too, for example
+   `WorkflowQueryEvaluator`, `ActivityEventJournal`, `RunDashboard::run()`, the message handlers.
+3. Where you read a returned id, call `->toString()` where a string is needed, and compare two ids
+   with `->equals()`, not `===`. After `startAsync()`, call `workflowId()` for the Temporal id.
+4. **In a class that implements a port**, change each listed parameter to `ExecutionId`. Call
+   `->toString()` where the body stores or compares the id, and pass the object through unchanged to
+   another port. Change the four return types in the table. A stored id comes back through
+   `ExecutionId::fromString()`. An implementation of `WorkflowClientInterface::startAsync()` returns
+   the `ExecutionId` it was given, no longer the workflow id it started.
+
+## 0.1.0-beta1
+
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
 
 **Who is affected**: code that reads journal events by type (a custom mapper, a `match` without a
@@ -1201,105 +1302,6 @@ final class Kernel extends BaseKernel implements CompilerPassInterface
 No Rector rule. Turning `$container->get(ExecutionRuntime::class)` into constructor injection adds
 a parameter to the caller, and to every place that builds it, and needs the caller to be a service.
 That is not a rewrite of one expression, and no rule can find those places.
-
-### An inline child starts at its parent's virtual time in the in-memory runner (#652)
-
-`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
-backend) started a child's virtual time at the real now. After the parent had skipped ahead to a
-timer, the child's instants (timer due times, `first_queued_at`) lagged behind the parent's. The
-child now starts at the parent's virtual now, and its activity queue keeps the transport's clock.
-`InMemoryWorkflowRunner` gains an optional last argument `?ClockInterface $virtualTimeStartsAt`,
-and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
-migrate.
-
-### A workflow goes on after a timer beats a retrying activity in `any()` (#678)
-
-On the event-store backends (in-memory, DBAL, Illuminate, Magento), an activity cancelled because
-it lost a race (`ActivityCancelled` with reason `race_superseded`) now reads back on replay as
-unsettled, as a losing timer already did. It used to read back as a rejection. Because it was
-the first member of `any()` to settle, the next resume failed with `Workflow did not handle
-superseded activity`. Replay cancels the loser again, and the journal records that cancellation
-once, not once per resume. A later outcome recorded for the cancelled activity is ignored.
-Nothing to migrate: journals written before this change replay under the new rule.
-
-### The ports take an `ExecutionId`, not a string (#638)
-
-**Who is affected**: an application that calls one of the eight ports below with a string execution
-id, reads an id one of them returns, or implements one of them, such as a custom store, dispatcher,
-catalog or Temporal client double. The database is untouched: every store writes `toString()` to the
-same `execution_id` columns and reads them back with `ExecutionId::fromString()`.
-
-| Port                                                    | Method                                                                  | Changes                                          |
-|---------------------------------------------------------|-------------------------------------------------------------------------|--------------------------------------------------|
-| `Store\EventStoreInterface`                             | `readStream()`, `readStreamWithRecordedAt()`, `countEventsInStream()`   | argument                                         |
-| `Store\WorkflowMetadataStore`                           | `save()`, `markCompleted()`, `get()`, `hasActiveWorkflowMetadata()`, `delete()` | argument                                 |
-| `Port\WorkflowRunCatalogInterface`                      | `findRun()`                                                             | argument                                         |
-| `Store\ChildWorkflowParentLinkStoreInterface`           | `link()` (both), `unlink()`                                             | arguments                                        |
-|                                                         | `getParentExecutionId()`                                                | argument; returns `?ExecutionId`                 |
-|                                                         | `getChildExecutionIdsForParent()`                                       | argument; returns `list<ExecutionId>`            |
-| `Port\WorkflowResumeDispatcher`                         | `dispatchResume()`, `dispatchResumeAwaiting()`, `dispatchNewWorkflowRun()` | argument                                      |
-| `Port\WorkflowHistorySourceInterface`                   | `hasChildExecutionId()`, `hasChildExecutionCompletedSuccessfully()`     | argument                                         |
-|                                                         | `findScheduledChildExecutionId()`                                       | returns `?ExecutionId`                           |
-| `Port\WorkflowBackendInterface`                         | `start()`                                                               | argument                                         |
-| `Bridge\Temporal\WorkflowClientInterface`               | `startSync()`, `workflowId()`                                           | argument                                         |
-|                                                         | `startAsync()`                                                          | argument; returns `ExecutionId` (see below)      |
-
-`signal()`, `query()`, `update()` and `pollForCompletion()` on the Temporal client keep their string
-ids: the first three take a Temporal workflow id, not an execution id. `WorkflowClient::startCron()`
-keeps its signature and still returns the workflow id. The conformance suites under
-`Gplanchat\Durable\Testing` pass the value object too, so a custom store that runs them has to be
-migrated first.
-
-**`startAsync()` changes what it returns, not only its type.** It used to return the Temporal
-workflow id it started the run under. It now returns the execution id it was given. The Temporal id
-is `workflowId($executionId)`. Passing the result straight to `signal()`, `query()` or `update()` is
-now a `TypeError` under `strict_types`. Without `strict_types`, PHP turns the object into the
-execution id string, and the call reaches a workflow id that does not exist.
-
-```php
-// before
-$workflowId = $client->startAsync('Order', $input, 'order-42');
-$client->signal($workflowId, 'paid');
-
-// after
-$executionId = $client->startAsync('Order', $input, ExecutionId::fromString('order-42'));
-$client->signal($client->workflowId($executionId), 'paid');
-```
-
-**Rector does the calling side it can prove.** The `durable-upgrade` set carries
-`ExecutionIdArgumentRector`. On a call whose receiver is typed as one of these ports, or as a class
-implementing one, it wraps an argument typed `string` in `ExecutionId::fromString()`, including
-through `?->`. It leaves alone:
-
-- a receiver it cannot type, such as `$container->get(EventStoreInterface::class)->readStream($id)`
-  or Laravel's `app(...)`. Static analysis may miss these too, and the `TypeError` shows up at run time;
-- a named or unpacked argument, a nullable one (`?string`), and one whose type is `mixed` or
-  unknown;
-- any code that **reads** an id a port returns (`getParentExecutionId()`,
-  `getChildExecutionIdsForParent()`, `findScheduledChildExecutionId()`, `startAsync()`), including
-  the `$client->signal($client->startAsync(...), ...)` pattern. What the value is for decides the
-  rewrite (`->toString()` for a string, `workflowId()` for a Temporal id, or keep the value object),
-  and no rule can guess it;
-- every call made inside a class that **implements** a port, including a decorator's
-  `$this->inner->readStream($executionId)` and its calls to itself. Step 4 turns those parameters
-  into `ExecutionId`, and a wrap written before would then be `fromString()` of an object.
-  Changing a parameter type makes the method body wrong wherever it relies on a string, which is a
-  review, not a rewrite.
-
-**What to do**, in this order:
-
-1. Run the `durable-upgrade` set, then PHPStan or Psalm: what remains is listed.
-2. At each call Rector left, pass `ExecutionId::fromString($id)`. An empty string is refused:
-   `fromString('')` throws, where a store used to look up the empty id and find nothing. The
-   helpers that kept a `string` signature convert inside, so they refuse `''` too, for example
-   `WorkflowQueryEvaluator`, `ActivityEventJournal`, `RunDashboard::run()`, the message handlers.
-3. Where you read a returned id, call `->toString()` where a string is needed, and compare two ids
-   with `->equals()`, not `===`. After `startAsync()`, call `workflowId()` for the Temporal id.
-4. **In a class that implements a port**, change each listed parameter to `ExecutionId`. Call
-   `->toString()` where the body stores or compares the id, and pass the object through unchanged to
-   another port. Change the four return types in the table. A stored id comes back through
-   `ExecutionId::fromString()`. An implementation of `WorkflowClientInterface::startAsync()` returns
-   the `ExecutionId` it was given, no longer the workflow id it started.
 
 ## 0.1.0-alpha10
 
