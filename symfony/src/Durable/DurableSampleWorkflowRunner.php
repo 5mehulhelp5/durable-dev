@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Durable;
 
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Query\WorkflowQueryEvaluator;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -46,7 +47,7 @@ final class DurableSampleWorkflowRunner
     public function dispatchWorkflowRun(string $workflowType, array $payload, ?string $executionId = null): string
     {
         $executionId = $executionId ?? (string) Uuid::v4();
-        $this->workflowResumeDispatcher->dispatchNewWorkflowRun($executionId, $workflowType, $payload);
+        $this->workflowResumeDispatcher->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, $payload);
 
         return $executionId;
     }
@@ -89,7 +90,7 @@ final class DurableSampleWorkflowRunner
     public function runAndSettle(string $workflowType, array $payload, ?string $executionId = null): array
     {
         $executionId = $executionId ?? (string) Uuid::v4();
-        $this->workflowResumeDispatcher->dispatchNewWorkflowRun($executionId, $workflowType, $payload);
+        $this->workflowResumeDispatcher->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, $payload);
         $result = $this->waitForWorkflowCompletion($executionId);
 
         return ['executionId' => $executionId, 'result' => $result];
@@ -111,7 +112,7 @@ final class DurableSampleWorkflowRunner
         ?string $executionId = null,
     ): array {
         $executionId = $executionId ?? (string) Uuid::v4();
-        $this->workflowResumeDispatcher->dispatchNewWorkflowRun($executionId, $workflowType, $payload);
+        $this->workflowResumeDispatcher->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, $payload);
 
         $phase = DurableMessengerDrain::drainUntilCompleteOrSignalWait(
             $this->eventStore,
@@ -155,7 +156,7 @@ final class DurableSampleWorkflowRunner
         ?string $executionId = null,
     ): array {
         $executionId = $executionId ?? (string) Uuid::v4();
-        $this->workflowResumeDispatcher->dispatchNewWorkflowRun($executionId, $workflowType, $payload);
+        $this->workflowResumeDispatcher->dispatchNewWorkflowRun(ExecutionId::fromString($executionId), $workflowType, $payload);
 
         $phase = DurableMessengerDrain::drainUntilCompleteOrSignalWait(
             $this->eventStore,
