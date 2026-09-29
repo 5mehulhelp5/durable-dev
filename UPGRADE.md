@@ -410,7 +410,8 @@ The mutual exclusion of a DBAL journal and a Temporal journal is now an
 `InvalidConfigurationException` rather than a `LogicException`. Code that caught the latter around
 a container build catches the former.
 
-`activity_transport.table_name` is deprecated: nothing ever read it. Delete the line.
+`activity_transport.table_name` is gone: nothing ever read it, and the same release removes it
+(see "`durable.activity_transport.table_name` is removed" below). Delete the line.
 
 `profiler.enabled` is new. It defaults to `%kernel.debug%`, which is what the bundle did before;
 set it to keep the profiler out of a debug worker, or in a non-debug staging build.
@@ -951,8 +952,9 @@ A dispatcher whose backend owns delivery (as Temporal's does) implements it as a
 
 ### `durable.activity_transport.table_name` is removed
 
-**Who is affected**: a Symfony application whose `durable.yaml` still sets it. It has been deprecated
-since 0.1.0-beta1, and nothing ever read it.
+**Who is affected**: a Symfony application whose `durable.yaml` still sets it. Nothing ever read it.
+It was first marked deprecated during this release's development, then removed before the release,
+so no tagged version accepts it with a deprecation.
 
 **Why.** It named an outbox that was never built, and DUR050 (#328) chose not to build one: the
 resume is sent before the outcome and again after it.
