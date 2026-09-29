@@ -187,6 +187,17 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 }
 ```
 
+### Magento: `#[AsActivityHandler(contract)]` narrows what a handler serves (#715)
+
+**Who is affected**: only a handler declared in `di.xml` that carries `#[AsActivityHandler]` **and**
+implements more than one `#[AsActivity]` interface. Magento used to serve every such interface and
+ignored the attribute; it now serves only the named `contract`, as Symfony always did. A handler
+whose class lacks a method of the named contract is refused by name when the runtime is built.
+
+**What to write.** Nothing, if the named contract is the one you meant. If you relied on the other
+interfaces being served, drop the attribute (the interfaces then drive, as before) or move them to
+a handler of their own.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
