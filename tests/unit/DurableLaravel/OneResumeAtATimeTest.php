@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable\Laravel;
 
 use Gplanchat\Bridge\Illuminate\Queue\ResumeLock;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Laravel\Queue\ResumeDeferral;
@@ -32,7 +33,7 @@ final class OneResumeAtATimeTest extends TestCase
         $app = $this->container([GreetingWorkflow::class]);
         (new DurableServiceProvider($app))->register();
         $metadata = $app->make(WorkflowMetadataStore::class);
-        $metadata->save('exec-1', GreetingWorkflow::class, []);
+        $metadata->save(ExecutionId::fromString('exec-1'), GreetingWorkflow::class, []);
 
         $store = new ArrayStore();
         // Another worker already holds this execution's turn.
@@ -47,7 +48,7 @@ final class OneResumeAtATimeTest extends TestCase
         );
 
         // Nothing was replayed…
-        self::assertFalse($metadata->get('exec-1')['completed'] ?? false);
+        self::assertFalse($metadata->get(ExecutionId::fromString('exec-1'))['completed'] ?? false);
         // …and the resume is put back for later, with its deferral counter.
         self::assertCount(1, $queue->pushed);
         self::assertSame(2, $queue->pushed[0]['delay']);
@@ -63,7 +64,7 @@ final class OneResumeAtATimeTest extends TestCase
     {
         $app = $this->container([GreetingWorkflow::class]);
         (new DurableServiceProvider($app))->register();
-        $app->make(WorkflowMetadataStore::class)->save('exec-early', GreetingWorkflow::class, []);
+        $app->make(WorkflowMetadataStore::class)->save(ExecutionId::fromString('exec-early'), GreetingWorkflow::class, []);
 
         $queue = new FakeQueue();
         (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-early', [], AwaitedFact::activity('act-1'))))->handle(
@@ -86,7 +87,7 @@ final class OneResumeAtATimeTest extends TestCase
     {
         $app = $this->container([GreetingWorkflow::class]);
         (new DurableServiceProvider($app))->register();
-        $app->make(WorkflowMetadataStore::class)->save('exec-late', GreetingWorkflow::class, []);
+        $app->make(WorkflowMetadataStore::class)->save(ExecutionId::fromString('exec-late'), GreetingWorkflow::class, []);
 
         $queue = new FakeQueue();
         (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-late', [], AwaitedFact::activity('act-1')), 50))->handle(
@@ -104,7 +105,7 @@ final class OneResumeAtATimeTest extends TestCase
         $app = $this->container([GreetingWorkflow::class]);
         (new DurableServiceProvider($app))->register();
         $metadata = $app->make(WorkflowMetadataStore::class);
-        $metadata->save('exec-2', GreetingWorkflow::class, []);
+        $metadata->save(ExecutionId::fromString('exec-2'), GreetingWorkflow::class, []);
 
         $queue = new FakeQueue();
         (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-2')))->handle(
@@ -114,7 +115,7 @@ final class OneResumeAtATimeTest extends TestCase
             new ResumeDeferral(),
         );
 
-        self::assertTrue($metadata->get('exec-2')['completed'] ?? false);
+        self::assertTrue($metadata->get(ExecutionId::fromString('exec-2'))['completed'] ?? false);
         self::assertSame([], $queue->pushed, 'a free turn does not put itself back');
     }
 
@@ -122,7 +123,7 @@ final class OneResumeAtATimeTest extends TestCase
     {
         $app = $this->container([GreetingWorkflow::class]);
         (new DurableServiceProvider($app))->register();
-        $app->make(WorkflowMetadataStore::class)->save('exec-3', GreetingWorkflow::class, []);
+        $app->make(WorkflowMetadataStore::class)->save(ExecutionId::fromString('exec-3'), GreetingWorkflow::class, []);
 
         $store = new ArrayStore();
         (new ResumeWorkflowJob(new ResumeWorkflowMessage('exec-3')))->handle(

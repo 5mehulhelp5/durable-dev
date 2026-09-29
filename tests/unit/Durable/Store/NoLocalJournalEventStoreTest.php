@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable\Store;
 
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Exception\UnsupportedByBackendException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\NoLocalJournalEventStore;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -23,9 +24,9 @@ final class NoLocalJournalEventStoreTest extends TestCase
     public static function everyCall(): iterable
     {
         yield 'append' => [static fn(NoLocalJournalEventStore $store) => $store->append(new ExecutionStarted('exec-1', [])), 'append'];
-        yield 'readStream' => [static fn(NoLocalJournalEventStore $store) => iterator_to_array($store->readStream('exec-1')), 'readStream'];
-        yield 'readStreamWithRecordedAt' => [static fn(NoLocalJournalEventStore $store) => iterator_to_array($store->readStreamWithRecordedAt('exec-1')), 'readStreamWithRecordedAt'];
-        yield 'countEventsInStream' => [static fn(NoLocalJournalEventStore $store) => $store->countEventsInStream('exec-1'), 'countEventsInStream'];
+        yield 'readStream' => [static fn(NoLocalJournalEventStore $store) => iterator_to_array($store->readStream(ExecutionId::fromString('exec-1'))), 'readStream'];
+        yield 'readStreamWithRecordedAt' => [static fn(NoLocalJournalEventStore $store) => iterator_to_array($store->readStreamWithRecordedAt(ExecutionId::fromString('exec-1'))), 'readStreamWithRecordedAt'];
+        yield 'countEventsInStream' => [static fn(NoLocalJournalEventStore $store) => $store->countEventsInStream(ExecutionId::fromString('exec-1')), 'countEventsInStream'];
     }
 
     /**

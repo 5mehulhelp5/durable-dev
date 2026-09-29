@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Exception\ResumeArrivedBeforeItsOutcome;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -41,8 +42,8 @@ final class AnEarlyResumeWaitsForItsOutcomeTest extends TestCase
             self::assertEquals(AwaitedFact::activity('act-1'), $e->awaited);
         }
 
-        self::assertSame([], iterator_to_array($store->readStream('exec-1'), false), 'the workflow did not run');
-        self::assertFalse($metadata->get('exec-1')['completed'] ?? false);
+        self::assertSame([], iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false), 'the workflow did not run');
+        self::assertFalse($metadata->get(ExecutionId::fromString('exec-1'))['completed'] ?? false);
     }
 
     public function testAResumeThatFindsItsOutcomeProceeds(): void
@@ -52,7 +53,7 @@ final class AnEarlyResumeWaitsForItsOutcomeTest extends TestCase
 
         $handler(new ResumeWorkflowMessage('exec-1', [], AwaitedFact::activity('act-1')));
 
-        self::assertTrue($metadata->get('exec-1')['completed'] ?? false);
+        self::assertTrue($metadata->get(ExecutionId::fromString('exec-1'))['completed'] ?? false);
     }
 
     /**
@@ -93,7 +94,7 @@ final class AnEarlyResumeWaitsForItsOutcomeTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $registry = new WorkflowRegistry();
         $registry->registerClass(ImmediateWorkflow::class);
-        $metadata->save('exec-1', ImmediateWorkflow::class, ['name' => 'Ada']);
+        $metadata->save(ExecutionId::fromString('exec-1'), ImmediateWorkflow::class, ['name' => 'Ada']);
         $engine = new ExecutionEngine($store, new ExecutionRuntime($store, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, null, true));
 
         return [$store, $metadata, new ResumeWorkflowHandler(

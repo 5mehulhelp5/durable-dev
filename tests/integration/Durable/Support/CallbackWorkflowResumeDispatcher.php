@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace integration\Durable\Support;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Transport\AwaitedFact;
 
@@ -20,21 +21,21 @@ final class CallbackWorkflowResumeDispatcher implements WorkflowResumeDispatcher
     /**
      * @param list<array{name: string, arguments: array<string, mixed>}> $pendingUpdates
      */
-    public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
-        ($this->onResume)($executionId, $pendingUpdates);
+        ($this->onResume)($executionId->toString(), $pendingUpdates);
     }
 
     /**
      * Nothing to announce early: the callback runs the resume inline, which is what a `sync` route
      * does, and the resume after the append does the work (DUR050).
      */
-    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-    public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
     {
         if (null !== $this->onNew) {
-            ($this->onNew)($executionId, $workflowType, $payload);
+            ($this->onNew)($executionId->toString(), $workflowType, $payload);
         }
     }
 }

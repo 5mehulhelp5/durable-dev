@@ -6,6 +6,7 @@ namespace Gplanchat\DurableProbe\Observer;
 
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use Gplanchat\DurableProbe\Workflow\SlowOrderWorkflow;
+use Gplanchat\Durable\ExecutionId;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\App\Filesystem\DirectoryList;
@@ -51,7 +52,7 @@ class StartOrderWorkflow implements ObserverInterface
             $this->runtimeFactory->workflowClient()->startAsync(
                 SlowOrderWorkflow::class,
                 ['orderId' => $increment, 'pauseSeconds' => 2],
-                $executionId,
+                ExecutionId::fromString($executionId),
             );
             $this->trace(sprintf('%s -> execution %s started on the cluster', $increment, $executionId));
         } catch (\Throwable $exception) {

@@ -8,6 +8,7 @@ use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Bundle\Messenger\MessengerWorkflowResumeDispatcher;
 use Gplanchat\Durable\Bundle\Messenger\NewWorkflowRunStamp;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
@@ -43,9 +44,9 @@ final class MessengerWorkflowResumeDispatcherTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
 
         (new MessengerWorkflowResumeDispatcher($bus, $metadata))
-            ->dispatchNewWorkflowRun('order-1', OrderFulfilmentWorkflow::class, []);
+            ->dispatchNewWorkflowRun(ExecutionId::fromString('order-1'), OrderFulfilmentWorkflow::class, []);
 
-        self::assertSame('test.order-fulfilment', $metadata->get('order-1')['workflowType'] ?? null);
+        self::assertSame('test.order-fulfilment', $metadata->get(ExecutionId::fromString('order-1'))['workflowType'] ?? null);
         self::assertSame('test.order-fulfilment', $bus->sent[0]->last(NewWorkflowRunStamp::class)?->workflowType);
     }
 
@@ -59,7 +60,7 @@ final class MessengerWorkflowResumeDispatcherTest extends TestCase
         $bus = new RecordingBus();
 
         (new MessengerWorkflowResumeDispatcher($bus, new InMemoryWorkflowMetadataStore(), $this->routedTo(new InMemoryTransport())))
-            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
+            ->dispatchResumeAwaiting(ExecutionId::fromString('exec-1'), AwaitedFact::activity('act-1'));
 
         self::assertCount(1, $bus->sent);
         self::assertNull($bus->sent[0]->last(DispatchAfterCurrentBusStamp::class));
@@ -77,7 +78,7 @@ final class MessengerWorkflowResumeDispatcherTest extends TestCase
         $bus = new RecordingBus();
 
         (new MessengerWorkflowResumeDispatcher($bus, new InMemoryWorkflowMetadataStore(), $this->routedTo($this->createStub(SyncTransport::class))))
-            ->dispatchResumeAwaiting('exec-1', AwaitedFact::activity('act-1'));
+            ->dispatchResumeAwaiting(ExecutionId::fromString('exec-1'), AwaitedFact::activity('act-1'));
 
         self::assertSame([], $bus->sent);
     }

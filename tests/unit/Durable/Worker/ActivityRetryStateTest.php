@@ -11,6 +11,7 @@ use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Event\ActivityFailed;
 use Gplanchat\Durable\Event\ActivityTaskFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Failure\ActivityRetryState;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
@@ -306,7 +307,7 @@ final class ActivityRetryStateTest extends TestCase
             ['ActivityTaskStarted', 'ActivityTaskFailed', 'ActivityFailed'],
             array_map(
                 static fn(object $e): string => (new \ReflectionClass($e))->getShortName(),
-                iterator_to_array($store->readStream('exec-1'), false),
+                iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false),
             ),
             'the synchronous drain must produce the same trio of markers as the Messenger path',
         );
@@ -355,7 +356,7 @@ final class ActivityRetryStateTest extends TestCase
     private function lastFailure(InMemoryEventStore $store): ?ActivityFailed
     {
         $last = null;
-        foreach ($store->readStream('exec-1') as $e) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $e) {
             if ($e instanceof ActivityFailed) {
                 $last = $e;
             }
@@ -366,7 +367,7 @@ final class ActivityRetryStateTest extends TestCase
 
     private function completed(InMemoryEventStore $store): ?ActivityCompleted
     {
-        foreach ($store->readStream('exec-1') as $e) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $e) {
             if ($e instanceof ActivityCompleted) {
                 return $e;
             }
@@ -379,7 +380,7 @@ final class ActivityRetryStateTest extends TestCase
     private function taskFailures(InMemoryEventStore $store): array
     {
         $out = [];
-        foreach ($store->readStream('exec-1') as $e) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $e) {
             if ($e instanceof ActivityTaskFailed) {
                 $out[] = $e;
             }

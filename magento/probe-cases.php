@@ -30,5 +30,5 @@ if ('here' === $mode) {
     exit(0);
 }
 
-$factory->workflowClient()->startAsync($workflow, ['caseId' => $caseId], $caseId);
+$factory->workflowClient()->startAsync($workflow, ['caseId' => $caseId], \Gplanchat\Durable\ExecutionId::fromString($caseId));
 printf("%s started on the cluster — `bin/magento durable:worker` has to be running\n", $caseId);

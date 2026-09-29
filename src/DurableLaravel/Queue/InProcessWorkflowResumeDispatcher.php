@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\Durable\Laravel\Queue;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\WorkflowTimerDispatcher;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
@@ -61,22 +62,22 @@ final class InProcessWorkflowResumeDispatcher implements WorkflowResumeDispatche
         $this->clock = $clock ?? new SystemClock();
     }
 
-    public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
-        $this->resumes[] = new ResumeWorkflowMessage($executionId, $pendingUpdates);
+        $this->resumes[] = new ResumeWorkflowMessage($executionId->toString(), $pendingUpdates);
         $this->drain();
     }
 
     /**
      * Nothing: the resume runs in this process, after the append, like a `sync` route (DUR050 §6).
      */
-    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void {}
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void {}
 
-    public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
     {
         // A caller passing `::class` gets the alias, as on the other dispatchers (#258).
         $this->metadata->save($executionId, (new WorkflowDefinitionLoader())->aliasForTemporalInterop($workflowType), $payload);
-        $this->resumes[] = new ResumeWorkflowMessage($executionId);
+        $this->resumes[] = new ResumeWorkflowMessage($executionId->toString());
         $this->drain();
     }
 

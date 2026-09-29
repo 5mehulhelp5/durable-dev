@@ -266,7 +266,7 @@ Voir [Workflows récurrents](#recurring-workflows) plus bas pour en démarrer un
 Ce par quoi une exécution peut être retrouvée.
 
 ```php
-use Gplanchat\Durable\{SearchAttributes, WorkflowStartOptions};
+use Gplanchat\Durable\{ExecutionId, SearchAttributes, WorkflowStartOptions};
 
 $attributes = SearchAttributes::none()
     ->keyword('OrderId', 'ORD-4242')
@@ -277,7 +277,7 @@ $attributes = SearchAttributes::none()
     ->datetime('DueAt', new DateTimeImmutable('2026-01-01'))
     ->keywordList('Tags', ['gift', 'express']);
 
-$client->startAsync('CheckoutWorkflow', $input, $executionId, new WorkflowStartOptions(
+$client->startAsync('CheckoutWorkflow', $input, ExecutionId::fromString($executionId), new WorkflowStartOptions(
     searchAttributes: $attributes,
 ));
 ```
@@ -312,12 +312,12 @@ temporal operator search-attribute create --name Amount  --type Int
 ## Workflows récurrents {#recurring-workflows}
 
 ```php
-use Gplanchat\Durable\{CronSchedule, WorkflowStartOptions};
+use Gplanchat\Durable\{CronSchedule, ExecutionId, WorkflowStartOptions};
 
 $client->startCron('NightlyReconciliation', $input, $executionId, CronSchedule::dailyAt(2));
 
 // ou par l'objet d'options, aux côtés des délais et des attributs de recherche
-$client->startAsync('NightlyReconciliation', $input, $executionId, new WorkflowStartOptions(
+$client->startAsync('NightlyReconciliation', $input, ExecutionId::fromString($executionId), new WorkflowStartOptions(
     cronSchedule: CronSchedule::dailyAt(2)->inTimeZone('Europe/Paris'),
 ));
 ```

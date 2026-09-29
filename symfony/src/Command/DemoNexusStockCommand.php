@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Durable\Workflow\ReserveStockWorkflow;
 use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -76,7 +77,7 @@ final class DemoNexusStockCommand extends Command
         $this->client->startAsync(
             ReserveStockWorkflow::TYPE,
             ['order' => $order, 'lines' => $lines],
-            $order,
+            ExecutionId::fromString($order),
         );
 
         $seconds = max(1, (int) $input->getOption('timeout'));

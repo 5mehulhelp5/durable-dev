@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\ExecutionStarted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Enums\V1\EventType;
@@ -30,13 +31,13 @@ final class TemporalReadThroughEventStoreTest extends TestCase
         $store = $this->storeOver(['child-1' => [EventType::EVENT_TYPE_WORKFLOW_EXECUTION_STARTED, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED]]);
 
         $classes = [];
-        foreach ($store->readStream('child-1') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('child-1')) as $event) {
             $classes[] = $event::class;
         }
 
         self::assertSame([ExecutionStarted::class, ExecutionCompleted::class], $classes);
-        self::assertSame(2, $store->countEventsInStream('child-1'));
-        self::assertCount(2, iterator_to_array($store->readStreamWithRecordedAt('child-1'), false));
+        self::assertSame(2, $store->countEventsInStream(ExecutionId::fromString('child-1')));
+        self::assertCount(2, iterator_to_array($store->readStreamWithRecordedAt(ExecutionId::fromString('child-1')), false));
     }
 
     public function testDurablesOwnWorkflowIdComesFirst(): void
@@ -46,12 +47,12 @@ final class TemporalReadThroughEventStoreTest extends TestCase
             'exec-1' => [EventType::EVENT_TYPE_WORKFLOW_EXECUTION_STARTED, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED],
         ]);
 
-        self::assertSame(1, $store->countEventsInStream('exec-1'));
+        self::assertSame(1, $store->countEventsInStream(ExecutionId::fromString('exec-1')));
     }
 
     public function testAnExecutionFoundUnderNeitherIdIsEmpty(): void
     {
-        self::assertSame(0, $this->storeOver([])->countEventsInStream('nobody'));
+        self::assertSame(0, $this->storeOver([])->countEventsInStream(ExecutionId::fromString('nobody')));
     }
 
     /**
@@ -73,7 +74,7 @@ final class TemporalReadThroughEventStoreTest extends TestCase
         );
 
         $workflowClient = $this->createStub(WorkflowClientInterface::class);
-        $workflowClient->method('workflowId')->willReturnCallback(static fn(string $executionId): string => 'durable-' . $executionId);
+        $workflowClient->method('workflowId')->willReturnCallback(static fn(ExecutionId $executionId): string => 'durable-' . $executionId->toString());
 
         return new TemporalReadThroughEventStore(new InMemoryEventStore(), new TemporalHistoryCursor($client, 'durable-test'), $workflowClient);
     }

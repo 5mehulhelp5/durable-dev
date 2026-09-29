@@ -8,6 +8,7 @@ use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\VersionMarked;
 use Gplanchat\Durable\Exception\WorkflowTaskFailure;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
 use Gplanchat\Durable\Store\EventStoreHistorySource;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -37,7 +38,7 @@ final class ChangePointTest extends TestCase
         self::assertSame(1, $version, 'a fresh execution takes the most recent version');
 
         $marks = array_values(array_filter(
-            iterator_to_array($store->readStream(self::EXECUTION)),
+            iterator_to_array($store->readStream(ExecutionId::fromString(self::EXECUTION))),
             static fn(object $e): bool => $e instanceof VersionMarked,
         ));
         self::assertCount(1, $marks, 'and the fact is recorded, once');
@@ -112,7 +113,7 @@ final class ChangePointTest extends TestCase
         $context->version('add-discount', ChangePoint::DEFAULT_VERSION, 1);
 
         $marks = array_filter(
-            iterator_to_array($store->readStream(self::EXECUTION)),
+            iterator_to_array($store->readStream(ExecutionId::fromString(self::EXECUTION))),
             static fn(object $e): bool => $e instanceof VersionMarked,
         );
         self::assertCount(1, $marks, 'the marker is written on the first encounter, not on every call');

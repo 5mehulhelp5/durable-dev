@@ -9,6 +9,7 @@ use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
@@ -52,14 +53,14 @@ final class ContinueAsNewKeepsTheChainTest extends TestCase
         $catalog = new InMemoryWorkflowRunCatalog($journal);
         $store = new ProjectingEventStore($journal, $catalog);
         $metadata = new ProjectingWorkflowMetadataStore(new InMemoryWorkflowMetadataStore(), $catalog);
-        $metadata->save('exec-old', ChainingWorkflow::class, ['n' => 0]);
+        $metadata->save(ExecutionId::fromString('exec-old'), ChainingWorkflow::class, ['n' => 0]);
         $handler = $this->handlerFor($store, $metadata, $catalog);
 
         $handler(new ResumeWorkflowMessage('exec-old'));
         $newId = $this->successorOf($store, 'exec-old');
         self::assertSame('exec-old', $this->predecessorOf($store, $newId));
-        self::assertSame(['n' => 1], $metadata->get($newId)['payload'] ?? null);
-        self::assertTrue($metadata->get('exec-old')['completed'] ?? false, 'Superseded, not deleted.');
+        self::assertSame(['n' => 1], $metadata->get(ExecutionId::fromString($newId))['payload'] ?? null);
+        self::assertTrue($metadata->get(ExecutionId::fromString('exec-old'))['completed'] ?? false, 'Superseded, not deleted.');
 
         $runs = $this->runsById($catalog);
         self::assertSame(WorkflowRunStatus::ContinuedAsNew, $runs['exec-old']->status);
@@ -68,13 +69,13 @@ final class ContinueAsNewKeepsTheChainTest extends TestCase
         $handler(new ResumeWorkflowMessage($newId));
         $thirdId = $this->successorOf($store, $newId);
         self::assertSame($newId, $this->predecessorOf($store, $thirdId));
-        self::assertSame(['n' => 2], $metadata->get($thirdId)['payload'] ?? null);
+        self::assertSame(['n' => 2], $metadata->get(ExecutionId::fromString($thirdId))['payload'] ?? null);
         self::assertSame(WorkflowRunStatus::ContinuedAsNew, $this->runsById($catalog)[$newId]->status);
     }
 
     private function successorOf(ProjectingEventStore $store, string $executionId): string
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof WorkflowContinuedAsNew) {
                 self::assertNotNull($event->newExecutionId(), 'The old run does not say which run continues it.');
 
@@ -86,7 +87,7 @@ final class ContinueAsNewKeepsTheChainTest extends TestCase
 
     private function predecessorOf(ProjectingEventStore $store, string $executionId): mixed
     {
-        $started = iterator_to_array($store->readStream($executionId), false)[0] ?? null;
+        $started = iterator_to_array($store->readStream(ExecutionId::fromString($executionId)), false)[0] ?? null;
         self::assertInstanceOf(ExecutionStarted::class, $started, 'The new run has no start in its journal.');
 
         return $started->payload()['continuedFromExecutionId'] ?? null;

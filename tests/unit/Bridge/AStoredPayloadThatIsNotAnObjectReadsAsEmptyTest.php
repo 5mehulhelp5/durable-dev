@@ -8,6 +8,7 @@ use Gplanchat\Bridge\Dbal\Schema\DurableSchema as DbalSchema;
 use Gplanchat\Bridge\Dbal\Store\DbalWorkflowMetadataStore;
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema as IlluminateSchema;
 use Gplanchat\Bridge\Illuminate\Store\IlluminateWorkflowMetadataStore;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,19 +23,19 @@ final class AStoredPayloadThatIsNotAnObjectReadsAsEmptyTest extends TestCase
     {
         $connection = SqlTestDatabase::dbal();
         $store = new DbalWorkflowMetadataStore($connection, new DbalSchema($connection));
-        $store->save('exec-1', 'App\\OrderWorkflow', ['order' => 42]);
+        $store->save(ExecutionId::fromString('exec-1'), 'App\\OrderWorkflow', ['order' => 42]);
         $connection->update('durable_workflow_metadata', ['payload' => '"not an object"'], ['execution_id' => 'exec-1']);
 
-        self::assertSame([], $store->get('exec-1')['payload'] ?? null);
+        self::assertSame([], $store->get(ExecutionId::fromString('exec-1'))['payload'] ?? null);
     }
 
     public function testOnIlluminate(): void
     {
         $connection = SqlTestDatabase::illuminate();
         $store = new IlluminateWorkflowMetadataStore($connection, new IlluminateSchema($connection));
-        $store->save('exec-1', 'App\\OrderWorkflow', ['order' => 42]);
+        $store->save(ExecutionId::fromString('exec-1'), 'App\\OrderWorkflow', ['order' => 42]);
         $connection->table('durable_workflow_metadata')->where('execution_id', 'exec-1')->update(['payload' => '"not an object"']);
 
-        self::assertSame([], $store->get('exec-1')['payload'] ?? null);
+        self::assertSame([], $store->get(ExecutionId::fromString('exec-1'))['payload'] ?? null);
     }
 }

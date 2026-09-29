@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\Event\TimerCancelled;
 use Gplanchat\Durable\Event\TimerCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -78,7 +79,7 @@ final class TimerCancellationTest extends TestCase
     private function eventsOf(string $class, string $executionId = 'race-1'): array
     {
         $out = [];
-        foreach ($this->eventStore->readStream($executionId) as $e) {
+        foreach ($this->eventStore->readStream(ExecutionId::fromString($executionId)) as $e) {
             if ($e instanceof $class) {
                 $out[] = $e;
             }

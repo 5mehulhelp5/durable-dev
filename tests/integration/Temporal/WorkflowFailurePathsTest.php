@@ -8,6 +8,7 @@ use Gplanchat\Bridge\Temporal\Store\TemporalEventConverter;
 use Gplanchat\Durable\Activity\RetryLimit;
 use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\WorkflowStartOptions;
 use Gplanchat\Durable\WorkflowTimeouts;
 use Temporal\Api\Enums\V1\EventType;
@@ -77,7 +78,7 @@ final class WorkflowFailurePathsTest extends TemporalServerTestCase
         // execution=10s + run=60s produces no error, the server silently rewrites run to 10s. The
         // domain therefore refuses the configuration instead of letting it be rewritten.
         $executionId = 'runcap-' . bin2hex(random_bytes(4));
-        $this->workflowClient()->startAsync('Plain', ['value' => 1], $executionId, new WorkflowStartOptions(
+        $this->workflowClient()->startAsync('Plain', ['value' => 1], ExecutionId::fromString($executionId), new WorkflowStartOptions(
             timeouts: new WorkflowTimeouts(execution: Duration::seconds(10.0), run: Duration::seconds(10.0)),
         ));
 

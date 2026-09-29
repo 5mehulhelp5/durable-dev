@@ -9,6 +9,7 @@ use Gplanchat\Durable\Activity\ActivityTimeouts;
 use Gplanchat\Durable\Activity\RetryLimit;
 use Gplanchat\Durable\Attribute\AsActivityMethod;
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
 use PHPUnit\Framework\TestCase;
@@ -68,7 +69,7 @@ final class ScheduleToCloseBoundsRetriesInMemoryTest extends TestCase
         )), 'exec-race');
 
         $recorded = [];
-        foreach ($env->getEventStore()->readStream('exec-race') as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString('exec-race')) as $event) {
             $name = (new \ReflectionClass($event))->getShortName();
             if (\in_array($name, ['ActivityCompleted', 'TimerCompleted', 'TimerCancelled'], true)) {
                 $recorded[] = $name;

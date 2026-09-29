@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Laravel;
 use Gplanchat\Durable\Attribute\AsActivityMethod;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Laravel\DurableServiceProvider;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -75,9 +76,9 @@ final class AMemoryRunCompletesInTheCallersProcessTest extends TestCase
             return 'b';
         });
 
-        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun('run-1', 'two-step', []);
+        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString('run-1'), 'two-step', []);
 
-        self::assertTrue($app->make(WorkflowMetadataStore::class)->get('run-1')['completed'] ?? false);
+        self::assertTrue($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-1'))['completed'] ?? false);
         self::assertSame(['first', 'second'], $ran);
     }
 
@@ -85,9 +86,9 @@ final class AMemoryRunCompletesInTheCallersProcessTest extends TestCase
     {
         $app = $this->memory([ShortNapWorkflow::class]);
 
-        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun('run-2', 'short-nap', []);
+        $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString('run-2'), 'short-nap', []);
 
-        self::assertTrue($app->make(WorkflowMetadataStore::class)->get('run-2')['completed'] ?? false);
+        self::assertTrue($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-2'))['completed'] ?? false);
     }
 
     /**

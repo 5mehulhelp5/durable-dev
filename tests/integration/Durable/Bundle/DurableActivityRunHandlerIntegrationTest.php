@@ -7,6 +7,7 @@ namespace integration\Durable\Bundle;
 use Gplanchat\Durable\Bundle\DurableBundle;
 use Gplanchat\Durable\Bundle\Handler\ActivityRunHandler;
 use Gplanchat\Durable\Event\ActivityCompleted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Transport\ActivityMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -61,7 +62,7 @@ final class DurableActivityRunHandlerIntegrationTest extends KernelTestCase
 
         $store = $container->get(EventStoreInterface::class);
         $completed = null;
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof ActivityCompleted && 'act-1' === $event->activityId()) {
                 $completed = $event;
                 break;

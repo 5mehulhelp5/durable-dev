@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gplanchat\Bridge\Illuminate\Store;
 
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\RunPageCursor;
@@ -186,10 +187,10 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
         );
     }
 
-    public function findRun(string $executionId): ?WorkflowRunDescription
+    public function findRun(ExecutionId $executionId): ?WorkflowRunDescription
     {
         $this->schema->ensure();
-        $row = $this->query()->where('execution_id', $executionId)->first();
+        $row = $this->query()->where('execution_id', $executionId->toString())->first();
 
         return null === $row ? null : self::describe($row);
     }

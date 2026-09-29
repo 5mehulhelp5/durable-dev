@@ -13,6 +13,7 @@ use Gplanchat\Durable\Duration;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use Gplanchat\Durable\ParentClosePolicy;
 use Gplanchat\Durable\SearchAttributes;
@@ -189,7 +190,7 @@ final class WireFormatPinTest extends TestCase
         ));
 
         $scheduled = null;
-        foreach ($store->readStream('exec-1') as $event) {
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $event) {
             if ($event instanceof ActivityScheduled) {
                 $scheduled = $event;
             }

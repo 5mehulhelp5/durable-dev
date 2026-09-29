@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\WorkflowExecution;
@@ -147,7 +148,7 @@ final class WorkflowTaskMessageBatchTest extends TestCase
 
         // The type does not have to exist: the server journals the start without running anything
         // as long as no worker polls — which is precisely the situation we want.
-        return $client->startAsync('ProbeMessageBatch', [], 'probe-' . bin2hex(random_bytes(4)));
+        return $client->workflowId($client->startAsync('ProbeMessageBatch', [], ExecutionId::fromString('probe-' . bin2hex(random_bytes(4)))));
     }
 
     private function pollOnce(): PollWorkflowTaskQueueResponse

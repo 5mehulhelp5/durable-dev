@@ -6,6 +6,7 @@ namespace unit\Gplanchat\DurableBundle\Handler;
 
 use Gplanchat\Durable\Bundle\Handler\DeliverWorkflowSignalHandler;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Transport\AwaitedFact;
@@ -38,7 +39,7 @@ final class ASignalIsDeliveredOnceAndAnnouncedFirstTest extends TestCase
         $handler($message);
         $handler($message);
 
-        $signals = array_filter(iterator_to_array($journal->readStream('exec-1'), false), static fn(object $e): bool => $e instanceof WorkflowSignalReceived);
+        $signals = array_filter(iterator_to_array($journal->readStream(ExecutionId::fromString('exec-1')), false), static fn(object $e): bool => $e instanceof WorkflowSignalReceived);
         self::assertCount(1, $signals, 'the workflow sees the signal once');
         self::assertSame('resume with 1 events', $resumes->sent[array_key_last($resumes->sent)], 'the redelivery still resumes');
     }
@@ -51,15 +52,15 @@ final class RecordingResumes implements WorkflowResumeDispatcher
 
     public function __construct(private readonly InMemoryEventStore $journal) {}
 
-    public function dispatchResume(string $executionId, array $pendingUpdates = []): void
+    public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
         $this->sent[] = \sprintf('resume with %d events', $this->journal->countEventsInStream($executionId));
     }
 
-    public function dispatchResumeAwaiting(string $executionId, AwaitedFact $fact): void
+    public function dispatchResumeAwaiting(ExecutionId $executionId, AwaitedFact $fact): void
     {
         $this->sent[] = \sprintf('awaiting %s with %d events', $fact->describe(), $this->journal->countEventsInStream($executionId));
     }
 
-    public function dispatchNewWorkflowRun(string $executionId, string $workflowType, array $payload): void {}
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
 }

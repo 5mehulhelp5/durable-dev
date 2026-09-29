@@ -14,6 +14,7 @@ use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Nexus\NexusEndpoint;
 use Gplanchat\Durable\Nexus\NexusOperationHeaders;
 use Gplanchat\Durable\Nexus\NexusOperationName;
@@ -227,7 +228,7 @@ final class NexusOperationRoundTripTest extends TestCase
             new TemporalHistoryCursor($this->client, $this->connection),
             new WorkflowServiceExecutionRpc($this->client),
         );
-        $this->workflowId = $client->startAsync('NexusRoundTrip', [], 'nexusrt-' . bin2hex(random_bytes(4)));
+        $this->workflowId = $client->workflowId($client->startAsync('NexusRoundTrip', [], ExecutionId::fromString('nexusrt-' . bin2hex(random_bytes(4)))));
 
         $poll = new PollWorkflowTaskQueueRequest();
         $poll->setNamespace($this->connection->namespace->name());

@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Illuminate\Store\IlluminateWorkflowRunCatalog;
 use Gplanchat\Durable\Attribute\AsWorkflow;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Observation\WorkflowRunPickupProjectionInterface;
@@ -115,7 +116,7 @@ final class ALabelledWaitReachesEveryCatalogTest extends TestCase
         $metadata = new ProjectingWorkflowMetadataStore(new InMemoryWorkflowMetadataStore(), $projection);
         $registry = new WorkflowRegistry();
         $registry->registerClass($workflowClass);
-        $metadata->save('exec', $workflowClass, []);
+        $metadata->save(ExecutionId::fromString('exec'), $workflowClass, []);
 
         (new ResumeWorkflowHandler(
             new ExecutionEngine($store, new ExecutionRuntime($store, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, null, true)),

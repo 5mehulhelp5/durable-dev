@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable\Laravel;
 
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Laravel\Queue\InProcessWorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Transport\ActivityMessage;
@@ -32,12 +33,12 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
         $dispatcher = $this->subject = $this->dispatcher(resume: function (ResumeWorkflowMessage $message): void {
             $this->enter('resume ' . $message->executionId);
             if ('exec-1' === $message->executionId) {
-                $this->subject?->dispatchResume('exec-2');
+                $this->subject?->dispatchResume(ExecutionId::fromString('exec-2'));
             }
             --$this->depth;
         });
 
-        $dispatcher->dispatchNewWorkflowRun('exec-1', 'Greeting', []);
+        $dispatcher->dispatchNewWorkflowRun(ExecutionId::fromString('exec-1'), 'Greeting', []);
 
         self::assertSame(['resume exec-1', 'resume exec-2'], $this->ran);
         self::assertSame(1, $this->deepest, 'no resume ran inside another');
@@ -55,12 +56,12 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
             },
             activity: function (ActivityMessage $message): void {
                 $this->ran[] = 'activity ' . $message->activityId;
-                $this->subject?->dispatchResume($message->executionId);
+                $this->subject?->dispatchResume(ExecutionId::fromString($message->executionId));
             },
             activities: $activities,
         );
 
-        $dispatcher->dispatchNewWorkflowRun('exec-1', 'Greeting', []);
+        $dispatcher->dispatchNewWorkflowRun(ExecutionId::fromString('exec-1'), 'Greeting', []);
 
         self::assertSame(['resume exec-1', 'activity act-1', 'resume exec-1'], $this->ran);
     }
@@ -75,11 +76,11 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
         });
 
         try {
-            $dispatcher->dispatchResume('exec-1');
+            $dispatcher->dispatchResume(ExecutionId::fromString('exec-1'));
             self::fail('the failure reaches the caller');
         } catch (\RuntimeException) {
         }
-        $dispatcher->dispatchResume('exec-2');
+        $dispatcher->dispatchResume(ExecutionId::fromString('exec-2'));
 
         self::assertSame(['resume exec-1', 'resume exec-2'], $this->ran, 'the second dispatch still drains');
     }
@@ -139,7 +140,7 @@ final class TheInProcessDispatcherDrainsWithoutRecursionTest extends TestCase
         );
 
         $started = hrtime(true);
-        $dispatcher->dispatchResume('exec-1');
+        $dispatcher->dispatchResume(ExecutionId::fromString('exec-1'));
 
         self::assertSame([], $this->ran, 'the retry is not due on the frozen clock');
         self::assertLessThan(2.0, ((float) (hrtime(true) - $started)) / 1e9);

@@ -13,6 +13,7 @@ use Gplanchat\Durable\Event\ActivityTaskCompleted;
 use Gplanchat\Durable\Event\ActivityTaskFailed;
 use Gplanchat\Durable\Event\ActivityTaskStarted;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
 use Gplanchat\Durable\Observation\RunTimeline;
 use Gplanchat\Durable\Observation\WorkflowRunEventPhase;
@@ -155,7 +156,7 @@ final class ASuccessfulActivityCompletesOnceTest extends TestCase
     private function eventsOfClass(InMemoryEventStore $store, string $class): int
     {
         return \count(array_filter(
-            iterator_to_array($store->readStream('exec-1'), false),
+            iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false),
             static fn($event) => $event instanceof $class,
         ));
     }
