@@ -35,6 +35,25 @@ $health = $block->getHealth();
     </div>
 <?php endif; ?>
 
+<?php $since = new \DateTimeImmutable('-' . $block->getWorkerSilenceSeconds() . ' seconds'); ?>
+<?php foreach ($block->getWorkers() as $role => $queue): ?>
+    <?php /* An absent worker fails nothing: executions stop at its first task. Say which command to start. */ ?>
+    <?php if ($queue->polledSince($since)): ?>
+        <div class="message message-notice">
+            <span><?= $escaper->escapeHtml(__('%1 worker: %2 poller(s) on %3', $role, $queue->pollers, $queue->taskQueue)) ?></span>
+        </div>
+    <?php else: ?>
+        <div class="message message-error">
+            <span><?= $escaper->escapeHtml(__(
+                'No %1 worker has polled %2 in %3 seconds%4: executions stop at their first %1 task. Start bin/magento durable:worker --role=%1.',
+                $role,
+                $queue->taskQueue,
+                $block->getWorkerSilenceSeconds(),
+                null === $queue->error ? '' : ' (' . $queue->error . ')'
+            )) ?></span>
+        </div>
+    <?php endif; ?>
+<?php endforeach; ?>
 <?php if ($block->isReachable()): ?>
     <?php $counters = $block->getCounters(); ?>
     <div class="admin__page-section">
