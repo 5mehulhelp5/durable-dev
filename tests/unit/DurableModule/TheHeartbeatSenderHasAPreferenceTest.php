@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
  * The activities page lets an activity inject the heartbeat sender through its constructor. The
  * ObjectManager builds such an activity only with a preference for the interface, and the factory
  * gets the same instance only through an explicit argument. Magento is not in the root graph, so
- * this reads the declaration. The "Magento module (it really boots)" CI job resolves both when
+ * this reads the declaration. The "Magento · bench + dashboard" CI job resolves both when
  * `durable:demo` receives the factory; it does not exercise the Temporal path.
  */
 final class TheHeartbeatSenderHasAPreferenceTest extends TestCase
