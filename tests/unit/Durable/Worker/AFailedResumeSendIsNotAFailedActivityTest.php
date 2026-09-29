@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Worker;
 use Gplanchat\Durable\Event\ActivityCancelled;
 use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Event\ActivityTaskFailed;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -106,6 +107,6 @@ final class AFailedResumeSendIsNotAFailedActivityTest extends TestCase
      */
     private function eventsOf(InMemoryEventStore $store, string $class): int
     {
-        return \count(array_filter(iterator_to_array($store->readStream('exec-1'), false), static fn(object $e): bool => $e instanceof $class));
+        return \count(array_filter(iterator_to_array($store->readStream(ExecutionId::fromString('exec-1')), false), static fn(object $e): bool => $e instanceof $class));
     }
 }

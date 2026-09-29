@@ -12,6 +12,7 @@ use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\Exception\DeadlineExceededException;
 use Gplanchat\Durable\Exception\WorkflowStuckException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -266,7 +267,7 @@ final class WorkflowConditionTest extends TestCase
     private function eventsOf(InMemoryEventStore $store, string $executionId, string $class): array
     {
         $out = [];
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof $class) {
                 $out[] = $event;
             }

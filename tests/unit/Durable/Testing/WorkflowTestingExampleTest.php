@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable\Testing;
 
 use Gplanchat\Durable\Activity\ActivityOptions;
 use Gplanchat\Durable\Activity\RetryLimit;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\ActivitySpy;
 use Gplanchat\Durable\Testing\DurableTestCase;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
@@ -219,7 +220,7 @@ final class WorkflowTestingExampleTest extends DurableTestCase
 
         // Direct inspection of the journal
         $hasCompleted = false;
-        foreach ($env->getEventStore()->readStream($executionId) as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof \Gplanchat\Durable\Event\ExecutionCompleted) {
                 $hasCompleted = true;
                 break;

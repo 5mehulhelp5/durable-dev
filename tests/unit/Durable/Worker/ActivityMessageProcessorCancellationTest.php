@@ -77,7 +77,7 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
         ));
 
         $cancelled = false;
-        foreach ($eventStore->readStream('exec-1') as $e) {
+        foreach ($eventStore->readStream(ExecutionId::fromString('exec-1')) as $e) {
             if ($e instanceof ActivityCancelled && $e->activityId() === 'act-1') {
                 $cancelled = true;
             }
@@ -152,7 +152,7 @@ final class ActivityMessageProcessorCancellationTest extends TestCase
 
         $completed = false;
         $cancelled = false;
-        foreach ($eventStore->readStream('exec-2') as $e) {
+        foreach ($eventStore->readStream(ExecutionId::fromString('exec-2')) as $e) {
             if ($e instanceof ActivityCompleted && $e->activityId() === 'act-2') {
                 $completed = true;
             }

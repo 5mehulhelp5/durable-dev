@@ -8,6 +8,7 @@ use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -111,7 +112,7 @@ final class TimerFromAnInstantTest extends TestCase
 
     private function firstTimerId(InMemoryEventStore $store, string $executionId): string
     {
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof TimerScheduled) {
                 return $event->timerId();
             }
@@ -128,7 +129,7 @@ final class TimerFromAnInstantTest extends TestCase
     private function eventsOf(InMemoryEventStore $store, string $executionId, string $class): array
     {
         $out = [];
-        foreach ($store->readStream($executionId) as $event) {
+        foreach ($store->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof $class) {
                 $out[] = $event;
             }

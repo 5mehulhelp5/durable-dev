@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -41,7 +42,7 @@ final class UnknownSuspensionFailsTheExecutionTest extends TestCase
             self::assertStringContainsString('array', $e->getMessage());
         }
 
-        $classes = array_map(static fn(object $e): string => $e::class, iterator_to_array($store->readStream('unknown-1'), false));
+        $classes = array_map(static fn(object $e): string => $e::class, iterator_to_array($store->readStream(ExecutionId::fromString('unknown-1')), false));
         self::assertContains(WorkflowExecutionFailed::class, $classes);
         self::assertNotContains(ExecutionCompleted::class, $classes);
     }

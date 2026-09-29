@@ -68,7 +68,7 @@ final class DueTimersAreAnnouncedBeforeTheyFireTest extends TestCase
         $this->fire($journal, now: 500.0, resumes: $resumes);
 
         self::assertSame(['awaiting timer timer-1 with 1 events'], $resumes->sent, 'announced, then neither fired nor resumed');
-        self::assertSame(1, $journal->countEventsInStream('exec-1'), 'no TimerCompleted from the superseded pass');
+        self::assertSame(1, $journal->countEventsInStream(ExecutionId::fromString('exec-1')), 'no TimerCompleted from the superseded pass');
     }
 
     private function fire(InMemoryEventStore $journal, float $now, ?TimerRecordingResumes $resumes = null): TimerRecordingResumes

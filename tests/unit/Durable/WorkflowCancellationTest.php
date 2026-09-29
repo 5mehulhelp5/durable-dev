@@ -16,6 +16,7 @@ use Gplanchat\Durable\Exception\WorkflowCancelledFailure;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\ParentChildWorkflowCoordinator;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -295,7 +296,7 @@ final class WorkflowCancellationTest extends TestCase
      */
     private function firstOf(string $executionId, string $class): ?object
     {
-        foreach ($this->eventStore->readStream($executionId) as $event) {
+        foreach ($this->eventStore->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof $class) {
                 return $event;
             }

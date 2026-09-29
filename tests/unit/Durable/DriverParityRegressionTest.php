@@ -12,6 +12,7 @@ use Gplanchat\Durable\Event\ActivityCompleted;
 use Gplanchat\Durable\Exception\WorkflowStuckException;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
@@ -203,7 +204,7 @@ final class DriverParityRegressionTest extends TestCase
             'plain-1',
         ));
         $completed = null;
-        foreach ($env->getEventStore()->readStream('plain-1') as $event) {
+        foreach ($env->getEventStore()->readStream(ExecutionId::fromString('plain-1')) as $event) {
             if ($event instanceof ActivityCompleted) {
                 $completed = $event;
             }
