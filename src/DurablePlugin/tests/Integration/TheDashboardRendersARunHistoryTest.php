@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\Durable\Plugin\Tests\Integration;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\BackendHealth;
 use Gplanchat\Durable\Observation\RunDashboard;
 use Gplanchat\Durable\Observation\WorkflowRunDescription;
@@ -388,8 +389,10 @@ final class RenderingCatalog implements WorkflowRunCatalogInterface
         ], tellsWaitingForWorker: $this->waiting);
     }
 
-    public function findRun(string $executionId): ?WorkflowRunDescription
+    public function findRun(ExecutionId|string $executionId): ?WorkflowRunDescription
     {
+        $executionId = (string) $executionId;
+
         return array_values(array_filter($this->listRuns()->runs, static fn(WorkflowRunDescription $run): bool => $run->executionId === $executionId))[0] ?? null;
     }
 

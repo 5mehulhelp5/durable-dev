@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gplanchat\Bridge\Illuminate\Store;
 
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\ChildWorkflowParentLinkStoreInterface;
 use Illuminate\Database\Connection;
 
@@ -26,8 +27,10 @@ final class IlluminateChildWorkflowParentLinkStore implements ChildWorkflowParen
         private readonly string $table = 'durable_child_workflow_parent_link',
     ) {}
 
-    public function link(string $childExecutionId, string $parentExecutionId): void
+    public function link(ExecutionId|string $childExecutionId, ExecutionId|string $parentExecutionId): void
     {
+        $childExecutionId = (string) $childExecutionId;
+        $parentExecutionId = (string) $parentExecutionId;
         $this->schema->ensure();
 
         // Linking an already linked child **moves** it, it does not duplicate it: the primary key
@@ -38,8 +41,9 @@ final class IlluminateChildWorkflowParentLinkStore implements ChildWorkflowParen
         );
     }
 
-    public function getParentExecutionId(string $childExecutionId): ?string
+    public function getParentExecutionId(ExecutionId|string $childExecutionId): ?string
     {
+        $childExecutionId = (string) $childExecutionId;
         $this->schema->ensure();
 
         $parent = $this->connection->table($this->table)
@@ -49,8 +53,9 @@ final class IlluminateChildWorkflowParentLinkStore implements ChildWorkflowParen
         return null === $parent ? null : (string) $parent;
     }
 
-    public function getChildExecutionIdsForParent(string $parentExecutionId): array
+    public function getChildExecutionIdsForParent(ExecutionId|string $parentExecutionId): array
     {
+        $parentExecutionId = (string) $parentExecutionId;
         $this->schema->ensure();
 
         return array_map(
@@ -62,8 +67,9 @@ final class IlluminateChildWorkflowParentLinkStore implements ChildWorkflowParen
         );
     }
 
-    public function unlink(string $childExecutionId): void
+    public function unlink(ExecutionId|string $childExecutionId): void
     {
+        $childExecutionId = (string) $childExecutionId;
         $this->schema->ensure();
 
         $this->connection->table($this->table)

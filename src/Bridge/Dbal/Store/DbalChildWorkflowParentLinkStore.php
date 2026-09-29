@@ -6,6 +6,7 @@ namespace Gplanchat\Bridge\Dbal\Store;
 
 use Doctrine\DBAL\Connection;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\ChildWorkflowParentLinkStoreInterface;
 
 /**
@@ -22,8 +23,10 @@ final class DbalChildWorkflowParentLinkStore implements ChildWorkflowParentLinkS
         private readonly string $table = 'durable_child_workflow_parent_link',
     ) {}
 
-    public function link(string $childExecutionId, string $parentExecutionId): void
+    public function link(ExecutionId|string $childExecutionId, ExecutionId|string $parentExecutionId): void
     {
+        $childExecutionId = (string) $childExecutionId;
+        $parentExecutionId = (string) $parentExecutionId;
         $this->schema->ensure();
 
         // Existence is asked for, not inferred from the rows the UPDATE reports: MySQL counts
@@ -48,8 +51,9 @@ final class DbalChildWorkflowParentLinkStore implements ChildWorkflowParentLinkS
         }
     }
 
-    public function getParentExecutionId(string $childExecutionId): ?string
+    public function getParentExecutionId(ExecutionId|string $childExecutionId): ?string
     {
+        $childExecutionId = (string) $childExecutionId;
         $this->schema->ensure();
 
         $parent = $this->connection->fetchOne(
@@ -60,8 +64,9 @@ final class DbalChildWorkflowParentLinkStore implements ChildWorkflowParentLinkS
         return false === $parent || null === $parent ? null : (string) $parent;
     }
 
-    public function getChildExecutionIdsForParent(string $parentExecutionId): array
+    public function getChildExecutionIdsForParent(ExecutionId|string $parentExecutionId): array
     {
+        $parentExecutionId = (string) $parentExecutionId;
         $this->schema->ensure();
 
         return array_map(
@@ -73,8 +78,9 @@ final class DbalChildWorkflowParentLinkStore implements ChildWorkflowParentLinkS
         );
     }
 
-    public function unlink(string $childExecutionId): void
+    public function unlink(ExecutionId|string $childExecutionId): void
     {
+        $childExecutionId = (string) $childExecutionId;
         $this->schema->ensure();
 
         $this->connection->delete($this->table, ['child_execution_id' => $childExecutionId]);
