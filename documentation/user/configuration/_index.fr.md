@@ -421,7 +421,7 @@ SQL ne s'y appliquent pas.
 | `child_workflow.async_messenger` | — | — | propre à l'hôte : Messenger seulement |
 | workflows : `#[AsWorkflow]` sur un service | `workflows` | argument `workflowClasses` | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut |
 | gestionnaires d'activités : `#[AsActivityHandler]` sur un service | — (l'application les enregistre elle-même sur `RegistryActivityExecutor`) | argument `activityHandlers` | à ajouter sous Laravel : une clé à côté de `workflows` |
-| gestionnaires Nexus : `#[AsNexusServiceHandler]` sur un service | `nexus.handlers` | — | propre à l'hôte : Magento ne sert aucune opération Nexus |
+| gestionnaires Nexus : `#[AsNexusServiceHandler]` sur un service | `nexus.handlers` : `gestionnaire => contrat`, ou la classe du gestionnaire seule quand son `#[AsNexusServiceHandler]` nomme le contrat | — | propre à l'hôte : Magento ne sert aucune opération Nexus |
 
 ---
 

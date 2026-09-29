@@ -57,6 +57,7 @@ final class TheTestsSpeakEnglishTest extends TestCase
         'src/DurablePlugin/tests/Integration/TheDashboardRendersARunHistoryTest.php' => [
             'Tableau de bord des workflows Durable' => 'asserts the French catalogue renders, the one product exception WA006 makes',
             'demandé' => 'same',
+            'Opérations Nexus' => 'same',
         ],
         'tests/unit/TheRootDocumentsSpeakEnglishTest.php' => [
             "'" . self::SHARED_ACCENTED . "'" => 'a detector: the characters it looks for',
