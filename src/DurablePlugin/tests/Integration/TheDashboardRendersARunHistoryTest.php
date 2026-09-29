@@ -178,6 +178,31 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('Previous page', $page);
     }
 
+    /**
+     * A missing worker fails nothing: executions stop at their first task of its kind. The page
+     * names the role and the command, in `durable:worker`'s words, not the backend's.
+     */
+    public function testAWorkerThatStoppedPollingIsNamedWithTheCommandToStart(): void
+    {
+        $page = $this->renderWorkers([
+            ['role' => 'workflow', 'pollers' => 2, 'polling' => true, 'error' => null, 'seconds' => 120],
+            ['role' => 'activity', 'pollers' => 1, 'polling' => false, 'error' => null, 'seconds' => 120],
+        ]);
+
+        self::assertStringContainsString('durable:worker --role=activity', $page);
+        self::assertStringNotContainsString('--role=workflow', $page);
+        self::assertStringContainsString('alert-danger', $page);
+    }
+
+    public function testAnUnansweredProbeBlamesNoWorker(): void
+    {
+        $page = $this->renderWorkers([['role' => 'activity', 'pollers' => 0, 'polling' => false, 'error' => 'deadline exceeded', 'seconds' => 120]], 'fr');
+
+        self::assertStringContainsString('deadline exceeded', $page);
+        self::assertStringNotContainsString('--role=', $page);
+        self::assertStringNotContainsString('alert-danger', $page);
+    }
+
     public function testAnEphemeralJournalIsNeitherAFailureNorASuccess(): void
     {
         // The third state: it answers, and its answer is empty by construction.
@@ -333,6 +358,17 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         $model['pagination']['isFirstPage'] = $firstPage;
 
         return $this->twig($locale)->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model);
+    }
+
+    /**
+     * @param list<array{role: string, pollers: int, polling: bool, error: ?string, seconds: int}> $workers
+     */
+    private function renderWorkers(array $workers, string $locale = 'en'): string
+    {
+        $model = (new RunDashboard(new RenderingCatalog(false, false, false, false)))->build();
+        $model['pagination']['isFirstPage'] = true;
+
+        return $this->twig($locale)->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', $model + ['workers' => $workers]);
     }
 
     private function twig(string $locale = 'en'): Environment

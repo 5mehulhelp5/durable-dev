@@ -36,7 +36,8 @@ A cluster that answers can still have **no worker** on a role's queue. Nothing f
 execution stops at its first task of that kind. On Temporal, `bin/console durable:health` exits
 non-zero when a role's queue has gone two minutes without a poll, and names the
 `durable:worker --role` to start; alert on it. It checks workflow and activity when Temporal holds
-the journal, and nexus once the application serves a Nexus handler.
+the journal, and nexus once the application serves a Nexus handler. The Sylius dashboard shows the
+same state above the list, one line per role.
 
 ### 2. The runs
 
