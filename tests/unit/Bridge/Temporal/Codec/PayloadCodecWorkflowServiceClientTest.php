@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Bridge\Temporal\Codec;
 
+use Google\Protobuf\Any;
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecWorkflowServiceClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
@@ -15,8 +16,17 @@ use Temporal\Api\Common\V1\SearchAttributes;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
+use Temporal\Api\Protocol\V1\Message as ProtocolMessage;
+use Temporal\Api\Update\V1\Input as UpdateInput;
+use Temporal\Api\Update\V1\Outcome;
+use Temporal\Api\Update\V1\Request as UpdateRequest;
+use Temporal\Api\Update\V1\Response as UpdateResponse;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryRequest;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
+use Temporal\Api\Workflowservice\V1\PollWorkflowTaskQueueRequest;
+use Temporal\Api\Workflowservice\V1\PollWorkflowTaskQueueResponse;
+use Temporal\Api\Workflowservice\V1\RespondWorkflowTaskCompletedRequest;
+use Temporal\Api\Workflowservice\V1\RespondWorkflowTaskCompletedResponse;
 use Temporal\Api\Workflowservice\V1\StartWorkflowExecutionRequest;
 use Temporal\Api\Workflowservice\V1\StartWorkflowExecutionResponse;
 
@@ -78,6 +88,61 @@ final class PayloadCodecWorkflowServiceClientTest extends TestCase
         $input = $read->getHistory()?->getEvents()[0]->getWorkflowExecutionStartedEventAttributes()?->getInput();
         self::assertSame('order-42', $input?->getPayloads()[0]->getData());
     }
+
+    /**
+     * The update protocol packs its messages in `google.protobuf.Any`: a walk that stops at the
+     * Any lets update arguments in encoded and update results out in clear.
+     */
+    public function testAnUpdatePackedInAnAnyIsDecodedOnTheWayIn(): void
+    {
+        $request = new UpdateRequest(['input' => new UpdateInput(['name' => 'rename', 'args' => new Payloads(['payloads' => [ReversingCodec::encoded('order-42')]])])]);
+        $body = new Any();
+        $body->pack($request);
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->method('PollWorkflowTaskQueue')->willReturn(new PollWorkflowTaskQueueResponse(['messages' => [new ProtocolMessage(['body' => $body])]]));
+
+        $poll = (new PayloadCodecWorkflowServiceClient($inner, new ReversingCodec()))->PollWorkflowTaskQueue(new PollWorkflowTaskQueueRequest());
+
+        $unpacked = $poll->getMessages()[0]->getBody()?->unpack();
+        self::assertInstanceOf(UpdateRequest::class, $unpacked);
+        self::assertSame('order-42', $unpacked->getInput()?->getArgs()?->getPayloads()[0]->getData());
+    }
+
+    public function testAnUpdateResultPackedInAnAnyLeavesEncoded(): void
+    {
+        $sent = null;
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->method('RespondWorkflowTaskCompleted')->willReturnCallback(static function (RespondWorkflowTaskCompletedRequest $request) use (&$sent): RespondWorkflowTaskCompletedResponse {
+            $sent = $request;
+
+            return new RespondWorkflowTaskCompletedResponse();
+        });
+        $body = new Any();
+        $body->pack(new UpdateResponse(['outcome' => new Outcome(['success' => new Payloads(['payloads' => [new Payload(['data' => 'order-42'])]])])]));
+
+        (new PayloadCodecWorkflowServiceClient($inner, new ReversingCodec()))->RespondWorkflowTaskCompleted(new RespondWorkflowTaskCompletedRequest(['messages' => [new ProtocolMessage(['body' => $body])]]));
+
+        self::assertInstanceOf(RespondWorkflowTaskCompletedRequest::class, $sent);
+        $response = $sent->getMessages()[0]->getBody()?->unpack();
+        self::assertInstanceOf(UpdateResponse::class, $response);
+        self::assertSame('24-redro', $response->getOutcome()?->getSuccess()?->getPayloads()[0]->getData());
+    }
+
+    public function testSearchAttributesInAResponseAreNotDecoded(): void
+    {
+        $started = new WorkflowExecutionStartedEventAttributes();
+        $started->setSearchAttributes(new SearchAttributes(['indexed_fields' => ['K' => ReversingCodec::encoded('left alone')]]));
+        $response = new GetWorkflowExecutionHistoryResponse();
+        $response->setHistory(new History(['events' => [new HistoryEvent(['workflow_execution_started_event_attributes' => $started])]]));
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->method('GetWorkflowExecutionHistory')->willReturn($response);
+
+        $read = (new PayloadCodecWorkflowServiceClient($inner, new ReversingCodec()))->GetWorkflowExecutionHistory(new GetWorkflowExecutionHistoryRequest());
+
+        $attributes = $read->getHistory()?->getEvents()[0]->getWorkflowExecutionStartedEventAttributes()?->getSearchAttributes();
+        self::assertSame(strrev('left alone'), $attributes?->getIndexedFields()['K']->getData());
+    }
+
 }
 
 /**

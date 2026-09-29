@@ -50,6 +50,11 @@ final class WorkflowServiceClientFactoryTransportTest extends TestCase
         }
     }
 
+    public function testWithoutACodecTheClientIsTheTransportsOwn(): void
+    {
+        self::assertInstanceOf(GrpcWorkflowServiceClient::class, WorkflowServiceClientFactory::create(TemporalConnection::fromDsn('temporal://127.0.0.1:7233?transport=grpc-curl'), codec: null));
+    }
+
     public function testTheWorkflowServiceClientRetriesTransientFailures(): void
     {
         $client = WorkflowServiceClientFactory::create(TemporalConnection::fromDsn('temporal://127.0.0.1:7233?transport=grpc-curl'));
