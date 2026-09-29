@@ -47,16 +47,16 @@ final class APassWritesThroughItsFenceTest extends TestCase
             /** @var list<string> */
             public array $outcomes = [];
 
-            public function recordStart(string $executionId, string $workflowType): void {}
+            public function recordStart(ExecutionId $executionId, string $workflowType): void {}
 
-            public function recordOutcome(string $executionId, WorkflowRunStatus $status): void
+            public function recordOutcome(ExecutionId $executionId, WorkflowRunStatus $status): void
             {
-                $this->outcomes[] = $executionId;
+                $this->outcomes[] = $executionId->toString();
             }
         };
         $store = new ProjectingEventStore(new InMemoryEventStore(), $projection);
-        $older = $store->claimPass('exec-1');
-        $store->claimPass('exec-1');
+        $older = $store->claimPass(ExecutionId::fromString('exec-1'));
+        $store->claimPass(ExecutionId::fromString('exec-1'));
 
         try {
             $store->appendFenced(new ExecutionCompleted('exec-1', null), $older);
@@ -96,7 +96,7 @@ final class APassWritesThroughItsFenceTest extends TestCase
         $store = new ProjectingEventStore($inner, $this->createStub(WorkflowRunProjectionInterface::class));
         self::assertInstanceOf(FencedEventStoreInterface::class, $store);
 
-        $fence = $store->claimPass('exec-1');
+        $fence = $store->claimPass(ExecutionId::fromString('exec-1'));
         $store->appendFenced(new TimerCompleted('exec-1', 'timer-1'), $fence);
 
         self::assertFalse($fence->fences());
