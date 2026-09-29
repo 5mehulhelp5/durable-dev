@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The bench's own test: the Nexus round trip against a server (#666). It spawns artisan and the
+     root's demo harness rather than booting Laravel in-process. -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="bench">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

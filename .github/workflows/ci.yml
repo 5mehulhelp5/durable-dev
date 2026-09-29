@@ -216,9 +216,10 @@ jobs:
 
     laravel-bench:
         # The Laravel bench's probe (#360): `config/durable.php` → the core's Nexus registry → the
-        # handler, through the very method the Nexus worker calls. No cluster: the DSN names a
-        # closed port and nothing connects to it. The `laravel` job above tests the package; this
-        # one tests the application that installs it, from `laravel/`'s own lock.
+        # handler, through the very method the Nexus worker calls, with no cluster (the job's DSN
+        # names a closed port). Then the round trip (#666), against a dev server started below. The
+        # `laravel` job above tests the package; this one tests the application that installs it,
+        # from `laravel/`'s own lock.
         name: Laravel · bench, Nexus probe
         runs-on: ubuntu-latest
         timeout-minutes: 15
@@ -252,6 +253,26 @@ jobs:
             - name: Probe — the bench serves delivery/schedule and delivery/ship
               working-directory: laravel
               run: php probe-nexus.php
+
+            # #666: the same two operations, now served by artisan's workers to the root's demo harness
+            # on a start-dev server. It needs the root's vendor/ and Durable's search attributes, which
+            # the bench writes on every start.
+            - name: Composer install (root, for the demo harness)
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Start a Temporal dev server
+              run: |
+                  docker run -d --name temporal-dev -p 7233:7233 temporalio/temporal:1.9.1 \
+                    server start-dev --ip 0.0.0.0 --port 7233 --namespace durable-test --headless \
+                    --search-attribute DurableWorkflowName=Keyword --search-attribute DurableExecutionId=Keyword
+                  timeout 60 bash -c 'until nc -z 127.0.0.1 7233; do sleep 1; done'
+
+            - name: PHPUnit — the bench serves delivery against a server
+              working-directory: laravel
+              timeout-minutes: 10
+              env:
+                  DURABLE_DSN: 'temporal://127.0.0.1:7233?namespace=durable-test&nexus_task_queue=laravel-bench-nexus&workflow_task_queue=laravel-bench-workflows&tls=0'
+              run: vendor/bin/phpunit --testdox --fail-on-skipped
 
     sylius-shop:
         # The only check in the repository that really renders a page. Everything else proves the
