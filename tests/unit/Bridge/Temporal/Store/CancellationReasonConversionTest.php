@@ -5,20 +5,28 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Bridge\Temporal\Store;
 
 use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
+use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use Gplanchat\Bridge\Temporal\Store\TemporalEventConverter;
+use Gplanchat\Bridge\Temporal\Store\TemporalReadThroughEventStore;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
+use Gplanchat\Bridge\Temporal\WorkflowClientInterface;
+use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\ActivityCancellationReason;
 use Gplanchat\Durable\Event\ActivityCancelled;
 use Gplanchat\Durable\Event\TimerCancelled;
+use Gplanchat\Durable\ExecutionId;
+use Gplanchat\Durable\Store\InMemoryEventStore;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\ActivityType;
 use Temporal\Api\Enums\V1\EventType;
 use Temporal\Api\History\V1\ActivityTaskCanceledEventAttributes;
 use Temporal\Api\History\V1\ActivityTaskScheduledEventAttributes;
+use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\MarkerRecordedEventAttributes;
 use Temporal\Api\History\V1\TimerCanceledEventAttributes;
 use Temporal\Api\History\V1\TimerStartedEventAttributes;
+use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
 
 /**
  * The server records one `*_CANCELED` event whatever the workflow cancelled for. The reason comes
@@ -69,6 +77,45 @@ final class CancellationReasonConversionTest extends TestCase
         self::assertSame(ActivityCancellationReason::WORKFLOW_CANCELLED, $targeted->reason());
         self::assertInstanceOf(TimerCancelled::class, $other);
         self::assertSame(ActivityCancellationReason::RACE_SUPERSEDED, $other->reason());
+    }
+
+    /**
+     * The order a server records: the workflow task's commands run in turn, the cancellations
+     * first, so an operation that was not running is CANCELED before the marker that explains it.
+     * Read through the store, the reason must not depend on that order.
+     */
+    public function testTheStoreReadsTheReasonWhereverTheMarkerSits(): void
+    {
+        $history = [
+            self::activityScheduled(5, 'act-1'),
+            self::activityScheduled(6, 'act-2'),
+            self::timerStarted(7, 'timer-1'),
+            self::activityCanceled(10, 6),
+            self::activityCanceled(11, 5),
+            self::timerCanceled(12, 7),
+            self::cancellationDelivered(13, ['act-1', 'timer-1']),
+        ];
+        $client = $this->createStub(WorkflowServiceClientInterface::class);
+        $client->method('GetWorkflowExecutionHistory')->willReturn(new GetWorkflowExecutionHistoryResponse(['history' => new History(['events' => $history])]));
+        $workflowClient = $this->createStub(WorkflowClientInterface::class);
+        $workflowClient->method('workflowId')->willReturn('durable-exec-1');
+        $store = new TemporalReadThroughEventStore(new InMemoryEventStore(), new TemporalHistoryCursor($client, 'durable-test'), $workflowClient);
+
+        $reasons = [];
+        foreach ($store->readStream(ExecutionId::fromString('exec-1')) as $event) {
+            if ($event instanceof ActivityCancelled) {
+                $reasons[$event->activityId()] = $event->reason();
+            }
+            if ($event instanceof TimerCancelled) {
+                $reasons[$event->timerId()] = $event->reason();
+            }
+        }
+
+        self::assertSame([
+            'act-2' => ActivityCancellationReason::RACE_SUPERSEDED,
+            'act-1' => ActivityCancellationReason::WORKFLOW_CANCELLED,
+            'timer-1' => ActivityCancellationReason::WORKFLOW_CANCELLED,
+        ], $reasons);
     }
 
     private static function activityScheduled(int $eventId, string $activityId): HistoryEvent
