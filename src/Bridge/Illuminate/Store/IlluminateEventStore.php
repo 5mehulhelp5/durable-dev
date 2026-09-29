@@ -16,14 +16,11 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\QueryException;
 
 /**
- * Event journal on the connection Laravel already owns.
+ * Event journal on an Illuminate connection.
  *
- * This is the whole point of the bridge, and not merely idiomatic convenience: DUR030 sells durable
- * execution on **one** database without a cluster, which only pays off if the journal append and
- * the business write fall inside the same transaction. An activity writing through Eloquent while a
- * Doctrine journal writes through a second PDO is two transactional scopes: the process dies
- * between the two, replay replays the activity, and the guarantee being advertised never existed.
- * Here the store sits on `DB::connection()`, so `DB::transaction()` closes over both.
+ * Give it a connection of its own, not the application's default one (DUR054): the transactions
+ * {@see claimPass()} and {@see appendFenced()} open would otherwise nest inside the application's,
+ * and a business rollback would erase journal events.
  *
  * (De)serialization goes entirely through {@see EventDataMapper}: the rows have the same shape as
  * those of the DBAL bridge and as the records of the Temporal journal. This is not a writing

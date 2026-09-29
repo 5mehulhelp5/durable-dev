@@ -70,6 +70,7 @@ This repository documents the **Durable** component (durable execution orchestra
 | DUR051 | One command port, and a backend refuses by name what it cannot honour (proposed) | [adr/DUR051-a-backend-refuses-what-it-cannot-honour.md](adr/DUR051-a-backend-refuses-what-it-cannot-honour.md) |
 | DUR052 | The resume protocol beyond activities: each pair names its own fact (proposed) | [adr/DUR052-the-resume-protocol-beyond-activities.md](adr/DUR052-the-resume-protocol-beyond-activities.md) |
 | DUR053 | A superseded pass cannot write: one fencing epoch per pass (proposed) | [adr/DUR053-a-superseded-pass-cannot-write.md](adr/DUR053-a-superseded-pass-cannot-write.md) |
+| DUR054 | The journal does not share the application's connection (proposed) | [adr/DUR054-the-journal-does-not-share-the-applications-connection.md](adr/DUR054-the-journal-does-not-share-the-applications-connection.md) |
 
 ## Working agreements (WA)
 
