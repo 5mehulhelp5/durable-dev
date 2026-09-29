@@ -335,6 +335,8 @@ catalog it reads, so the command above is the whole install.
 ## `gplanchat/durable-filament`, the Filament dashboard {#gplanchatdurable-filament--the-filament-dashboard}
 
 ```bash
+composer config minimum-stability beta
+composer config prefer-stable true
 composer require gplanchat/durable-filament
 ```
 

@@ -353,6 +353,8 @@ d'exécutions qu'il lit : la commande ci-dessus est donc toute l'installation.
 ## `gplanchat/durable-filament`, le tableau de bord Filament {#gplanchatdurable-filament--le-tableau-de-bord-filament}
 
 ```bash
+composer config minimum-stability beta
+composer config prefer-stable true
 composer require gplanchat/durable-filament
 ```
 
