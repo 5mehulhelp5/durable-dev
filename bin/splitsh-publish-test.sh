@@ -81,6 +81,18 @@ rm "$TMP/stub/jq"; g checkout -q main
 g checkout -q -b plain && echo '{"name": "x/y"}' > composer.json && g commit -q -am plain
 plain="$(git rev-parse HEAD)"
 check "no self.version, no extra commit"               '[ "$(rewrite_self_version "$plain" v0.1.0-beta1)" = "$plain" ]'
+# A splitsh-lite that fails must fail tag mode, not hand an empty SHA to the rewrite. Checked on a
+# tree like the monorepo root, whose composer.json has no sibling self.version: an empty SHA read
+# that one from the index and passed as "nothing to rewrite".
+g tag v0.1.0-beta2 plain && g tag vnext plain && g checkout -q plain
+printf '#!/bin/sh\nexit 1\n' > "$TMP/stub/splitsh-fail" && chmod +x "$TMP/stub/splitsh-fail"
+failed="$(SPLITSH_LITE="$TMP/stub/splitsh-fail" bash bin/splitsh-publish.sh tag v0.1.0-beta2 2>&1)"; status=$?
+check "a failing splitsh-lite fails tag mode"          '[ "$status" -ne 0 ] && ! grep -q "split SHA=" <<<"$failed"'
+g checkout -q plain
+failed="$(rewrite_self_version "" v0.1.0-beta1 2>/dev/null)"; status=$?
+check "the rewrite refuses a SHA that is not 40-hex"   '[ "$status" -ne 0 ] && [ -z "$failed" ]'
+failed="$(bash bin/splitsh-publish.sh tag vnext 2>&1)"; status=$?
+check "tag mode refuses a tag that is not a version"   '[ "$status" -ne 0 ] && ! grep -q "split SHA=" <<<"$failed"'
 g checkout -q main
 
 tag_out="$(bash bin/splitsh-publish.sh tag v0.1.0-beta1 2>&1)"

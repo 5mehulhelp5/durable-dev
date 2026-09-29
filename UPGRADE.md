@@ -1138,7 +1138,7 @@ when it splits a tag; the monorepo and the satellites' `main` branch keep `self.
 satellite no longer pins its siblings at exactly its own tag, so packages from different tags of
 the same line install together. Stability flags still do not propagate: a root on a `stable`
 floor keeps `composer config minimum-stability beta` (or a `@beta` flag on every `gplanchat/*`
-package it lists). Nothing to migrate.
+package it installs, transitive siblings included). Nothing to migrate.
 
 ## 0.1.0-alpha10
 
