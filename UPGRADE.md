@@ -1276,13 +1276,16 @@ through `?->`. It leaves alone:
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm: what remains is listed.
 2. At each call Rector left, pass `ExecutionId::fromString($id)`. An empty string is refused:
-   `fromString('')` throws, where a store used to look up the empty id and find nothing.
+   `fromString('')` throws, where a store used to look up the empty id and find nothing. The
+   helpers that kept a `string` signature convert inside, so they refuse `''` too:
+   `WorkflowQueryEvaluator`, `ActivityEventJournal`, `RunDashboard::run()`, the message handlers.
 3. Where you read a returned id, call `->toString()` where a string is needed, and compare two ids
    with `->equals()`, not `===`. After `startAsync()`, call `workflowId()` for the Temporal id.
 4. **In a class that implements a port**, change each listed parameter to `ExecutionId`. Call
    `->toString()` where the body stores or compares the id, and pass the object through unchanged to
-   another port. Change the three return types in the table. A stored id comes back through
-   `ExecutionId::fromString()`.
+   another port. Change the four return types in the table. A stored id comes back through
+   `ExecutionId::fromString()`. An implementation of `WorkflowClientInterface::startAsync()` returns
+   the `ExecutionId` it was given, no longer the workflow id it started.
 
 ## 0.1.0-alpha10
 
