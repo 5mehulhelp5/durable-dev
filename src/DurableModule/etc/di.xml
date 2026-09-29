@@ -64,9 +64,14 @@
     <!--
         What the run page masks in each event's details (#507): #488's key pattern. An application
         that masks more declares its own preference for the interface.
+
+        Through a virtual type: `setup:di:compile` compiles modules and registered libraries only,
+        and refuses a preference aimed straight at a class of `gplanchat/durable` (#725).
     -->
+    <virtualType name="Gplanchat\DurableModule\Observation\PayloadRedactor"
+                 type="Gplanchat\Durable\Observation\KeyPatternPayloadRedactor"/>
     <preference for="Gplanchat\Durable\Observation\PayloadRedactorInterface"
-                type="Gplanchat\Durable\Observation\KeyPatternPayloadRedactor"/>
+                type="Gplanchat\DurableModule\Observation\PayloadRedactor"/>
 
     <!--
         An activity may inject the heartbeat sender (the activities page shows how). This one is a

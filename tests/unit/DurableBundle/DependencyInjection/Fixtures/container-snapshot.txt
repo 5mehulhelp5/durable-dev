@@ -18,6 +18,7 @@ IDTNLA...... alias Gplanchat\Durable\Bundle\DataCollector\DurableDataCollector -
 .D.....d.... alias Gplanchat\Durable\Bundle\Handler\ActivityRunHandler -> durable.handler.activity_run private
 ID.NLAid.nla alias Gplanchat\Durable\Bundle\Handler\DeliverWorkflowSignalHandler -> durable.handler.deliver_signal private
 ID.NLAid.nla alias Gplanchat\Durable\Bundle\Handler\DeliverWorkflowUpdateHandler -> durable.handler.deliver_update private
+..TN....tn.. alias Gplanchat\Durable\Bundle\Observation\WorkerPresence -> durable.worker_presence private
 ID.NLAid.nla alias Gplanchat\Durable\Bundle\Transport\MessengerWorkflowTimerDispatcher -> durable.timer_dispatcher private
 IDTNLAidtnla alias Gplanchat\Durable\ChildWorkflowRunner -> durable.child_workflow_runner private
 .....A.....a alias Gplanchat\Durable\Debug\WorkflowExecutionObserverInterface -> app.observer private
