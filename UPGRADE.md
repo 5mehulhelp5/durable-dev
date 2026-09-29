@@ -1209,6 +1209,16 @@ child now starts at the parent's virtual now, and its activity queue keeps the t
 and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
 migrate.
 
+### A workflow goes on after a timer beats a retrying activity in `any()` (#678)
+
+On the event-store backends (in-memory, DBAL, Illuminate, Magento), an activity cancelled because
+it lost a race (`ActivityCancelled` with reason `race_superseded`) now reads back on replay as
+unsettled, as a losing timer already did. It used to read back as a rejection. Because it was
+the first member of `any()` to settle, the next resume failed with `Workflow did not handle
+superseded activity`. Replay cancels the loser again, and the journal records that cancellation
+once, not once per resume. A later outcome recorded for the cancelled activity is ignored.
+Nothing to migrate: journals written before this change replay under the new rule.
+
 ### In-memory runner: a timer due during an activity's backoff wins `any()` (#653)
 
 **Who is affected**: a workflow run by `InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`,
