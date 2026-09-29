@@ -2,7 +2,8 @@
 
 **These files are not covered by the repository's MIT licence.**
 
-Every SVG in this directory reproduces a mark belonging to its owner. They are used **nominatively**,
+Every SVG in this directory but two (`api-platform` and `illuminate`, see below) reproduces a mark
+belonging to its owner. They are used **nominatively**,
 to name the projects Durable integrates with, in a picker whose whole purpose is to say *which
 stack are you on*. Naming a project that way is ordinary and expected. Shipping its mark under a
 grant that says "do what you like with this" is a different act, and [WA004](../../../documentation/wa/WA004-mit-license-distribution.md)
@@ -23,7 +24,7 @@ and it is also precisely what a brand guideline is most likely to forbid.
 | Mark | Where it came from |
 |---|---|
 | `php`, `doctrine`, `temporal`, `symfony`, `laravel`, `magento`, `filament`, `typo3` | [Simple Icons](https://github.com/simple-icons/simple-icons) |
-| `api-platform` | extracted from the project's own published asset |
+| `api-platform` | **not a mark.** A pair of curly braces written for this repository; see below |
 | `sylius` | drawn here from the published mark |
 | `illuminate` | **not a mark.** A generic database glyph written for this repository; see below |
 
@@ -48,23 +49,31 @@ was briefly a byte-for-byte copy of `laravel.svg`, which used Laravel's mark to 
 is not the Laravel framework, and put two identical marks on one page. It is now a generic
 three-tier database glyph written for this repository, reproducing nothing.
 
+### `api-platform` is ours too
+
+The chip says "API Platform", which the project's policy permits in as many words (below). Its
+icon is a pair of curly braces, the shape a reader associates with an API payload, drawn here and
+reproducing nothing of API Platform's artwork. It replaced Webby on 2026-08-28 (164ad79b); see
+the last section for why, and for the request that could bring Webby back.
+
 ## What was checked, and what it said
 
 Checked 2026-08-27. Findings, not legal advice.
 
 | Project | Published policy | What it says |
 |---|---|---|
-| **API Platform** | [Trademark and logo policy](https://api-platform.com/trademark-policy/) | Permits *"use of our Marks on websites to name or accurately describe Les-Tilleuls.coop's products, services or technology"*, which covers the **name**. It grants nothing further for the logo, and names the drawing separately: *"Use or reproduction of Les-Tilleuls.coop's original works of authorship, including the API Platform 'Webby' spider design is prohibited without prior approval from Les-Tilleuls.coop."* **`api-platform.svg` is Webby.** See below. |
+| **API Platform** | [Trademark and logo policy](https://api-platform.com/trademark-policy/) | Permits *"use of our Marks on websites to name or accurately describe Les-Tilleuls.coop's products, services or technology"*, which covers the **name**. It grants nothing further for the logo, and names the drawing separately: *"Use or reproduction of Les-Tilleuls.coop's original works of authorship, including the API Platform 'Webby' spider design is prohibited without prior approval from Les-Tilleuls.coop."* **`api-platform.svg` does not reproduce Webby.** See below. |
 | **TYPO3** | [Trademark Usage Policy](https://docs.typo3.org/m/typo3/guide-policy/main/en-us/Association/TrademarkUsagePolicy.html), [brand guidelines](https://typo3.com/typo3-cms/the-brand/brand-guidelines) | The shield is not a registered trademark but its use is governed by the brand guidelines; the figurative mark may be used without the wordmark as a design element. Modification is not addressed. Questions go to `trademark@typo3.org`. |
 | Simple Icons sources | [Disclaimer](https://github.com/simple-icons/simple-icons/blob/develop/DISCLAIMER.md) | See above. Each brand's own terms still apply. |
 
-## One mark needs a decision, not a notice
+## Webby: asked for, not shipped
 
-**`api-platform.svg` reproduces Webby**, and API Platform's policy names that design specifically as
-requiring prior approval. The user is asking for it (2026-09-28, #370); the file stays until the
-answer.
+API Platform's policy names its spider design, Webby, as requiring prior approval. Webby shipped
+here for one day: it came in on 2026-08-27 (324f50b0) and was replaced by the braces glyph on
+2026-08-28 (164ad79b), because approval had not been asked. Nothing in this directory reproduces
+it today.
 
-Two things make this one different from every other row above:
+Two things set it apart from every other row above:
 
 - **It is not a trademark question.** Nominative use, naming a project you integrate with, is the
   defence that carries the rest of this directory, and the policy grants it in as many words. Webby
@@ -75,14 +84,10 @@ Two things make this one different from every other row above:
   Platform logos, read our Trademark and Logo Policy."* Files being available to fetch is not
   permission to reproduce them.
 
-Three ways out, and only the first keeps the mark:
-
-1. ask Les-Tilleuls.coop (`contact@les-tilleuls.coop`) and keep the file if approval comes;
-2. replace it with a non-reproducing glyph, the way `illuminate` was handled;
-3. drop the mark and leave the chip with its label only, which is what Akeneo, Sulu and API Platform
-   carried until #128.
-
-A notice cannot fix this one: the policy asks for approval, not attribution.
+The user asked Les-Tilleuls.coop for approval on 2026-09-29 (#370): Webby as a small single-colour
+icon in the chip, following the page's colour like the other marks here. If approval comes, record
+its terms here before `api-platform.svg` changes; if it does not, the braces stay. A notice cannot
+stand in for either: the policy asks for approval, not attribution.
 
 ## If you own one of these marks
 
