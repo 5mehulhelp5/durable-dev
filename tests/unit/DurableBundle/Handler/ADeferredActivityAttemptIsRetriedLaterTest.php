@@ -32,7 +32,7 @@ final class ADeferredActivityAttemptIsRetriedLaterTest extends TestCase
             new NullWorkflowResumeDispatcher(),
             $this->createStub(ActivityHeartbeatSenderInterface::class),
             attemptClaim: new class implements ActivityAttemptClaimInterface {
-                public function claim(ExecutionId|string $executionId, string $activityId, int $attempt): ?\Closure
+                public function claim(ExecutionId $executionId, string $activityId, int $attempt): ?\Closure
                 {
                     return null;
                 }

@@ -28,10 +28,9 @@ final class LockActivityAttemptClaim implements ActivityAttemptClaimInterface
         private readonly float $ttlSeconds = 300.0,
     ) {}
 
-    public function claim(ExecutionId|string $executionId, string $activityId, int $attempt): ?\Closure
+    public function claim(ExecutionId $executionId, string $activityId, int $attempt): ?\Closure
     {
-        $executionId = (string) $executionId;
-        $lock = $this->lockFactory->createLock(\sprintf('durable-activity-%s-%s-%d', $executionId, $activityId, $attempt), $this->ttlSeconds);
+        $lock = $this->lockFactory->createLock(\sprintf('durable-activity-%s-%s-%d', $executionId->toString(), $activityId, $attempt), $this->ttlSeconds);
 
         return $lock->acquire() ? $lock->release(...) : null;
     }

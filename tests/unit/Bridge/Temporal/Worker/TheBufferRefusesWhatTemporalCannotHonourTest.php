@@ -49,7 +49,7 @@ final class TheBufferRefusesWhatTemporalCannotHonourTest extends TestCase
                 return false;
             }
 
-            public function runChild(ExecutionId|string $childExecutionId, string $workflowType, array $input, ExecutionId|string|null $parentExecutionId = null): mixed
+            public function runChild(ExecutionId $childExecutionId, string $workflowType, array $input, ?ExecutionId $parentExecutionId = null): mixed
             {
                 return 'done';
             }
