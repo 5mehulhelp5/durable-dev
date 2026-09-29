@@ -6,8 +6,8 @@ Proposed. An agent drafted this ADR. `documentation/adr/` is supervised, so it t
 when the user approves it on its pull request.
 
 The user decided the direction on 2026-09-29: sharing a database connection between Durable's
-stores and the application's business code is **strongly discouraged**. The choices under "Open for
-approval" are not decided yet.
+stores and the application's business code is **strongly discouraged**. The user settled the three
+choices that the first draft left open the same day; they are decisions 5 to 7 below.
 
 Related:
 - [DUR030](DUR030-dbal-backend-simplified-durable-execution.md) introduced the SQL backend. It is
@@ -84,29 +84,27 @@ keyed to be idempotent.
    idempotent activities.
 4. **Durable never opens a transaction that spans business code**, and never documents doing so as
    a pattern.
-
-## Open for approval
-
-The recommendation and the current defaults disagree: both hosts point at the application's
-connection out of the box. These choices close that gap, and none is decided yet.
-
-1. **The defaults.** (a) Leave them, and rely on documentation. (b) Require an explicit connection
-   name, with no default. (c) Default to a connection named `durable`. (b) and (c) are BC breaks:
-   they need an UPGRADE entry and a migration procedure — Rector where it can rewrite the
-   configuration, documentation in every case.
-2. **A warning.** Emit one at container compile time (Symfony) and at boot (Laravel) when the
-   journal's connection is the application's default one. A warning, not a refusal: the user asked
-   to discourage, not to forbid.
-3. **Separate database and credentials.** Recommend a database, or a schema, and a database user of
-   Durable's own, so that business code cannot reach the journal's tables at all — or stop at a
-   separate connection.
+5. **The defaults stay.** Symfony's `durable.dbal.connection` keeps
+   `doctrine.dbal.default_connection` and Laravel's `durable.connection` keeps `null`. Three
+   options were weighed: keep the defaults, require an explicit connection with no default, or
+   default to a connection named `durable`. The last two break every application that sets nothing,
+   for a practice this ADR discourages rather than forbids. The recommendation and the defaults
+   therefore disagree, and decision 6 is what surfaces the disagreement.
+6. **A warning, not a refusal.** When the journal's connection is the application's default one,
+   Durable logs a warning: at container compile time on Symfony, at boot on Laravel. It names the
+   connection, says why sharing it is discouraged, and says how to name one of its own. Nothing
+   stops: an application that shares its connection on purpose keeps working.
+7. **A database and credentials of Durable's own are recommended, not enforced.** The
+   documentation recommends a database (or a schema) and a database user for the journal, so that
+   business code cannot reach its tables at all. Nothing in the code checks it.
 
 ## Consequences
 
 - An application that follows the recommendation gets fencing that behaves as DUR053 describes:
   claims and appends commit when Durable says they do.
-- An application that shares its connection keeps working as today, with the risks named above
-  written down where it chose them.
+- An application that shares its connection keeps working as today. It gets a warning that names
+  the risk, and the documentation writes the risks down where it chose the connection.
+- No BC break: the defaults do not move, and the warning changes no behaviour.
 - The pitch for the SQL backend becomes "one SQL database, no cluster to run", which is what DUR030
   decided.
 
@@ -121,4 +119,6 @@ connection out of the box. These choices close that gap, and none is decided yet
 - Make the shipped Laravel migrations run on `durable.connection`, with an UPGRADE entry for the
   applications that already set it.
 - Show a dedicated connection in the configuration examples of both hosts.
-- Implement whatever "Open for approval" settles.
+- Emit the warning of decision 6, on both hosts, with a test each.
+- Recommend a database and a user of Durable's own where the documentation shows the connection
+  setting (decision 7).
