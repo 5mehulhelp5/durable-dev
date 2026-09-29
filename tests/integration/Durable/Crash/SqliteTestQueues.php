@@ -99,8 +99,10 @@ final class SqliteTestQueues implements ActivityTransportInterface, WorkflowResu
         return null;
     }
 
-    public function removePendingFor(string $executionId, string $activityId): bool
+    public function removePendingFor(ExecutionId|string $executionId, string $activityId): bool
     {
+        $executionId = (string) $executionId;
+
         return false;
     }
 

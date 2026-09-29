@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable\Worker;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -96,8 +97,10 @@ final class AFailedRetryEnqueueIsSentAgainTest extends TestCase
                 return $this->inner->nextDueAt();
             }
 
-            public function removePendingFor(string $executionId, string $activityId): bool
+            public function removePendingFor(ExecutionId|string $executionId, string $activityId): bool
             {
+                $executionId = (string) $executionId;
+
                 return $this->inner->removePendingFor($executionId, $activityId);
             }
         };

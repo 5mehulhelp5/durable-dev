@@ -47,10 +47,11 @@ final class APassWritesThroughItsFenceTest extends TestCase
             /** @var list<string> */
             public array $outcomes = [];
 
-            public function recordStart(string $executionId, string $workflowType): void {}
+            public function recordStart(ExecutionId|string $executionId, string $workflowType): void {}
 
-            public function recordOutcome(string $executionId, WorkflowRunStatus $status): void
+            public function recordOutcome(ExecutionId|string $executionId, WorkflowRunStatus $status): void
             {
+                $executionId = (string) $executionId;
                 $this->outcomes[] = $executionId;
             }
         };

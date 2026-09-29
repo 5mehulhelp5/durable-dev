@@ -52,8 +52,9 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
 
     // -- write side: WorkflowRunProjectionInterface ----------------------------------------------
 
-    public function recordStart(string $executionId, string $workflowType): void
+    public function recordStart(ExecutionId|string $executionId, string $workflowType): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $known = $this->connection->table($this->table)
@@ -79,8 +80,9 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
         ]);
     }
 
-    public function recordPickup(string $executionId): void
+    public function recordPickup(ExecutionId|string $executionId): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
         // A table created before the column existed is left alone: a worker never fails on it.
         if (!$this->schema->runsTableTracksPickup()) {
@@ -93,8 +95,9 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
             ->update(['picked_up_at' => self::now()]);
     }
 
-    public function recordWait(string $executionId, ?string $waitingOn): void
+    public function recordWait(ExecutionId|string $executionId, ?string $waitingOn): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
         if (!$this->schema->runsTableTracksWait()) {
             return;
@@ -105,8 +108,9 @@ final class IlluminateWorkflowRunCatalog implements WorkflowRunCatalogInterface,
             ->update(['waiting_on' => $waitingOn]);
     }
 
-    public function recordOutcome(string $executionId, WorkflowRunStatus $status): void
+    public function recordOutcome(ExecutionId|string $executionId, WorkflowRunStatus $status): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $this->connection->table($this->table)

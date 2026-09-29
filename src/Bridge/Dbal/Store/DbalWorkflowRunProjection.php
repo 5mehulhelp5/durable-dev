@@ -6,6 +6,7 @@ namespace Gplanchat\Bridge\Dbal\Store;
 
 use Doctrine\DBAL\Connection;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunPickupProjectionInterface;
 use Gplanchat\Durable\Observation\WorkflowRunProjectionInterface;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
@@ -35,8 +36,9 @@ final class DbalWorkflowRunProjection implements WorkflowRunProjectionInterface,
      * `started_at` is only written on insertion: the metadata store does an upsert, and rewriting
      * the date on every pass would make a long execution grow younger at every resume.
      */
-    public function recordStart(string $executionId, string $workflowType): void
+    public function recordStart(ExecutionId|string $executionId, string $workflowType): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         // Same trap as in the metadata store: the number of rows affected by an UPDATE does not
@@ -70,8 +72,9 @@ final class DbalWorkflowRunProjection implements WorkflowRunProjectionInterface,
      * A worker picked the execution up. Only the first pickup is kept, and a table created before
      * the column existed is left alone: a worker never fails on it.
      */
-    public function recordPickup(string $executionId): void
+    public function recordPickup(ExecutionId|string $executionId): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
         if (!$this->schema->runsTableTracksPickup()) {
             return;
@@ -87,8 +90,9 @@ final class DbalWorkflowRunProjection implements WorkflowRunProjectionInterface,
     /**
      * What the execution waits on, the latest one kept. Left alone on a table without the column.
      */
-    public function recordWait(string $executionId, ?string $waitingOn): void
+    public function recordWait(ExecutionId|string $executionId, ?string $waitingOn): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
         if (!$this->schema->runsTableTracksWait()) {
             return;
@@ -106,8 +110,9 @@ final class DbalWorkflowRunProjection implements WorkflowRunProjectionInterface,
      * No effect if no row exists: an execution whose start was not projected has no name, and a
      * row without a name would be worse than an absence.
      */
-    public function recordOutcome(string $executionId, WorkflowRunStatus $status): void
+    public function recordOutcome(ExecutionId|string $executionId, WorkflowRunStatus $status): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $this->connection->update(

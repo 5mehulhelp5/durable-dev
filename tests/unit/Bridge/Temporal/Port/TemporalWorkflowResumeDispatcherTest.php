@@ -26,8 +26,9 @@ final class TemporalWorkflowResumeDispatcherTest extends TestCase
             /** @var list<array{string, string, bool, ?string}> */
             public array $heard = [];
 
-            public function onWorkflowDispatchRequested(string $executionId, string $workflowType, array $payload, bool $isResume, ?string $transportNames): void
+            public function onWorkflowDispatchRequested(ExecutionId|string $executionId, string $workflowType, array $payload, bool $isResume, ?string $transportNames): void
             {
+                $executionId = (string) $executionId;
                 $this->heard[] = [$executionId, $workflowType, $isResume, $transportNames];
             }
         };
