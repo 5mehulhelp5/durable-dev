@@ -15,7 +15,7 @@ the workflow code, only where the execution is recorded.
 | `gplanchat/durable-bundle` | Symfony wiring, Messenger transports, profiler panel | the library and Symfony Messenger |
 | `gplanchat/durable-bridge-temporal` | the Temporal driver, over gRPC | the library, `ext-grpc`, a Temporal cluster |
 | `gplanchat/durable-bridge-dbal` | durable execution on one SQL database | the library, Doctrine DBAL 3 or 4, `symfony/lock` |
-| `gplanchat/durable-bridge-illuminate` | the same, on the connection Laravel already owns | the library, `illuminate/database` 11, 12 or 13 |
+| `gplanchat/durable-bridge-illuminate` | the same, through Laravel's database layer | the library, `illuminate/database` 11, 12 or 13 |
 | `gplanchat/durable-laravel` | the Laravel wiring: ports bound from config, work on the application's queue | the library, the Illuminate bridge, `illuminate/support` |
 | `gplanchat/durable-magento` | a Magento 2.4 / Mage-OS module: declaration, workers, admin screen | the library; Temporal for anything that must outlive a process |
 | `gplanchat/durable-plugin` | a Sylius admin dashboard for workflow runs | the bundle, `knplabs/knp-menu`; Sylius 2.x to appear in its menu |
@@ -163,11 +163,11 @@ The same four stores as the DBAL bridge, and the same trade against Temporal; re
 above, it applies here word for word. What changes is the connection: these are written against
 `Illuminate\Database\Connection`, the query builder rather than Eloquent.
 
-That is the whole reason the package exists. **DUR030** only pays if the journal append and the
-business write land in **one transaction**, and a store on `DB::connection()` is inside
-`DB::transaction()` by construction. Handing Doctrine DBAL the PDO out of
-`DB::connection()->getPdo()` reaches the same guarantee and is a workaround; this is the plain
-answer.
+Give the stores a connection of their own in `config/database.php`, not the application's default
+one (DUR054). On a shared connection, Durable's own transactions nest inside the application's: a
+business rollback erases journal events, and a claim stays invisible to the other workers until the
+business code commits. An activity that writes and then dies is answered by making it idempotent,
+never by a transaction shared with business code.
 
 The four tables ship as a migration loaded straight from the package, so `migrate` is enough.
 `vendor:publish --tag=durable-migrations` is for when you want to edit them, and from that point
