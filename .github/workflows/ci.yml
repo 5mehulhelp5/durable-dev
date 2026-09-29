@@ -324,6 +324,28 @@ jobs:
                   APP_ENV: test
               run: vendor/bin/phpunit tests/Functional
 
+            # #665: the shop serves stock and calls billing through its own workers, with the root's
+            # demo harness on the other side: the root's vendor/ for the harness, and a start-dev
+            # server, since serving Nexus needs one with Nexus on.
+            - name: Composer install (root, for the demo harness)
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Start a Temporal dev server
+              run: |
+                  docker run -d --name temporal-dev -p 7233:7233 temporalio/temporal:1.9.1 \
+                    server start-dev --ip 0.0.0.0 --port 7233 --namespace durable-test --headless
+                  timeout 60 bash -c 'until nc -z 127.0.0.1 7233; do sleep 1; done'
+
+            # Its own database, shared by the demo and demo_caller profiles as in demo/run.sh; the
+            # test creates the schema and the stock it reserves.
+            - name: PHPUnit — the shop serves and calls Nexus operations
+              working-directory: sylius
+              timeout-minutes: 10
+              env:
+                  DURABLE_TEMPORAL_DSN: 'temporal://127.0.0.1:7233?namespace=durable-test&nexus_task_queue=shop-bench-nexus&tls=0'
+                  DATABASE_URL: 'mysql://root@127.0.0.1/sylius_nexus?serverVersion=8&charset=utf8mb4'
+              run: vendor/bin/phpunit --group nexus-bench --fail-on-skipped tests/Integration
+
     magento-matrix:
         # The counterpart of the Symfony matrix, for the other foreign-container host. Same
         # principle: every entry is an **edge that has a reason**, not a cartesian product. What

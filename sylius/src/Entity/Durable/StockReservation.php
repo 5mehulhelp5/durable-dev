@@ -31,7 +31,8 @@ class StockReservation
         #[ORM\Id]
         #[ORM\Column(length: 128)]
         private string $orderId,
-        #[ORM\Column(type: Types::JSON)]
+        // Quoted: LINES is a reserved word in MySQL 8, and the unquoted INSERT failed there.
+        #[ORM\Column(name: '`lines`', type: Types::JSON)]
         private array $lines,
         #[ORM\Column]
         private bool $reserved,

@@ -144,9 +144,10 @@ final class NexusBenchTest extends TestCase
      */
     private static function execute(array $command): array
     {
-        $process = proc_open([\PHP_BINARY, ...$command], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, \dirname(__DIR__, 3), self::environment());
+        $process = proc_open([\PHP_BINARY, ...$command], [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes, \dirname(__DIR__, 3), self::environment());
         self::assertIsResource($process);
-        $output = (string) stream_get_contents($pipes[1]) . (string) stream_get_contents($pipes[2]);
+        // One stream: reading stdout to its end first would block a child that fills stderr.
+        $output = (string) stream_get_contents($pipes[1]);
 
         return ['code' => proc_close($process), 'output' => $output];
     }
