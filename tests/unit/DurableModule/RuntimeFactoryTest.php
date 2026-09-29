@@ -161,7 +161,7 @@ final class RuntimeFactoryTest extends TestCase
     public function testTheHandedClockStampsTheProcessJournal(): void
     {
         $runtime = (new RuntimeFactory(clock: new FrozenClock(1_700_000_000.0)))->create();
-        $runtime->eventStore()->append(new WorkflowSignalReceived('exec-1', 'go', []));
+        $runtime->eventStore()->append(new WorkflowSignalReceived(ExecutionId::fromString('exec-1'), 'go', []));
 
         $stamps = [];
         foreach ($runtime->eventStore()->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')) as $row) {

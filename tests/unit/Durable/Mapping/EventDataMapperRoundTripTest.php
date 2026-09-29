@@ -10,6 +10,7 @@ use Gplanchat\Durable\Event\ActivityTaskFailed;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\TimerCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Failure\ActivityRetryState;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -27,7 +28,7 @@ final class EventDataMapperRoundTripTest extends TestCase
     public static function events(): iterable
     {
         yield 'ActivityTaskFailed' => [new ActivityTaskFailed(
-            'exec-1',
+            ExecutionId::fromString('exec-1'),
             'act-1',
             'charge',
             3,
@@ -36,7 +37,7 @@ final class EventDataMapperRoundTripTest extends TestCase
             ActivityRetryState::MaximumAttemptsReached,
         )];
         yield 'ActivityFailed with retryState' => [new ActivityFailed(
-            'exec-1',
+            ExecutionId::fromString('exec-1'),
             'act-1',
             'App\\Boom',
             'kaput',
@@ -48,11 +49,11 @@ final class EventDataMapperRoundTripTest extends TestCase
             3,
             ActivityRetryState::NonRetryableFailure,
         )];
-        yield 'ActivityFailed legacy without retryState' => [new ActivityFailed('exec-1', 'act-1', 'App\\Boom', 'kaput')];
-        yield 'ActivityRetryQueued' => [new ActivityRetryQueued('exec-1', 'act-1', 3)];
-        yield 'TimerCancelled' => [new TimerCancelled('exec-1', 'timer-1', 'race_superseded')];
-        yield 'WorkflowExecutionCancelled' => [new WorkflowExecutionCancelled('exec-1', 'parent_request_cancel', 'parent-1')];
-        yield 'WorkflowExecutionCancelled without parent' => [new WorkflowExecutionCancelled('exec-1', 'operator')];
+        yield 'ActivityFailed legacy without retryState' => [new ActivityFailed(ExecutionId::fromString('exec-1'), 'act-1', 'App\\Boom', 'kaput')];
+        yield 'ActivityRetryQueued' => [new ActivityRetryQueued(ExecutionId::fromString('exec-1'), 'act-1', 3)];
+        yield 'TimerCancelled' => [new TimerCancelled(ExecutionId::fromString('exec-1'), 'timer-1', 'race_superseded')];
+        yield 'WorkflowExecutionCancelled' => [new WorkflowExecutionCancelled(ExecutionId::fromString('exec-1'), 'parent_request_cancel', 'parent-1')];
+        yield 'WorkflowExecutionCancelled without parent' => [new WorkflowExecutionCancelled(ExecutionId::fromString('exec-1'), 'operator')];
     }
 
     #[DataProvider('events')]
@@ -68,7 +69,7 @@ final class EventDataMapperRoundTripTest extends TestCase
     public function testRoundTripSurvivesJsonEncodedPayloads(): void
     {
         $record = EventDataMapper::fromDomainEvent(new ActivityTaskFailed(
-            'exec-1',
+            ExecutionId::fromString('exec-1'),
             'act-1',
             'charge',
             2,
