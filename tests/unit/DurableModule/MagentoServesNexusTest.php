@@ -57,6 +57,25 @@ final class MagentoServesNexusTest extends TestCase
         }]))->nexusRegistry();
     }
 
+    public function testAnOperationNoWorkflowFulfilsIsRefused(): void
+    {
+        // #714's refusal, shared through the core: without the charge workflow, a caller of
+        // billing/charge would wait on a result nothing produces.
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('"charge"');
+        $this->expectExceptionMessage('served by nobody');
+
+        (new RuntimeFactory(temporalDsn: self::DSN, nexusHandlers: [new NexusBillingHandler()]))->nexusRegistry();
+    }
+
+    public function testAMisspeltWorkflowClassNamesTheModuleArgument(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('the workflowClasses argument of RuntimeFactory');
+
+        (new RuntimeFactory(workflowClasses: ['Vendor\Module\Workflow\Missing'], temporalDsn: self::DSN, nexusHandlers: [new NexusBillingHandler()]))->nexusRegistry();
+    }
+
     public function testAListedHandlerIsRefusedWithoutAClusterToRouteIt(): void
     {
         // The memory backend cannot route a Nexus call (DUR036): the refusal falls at startup.

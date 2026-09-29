@@ -11,6 +11,7 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="durable_worker" xsi:type="object">Gplanchat\DurableModule\Console\Command\RunWorkerCommand</item>
+                <item name="durable_health" xsi:type="object">Gplanchat\DurableModule\Console\Command\HealthCommand</item>
             </argument>
         </arguments>
     </type>

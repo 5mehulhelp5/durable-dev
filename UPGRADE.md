@@ -187,6 +187,26 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 }
 ```
 
+### Laravel: an unserved Nexus operation and a missing workflow class now fail at registration (#714)
+
+**Who is affected**: a Laravel application that serves Nexus (`nexus.handlers`, `backend:
+temporal`). Resolving `NexusOperationRegistry` used to succeed in two cases where it now throws
+`InvalidArgumentException`, naming what is wrong:
+
+- an operation of a declared contract that neither a handler method nor a workflow carrying
+  `#[FulfilsNexusOperation]` serves. It used to be skipped, so a caller waited on a result nothing
+  produced. Symfony's `NexusHandlerPass` already refused it at compile time.
+- a class in `workflows` that does not exist. It used to be skipped while looking for the
+  operations workflows fulfil.
+
+**What to do**: give the handler a method for the operation, or list the workflow that fulfils it
+in `workflows`. Fix or remove a misspelt workflow class.
+
+`nexus.handlers` also accepts a handler class on its own, whose contract its
+`#[AsNexusServiceHandler]` names: `'handlers' => [App\Nexus\BillingHandler::class]`. The
+`handler => contract` form keeps working, and is refused if it names another contract than the
+attribute.
+
 ### New: a Magento module serves Nexus operations (#668)
 
 **Who is affected**: nobody has to change anything. A Magento module can now serve a Nexus contract:
@@ -194,7 +214,9 @@ list the handler in `di.xml` under `nexusHandlers` on `RuntimeFactory`, name its
 `#[AsNexusServiceHandler(contract: …)]` as on Symfony, declare the workflows that fulfil the rest in
 `workflowClasses` with `#[FulfilsNexusOperation]`, and run `bin/magento durable:worker --role=nexus`.
 The module's README shows it. Laravel's `DeclaredNexusOperations` now delegates to the core's
-`NexusHandlerDeclarations`, which both hosts share; its behaviour and messages are unchanged.
+`NexusHandlerDeclarations`, which both hosts share, so a module gets the refusals of #714 above:
+an operation nobody serves, a workflow class that does not exist, or a contract the attribute
+contradicts stops the Nexus worker when it starts.
 
 ## 0.1.0-beta1
 

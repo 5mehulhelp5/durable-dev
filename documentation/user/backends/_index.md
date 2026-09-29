@@ -303,9 +303,9 @@ The same four stores exist on `Illuminate\Database\Connection`, as
 [`gplanchat/durable-bridge-illuminate`](../packages/#gplanchatdurable-bridge-illuminate--the-laravel-backend)
 with the same journal and the same trade against Temporal.
 
-**The trade against Temporal is the DBAL one, word for word.** What changes is the connection, and
-why: a store on `DB::connection()` is inside `DB::transaction()` by construction, which is what
-DUR030 needs. See [DUR047](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR047-laravel-the-host-that-measured-before-it-wired.md).
+**The trade against Temporal is the DBAL one, word for word.** What changes is the connection:
+`Illuminate\Database\Connection` rather than Doctrine's. Give it one of its own, not the
+application's (DUR054). See [DUR047](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR047-laravel-the-host-that-measured-before-it-wired.md).
 
 ### What binds it is not this page's YAML
 
