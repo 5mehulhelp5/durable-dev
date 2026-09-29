@@ -37,6 +37,17 @@ underneath.
 - `gplanchat/durable` — pulled in as a dependency
 - `gplanchat/durable-bridge-temporal` for anything that must outlive a process
 
+**What CI proves, and what it only resolves.** Two different claims:
+
+| Claim | Lines |
+|---|---|
+| **Booted**: `setup:install`ed, a workflow run in process, and the admin screen serving runs read from a Temporal cluster | Mage-OS 2.2.0 on PHP 8.2 and 8.4 |
+| **Resolved**: Composer accepts the module on that line, nothing is installed | Mage-OS 1.3.0 (PHP 8.2), 2.2.0 (8.2), 2.3.0 (8.4), 3.4.0 (8.3, 8.5) |
+
+Magento Open Source and Adobe Commerce are not in CI: their packages come from
+`repo.magento.com`, which needs credentials. Mage-OS 2.2.0 replaces `magento/framework` 103.0.8-p4,
+Magento 2.4.8-p4's framework: the closest booted line to a Magento 2.4.8 shop, not proof of one.
+
 ## Two backends, and Composer enforces it
 
 Magento reaches **in-memory** and **Temporal**, and nothing else. The module declares `conflict` on

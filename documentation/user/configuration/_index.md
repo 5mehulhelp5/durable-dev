@@ -407,7 +407,7 @@ reaches two journals only, in memory and Temporal, so the SQL rows do not apply 
 | `child_workflow.async_messenger` | — | — | host-specific: Messenger only |
 | workflows: `#[AsWorkflow]` on a service | `workflows` | `workflowClasses` argument | host-specific: neither container autoconfigures by attribute |
 | activity handlers: `#[AsActivityHandler]` on a service | `activity_handlers`: the handler classes, each serving the contract its `#[AsActivityHandler]` names, or else its interfaces with `#[AsActivityMethod]` methods | `activityHandlers` argument | host-specific: neither container autoconfigures by attribute; Laravel refuses a handler that serves no activity at boot |
-| Nexus handlers: `#[AsNexusServiceHandler]` on a service | `nexus.handlers` | — | host-specific: Magento serves no Nexus operation |
+| Nexus handlers: `#[AsNexusServiceHandler]` on a service | `nexus.handlers`: `handler => contract`, or the handler class alone when its `#[AsNexusServiceHandler]` names the contract | — | host-specific: Magento serves no Nexus operation |
 
 ---
 
