@@ -8,13 +8,17 @@ use Gplanchat\Bridge\Temporal\Http\Psr18Http;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\TemporalRuntimeAssembly;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
+use Gplanchat\Bridge\Temporal\Worker\TemporalNexusWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Activity\ActivityContractResolver;
 use Gplanchat\Durable\Activity\PayloadToContractMethodInvoker;
+use Gplanchat\Durable\Attribute\AsNexusServiceHandler;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
+use Gplanchat\Durable\Nexus\Serving\NexusHandlerDeclarations;
+use Gplanchat\Durable\Nexus\Serving\NexusOperationRegistry;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -124,6 +128,15 @@ class RuntimeFactory
          * no PSR-20 clock of its own: null is the core's system clock.
          */
         private readonly ?ClockInterface $clock = null,
+        /**
+         * The module's Nexus handlers (#668), from di.xml like `activityHandlers`: each names the
+         * contract it serves with `#[AsNexusServiceHandler]`, as on Symfony. The operations it has
+         * no method for are fulfilled by a workflow of `workflowClasses` that carries
+         * `#[FulfilsNexusOperation]`.
+         *
+         * @var list<object>
+         */
+        private readonly array $nexusHandlers = [],
     ) {}
 
     /** One per factory, and the ObjectManager shares the factory: one gRPC client per request (#356). */
@@ -289,6 +302,48 @@ class RuntimeFactory
         }
 
         return $this->assembly;
+    }
+
+    /**
+     * The Nexus operations the module serves. Routed by the cluster when a DSN is set; without
+     * one, a listed handler is refused here, at startup, since memory cannot route (DUR036).
+     */
+    public function nexusRegistry(): NexusOperationRegistry
+    {
+        $registry = null === $this->temporalSettings() ? NexusOperationRegistry::unavailableOn('memory') : NexusOperationRegistry::routedBy('temporal');
+        $handlers = [];
+        $contracts = [];
+        foreach ($this->nexusHandlers as $handler) {
+            $attribute = (new \ReflectionClass($handler))->getAttributes(AsNexusServiceHandler::class)[0] ?? null;
+            if (null === $attribute) {
+                throw new \InvalidArgumentException(\sprintf(
+                    'Durable: %s is listed in the nexusHandlers argument of RuntimeFactory (di.xml), but carries no #[AsNexusServiceHandler(contract: ...)] naming the contract it serves.',
+                    $handler::class,
+                ));
+            }
+            $handlers[$handler::class] = $handler;
+            $contracts[$handler::class] = $attribute->newInstance()->contract;
+        }
+
+        (new NexusHandlerDeclarations(
+            $contracts,
+            array_values($this->workflowClasses),
+            static fn(string $handlerClass): object => $handlers[$handlerClass],
+            'the nexusHandlers argument of RuntimeFactory (di.xml)',
+            "It is the contract the handler's #[AsNexusServiceHandler] attribute names.",
+        ))->registerInto($registry);
+
+        return $registry;
+    }
+
+    /**
+     * Serves the declared Nexus operations: `bin/magento durable:worker --role=nexus` (#668).
+     */
+    public function nexusWorker(): TemporalNexusWorker
+    {
+        $settings = $this->requireCluster('A Nexus worker');
+
+        return new TemporalNexusWorker($this->assembly($settings)->nexusRpc(), $settings, $this->nexusRegistry());
     }
 
     private function requireCluster(string $what): TemporalConnection
