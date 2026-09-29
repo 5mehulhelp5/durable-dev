@@ -8,6 +8,7 @@ use Gplanchat\Durable\Bundle\DataCollector\DurableDataCollector;
 use Gplanchat\Durable\Bundle\Profiler\DurableExecutionTrace;
 use Gplanchat\Durable\Event\ActivityScheduled;
 use Gplanchat\Durable\Event\Event;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
@@ -37,22 +38,25 @@ final class ProfilerReadsEachJournalOnceTest extends TestCase
                 $this->inner->append($event);
             }
 
-            public function readStream(string $executionId): iterable
+            public function readStream(ExecutionId|string $executionId): iterable
             {
+                $executionId = (string) $executionId;
                 $this->calls[$executionId . ' read'] = ($this->calls[$executionId . ' read'] ?? 0) + 1;
 
                 return $this->inner->readStream($executionId);
             }
 
-            public function readStreamWithRecordedAt(string $executionId): iterable
+            public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
             {
+                $executionId = (string) $executionId;
                 $this->calls[$executionId . ' read'] = ($this->calls[$executionId . ' read'] ?? 0) + 1;
 
                 return $this->inner->readStreamWithRecordedAt($executionId);
             }
 
-            public function countEventsInStream(string $executionId): int
+            public function countEventsInStream(ExecutionId|string $executionId): int
             {
+                $executionId = (string) $executionId;
                 $this->calls[$executionId . ' count'] = ($this->calls[$executionId . ' count'] ?? 0) + 1;
 
                 return $this->inner->countEventsInStream($executionId);

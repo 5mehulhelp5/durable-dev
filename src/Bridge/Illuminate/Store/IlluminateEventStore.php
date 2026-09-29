@@ -7,6 +7,7 @@ namespace Gplanchat\Bridge\Illuminate\Store;
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Exception\SupersededPassException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use Gplanchat\Durable\Store\FencedEventStoreInterface;
 use Gplanchat\Durable\Store\PassFence;
@@ -163,15 +164,17 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         ];
     }
 
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId|string $executionId): iterable
     {
+        $executionId = (string) $executionId;
         foreach ($this->readStreamWithRecordedAt($executionId) as $entry) {
             yield $entry['event'];
         }
     }
 
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         // `cursor()` rather than `get()`: the stream is read once, without materializing a long
@@ -195,8 +198,9 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         }
     }
 
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId|string $executionId): int
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         return $this->connection->table($this->table)

@@ -34,6 +34,7 @@ use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Exception\ResumeArrivedBeforeItsOutcome;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
@@ -93,18 +94,24 @@ $killing = new class ($journal, (string) getenv('SLICE_KILL')) implements EventS
         }
     }
 
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId|string $executionId): iterable
     {
+        $executionId = (string) $executionId;
+
         return $this->inner->readStream($executionId);
     }
 
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
     {
+        $executionId = (string) $executionId;
+
         return $this->inner->readStreamWithRecordedAt($executionId);
     }
 
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId|string $executionId): int
     {
+        $executionId = (string) $executionId;
+
         return $this->inner->countEventsInStream($executionId);
     }
 };

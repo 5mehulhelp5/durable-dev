@@ -11,6 +11,7 @@ use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Exception\SupersededPassException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Mapping\EventDataMapper;
 use Gplanchat\Durable\Store\FencedEventStoreInterface;
 use Gplanchat\Durable\Store\PassFence;
@@ -160,15 +161,17 @@ final class DbalEventStore implements FencedEventStoreInterface
         ];
     }
 
-    public function readStream(string $executionId): iterable
+    public function readStream(ExecutionId|string $executionId): iterable
     {
+        $executionId = (string) $executionId;
         foreach ($this->readStreamWithRecordedAt($executionId) as $entry) {
             yield $entry['event'];
         }
     }
 
-    public function readStreamWithRecordedAt(string $executionId): iterable
+    public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $rows = $this->connection->executeQuery(
@@ -188,8 +191,9 @@ final class DbalEventStore implements FencedEventStoreInterface
         }
     }
 
-    public function countEventsInStream(string $executionId): int
+    public function countEventsInStream(ExecutionId|string $executionId): int
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         return (int) $this->connection->fetchOne(

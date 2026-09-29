@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Store;
 use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Exception\SupersededPassException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunProjectionInterface;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -77,18 +78,24 @@ final class APassWritesThroughItsFenceTest extends TestCase
                 ++$this->appended;
             }
 
-            public function readStream(string $executionId): iterable
+            public function readStream(ExecutionId|string $executionId): iterable
             {
+                $executionId = (string) $executionId;
+
                 return [];
             }
 
-            public function readStreamWithRecordedAt(string $executionId): iterable
+            public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
             {
+                $executionId = (string) $executionId;
+
                 return [];
             }
 
-            public function countEventsInStream(string $executionId): int
+            public function countEventsInStream(ExecutionId|string $executionId): int
             {
+                $executionId = (string) $executionId;
+
                 return $this->appended;
             }
         };

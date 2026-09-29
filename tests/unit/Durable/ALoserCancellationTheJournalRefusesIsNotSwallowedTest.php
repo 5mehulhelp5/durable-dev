@@ -11,6 +11,7 @@ use Gplanchat\Durable\Event\TimerCancelled;
 use Gplanchat\Durable\Event\TimerScheduled;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -40,18 +41,24 @@ final class ALoserCancellationTheJournalRefusesIsNotSwallowedTest extends TestCa
                 $this->inner->append($event);
             }
 
-            public function readStream(string $executionId): iterable
+            public function readStream(ExecutionId|string $executionId): iterable
             {
+                $executionId = (string) $executionId;
+
                 return $this->inner->readStream($executionId);
             }
 
-            public function readStreamWithRecordedAt(string $executionId): iterable
+            public function readStreamWithRecordedAt(ExecutionId|string $executionId): iterable
             {
+                $executionId = (string) $executionId;
+
                 return $this->inner->readStreamWithRecordedAt($executionId);
             }
 
-            public function countEventsInStream(string $executionId): int
+            public function countEventsInStream(ExecutionId|string $executionId): int
             {
+                $executionId = (string) $executionId;
+
                 return $this->inner->countEventsInStream($executionId);
             }
         };
