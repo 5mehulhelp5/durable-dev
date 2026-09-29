@@ -6,6 +6,7 @@ namespace Gplanchat\Durable\Filament\Tests;
 
 use Composer\Autoload\ClassLoader;
 use Gplanchat\Durable\Event\ExecutionStarted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunProjectionInterface;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -69,7 +70,7 @@ abstract class PanelTestCase extends TestCase
     {
         $projection = $this->app->make(WorkflowRunCatalogInterface::class);
         self::assertInstanceOf(WorkflowRunProjectionInterface::class, $projection);
-        $projection->recordStart($executionId, 'App\\ShipWorkflow');
+        $projection->recordStart(ExecutionId::fromString($executionId), 'App\\ShipWorkflow');
         $this->app->make(EventStoreInterface::class)->append(new ExecutionStarted($executionId, []));
     }
 }

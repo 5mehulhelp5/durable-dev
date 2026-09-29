@@ -55,8 +55,10 @@ final class TheRunListTest extends PanelTestCase
     {
         $this->get('/admin/durable/runs?workflowName=App%5COrderWorkflow&executionIdPrefix=order-')->assertOk();
 
-        self::assertSame('App\\OrderWorkflow', $this->catalog->askedFilter?->workflowName);
-        self::assertSame('order-', $this->catalog->askedFilter?->executionIdPrefix);
+        $filter = $this->catalog->askedFilter;
+        self::assertNotNull($filter);
+        self::assertSame('App\\OrderWorkflow', $filter->workflowName);
+        self::assertSame('order-', $filter->executionIdPrefix);
     }
 
     public function testItOffersNoFilterTheCatalogCannotApply(): void
