@@ -187,6 +187,14 @@ public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $meta
 }
 ```
 
+### Laravel `illuminate` backend: a due timer fires (#726)
+
+`LaravelWorkflowTimerDispatcher` now queues a `FireWorkflowTimersJob`, which runs
+`FireWorkflowTimersHandler`, instead of a plain `ResumeWorkflowJob`. A plain resume never journalled
+`TimerCompleted`, so a run that slept suspended again on every pass and never woke up. Nothing to
+migrate: once `queue:work` restarts on the new code, a run stuck on a due timer wakes on its next
+resume, since the pass that suspends on the timer now queues the firing.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

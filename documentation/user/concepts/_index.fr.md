@@ -346,7 +346,7 @@ minuteur partent sur le bus synchrone. Avec le backend Temporal, le transport es
 d'interrogation adossé à gRPC** : même interface de consommateur, protocole sous-jacent différent.
 
 **Laravel** se sert de la **file que l'application draine déjà**. Les activités et les reprises sont des jobs,
-un minuteur est une reprise différée sur le délai de la file, et `php artisan queue:work` est le seul
+un minuteur est un job de déclenchement différé sur le délai de la file, et `php artisan queue:work` est le seul
 worker.
 
 **Magento** ne se sert ni de l'un ni de l'autre. Les workers sont des commandes
