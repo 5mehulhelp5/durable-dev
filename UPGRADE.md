@@ -1202,6 +1202,16 @@ No Rector rule. Turning `$container->get(ExecutionRuntime::class)` into construc
 a parameter to the caller, and to every place that builds it, and needs the caller to be a service.
 That is not a rewrite of one expression, and no rule can find those places.
 
+### An inline child starts at its parent's virtual time in the in-memory runner (#652)
+
+`InMemoryWorkflowRunner` (under `WorkflowTestEnvironment`, `DurableTestCase` and Magento's memory
+backend) started a child's virtual time at the real now. After the parent had skipped ahead to a
+timer, the child's instants (timer due times, `first_queued_at`) lagged behind the parent's. The
+child now starts at the parent's virtual now, and its activity queue keeps the transport's clock.
+`InMemoryWorkflowRunner` gains an optional last argument `?ClockInterface $virtualTimeStartsAt`,
+and `ChildWorkflowRunner` an optional last argument `?ClockInterface $queueClock`. Nothing to
+migrate.
+
 ## 0.1.0-alpha10
 
 ### Laravel refuses at boot a workflow whose parameter names diverge from the contract
