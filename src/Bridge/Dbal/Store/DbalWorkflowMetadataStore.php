@@ -6,6 +6,7 @@ namespace Gplanchat\Bridge\Dbal\Store;
 
 use Doctrine\DBAL\Connection;
 use Gplanchat\Bridge\Dbal\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 
 /**
@@ -22,8 +23,9 @@ final class DbalWorkflowMetadataStore implements WorkflowMetadataStore
         private readonly string $table = 'durable_workflow_metadata',
     ) {}
 
-    public function save(string $executionId, string $workflowType, array $payload): void
+    public function save(ExecutionId|string $executionId, string $workflowType, array $payload): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $row = [
@@ -55,15 +57,17 @@ final class DbalWorkflowMetadataStore implements WorkflowMetadataStore
         }
     }
 
-    public function markCompleted(string $executionId): void
+    public function markCompleted(ExecutionId|string $executionId): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $this->connection->update($this->table, ['completed' => true], ['execution_id' => $executionId], ['completed' => 'boolean']);
     }
 
-    public function get(string $executionId): ?array
+    public function get(ExecutionId|string $executionId): ?array
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $row = $this->connection->fetchAssociative(
@@ -84,15 +88,17 @@ final class DbalWorkflowMetadataStore implements WorkflowMetadataStore
         ];
     }
 
-    public function hasActiveWorkflowMetadata(string $executionId): bool
+    public function hasActiveWorkflowMetadata(ExecutionId|string $executionId): bool
     {
+        $executionId = (string) $executionId;
         $metadata = $this->get($executionId);
 
         return null !== $metadata && true !== ($metadata['completed'] ?? false);
     }
 
-    public function delete(string $executionId): void
+    public function delete(ExecutionId|string $executionId): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $this->connection->delete($this->table, ['execution_id' => $executionId]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gplanchat\Bridge\Illuminate\Store;
 
 use Gplanchat\Bridge\Illuminate\Schema\DurableSchema;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Illuminate\Database\Connection;
 
@@ -28,8 +29,9 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         private readonly string $table = 'durable_workflow_metadata',
     ) {}
 
-    public function save(string $executionId, string $workflowType, array $payload): void
+    public function save(ExecutionId|string $executionId, string $workflowType, array $payload): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         // `save()` also serves to restart from a continue-as-new: it is an upsert, and it resets
@@ -45,8 +47,9 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         );
     }
 
-    public function markCompleted(string $executionId): void
+    public function markCompleted(ExecutionId|string $executionId): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $this->connection->table($this->table)
@@ -54,8 +57,9 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
             ->update(['completed' => true]);
     }
 
-    public function get(string $executionId): ?array
+    public function get(ExecutionId|string $executionId): ?array
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $row = $this->connection->table($this->table)
@@ -75,8 +79,9 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
         ];
     }
 
-    public function hasActiveWorkflowMetadata(string $executionId): bool
+    public function hasActiveWorkflowMetadata(ExecutionId|string $executionId): bool
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         return $this->connection->table($this->table)
@@ -85,8 +90,9 @@ final class IlluminateWorkflowMetadataStore implements WorkflowMetadataStore
             ->exists();
     }
 
-    public function delete(string $executionId): void
+    public function delete(ExecutionId|string $executionId): void
     {
+        $executionId = (string) $executionId;
         $this->schema->ensure();
 
         $this->connection->table($this->table)
