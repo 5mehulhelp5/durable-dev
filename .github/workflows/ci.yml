@@ -812,11 +812,13 @@ jobs:
                   timeout 60 bash -c 'until nc -z 127.0.0.1 7333; do sleep 1; done'
 
             # --fail-on-skipped: a missing variable or server turns the job red instead of green.
-            - name: PHPUnit — root integration suite
+            # `temporal` only: the server-free `integration` suite already runs in `qa`, on every PHP.
+            # This is the ext-grpc transport's run; `temporal-transport` covers grpc-curl and Guzzle.
+            - name: PHPUnit — root Temporal suite (ext-grpc)
               env:
                   DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7333'
                   DURABLE_TEMPORAL_HTTP_ADDRESS: '127.0.0.1:7343'
-              run: vendor/bin/phpunit --testsuite integration,temporal --fail-on-skipped --display-skipped
+              run: vendor/bin/phpunit --testsuite temporal --fail-on-skipped --display-skipped
 
             - name: Stop the dev server
               if: always()
@@ -1015,79 +1017,40 @@ jobs:
               if: always()
               run: docker rm -f oldest-temporal oldest-pg
 
-    no-grpc:
-        # Ce que ce job prouve et qu'aucun autre ne peut : le pont Temporal se charge, s'installe
-        # et parle au serveur **sans** `ext-grpc`. Tous les autres jobs installent l'extension ;
-        # sans celui-ci, une régression qui remettrait `\Grpc\BaseStub` sur le chemin d'un
-        # collaborateur resterait invisible jusqu'au premier `composer install` d'un utilisateur.
+    temporal-transport:
+        # The Temporal suite over the two transports `temporal-integration` does not take: gRPC over
+        # curl without ext-grpc, and Guzzle (GuzzleGrpcTransport) with it. The ext-grpc transport
+        # itself is `temporal-integration`'s, which runs the same suite over it.
         #
-        # La suite d'intégration entière passe par `transport=grpc-curl` (workers compris), et le
-        # test de la passerelle JSON par le port HTTP du serveur de dev.
-        name: Sans ext-grpc (curl + passerelle JSON)
+        # What the curl leg proves and no other job can: the Temporal bridge loads, installs and
+        # talks to the server **without** `ext-grpc`. Every other job installs the extension; without
+        # this leg, a regression that put `\Grpc\BaseStub` back on a collaborator's path would stay
+        # invisible until a user's first `composer install`. The tests that need the extension
+        # (`RequiresPhpExtension('grpc')`: Nexus, the message batch) skip there, hence no
+        # `--fail-on-skipped` on that leg.
+        name: Temporal integration (${{ matrix.transport }}${{ matrix.grpc && ', ext-grpc' || ', no ext-grpc' }})
         runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v7
-
-            - name: Setup PHP (sans grpc, exprès)
-              uses: shivammathur/setup-php@v2
-              with:
-                  php-version: '8.4'
-                  extensions: mbstring, bcmath, sqlite3, pdo_sqlite, curl
-                  coverage: none
-
-            - name: L'extension est bien absente, sinon le job ne mesure rien
-              run: |
-                  if php -m | grep -qi '^grpc$'; then echo 'ext-grpc is loaded; this job must run without it.' >&2; exit 1; fi
-
-            - name: Install Composer dependencies
-              run: composer install --no-interaction --prefer-dist --no-progress
-
-            - name: PHPUnit — suite unitaire
-              run: vendor/bin/phpunit --testsuite unit
-
-            - name: Install Temporal CLI
-              uses: temporalio/setup-temporal@v0
-
-            - name: Démarrer le serveur de dev (gRPC 7233, HTTP 7243)
-              run: |
-                  temporal server start-dev --headless --port 7233 --http-port 7243 --namespace durable-test --log-level warn &
-                  timeout 60 bash -c 'until nc -z 127.0.0.1 7233 && nc -z 127.0.0.1 7243; do sleep 1; done'
-                  temporal operator search-attribute create --namespace durable-test --name DurableOrderId --type Keyword
-                  temporal operator search-attribute create --namespace durable-test --name DurableAmount --type Int
-                  # Durable writes these two on every start (#558); a start that names an unregistered
-                  # attribute is refused, and a fresh one is usable a couple of seconds after this.
-                  temporal operator search-attribute create --namespace durable-test --name DurableWorkflowName --type Keyword --name DurableExecutionId --type Keyword
-                  timeout 30 bash -c "until temporal workflow list --namespace durable-test --limit 1 --query \"DurableExecutionId = 'probe'\" >/dev/null 2>&1; do sleep 1; done"
-
-            - name: PHPUnit — intégration, tout en gRPC sur curl
-              env:
-                  DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
-                  DURABLE_TEMPORAL_HTTP_ADDRESS: '127.0.0.1:7243'
-                  DURABLE_TEMPORAL_TRANSPORT: 'grpc-curl'
-              run: vendor/bin/phpunit --testsuite integration,temporal --display-skipped
-
-            - name: PHPUnit — JSON gateway over a PSR-18 client (Guzzle)
-              env:
-                  DURABLE_TEMPORAL_HTTP_ADDRESS: '127.0.0.1:7243'
-                  DURABLE_TEMPORAL_HTTP_CLIENT: 'psr18'
-              run: vendor/bin/phpunit tests/integration/Temporal/Http/JsonGatewayRoundTripTest.php --display-skipped
-
-    grpc-integration:
-        # The same integration suite as no-grpc, with the extension: once over ext-grpc, once over
-        # Guzzle (GuzzleGrpcTransport). With ext-grpc loaded the Nexus tests run too, since their
-        # endpoint setup goes through the operator stub.
-        name: Temporal integration (ext-grpc, Guzzle)
-        runs-on: ubuntu-latest
-        timeout-minutes: 45
+        timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { transport: 'grpc-curl', grpc: false, php-version: '8.4', extensions: 'mbstring, bcmath, sqlite3, pdo_sqlite, curl' }
+                    - { transport: 'guzzle', grpc: true, php-version: '8.2', extensions: 'mbstring, bcmath, sqlite3, pdo_sqlite, curl, grpc' }
         steps:
             - uses: actions/checkout@v7
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.2'
-                  extensions: mbstring, bcmath, sqlite3, pdo_sqlite, curl, grpc
+                  php-version: ${{ matrix.php-version }}
+                  extensions: ${{ matrix.extensions }}
                   coverage: none
+
+            - name: ext-grpc is absent, otherwise this leg measures nothing
+              if: ${{ !matrix.grpc }}
+              run: |
+                  if php -m | grep -qi '^grpc$'; then echo 'ext-grpc is loaded; this leg must run without it.' >&2; exit 1; fi
 
             - name: Cache Composer downloads
               uses: actions/cache@v6
@@ -1099,33 +1062,39 @@ jobs:
             - name: Install Composer dependencies
               run: composer install --no-interaction --prefer-dist --no-progress
 
-            - name: Install Temporal CLI
-              uses: temporalio/setup-temporal@v0
+            - name: PHPUnit — unit suite without ext-grpc
+              if: ${{ !matrix.grpc }}
+              run: vendor/bin/phpunit --testsuite unit
 
-            - name: Start the dev server (gRPC 7233, HTTP 7243)
+            # The same pinned server as `temporal-integration`, search attributes registered at start.
+            # Durable writes DurableWorkflowName and DurableExecutionId on every start (#558): the probe
+            # waits until a query on one of them is accepted.
+            - name: Start a Temporal dev server (gRPC 7233, HTTP 7243)
               run: |
-                  temporal server start-dev --headless --port 7233 --http-port 7243 --namespace durable-test --log-level warn &
+                  docker run -d --name temporal-dev -p 7233:7233 -p 7243:7243 temporalio/temporal:1.9.1 \
+                    server start-dev --ip 0.0.0.0 --port 7233 --http-port 7243 --namespace durable-test --headless \
+                    --search-attribute DurableOrderId=Keyword --search-attribute DurableAmount=Int \
+                    --search-attribute DurableWorkflowName=Keyword --search-attribute DurableExecutionId=Keyword
                   timeout 60 bash -c 'until nc -z 127.0.0.1 7233 && nc -z 127.0.0.1 7243; do sleep 1; done'
-                  temporal operator search-attribute create --namespace durable-test --name DurableOrderId --type Keyword
-                  temporal operator search-attribute create --namespace durable-test --name DurableAmount --type Int
-                  # Durable writes these two on every start (#558); a start that names an unregistered
-                  # attribute is refused, and a fresh one is usable a couple of seconds after this.
-                  temporal operator search-attribute create --namespace durable-test --name DurableWorkflowName --type Keyword --name DurableExecutionId --type Keyword
-                  timeout 30 bash -c "until temporal workflow list --namespace durable-test --limit 1 --query \"DurableExecutionId = 'probe'\" >/dev/null 2>&1; do sleep 1; done"
+                  timeout 30 bash -c "until docker exec temporal-dev temporal workflow list --namespace durable-test --limit 1 --query \"DurableExecutionId = 'probe'\" >/dev/null 2>&1; do sleep 1; done"
 
-            - name: PHPUnit — integration over ext-grpc
+            - name: PHPUnit — Temporal suite over ${{ matrix.transport }}
               env:
                   DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
                   DURABLE_TEMPORAL_HTTP_ADDRESS: '127.0.0.1:7243'
-                  DURABLE_TEMPORAL_TRANSPORT: 'grpc'
-              run: vendor/bin/phpunit --testsuite integration,temporal --display-skipped
+                  DURABLE_TEMPORAL_TRANSPORT: ${{ matrix.transport }}
+              run: vendor/bin/phpunit --testsuite temporal --display-skipped ${{ matrix.grpc && '--fail-on-skipped' || '' }}
 
-            - name: PHPUnit — integration over Guzzle
+            - name: PHPUnit — JSON gateway over a PSR-18 client (Guzzle)
+              if: ${{ !matrix.grpc }}
               env:
-                  DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
                   DURABLE_TEMPORAL_HTTP_ADDRESS: '127.0.0.1:7243'
-                  DURABLE_TEMPORAL_TRANSPORT: 'guzzle'
-              run: vendor/bin/phpunit --testsuite integration,temporal --display-skipped
+                  DURABLE_TEMPORAL_HTTP_CLIENT: 'psr18'
+              run: vendor/bin/phpunit tests/integration/Temporal/Http/JsonGatewayRoundTripTest.php --display-skipped --fail-on-skipped
+
+            - name: Stop the dev server
+              if: always()
+              run: docker rm -f temporal-dev
 
     manifests:
         # Every package declares what it imports (#346): a split package installs alone, and an
@@ -1173,7 +1142,7 @@ jobs:
         # job names can move without touching the protection. A skipped job is not a failure.
         name: ci-ok
         if: always()
-        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, no-grpc, grpc-integration, manifests]
+        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, temporal-transport, manifests]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
