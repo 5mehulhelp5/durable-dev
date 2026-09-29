@@ -221,6 +221,16 @@ migrations never reached those. With `connection => null`, nothing changes.
 
 Recommending a connection of its own is **DUR054**.
 
+### A warning when the journal is on the application's default connection
+
+**Who is affected**: a Symfony application whose `durable.dbal.connection` is the default Doctrine
+connection (the default setting), and a Laravel application on the `illuminate` backend whose
+`durable.connection` is unset or names the default connection. Symfony logs a warning when a worker
+starts; Laravel logs one at boot, in the console only.
+
+**What to do**: nothing is required, and nothing is refused. To act on it, give the journal a
+connection of its own, as the configuration examples show (**DUR054**).
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

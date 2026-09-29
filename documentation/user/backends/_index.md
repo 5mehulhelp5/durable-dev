@@ -256,7 +256,10 @@ SQL database** through Doctrine DBAL. There is no orchestration server, no sidec
 ### Configuration
 
 Give the journal a connection of its own. Sharing the application's is strongly discouraged
-(DUR054): Durable's transactions then nest inside business ones.
+(DUR054): Durable's transactions then nest inside business ones. A worker that starts with the journal on the
+application's default connection logs a warning saying so. Better still, point that connection at
+a database (or a schema) and a database user of Durable's own, so that business code cannot reach
+the journal's tables at all.
 
 ```yaml
 # config/packages/doctrine.yaml — the journal on a connection of its own
