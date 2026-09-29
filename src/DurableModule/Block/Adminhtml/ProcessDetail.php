@@ -91,16 +91,6 @@ class ProcessDetail extends Template
     }
 
     /**
-     * Seconds into a percentage of the track.
-     *
-     * It is the only thing the host decides about the frieze, and it is right that it decides it:
-     * scaling needs to know the width of a column, which a projection shared with a surface that
-     * renders no markup cannot know.
-     *
-     * With no duration — a single action, or everything in the same microsecond — everything sits
-     * on the left. Spreading by rank would pass an order off as a duration.
-     */
-    /**
      * Where each Nexus operation of the run is served, and whether it is settled (#672), from a
      * catalog that can hold them; the memory backend cannot (DUR036).
      *
@@ -114,6 +104,16 @@ class ProcessDetail extends Template
         return $run !== null && $catalog instanceof NexusOperationCatalogInterface ? $catalog->readNexusOperations($run) : [];
     }
 
+    /**
+     * Seconds into a percentage of the track.
+     *
+     * It is the only thing the host decides about the frieze, and it is right that it decides it:
+     * scaling needs to know the width of a column, which a projection shared with a surface that
+     * renders no markup cannot know.
+     *
+     * With no duration — a single action, or everything in the same microsecond — everything sits
+     * on the left. Spreading by rank would pass an order off as a duration.
+     */
     public function scale(float $seconds): string
     {
         $span = $this->getTimeline()->span;

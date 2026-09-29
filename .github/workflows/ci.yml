@@ -700,7 +700,7 @@ jobs:
               working-directory: magento
               timeout-minutes: 3
               run: |
-                  kill -TERM "$(cat /tmp/harness.pid)"
+                  kill -TERM "$(cat /tmp/harness.pid)" || { echo "The #667 harness is already gone." >&2; cat /tmp/harness.log; exit 1; }
                   timeout 30 bash -c 'while temporal operator nexus endpoint get --name demo-business-billing >/dev/null 2>&1; do sleep 1; done'
                   temporal operator nexus endpoint create --name demo-business-billing --target-namespace default --target-task-queue nobody-polls
                   held="MAG-INFLIGHT-${GITHUB_RUN_ID}"
