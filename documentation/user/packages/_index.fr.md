@@ -233,15 +233,20 @@ natif de la file.
 ### Ce n'est pas un moteur durable pour Laravel, et ce carré est pris
 
 [`durable-workflow/workflow`](https://github.com/durable-workflow/workflow), anciennement
-`laravel-workflow/laravel-workflow`, c'est de l'exécution durable **sur les files de Laravel** :
-`yield` comme point de reprise, son propre stockage, aucun serveur, explicitement inspiré de Temporal
-et d'Azure Durable Functions, mille étoiles et plus. Il est bon à ce qu'il fait, et si un moteur sur
-votre file existante est ce que vous cherchez, prenez-le.
+`laravel-workflow/laravel-workflow`, c'est de l'exécution durable **sur les files de Laravel**, avec
+son propre stockage, explicitement inspiré de Temporal et d'Azure Durable Functions, plus de mille
+étoiles. Depuis la 2.0, les workflows s'y écrivent en méthodes linéaires portées par des Fibers, et
+il tourne au choix intégré à votre application, sur son propre serveur autonome ou sur son Cloud
+géré, avec des SDK PHP, Python et Rust. Il livre une interface de suivi, Waterline. Il est bon à ce
+qu'il fait, et si un moteur pensé d'abord pour Laravel est ce que vous cherchez, prenez-le.
 
-Ce que ce paquet vend, c'est le **choix du backend** : le même code de workflow contre un cluster
-Temporal *ou* contre une seule base SQL, et un parc mixte Symfony / Sylius / Laravel partageant un
-seul moteur. Une classe de workflow écrite pour `gplanchat/durable-bundle` tourne ici sans
-modification. C'est toute la promesse, et c'est celle que l'autre paquet ne fait pas.
+Ce que ce paquet vend, c'est un **autre choix de backend** : le même code de workflow contre un
+cluster Temporal — Temporal Cloud et Nexus compris, avec un historique que l'interface de Temporal
+sait lire — *ou* contre la connexion SQL que votre application possède déjà, si bien que l'ajout au
+journal et l'écriture métier partagent une seule transaction. Et un parc mixte Symfony / Sylius /
+Laravel partage un seul moteur : une classe de workflow écrite pour `gplanchat/durable-bundle`
+tourne ici sans modification. C'est toute la promesse, et c'est celle que l'autre paquet ne fait
+pas.
 
 Deux noms voisins sur Packagist méritent la phrase plutôt que l'espoir que personne ne remarque.
 

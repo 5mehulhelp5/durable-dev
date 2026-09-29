@@ -109,17 +109,21 @@ once and collected twice.
 ### Laravel — the square is occupied
 
 `durable-workflow/workflow` (formerly `laravel-workflow/laravel-workflow`) is durable execution on
-Laravel queues: `yield` as the checkpoint, own storage, no server, explicitly inspired by Temporal
-and Azure Durable Functions, 1 000+ stars. `keepsuit/laravel-temporal` covers the other route —
+Laravel queues, own storage, explicitly inspired by Temporal and Azure Durable Functions, 1 200+
+stars. Since 2.0 (2026-09-01) it writes workflows as straight-line methods on Fibers, and the
+embedded Laravel mode is one of three: a standalone Durable Workflow Server and a managed Cloud,
+with PHP, Python and Rust SDKs, sit beside it. `keepsuit/laravel-temporal` covers the other route —
 official SDK, therefore RoadRunner, therefore out of scope under **DUR006**. Both are already
 recorded in [OST001 §6](OST001-alternative-durable-execution-backends.md).
 
 Two consequences, and neither is "don't go":
 
 1. **Positioning.** Durable's Laravel entry cannot be "a durable engine for Laravel" — that product
-   exists and is good at it. The entry is the **backend choice**: the same workflow code against a
-   Temporal cluster *or* against one SQL database (DUR030), and a mixed Symfony / Sylius / Akeneo
-   estate sharing a single engine with the Laravel application.
+   exists and is good at it. Nor can it be "a backend choice" alone: Durable Workflow 2.0 offers
+   one too — embedded, its own server, or its Cloud. The entry is the choice **it does not
+   offer**: the same workflow code against a Temporal cluster (Temporal Cloud included, Nexus
+   included) *or* against the application's own SQL connection (DUR030), and a mixed Symfony /
+   Sylius / Akeneo estate sharing a single engine with the Laravel application.
 2. **Naming.** "Durable" against "Durable Workflow" will be read as the same project by anyone
    skimming Packagist. The Laravel package has to lead with `gplanchat/`, and the documentation has
    to name the other one rather than hope nobody notices.
