@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace integration\Temporal\Http;
 
+use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
@@ -134,9 +135,9 @@ final class JsonGatewayRoundTripTest extends TestCase
             transport: TemporalConnection::TRANSPORT_HTTP,
         );
 
-        foreach ((new \Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe($this->client, $unserved))->describe() as $queue) {
-            self::assertNull($queue->error, $queue->type);
-            self::assertSame(0, $queue->pollers, $queue->type);
+        foreach ((new TemporalTaskQueueProbe($this->client, $unserved))->describe() as $queue) {
+            self::assertNull($queue->error, $queue->kind->value);
+            self::assertSame(0, $queue->pollers, $queue->kind->value);
         }
     }
 }

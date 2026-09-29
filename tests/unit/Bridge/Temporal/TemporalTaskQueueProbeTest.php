@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Bridge\Temporal;
 
 use Google\Protobuf\Timestamp;
-use Gplanchat\Bridge\Temporal\Store\TaskQueuePollers;
+use Gplanchat\Bridge\Temporal\Store\TaskQueueKind;
 use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
@@ -27,7 +27,7 @@ final class TemporalTaskQueueProbeTest extends TestCase
             return new DescribeTaskQueueResponse();
         });
 
-        (new TemporalTaskQueueProbe($client, $this->connection()))->describe([TaskQueuePollers::WORKFLOW, TaskQueuePollers::ACTIVITY, TaskQueuePollers::NEXUS]);
+        (new TemporalTaskQueueProbe($client, $this->connection()))->describe([TaskQueueKind::Workflow, TaskQueueKind::Activity, TaskQueueKind::Nexus]);
 
         self::assertSame([
             ['durable-test', 'wf-q', TaskQueueType::TASK_QUEUE_TYPE_WORKFLOW],
@@ -44,9 +44,9 @@ final class TemporalTaskQueueProbeTest extends TestCase
             new PollerInfo(['last_access_time' => new Timestamp(['seconds' => 1_700_000_060])]),
         ]);
 
-        [$workflow] = (new TemporalTaskQueueProbe($this->client($response), $this->connection()))->describe([TaskQueuePollers::WORKFLOW]);
+        [$workflow] = (new TemporalTaskQueueProbe($this->client($response), $this->connection()))->describe([TaskQueueKind::Workflow]);
 
-        self::assertSame(TaskQueuePollers::WORKFLOW, $workflow->type);
+        self::assertSame(TaskQueueKind::Workflow, $workflow->kind);
         self::assertSame('wf-q', $workflow->taskQueue);
         self::assertSame(2, $workflow->pollers);
         self::assertSame('1700000060', $workflow->lastPolledAt?->format('U'));
@@ -57,9 +57,9 @@ final class TemporalTaskQueueProbeTest extends TestCase
 
     /**
      * A server that refuses one type (Nexus before 1.25) must not hide what it says of the others,
-     * and an unknown answer is not an absent worker.
+     * and an unanswered probe never passes for a polled queue: a server that is down must not look healthy.
      */
-    public function testAFailingQueueIsReportedAloneAndIsNotReadAsAbsent(): void
+    public function testAFailingQueueIsReportedAloneAndNeverReadAsPolled(): void
     {
         $client = $this->createMock(WorkflowServiceClientInterface::class);
         $client->method('DescribeTaskQueue')->willReturnCallback(static function (DescribeTaskQueueRequest $request): DescribeTaskQueueResponse {
@@ -70,11 +70,11 @@ final class TemporalTaskQueueProbeTest extends TestCase
             return new DescribeTaskQueueResponse();
         });
 
-        [$workflow, $nexus] = (new TemporalTaskQueueProbe($client, $this->connection()))->describe([TaskQueuePollers::WORKFLOW, TaskQueuePollers::NEXUS]);
+        [$workflow, $nexus] = (new TemporalTaskQueueProbe($client, $this->connection()))->describe([TaskQueueKind::Workflow, TaskQueueKind::Nexus]);
 
         self::assertNull($workflow->error);
         self::assertSame('invalid TaskQueueType', $nexus->error);
-        self::assertTrue($nexus->polledSince(new \DateTimeImmutable('@0')));
+        self::assertFalse($nexus->polledSince(new \DateTimeImmutable('@0')));
     }
 
     private function connection(): TemporalConnection

@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Bridge\Temporal\Http;
 
 use Gplanchat\Bridge\Temporal\Http\JsonGatewayRequest;
+use Gplanchat\Bridge\Temporal\Http\JsonGatewayRoutes;
 use PHPUnit\Framework\TestCase;
+use Temporal\Api\Enums\V1\TaskQueueType;
+use Temporal\Api\Taskqueue\V1\TaskQueue;
+use Temporal\Api\Workflowservice\V1\DescribeTaskQueueRequest;
 
 final class JsonGatewayRequestTest extends TestCase
 {
@@ -47,13 +51,13 @@ final class JsonGatewayRequestTest extends TestCase
      */
     public function testATaskQueueDescriptionNamesTheQueueInThePathAndItsTypeInTheQuery(): void
     {
-        $request = new \Temporal\Api\Workflowservice\V1\DescribeTaskQueueRequest();
+        $request = new DescribeTaskQueueRequest();
         $request->setNamespace('default');
-        $request->setTaskQueue(new \Temporal\Api\Taskqueue\V1\TaskQueue(['name' => 'durable-activities']));
-        $request->setTaskQueueType(\Temporal\Api\Enums\V1\TaskQueueType::TASK_QUEUE_TYPE_ACTIVITY);
+        $request->setTaskQueue(new TaskQueue(['name' => 'durable-activities']));
+        $request->setTaskQueueType(TaskQueueType::TASK_QUEUE_TYPE_ACTIVITY);
         /** @var array<string, mixed> $fields */
         $fields = json_decode($request->serializeToJsonString(), true, 512, \JSON_THROW_ON_ERROR);
-        [, $template] = \Gplanchat\Bridge\Temporal\Http\JsonGatewayRoutes::ROUTES['DescribeTaskQueue'];
+        [, $template] = JsonGatewayRoutes::ROUTES['DescribeTaskQueue'];
 
         self::assertSame('/api/v1/namespaces/default/task-queues/durable-activities', JsonGatewayRequest::path($template, $fields));
         self::assertStringContainsString('taskQueueType=TASK_QUEUE_TYPE_ACTIVITY', JsonGatewayRequest::query($fields));

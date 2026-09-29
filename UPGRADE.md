@@ -169,7 +169,7 @@ later profile sets a real one. It was accepted when the merged value was the onl
 otherwise shows only once an execution has stalled.
 
 **What to write.** Forward the call like the other RPCs, or extend `AbstractWorkflowServiceClient`,
-which inherits it from `WorkflowRpcMethods`:
+which inherits it from `WorkflowRpcMethods`. Both message classes are in `Temporal\Api\Workflowservice\V1`:
 
 ```php
 public function DescribeTaskQueue(DescribeTaskQueueRequest $request, array $metadata = [], array $options = []): DescribeTaskQueueResponse

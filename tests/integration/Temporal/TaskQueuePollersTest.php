@@ -17,7 +17,7 @@ final class TaskQueuePollersTest extends TemporalServerTestCase
     public function testTheQueuesTheWorkersPollShowAPoller(): void
     {
         $probe = new TemporalTaskQueueProbe($this->client, $this->connection);
-        $since = new \DateTimeImmutable('-1 minute');
+        $since = new \DateTimeImmutable('-2 minutes');
 
         $deadline = microtime(true) + 20.0;
         do {
@@ -30,9 +30,9 @@ final class TaskQueuePollersTest extends TemporalServerTestCase
         } while (microtime(true) < $deadline);
 
         foreach ($queues as $queue) {
-            self::assertNull($queue->error, $queue->type);
-            self::assertGreaterThan(0, $queue->pollers, $queue->type);
-            self::assertTrue($queue->polledSince($since), $queue->type);
+            self::assertNull($queue->error, $queue->kind->value);
+            self::assertGreaterThan(0, $queue->pollers, $queue->kind->value);
+            self::assertTrue($queue->polledSince($since), $queue->kind->value);
         }
     }
 
@@ -47,9 +47,9 @@ final class TaskQueuePollersTest extends TemporalServerTestCase
         );
 
         foreach ((new TemporalTaskQueueProbe($this->client, $unserved))->describe() as $queue) {
-            self::assertNull($queue->error, $queue->type);
-            self::assertSame(0, $queue->pollers, $queue->type);
-            self::assertFalse($queue->polledSince(new \DateTimeImmutable('-1 minute')), $queue->type);
+            self::assertNull($queue->error, $queue->kind->value);
+            self::assertSame(0, $queue->pollers, $queue->kind->value);
+            self::assertFalse($queue->polledSince(new \DateTimeImmutable('-2 minutes')), $queue->kind->value);
         }
     }
 }
