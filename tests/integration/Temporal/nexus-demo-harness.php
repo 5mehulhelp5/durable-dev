@@ -14,6 +14,9 @@ declare(strict_types=1);
  * something else then serves it — or if one of its two workers dies. `--serve` leaves out what the
  * bench under test serves itself.
  *
+ * Runs from the repository root's vendor/ (`composer install` there), since the fixture it serves
+ * lives in the root's autoload-dev. Needs ext-pcntl, for SIGTERM to reach the endpoint cleanup.
+ *
  * Two processes, as in worker.php: the Nexus worker and the workflow worker both long-poll, and one
  * would starve the other. The workflow worker runs the fulfilling workflows and the caller.
  */
@@ -55,6 +58,10 @@ if ('' === $address || '' === $namespace) {
 }
 $prefix = $options['prefix'] ?? '';
 $services = explode(',', $options['serve'] ?? implode(',', array_keys(DemoHarness::ENDPOINTS)));
+if ([] !== ($unknown = array_diff($services, array_keys(DemoHarness::ENDPOINTS)))) {
+    fwrite(STDERR, 'unknown service(s) in --serve: ' . implode(', ', $unknown) . "\n");
+    exit(2);
+}
 
 $connection = new TemporalConnection(
     target: $address,
@@ -81,6 +88,7 @@ if (isset($options['role'])) {
             $worker instanceof TemporalNexusWorker ? $worker->pollOnce() : $worker->processOne();
         } catch (Throwable $e) {
             fwrite(STDERR, "demo harness {$options['role']} worker: " . $e::class . ': ' . $e->getMessage() . "\n");
+            sleep(1);
         }
     }
     exit(0);
@@ -98,6 +106,26 @@ $deleteEndpoints = static function () use ($transport, $operator, &$created): vo
         }
     }
 };
+/** @var array<string, resource> $workers */
+$workers = [];
+/** @param array<string, resource> $running */
+$stop = static function (int $code, array $running) use ($deleteEndpoints): never {
+    foreach ($running as $worker) {
+        proc_terminate($worker);
+    }
+    $deleteEndpoints();
+    exit($code);
+};
+if (!function_exists('pcntl_async_signals')) {
+    fwrite(STDERR, "ext-pcntl is required: without it, SIGTERM would leave the endpoints behind\n");
+    exit(2);
+}
+pcntl_async_signals(true);
+$onSignal = static function () use (&$workers, $stop): never {
+    $stop(0, $workers);
+};
+pcntl_signal(SIGTERM, $onSignal);
+pcntl_signal(SIGINT, $onSignal);
 
 foreach ($services as $service) {
     $name = $prefix . DemoHarness::ENDPOINTS[$service];
@@ -117,35 +145,27 @@ foreach ($services as $service) {
             // Anything else may be a namespace that has not propagated yet.
             if (6 === $e->getCode() || microtime(true) > $deadline) {
                 fwrite(STDERR, "cannot create the endpoint {$name}: {$e->getMessage()}\n");
-                $deleteEndpoints();
-                exit(1);
+                $stop(1, $workers);
             }
             usleep(500_000);
         }
     }
 }
 
-$workers = [];
 foreach (['nexus', 'workflow'] as $role) {
-    $workers[$role] = proc_open([PHP_BINARY, __FILE__, ...$arguments, '--role=' . $role, '--parent=' . (int) getmypid()], [1 => STDOUT, 2 => STDERR], $pipes);
-}
-$stop = static function (int $code) use (&$workers, $deleteEndpoints): never {
-    foreach ($workers as $worker) {
-        proc_terminate($worker);
+    $worker = proc_open([PHP_BINARY, __FILE__, ...$arguments, '--role=' . $role, '--parent=' . (int) getmypid()], [1 => STDOUT, 2 => STDERR], $pipes);
+    if (false === $worker) {
+        fwrite(STDERR, "cannot start the {$role} worker\n");
+        $stop(1, $workers);
     }
-    $deleteEndpoints();
-    exit($code);
-};
-pcntl_async_signals(true);
-pcntl_signal(SIGTERM, static fn() => $stop(0));
-pcntl_signal(SIGINT, static fn() => $stop(0));
-
+    $workers[$role] = $worker;
+}
 echo "ready\n";
 while (true) {
     foreach ($workers as $role => $worker) {
         if (!proc_get_status($worker)['running']) {
             fwrite(STDERR, "the {$role} worker stopped\n");
-            $stop(1);
+            $stop(1, $workers);
         }
     }
     sleep(1);
