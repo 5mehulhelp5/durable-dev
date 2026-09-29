@@ -164,8 +164,8 @@ later profile sets a real one. It was accepted when the merged value was the onl
 
 The rule of #678, on Temporal. An activity whose cancellation the workflow requested now reads
 back on replay as unsettled, unless the workflow's own cancellation withdrew it (that one still
-replays as `WorkflowCancelledFailure`). It used to read back as a rejection, so the next workflow
-task failed with `Workflow did not handle superseded activity`. Replay no longer sends
+replays as `WorkflowCancelledFailure`). It used to read back as a rejection, so the run failed
+with `Activity <id> was superseded (Cancelled by Temporal)`. Replay no longer sends
 `RequestCancelActivityTask` again for an activity whose `ACTIVITY_TASK_CANCEL_REQUESTED` is in the
 history, and an outcome the activity records after that request is ignored. Nothing to migrate.
 
