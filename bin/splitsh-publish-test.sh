@@ -48,7 +48,9 @@ cat > composer.json <<'JSON'
 }
 JSON
 echo readme > README.md
-g add -A && g commit -q -m split && g tag v0.1.0-beta1
+# A split keeps the upstream identity and date; the rewrite must reuse them, not the runner's.
+g add -A && GIT_AUTHOR_NAME=up GIT_COMMITTER_NAME=up GIT_AUTHOR_DATE='@1700000000 +0000' \
+    GIT_COMMITTER_DATE='@1700000000 +0000' g commit -q -m split && g tag v0.1.0-beta1
 split="$(git rev-parse HEAD)"
 refs_before="$(git show-ref)"
 
@@ -64,9 +66,17 @@ check "a sibling in require-dev is rewritten"          '[ "$(jq -r ".[\"require-
 check "a non-sibling self.version is left alone"       '[ "$(jq -r ".require[\"other/vendor\"]" <<<"$json")" = "self.version" ]'
 check "only the three sibling lines change"            '[ "$(git diff "$split" "$out" | grep -c "^[-+] ")" = 6 ]'
 check "only composer.json changes"                     '[ "$(git diff --name-only "$split" "$out")" = composer.json ]'
+check "it keeps the split's identity and dates"       '[ "$(git log -1 --format="%an %cn %at %ct" "$out")" = "up up 1700000000 1700000000" ]'
 check "the rewrite is deterministic"                   '[ "$(rewrite_self_version "$split" v0.1.0-beta1)" = "$out" ]'
 check "the working tree is untouched"                  '[ -z "$(git status --porcelain)" ]'
 check "the refs are untouched"                         '[ "$(git show-ref)" = "$refs_before" ]'
+
+printf '#!/bin/sh\nexit 5\n' > "$TMP/stub/jq" && chmod +x "$TMP/stub/jq"
+failed="$(PATH="$TMP/stub:$PATH" rewrite_self_version "$split" v0.1.0-beta1 2>/dev/null)"; status=$?
+check "a failing jq fails the rewrite, prints no SHA"  '[ "$status" -ne 0 ] && [ -z "$failed" ]'
+failed="$(PATH="$TMP/stub:$PATH" bash bin/splitsh-publish.sh tag v0.1.0-beta1 2>&1)"; status=$?
+check "and fails tag mode before any satellite"        '[ "$status" -ne 0 ] && ! grep -q "split SHA=" <<<"$failed"'
+rm "$TMP/stub/jq"; g checkout -q main
 
 g checkout -q -b plain && echo '{"name": "x/y"}' > composer.json && g commit -q -am plain
 plain="$(git rev-parse HEAD)"

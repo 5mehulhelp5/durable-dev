@@ -15,7 +15,7 @@
 #   SPLITSH_FORCE — If 1, branch push uses --force (dangerous).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 SPLITSH_LITE="${SPLITSH_LITE:-splitsh-lite}"
@@ -154,17 +154,25 @@ split_sha() {
 # a re-run yields the same SHA and the "already at" skip of tag mode still holds.
 rewrite_self_version() {
     local split="$1" version="${2#v}" json blob mode tree index who
-    json="$(git cat-file blob "$split:composer.json")"
-    if ! jq -e '[(.require, ."require-dev") // {} | to_entries[]
+    local status=0
+    json="$(git cat-file blob "$split:composer.json")" || return 1
+    # A jq that is missing or fails must stop the publish: read as "nothing to rewrite", it would
+    # push `self.version`; read as an empty blob, a tag with an empty composer.json.
+    jq -e '[(.require, ."require-dev") // {} | to_entries[]
         | select((.key | startswith("gplanchat/")) and .value == "self.version")] | length > 0' \
-        >/dev/null <<<"$json"; then
+        >/dev/null <<<"$json" || status=$?
+    if [[ $status -eq 1 ]]; then
         printf '%s' "$split"
         return 0
+    elif [[ $status -ne 0 ]]; then
+        echo "jq failed (exit $status) reading $split:composer.json" >&2
+        return 1
     fi
-    blob="$(jq --indent 4 --arg v "^$version" 'reduce ("require", "require-dev") as $k (.;
+    json="$(jq --indent 4 --arg v "^$version" 'reduce ("require", "require-dev") as $k (.;
         if has($k) then .[$k] |= with_entries(
             if (.key | startswith("gplanchat/")) and .value == "self.version" then .value = $v else . end)
-        else . end)' <<<"$json" | git hash-object -w --stdin)"
+        else . end)' <<<"$json")" && [[ -n "$json" ]] || { echo "jq failed rewriting $split:composer.json" >&2; return 1; }
+    blob="$(git hash-object -w --stdin <<<"$json")" || return 1
     mode="$(git ls-tree "$split" composer.json | cut -d' ' -f1)"
     index="$(mktemp)"
     GIT_INDEX_FILE="$index" git read-tree "$split"
