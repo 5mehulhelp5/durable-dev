@@ -47,16 +47,16 @@ final class DbalWorkflowRunCatalogConformanceTest extends WorkflowRunCatalogConf
     protected function startRun(string $executionId, string $workflowType): void
     {
         $this->metadataStore()->save(ExecutionId::fromString($executionId), $workflowType, []);
-        $this->eventStore()->append(new ExecutionStarted($executionId, []));
+        $this->eventStore()->append(new ExecutionStarted(ExecutionId::fromString($executionId), []));
     }
 
     protected function endRun(string $executionId, WorkflowRunStatus $outcome): void
     {
         $this->eventStore()->append(match ($outcome) {
-            WorkflowRunStatus::Completed => new ExecutionCompleted($executionId, 'ok'),
-            WorkflowRunStatus::Cancelled => new WorkflowExecutionCancelled($executionId, 'cancelled'),
-            WorkflowRunStatus::ContinuedAsNew => new WorkflowContinuedAsNew($executionId, 'App\\NextWorkflow', []),
-            WorkflowRunStatus::Failed => WorkflowExecutionFailed::fromStoredPayload($executionId, [
+            WorkflowRunStatus::Completed => new ExecutionCompleted(ExecutionId::fromString($executionId), 'ok'),
+            WorkflowRunStatus::Cancelled => new WorkflowExecutionCancelled(ExecutionId::fromString($executionId), 'cancelled'),
+            WorkflowRunStatus::ContinuedAsNew => new WorkflowContinuedAsNew(ExecutionId::fromString($executionId), 'App\\NextWorkflow', []),
+            WorkflowRunStatus::Failed => WorkflowExecutionFailed::fromStoredPayload(ExecutionId::fromString($executionId), [
                 'kind' => WorkflowExecutionFailed::KIND_WORKFLOW_HANDLER,
                 'failureClass' => \RuntimeException::class,
                 'failureMessage' => 'boom',

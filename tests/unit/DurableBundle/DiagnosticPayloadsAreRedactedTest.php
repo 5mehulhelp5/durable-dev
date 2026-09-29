@@ -127,7 +127,7 @@ final class DiagnosticPayloadsAreRedactedTest extends TestCase
         $metadata = new InMemoryWorkflowMetadataStore();
         $metadata->save(ExecutionId::fromString('exec-1'), 'Signup', ['email' => 'ada@example.com', 'password' => self::SECRET]);
         $events = new InMemoryEventStore();
-        $events->append(new ActivityScheduled('exec-1', 'act-1', 'createAccount', ['email' => 'ada@example.com', 'password' => self::SECRET]));
+        $events->append(new ActivityScheduled(ExecutionId::fromString('exec-1'), 'act-1', 'createAccount', ['email' => 'ada@example.com', 'password' => self::SECRET]));
 
         return [$metadata, $events];
     }
