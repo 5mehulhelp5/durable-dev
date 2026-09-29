@@ -13,6 +13,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Memo;
 use Temporal\Api\Common\V1\WorkflowType;
@@ -41,15 +42,15 @@ final class WorkflowIdsNeverCollideTest extends TestCase
 
     public function testTwoIdsTheOldMappingMergedBothStartAndStayApart(): void
     {
-        $first = $this->client->startAsync('App\\OrderWorkflow', [], 'order/42');
-        $second = $this->client->startAsync('App\\OrderWorkflow', [], 'order 42');
+        $first = $this->client->startAsync('App\\OrderWorkflow', [], ExecutionId::fromString('order/42'));
+        $second = $this->client->startAsync('App\\OrderWorkflow', [], ExecutionId::fromString('order 42'));
 
         self::assertNotSame($first, $second);
         $catalog = new TemporalWorkflowRunCatalog($this->grpc, $this->connection);
-        self::assertSame('order/42', $catalog->findRun('order/42')?->executionId);
-        self::assertSame('order 42', $catalog->findRun('order 42')?->executionId);
-        self::assertSame($first, $this->client->workflowId('order/42'));
-        self::assertSame($second, $this->client->workflowId('order 42'));
+        self::assertSame('order/42', $catalog->findRun(ExecutionId::fromString('order/42'))?->executionId);
+        self::assertSame('order 42', $catalog->findRun(ExecutionId::fromString('order 42'))?->executionId);
+        self::assertSame($first, $this->client->workflowId(ExecutionId::fromString('order/42')));
+        self::assertSame($second, $this->client->workflowId(ExecutionId::fromString('order 42')));
     }
 
     public function testARunStartedUnderTheLegacyIdIsReachedOnlyByItsOwnExecution(): void
@@ -68,9 +69,9 @@ final class WorkflowIdsNeverCollideTest extends TestCase
 
         $catalog = new TemporalWorkflowRunCatalog($this->grpc, $this->connection);
 
-        self::assertSame('durable-order-7', $this->client->workflowId('order/7'));
-        self::assertSame('order/7', $catalog->findRun('order/7')?->executionId);
-        self::assertSame(WorkflowClient::workflowIdOf('order 7'), $this->client->workflowId('order 7'), 'another execution never takes it');
-        self::assertNull($catalog->findRun('order 7'));
+        self::assertSame('durable-order-7', $this->client->workflowId(ExecutionId::fromString('order/7')));
+        self::assertSame('order/7', $catalog->findRun(ExecutionId::fromString('order/7'))?->executionId);
+        self::assertSame(WorkflowClient::workflowIdOf('order 7'), $this->client->workflowId(ExecutionId::fromString('order 7')), 'another execution never takes it');
+        self::assertNull($catalog->findRun(ExecutionId::fromString('order 7')));
     }
 }

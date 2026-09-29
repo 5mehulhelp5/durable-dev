@@ -13,6 +13,7 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Exception\RunFilterUnavailableException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\WorkflowRunFilter;
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -285,7 +286,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
             )]);
         });
 
-        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order/42');
+        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun(ExecutionId::fromString('order/42'));
 
         self::assertSame('order/42', $run?->executionId);
         self::assertSame(self::RUN_ID, $run->runId);
@@ -322,7 +323,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
             )]);
         });
 
-        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order/42');
+        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun(ExecutionId::fromString('order/42'));
 
         self::assertSame($found ? 'order/42' : null, $run?->executionId);
         self::assertSame([WorkflowClient::workflowIdOf('order/42'), 'durable-order-42'], \array_slice($asked, 0, 2), 'the new id first, the legacy one next');
@@ -340,7 +341,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
             'order/42',
         )]));
 
-        self::assertNull((new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order-42'));
+        self::assertNull((new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun(ExecutionId::fromString('order-42')));
     }
 
     /**
@@ -360,7 +361,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
             return new DescribeWorkflowExecutionResponse(['workflow_execution_info' => $this->info('legacy-7', self::RUN_ID, 'App\\OrderWorkflow', 'orders', WorkflowExecutionStatus::WORKFLOW_EXECUTION_STATUS_RUNNING, 1_700_000_200)]);
         });
 
-        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('legacy-7');
+        $run = (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun(ExecutionId::fromString('legacy-7'));
 
         self::assertSame('legacy-7', $run?->executionId);
         self::assertSame(['durable-legacy-7', 'legacy-7'], $asked, 'Durable\'s own workflow id first');
@@ -371,7 +372,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
         $client = $this->createMock(WorkflowServiceClientInterface::class);
         $client->method('DescribeWorkflowExecution')->willThrowException(new \RuntimeException('workflow not found', 5));
 
-        self::assertNull((new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order/nobody'));
+        self::assertNull((new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun(ExecutionId::fromString('order/nobody')));
     }
 
     public function testAnotherFailureIsNotPassedOffAsAnUnknownRun(): void
@@ -381,7 +382,7 @@ final class TemporalWorkflowRunCatalogTest extends TestCase
 
         $this->expectExceptionCode(14);
 
-        (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun('order/42');
+        (new TemporalWorkflowRunCatalog($client, $this->connection()))->findRun(ExecutionId::fromString('order/42'));
     }
 
     /**
