@@ -59,10 +59,13 @@ final class EventDataMapperRoundTripTest extends TestCase
     #[DataProvider('events')]
     public function testRoundTripPreservesEveryField(Event $event): void
     {
-        $decoded = EventDataMapper::toDomainEvent(EventDataMapper::fromDomainEvent($event));
+        $record = EventDataMapper::fromDomainEvent($event);
+        // The record keeps the string id (#682): the value object is not what is stored.
+        self::assertSame('exec-1', $record['execution_id']);
+        $decoded = EventDataMapper::toDomainEvent($record);
 
         self::assertInstanceOf($event::class, $decoded);
-        self::assertSame($event->executionId(), $decoded->executionId());
+        self::assertSame($event->executionId()->toString(), $decoded->executionId()->toString());
         self::assertEquals($event->payload(), $decoded->payload());
     }
 
