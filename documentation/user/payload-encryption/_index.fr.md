@@ -61,9 +61,25 @@ final class SodiumPayloadCodec implements PayloadCodecInterface
         private readonly array $keys,
         private readonly string $activeKeyId,
     ) {
-        if (SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES !== \strlen($keys[$activeKeyId] ?? '')) {
-            throw new \InvalidArgumentException('The active key must be 32 raw bytes.');
+        if (!isset($keys[$activeKeyId])) {
+            throw new \InvalidArgumentException(\sprintf('No active key "%s" in the keyring.', $activeKeyId));
         }
+        foreach ($keys as $id => $key) {
+            if (SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES !== \strlen($key)) {
+                throw new \InvalidArgumentException(\sprintf('Key "%s" must be 32 raw bytes.', $id));
+            }
+        }
+    }
+
+    /**
+     * @param array<string, string> $keys key id => base64-encoded key, as kept in secrets
+     */
+    public static function fromBase64(array $keys, string $activeKeyId): self
+    {
+        return new self(array_map(
+            static fn (string $key): string => base64_decode($key, true) ?: throw new \InvalidArgumentException('A codec key is not valid base64.'),
+            $keys,
+        ), $activeKeyId);
     }
 
     public function encode(Payload $payload): Payload
@@ -127,7 +143,7 @@ même historique :
   clé.
 - **Données** : un nonce aléatoire de 24 octets, puis le chiffré et son tag de 16 octets.
 - **Données associées** : `binary/encrypted`, un octet NUL, puis l'id de la clé. Un payload dont on
-  réécrit l'id de clé ou l'encodage ne s'authentifie plus.
+  réécrit l'id de clé ne s'authentifie plus.
 
 Avec un nonce aléatoire, deux encodages d'une même valeur diffèrent. Le rejeu n'en souffre pas :
 Durable compare des valeurs en clair, avant l'encodage et après le décodage.
@@ -145,13 +161,14 @@ nouvelle, faites-en la clé active et déployez : les nouveaux payloads sont sce
 l'historique plus ancien se décode toujours avec l'ancienne. **Ne retirez jamais une clé tant
 qu'une exécution scellée avec elle reste dans la durée de rétention du namespace** : cette
 exécution ne serait plus lisible, ni par un worker ni par un tableau de bord. Retirer le codec
-lui-même a le même effet.
+lui-même est pire : plus rien ne décode cet historique, et son chiffré échoue partout où une valeur
+JSON est attendue.
 
 Chaque processus qui parle au namespace a besoin du même codec, dans le même déploiement : les
-workers, ce qui démarre ou signale des workflows, et le tableau de bord. Un worker qui ne sait pas
-décoder l'historique d'une tâche fait échouer cette tâche, et Temporal la relance ; un tableau de
-bord affiche une erreur de lecture. Ni l'un ni l'autre ne présente du chiffré comme s'il s'agissait
-de données.
+workers, ce qui démarre ou signale des workflows, et le tableau de bord. Avec le codec en place, un
+worker qui ne sait pas décoder l'historique d'une tâche fait échouer cette tâche, et Temporal la
+relance ; un tableau de bord affiche une erreur de lecture. Ni l'un ni l'autre ne présente du
+chiffré comme s'il s'agissait de données.
 
 ---
 
@@ -176,8 +193,8 @@ attributs de recherche.
 
 Le codec est un service de votre application ; Durable ne lit lui-même aucune clé.
 
-**Symfony.** Nommez le service dans `durable.temporal.payload_codec`. Le trousseau est un tableau,
-déclarez donc ses arguments ; la clé vient des secrets Symfony (`bin/console secrets:set
+**Symfony.** Nommez le service dans `durable.temporal.payload_codec`. Le trousseau est un tableau ;
+déclarez donc ses arguments. La clé vient des secrets Symfony (`bin/console secrets:set
 DURABLE_CODEC_KEY_2026_09`) ou de l'environnement :
 
 ```yaml
@@ -198,8 +215,8 @@ aux fichiers de configuration :
 
 ```php
 // config/services.php: 'durable_codec' => ['keys' => ['2026-09' => env('DURABLE_CODEC_KEY_2026_09')], 'active' => '2026-09'],
-$this->app->singleton(SodiumPayloadCodec::class, fn () => new SodiumPayloadCodec(
-    array_map(base64_decode(...), config('services.durable_codec.keys')),
+$this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fromBase64(
+    config('services.durable_codec.keys'),
     config('services.durable_codec.active'),
 ));
 // config/durable.php, under 'temporal': 'payload_codec' => SodiumPayloadCodec::class,
@@ -221,6 +238,11 @@ Les clés vivent dans `env.php`, sous `'durable' => ['codec' => ['active' => '20
 plutôt que dans son constructeur :
 
 ```php
+use App\Temporal\SodiumPayloadCodec;
+use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
+use Magento\Framework\App\DeploymentConfig;
+use Temporal\Api\Common\V1\Payload;
+
 final class PayloadCodec implements PayloadCodecInterface
 {
     private ?SodiumPayloadCodec $codec = null;
@@ -233,8 +255,8 @@ final class PayloadCodec implements PayloadCodecInterface
 
     private function codec(): SodiumPayloadCodec
     {
-        return $this->codec ??= new SodiumPayloadCodec(
-            array_map(base64_decode(...), (array) $this->config->get('durable/codec/keys')),
+        return $this->codec ??= SodiumPayloadCodec::fromBase64(
+            (array) $this->config->get('durable/codec/keys'),
             (string) $this->config->get('durable/codec/active'),
         );
     }
@@ -247,15 +269,15 @@ final class PayloadCodec implements PayloadCodecInterface
 
 Les payloads Nexus sont encodés comme les autres. Une application qui appelle une opération servie
 par une autre application doit utiliser le même codec, avec les mêmes clés, que cette application ;
-et réciproquement pour celle qui la sert. Un pair écrit avec un autre SDK implémente le format décrit
-plus haut dans son propre codec. Voir [Opérations Nexus](../nexus/).
+et réciproquement pour celle qui la sert. Un pair écrit avec un autre SDK a besoin de son propre
+codec, conforme au format décrit plus haut. Voir [Opérations Nexus](../nexus/).
 
 ## L'interface web de Temporal affiche du chiffré
 
 L'interface web et `temporal workflow show` lisent l'historique sur le serveur : ils affichent donc
 des payloads `binary/encrypted`. La réponse de Temporal est un *serveur de codec* que l'interface
 appelle pour décoder ; Durable n'en fournit pas. Les tableaux de bord de Durable passent, eux, par
-le codec et affichent les valeurs décodées, masquées comme avant par le filtre de payloads.
+le codec et affichent les valeurs décodées, masquées comme avant par le masqueur de payloads.
 
 ---
 

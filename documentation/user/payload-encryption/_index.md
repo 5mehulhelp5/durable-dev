@@ -58,9 +58,25 @@ final class SodiumPayloadCodec implements PayloadCodecInterface
         private readonly array $keys,
         private readonly string $activeKeyId,
     ) {
-        if (SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES !== \strlen($keys[$activeKeyId] ?? '')) {
-            throw new \InvalidArgumentException('The active key must be 32 raw bytes.');
+        if (!isset($keys[$activeKeyId])) {
+            throw new \InvalidArgumentException(\sprintf('No active key "%s" in the keyring.', $activeKeyId));
         }
+        foreach ($keys as $id => $key) {
+            if (SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_KEYBYTES !== \strlen($key)) {
+                throw new \InvalidArgumentException(\sprintf('Key "%s" must be 32 raw bytes.', $id));
+            }
+        }
+    }
+
+    /**
+     * @param array<string, string> $keys key id => base64-encoded key, as kept in secrets
+     */
+    public static function fromBase64(array $keys, string $activeKeyId): self
+    {
+        return new self(array_map(
+            static fn (string $key): string => base64_decode($key, true) ?: throw new \InvalidArgumentException('A codec key is not valid base64.'),
+            $keys,
+        ), $activeKeyId);
     }
 
     public function encode(Payload $payload): Payload
@@ -120,8 +136,8 @@ What it does, byte for byte, so a peer written in another language can read the 
   `json/plain`, for instance) is sealed with its data, and `decode()` returns it exactly.
 - **Outer metadata**: `encoding` = `binary/encrypted`, `encryption-key-id` = the key id.
 - **Data**: a random 24-byte nonce, then the ciphertext and its 16-byte tag.
-- **Associated data**: `binary/encrypted`, a NUL byte, then the key id. A payload whose key id or
-  encoding is rewritten no longer authenticates.
+- **Associated data**: `binary/encrypted`, a NUL byte, then the key id. A payload whose key id is
+  rewritten no longer authenticates.
 
 A random nonce makes two encodings of the same value differ. Replay is not affected: Durable compares
 plain values, before encoding and after decoding.
@@ -137,12 +153,13 @@ php -r 'echo base64_encode(sodium_crypto_aead_xchacha20poly1305_ietf_keygen()), 
 The keyring maps key ids to keys. To rotate, add a new key, make it the active one and deploy:
 new payloads are sealed with it, older history still decodes with the old one. **Never drop a key
 while a run sealed with it is still within the namespace's retention**: that run can no longer be
-read, by a worker or by a dashboard. Removing the codec altogether has the same effect.
+read, by a worker or by a dashboard. Removing the codec altogether is worse: nothing decodes that
+history any more, and its ciphertext fails wherever a JSON value is expected.
 
-Every process that talks to the namespace needs the same codec in the same deployment: the
-workers, whatever starts or signals workflows, and the dashboard. A worker that cannot decode a
-task's history fails that task, and Temporal retries it; a dashboard shows a read failure. Neither
-shows ciphertext as if it were data.
+Every process that talks to the namespace needs the same codec in the same deployment: the workers,
+whatever starts or signals workflows, and the dashboard. With the codec in place, a worker that
+cannot decode a task's history fails that task, and Temporal retries it; a dashboard shows a read
+failure. Neither shows ciphertext as if it were data.
 
 ---
 
@@ -186,8 +203,8 @@ of `config/durable.php`. Read the key through `config()`, with `env()` in a conf
 
 ```php
 // config/services.php: 'durable_codec' => ['keys' => ['2026-09' => env('DURABLE_CODEC_KEY_2026_09')], 'active' => '2026-09'],
-$this->app->singleton(SodiumPayloadCodec::class, fn () => new SodiumPayloadCodec(
-    array_map(base64_decode(...), config('services.durable_codec.keys')),
+$this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fromBase64(
+    config('services.durable_codec.keys'),
     config('services.durable_codec.active'),
 ));
 // config/durable.php, under 'temporal': 'payload_codec' => SodiumPayloadCodec::class,
@@ -209,6 +226,11 @@ The keys live in `env.php`, under `'durable' => ['codec' => ['active' => '2026-0
 rather than in its constructor:
 
 ```php
+use App\Temporal\SodiumPayloadCodec;
+use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
+use Magento\Framework\App\DeploymentConfig;
+use Temporal\Api\Common\V1\Payload;
+
 final class PayloadCodec implements PayloadCodecInterface
 {
     private ?SodiumPayloadCodec $codec = null;
@@ -221,8 +243,8 @@ final class PayloadCodec implements PayloadCodecInterface
 
     private function codec(): SodiumPayloadCodec
     {
-        return $this->codec ??= new SodiumPayloadCodec(
-            array_map(base64_decode(...), (array) $this->config->get('durable/codec/keys')),
+        return $this->codec ??= SodiumPayloadCodec::fromBase64(
+            (array) $this->config->get('durable/codec/keys'),
             (string) $this->config->get('durable/codec/active'),
         );
     }
@@ -235,8 +257,8 @@ final class PayloadCodec implements PayloadCodecInterface
 
 Nexus payloads are encoded like the rest. An application that calls an operation served by another
 application must use the same codec, with the same keys, as that application; so must the
-application that serves it. A peer written with another SDK implements the wire format above as
-its own codec. See [Nexus operations](../nexus/).
+application that serves it. A peer written with another SDK needs a codec of its own that follows
+the wire format above. See [Nexus operations](../nexus/).
 
 ## The Temporal Web UI shows ciphertext
 
