@@ -312,16 +312,19 @@ dessous diffère.
 ## 5. Fibres ou générateurs : le problème de la coloration {#5-fibers-or-generators-the-colouring-problem}
 
 La ligne *coloration des fonctions* ci-dessus est le mécanisme sous
-[La testabilité](#2-testability) : c'est la deuxième des trois propriétés qui y sont listées, et
-elle mérite sa propre section. Le nom vient de
+[La testabilité](#2-testability), la deuxième des trois propriétés qui y sont listées. Cette
+section l'examine en détail. Le nom vient de
 [What Color Is Your Function?](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/)
-de Bob Nystrom : dans un langage où la suspension est un mot-clé, les fonctions ont deux couleurs,
-la rouge suspend et la bleue non, et une rouge ne peut être appelée que depuis une autre rouge.
+de Bob Nystrom. Si vous avez écrit du JavaScript, vous connaissez l'idée : une fonction qui emploie
+`await` doit être déclarée `async`. Dans un langage où la suspension est un mot-clé, les fonctions
+ont deux couleurs. La rouge suspend et la bleue non, et seule une autre rouge peut appeler une
+rouge.
 
-`yield` est ce mot-clé. Une méthode qui *yield* est un **générateur** : elle ne rend plus sa valeur,
-elle rend un `Generator` que quelqu'un doit piloter. Extrayez trois lignes d'un workflow dans une
-méthode d'aide, le remaniement le plus ordinaire, et si ces lignes attendent, l'aide devient
-rouge, et tous ses appelants jusqu'à la méthode du workflow deviennent rouges avec elle.
+Avec les générateurs PHP, `yield` est ce mot-clé. Une méthode qui *yield* est un **générateur** :
+elle ne renvoie plus sa valeur, elle renvoie un `Generator` qu'un autre code doit piloter.
+Extrayez trois lignes d'un workflow dans une méthode d'aide, un remaniement ordinaire : si ces
+lignes attendent, l'aide devient rouge, et tous ses appelants jusqu'à la méthode
+du workflow deviennent rouges avec elle.
 
 **Durable**, où l'aide est une méthode ordinaire :
 
@@ -368,16 +371,17 @@ private function chargeWithRetry(string $orderId)
 }
 ```
 
-Une politique de réessai ferait normalement ce travail pour vous, et `ActivityOptions` en porte une des
-deux côtés, et [Échecs et réessais](../failures/) est sa place. Ce dont l'exemple parle, c'est de
-l'**extraction** : trois lignes sorties d'une méthode de workflow vers une méthode d'aide. Deux
-types de retour disparaissent, et le site d'appel devient `yield from`. Ni l'un ni l'autre n'est un
-détail ; c'est ce que la couleur coûte.
+En pratique, une politique de réessai fait ce travail. `ActivityOptions` en porte une des deux
+côtés, et [Échecs et réessais](../failures/) la présente. Cet exemple porte sur l'**extraction** :
+trois lignes sorties d'une méthode de workflow vers une méthode d'aide. Côté SDK, deux types de
+retour disparaissent et le site d'appel devient `yield from`. Ces deux changements sont le coût de
+la couleur.
 
-Durable suspend par `\Fiber::suspend()`, et il le fait **à l'intérieur du moteur**, dans
+Durable suspend par `\Fiber::suspend()`, **à l'intérieur du moteur**, dans
 `ExecutionRuntime::await()`, plusieurs cadres sous votre code. Une fibre suspend toute la pile
-d'appels, pas le cadre qui l'a demandé : les cadres intermédiaires sont suspendus sans participer,
-ils n'ont donc besoin d'aucun mot-clé, d'aucun changement de type de retour, et d'aucune réécriture.
+d'appels, et pas seulement le cadre qui l'a demandé. Les cadres intermédiaires sont suspendus sans
+y participer : ils n'ont besoin d'aucun mot-clé, d'aucun changement de type de retour ni d'aucune
+réécriture.
 
 | | Durable (fibres) | SDK PHP de Temporal (générateurs) |
 |---|---|---|
@@ -387,72 +391,73 @@ ils n'ont donc besoin d'aucun mot-clé, d'aucun changement de type de retour, et
 | Type de retour déclaré | le sien, `string` | aucun qu'elle puisse utilement déclarer |
 | L'appeler hors d'un workflow | un appel ordinaire | il faut de quoi piloter le générateur |
 
-Cette dernière ligne est ce sur quoi [La testabilité](#2-testability) repose : un workflow bleu est
-un objet que PHPUnit construit et appelle.
+[La testabilité](#2-testability) repose sur cette dernière ligne : PHPUnit peut construire et
+appeler un workflow bleu comme n'importe quel objet.
 
-### Ce que la couleur achète, et ce qu'il en coûte d'y renoncer
+### Ce que la couleur montre, et ce que les fibres cachent {#ce-que-la-couleur-achète-et-ce-quil-en-coûte-dy-renoncer}
 
-La coloration n'est pas qu'un impôt. `yield` **marque le point de suspension dans le source** : en
-lisant la méthode, vous savez exactement où le workflow peut s'arrêter une semaine. Les fibres
-retirent ce marqueur : un appel d'apparence ordinaire peut suspendre, et rien au site d'appel ne le
-dit.
+La coloration a aussi un avantage. `yield` **marque le point de suspension dans le source** : en
+lisant la méthode, vous voyez exactement où le workflow peut s'arrêter une semaine. Les fibres
+retirent ce marqueur. Un appel d'apparence ordinaire peut suspendre, et rien au site d'appel ne le
+montre.
 
-Durable réduit la perte plutôt que de la nier. **Seul `await()` attend**, et `sleep()`, qui est un
-`await()` sur minuteur écrit court ; tout appel de stub, `timer()`, `all()`, `any()` et `some()`
-assemblent et rendent la main immédiatement. À l'intérieur d'une méthode donnée, les points
-d'attente sont exactement ces appels-là. Ce qu'un lecteur ne peut pas voir, c'est si une méthode
-d'aide attend *à l'intérieur*, et c'est le prix du remaniement que le SDK interdit.
+Durable limite cette perte. **Seul `await()` attend**, avec `sleep()`, qui est une écriture courte
+d'un `await()` sur minuteur. Tout appel de stub, `timer()`, `all()`, `any()` et `some()`
+construisent leur résultat et rendent la main immédiatement. À l'intérieur d'une méthode donnée,
+les points d'attente sont exactement ces appels-là. Ce que vous ne voyez pas depuis le site
+d'appel, c'est si une méthode d'aide attend *à l'intérieur*. C'est le prix du remaniement que le
+modèle du SDK exclut.
 
-Deux limites bonnes à connaître :
+Deux limites à connaître :
 
-- les fibres sont du PHP **8.1+** ; Durable exige 8.2 de toute façon ;
+- les fibres demandent PHP **8.1+** ; Durable exige 8.2 de toute façon ;
 - une fibre **ne peut pas suspendre dans un destructeur** : PHP lève `FiberError: Cannot switch
   fibers in current execution context`. Attendre depuis `__destruct()` n'est pas du code de
   workflow, si bien que le cas ne s'est pas présenté en pratique, mais c'est le seul contexte où la
-  pile n'est pas libre de suspendre.
+  pile ne peut pas suspendre.
 
-Aucun des deux modèles n'affecte le déterminisme : les deux rejouent le même historique, et les deux
-interdisent les mêmes appels non déterministes dans un workflow. La différence est l'endroit où vit
-le mot-clé de suspension : dans votre code, ou dans le moteur.
+Aucun des deux modèles n'affecte le déterminisme. Les deux rejouent le même historique, et les
+deux interdisent les mêmes appels non déterministes dans un workflow. Avec Durable, le mot-clé de
+suspension vit dans le moteur ; avec le SDK, il vit dans votre code.
 
-### Le SDK compte refermer cet écart
+### Le support des fibres en cours dans le SDK {#le-sdk-compte-refermer-cet-écart}
 
-Les fibres ne sont pas une frontière permanente. Le SDK a une *pull request* ouverte qui ajoute une
-API de fibres ([#798](https://github.com/temporalio/sdk-php/pull/798)), après le ticket qui
-proposait de remplacer les *yields* par une suspension de fibre
-([#702](https://github.com/temporalio/sdk-php/issues/702)), et ses mainteneurs ont annoncé le
-changement prototypé et prévu pour un prochain majeur. Rien de tout cela n'est dans une version
+Le SDK a une *pull request* ouverte qui ajoute une API de fibres
+([#798](https://github.com/temporalio/sdk-php/pull/798)). Elle fait suite au ticket qui proposait
+de remplacer les *yields* par une suspension de fibre
+([#702](https://github.com/temporalio/sdk-php/issues/702)). Ses mainteneurs ont indiqué que le
+changement est prototypé et prévu pour un prochain majeur. Rien de tout cela n'est dans une version
 publiée à la v2.18, et cette section décrit la v2.18.
 
-Ce que cela réglerait, c'est la coloration, et rien qu'elle. Le mécanisme de suspension n'est pas ce
-qui oblige un test de workflow à démarrer un serveur : c'est [le moteur du
-worker](#1-the-worker-runtime-no-roadrunner). Un workflow continue de tourner dans RoadRunner,
-piloté par une file de tâches sur un vrai cluster, qu'il suspende sur un `yield` ou sur une fibre.
-La différence qui compterait donc le plus une fois les fibres arrivées est celle au-dessus d'elles :
-[la testabilité](#2-testability) : mener un workflow jusqu'au bout dans le processus de test,
-vérifier une valeur rendue, sans serveur à démarrer ni second moteur à surveiller.
+Ce changement réglerait la différence de coloration, et elle seule. Ce qui oblige un test de
+workflow à démarrer un serveur, c'est [le moteur du worker](#1-the-worker-runtime-no-roadrunner),
+pas le mécanisme de suspension. Un workflow continue de tourner dans RoadRunner, piloté par une
+file de tâches sur un vrai cluster, qu'il suspende sur un `yield` ou sur une fibre. Une fois les
+fibres arrivées dans le SDK, la différence qui compte le plus est donc
+[la testabilité](#2-testability) : mener un workflow jusqu'au bout dans le processus de test et
+vérifier la valeur qu'il renvoie, sans serveur à démarrer ni second moteur à superviser.
 
 ---
 
 ## 6. Planifier des activités
 
 Le SDK accepte aussi bien un stub typé qu'un appel par nom d'activité avec une charge utile libre.
-Durable a retiré la seconde forme : **le stub typé est le seul moyen pour un workflow de planifier
+Durable retire la seconde forme : **le stub typé est le seul moyen pour un workflow de planifier
 une activité**
-([DUR039](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR039-workflow-authoring-surface.md)),
-et l'extension facultative `gplanchat/durable-phpstan` résout les appels de stub contre l'interface
-de contrat, si bien qu'un mauvais argument est une erreur d'analyse statique plutôt qu'un échec de
+([DUR039](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR039-workflow-authoring-surface.md)).
+L'extension facultative `gplanchat/durable-phpstan` résout les appels de stub contre l'interface de
+contrat : un mauvais argument devient une erreur d'analyse statique au lieu d'un échec de
 sérialisation à l'exécution.
 
-Moins de liberté, une classe d'erreurs éliminée au moment de l'analyse. Voir
+Vous renoncez à l'appel libre, et l'analyse statique détecte une classe d'erreurs. Voir
 [Écrire des activités](../activities/).
 
 ---
 
 ## 7. Le versionnage de workflow
 
-Les deux laissent une même classe porter deux comportements, et laissent l'historique décider lequel
-une exécution voit :
+Les deux permettent à une même classe de porter deux comportements, et laissent l'historique
+décider lequel une exécution voit :
 
 ```php
 // SDK PHP Temporal
@@ -462,18 +467,18 @@ $v = yield Workflow::getVersion('add-discount', Workflow::DEFAULT_VERSION, 1);
 $v = $this->environment->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
-Le format sur le fil est le même, et pas par imitation : il a été lu dans un historique produit par
-le SDK Go, puis émis depuis le pont et accepté par le serveur. Une exécution Durable versionnée et
-une exécution Go versionnée enregistrent le **même** marqueur `Version` et le **même** attribut de
-recherche `TemporalChangeVersion`, si bien que les deux reviennent de la même requête quand on demande qui
-est encore sur une ancienne branche.
+Le format sur le fil est le même, et il a été vérifié sur un historique réel. Il a été lu dans un
+historique produit par le SDK Go, puis émis depuis le pont, et le serveur l'a accepté. Une
+exécution Durable versionnée et une exécution Go versionnée enregistrent le **même** marqueur
+`Version` et le **même** attribut de recherche `TemporalChangeVersion`. Quand vous cherchez les
+exécutions encore sur une ancienne branche, la même requête renvoie les deux.
 
-Deux différences, et aucune ne porte sur la primitive :
+Les deux différences portent sur ce qui entoure la primitive :
 
 | | |
 |---|---|
-| **Versionnage des workers** | Identifiants de build, noms de déploiement, épinglage d'une exécution à une version de worker, le mécanisme d'exploitation qui vit dans le worker et la file, non dans le code du workflow. Le SDK l'a ; Durable non. |
-| **Savoir qu'une branche est morte** | Une requête, sur le backend Temporal, pour les deux. Sur les backends à journal de Durable il n'y a pas d'attributs de recherche : la question n'y a pas de réponse équivalente. |
+| **Versionnage des workers** | Identifiants de build, noms de déploiement, épinglage d'une exécution à une version de worker : le mécanisme d'exploitation qui vit dans le worker et la file, hors du code du workflow. Le SDK l'a ; Durable non. |
+| **Savoir qu'une branche est morte** | Une requête, sur le backend Temporal, pour les deux. Les backends à journal de Durable n'ont pas d'attributs de recherche, et n'offrent donc pas de réponse équivalente. |
 
 Voir [Changer un workflow qui tourne](../deploying/).
 
