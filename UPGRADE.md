@@ -465,6 +465,18 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Temporal: the workflow worker keeps polling after a decode failure or a rejected completion (#824, #840)
+
+A payload that fails to decode on a later history page now fails the workflow task
+(`RespondWorkflowTaskFailed`), as it already did on the first page. Outside a task poll, the codec
+client throws `Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, a `\RuntimeException` whose
+previous exception is the codec's own error.
+
+A `RespondWorkflowTaskCompleted` rejected with `INVALID_ARGUMENT` is logged as a warning and the
+worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain an optional last
+argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
+runtime factory pass theirs. Nothing to migrate.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
