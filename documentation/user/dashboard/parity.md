@@ -26,7 +26,7 @@ when a gap closes.
 | Red on the failing event | Yes | Yes | On the timeline | No |
 | Nexus operations table | Yes | Yes | Yes | Yes |
 | Worker presence | Yes | Yes, journal and activity | No | No |
-| Payload masking | Folded | Folded | Folded | Always open |
+| Payload masking | Folded | Folded | Folded | Folded |
 | Languages | English, French | English | English, French | English |
 
 ## Words on screen

@@ -65,8 +65,6 @@ dans ce processus. Le panneau affiche **Journal still empty**. Lancez un worker,
 - **Vocabulaire.** La colonne d'issue emploie les mots des autres tableaux de bord et ajoute trois états qui ne sont pas des issues : Queued (no journal yet), Pending et Cancellation requested. Le panneau est en anglais seulement.
 - **Frise.** Une ligne par événement, dans l'ordre du journal, et non une ligne par action. Le
   temps de file n'est pas hachuré et un événement en échec n'est pas peint en rouge.
-- **Charges utiles.** Elles sont masquées comme celles du tableau de bord, et toujours affichées
-  dépliées.
 - **Limites.** 500 événements par journal, et un avertissement quand une table d'opérations Nexus
   est tronquée.
 

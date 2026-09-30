@@ -63,7 +63,6 @@ queued: with an asynchronous transport, the handler has not run in this process.
   English only.
 - **Timeline.** One row per event, in journal order. Queue time is not hatched and a failed event
   is not painted red.
-- **Payloads.** They are masked like the dashboard's, and always shown open.
 - **Limits.** 500 events per journal, and a warning when a Nexus operations table is cut.
 
 [Parity](../parity/) lists every difference.

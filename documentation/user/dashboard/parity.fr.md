@@ -26,7 +26,7 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Rouge sur l'événement en échec | Oui | Oui | Sur la frise | Non |
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
 | Présence des workers | Oui | Oui, journal et activity | Non | Non |
-| Masquage des charges utiles | Replié | Replié | Replié | Toujours ouvert |
+| Masquage des charges utiles | Replié | Replié | Replié | Replié |
 | Langues | Anglais, français | Anglais | Anglais, français | Anglais |
 
 ## Les mots à l'écran
