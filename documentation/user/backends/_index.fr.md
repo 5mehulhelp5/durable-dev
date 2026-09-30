@@ -277,11 +277,30 @@ d'`ext-grpc`. Voir **DUR030**.
 
 ### Configuration
 
+Donnez au journal une connexion à lui. Partager celle de l'application est fortement déconseillé
+(DUR054) : les transactions de Durable s'imbriquent alors dans les transactions métier. Un worker
+qui démarre avec le journal sur la connexion par défaut de l'application le signale par un
+avertissement dans les logs. Mieux encore : faites pointer cette connexion vers une base (ou un
+schéma) et un utilisateur SQL propres à Durable, pour que le code métier ne puisse pas du tout
+atteindre les tables du journal.
+
+```yaml
+# config/packages/doctrine.yaml — le journal sur une connexion à lui
+doctrine:
+    dbal:
+        default_connection: default
+        connections:
+            default:
+                url: '%env(resolve:DATABASE_URL)%'
+            durable:
+                url: '%env(resolve:DURABLE_DATABASE_URL)%'
+```
+
 ```yaml
 # config/packages/durable.yaml
 durable:
     dbal:
-        connection: doctrine.dbal.default_connection
+        connection: doctrine.dbal.durable_connection
         lock_factory: lock.factory
     backend: dbal
     activity_transport:
@@ -292,6 +311,10 @@ framework:
     lock:
         default: '%env(LOCK_DSN)%'   # une URL DBAL (postgresql://…, mysql://…), redis://… ; pas le doctrine:// de Messenger ; partagé entre les workers
 ```
+
+DoctrineBundle nomme le service de chaque connexion `doctrine.dbal.<nom>_connection`. Sur une base
+autre que celle de l'ORM, `doctrine:migrations:diff` ne voit pas les tables de Durable : elles
+viennent de la première écriture, ou de `bin/console durable:setup`.
 
 Ajouter un `temporal.dsn` garde le journal en SQL et ne sert du cluster que pour servir des
 opérations Nexus. `backend: temporal` lui confierait le journal à la place : il n'y a jamais de

@@ -267,6 +267,50 @@ whose class lacks a method of the named contract is refused by name when the run
 interfaces being served, drop the attribute (the interfaces then drive, as before) or move them to
 a handler of their own.
 
+### Laravel: the shipped migrations run on `durable.connection`
+
+**Who is affected**: a Laravel application whose `config/durable.php` names a `connection` other
+than the default one. `php artisan migrate` used to build Durable's tables on the default connection;
+the stores created their own copies on `durable.connection` at the first write, and later schema
+migrations never reached those. With `connection => null`, nothing changes.
+
+**What to do**:
+
+1. Run `php artisan migrate`. Migrations not yet run now land on `durable.connection`.
+2. Tables the stores created before a later schema change may lack it: `picked_up_at`,
+   `waiting_on`, the status index, `durable_execution_heads`. The four migrations that bring them
+   check before they alter, so running them on that connection is safe. The only rows they touch
+   are those of a missing `picked_up_at`, filled from `started_at`. They alter tables that must
+   exist: if the journal's database has none yet, run `php artisan migrate` first (step 1).
+   Then:
+
+   ```bash
+   php artisan migrate --database=<connection> \
+     --path=vendor/gplanchat/durable-bridge-illuminate/Migrations/2026_09_24_000000_add_picked_up_at_to_durable_workflow_runs.php \
+     --path=vendor/gplanchat/durable-bridge-illuminate/Migrations/2026_09_24_000001_add_waiting_on_to_durable_workflow_runs.php \
+     --path=vendor/gplanchat/durable-bridge-illuminate/Migrations/2026_09_25_000000_add_status_index_to_durable_workflow_runs.php \
+     --path=vendor/gplanchat/durable-bridge-illuminate/Migrations/2026_09_28_000000_create_durable_execution_heads.php
+   ```
+
+   `--database` also puts a `migrations` table on that connection, to record them.
+3. Drop the empty copies left on the default connection, if any.
+4. A copy published with `vendor:publish --tag=durable-migrations` belongs to the application and
+   keeps running on the default connection: make it extend
+   `Gplanchat\Bridge\Illuminate\Schema\DurableMigration` instead of
+   `Illuminate\Database\Migrations\Migration`.
+
+Recommending a connection of its own is **DUR054**.
+
+### A warning when the journal is on the application's default connection
+
+**Who is affected**: a Symfony application whose `durable.dbal.connection` is the default Doctrine
+connection (the default setting), and a Laravel application on the `illuminate` backend whose
+`durable.connection` is unset or names the default connection. Symfony logs a warning when a worker
+starts; Laravel logs one at boot, in the console only.
+
+**What to do**: nothing is required, and nothing is refused. To act on it, give the journal a
+connection of its own, as the configuration examples show (**DUR054**).
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
