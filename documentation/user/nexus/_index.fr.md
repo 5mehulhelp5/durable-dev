@@ -5,18 +5,21 @@ weight: 29
 
 # Opérations Nexus
 
-Nexus permet à un workflow d'appeler une opération qui appartient à une autre équipe, un autre
-namespace, un autre déploiement, sans qu'aucun des deux côtés connaisse les workflows de l'autre.
-Durable tient les deux rôles : il **appelle** des opérations, et il en **sert**.
+Une opération Nexus est une opération servie par un autre service, avec son propre contrat, qu'un
+workflow appelle comme il appelle une activité (voir le [glossaire](../glossary/)). Avec Nexus, un
+workflow appelle une opération qui appartient à une autre équipe, à un autre namespace ou à un
+autre déploiement, et aucun des deux côtés ne connaît les workflows de l'autre. Durable tient les
+deux rôles : il **appelle** des opérations et il en **sert**.
 
 Servir demande le **backend Temporal**. Les backends in-memory et DBAL n'ont aucune route entre
-namespaces, et ils le disent plutôt que de faire semblant ; voir [Backends](../backends/).
+namespaces, et ils le signalent par une erreur ; voir [Backends](../backends/).
 
-Cela n'oblige pas à renoncer à un journal SQL. `durable.backend: dbal` avec un `temporal.dsn` dit que
-le cluster est joignable pendant que le journal SQL reste la source de vérité, c'est ainsi qu'une boutique dont
-le tableau de bord lit DBAL sert une opération Nexus sans que ce tableau de bord change ce qu'il
-lit. Appeler est l'inverse : une opération est ordonnancée par un workflow, et un workflow ne peut
-en ordonnancer une que si son journal **est** le cluster.
+Vous pouvez garder un journal SQL (l'enregistrement, en ajout seul, de tout ce qu'une exécution de
+workflow a décidé et reçu) et servir quand même. `durable.backend: dbal` avec un `temporal.dsn`
+déclare le cluster joignable pendant que le journal SQL reste la source de vérité. C'est ainsi
+qu'une boutique dont le tableau de bord lit DBAL sert une opération Nexus, et ce tableau de bord
+continue de lire les mêmes données. Pour appeler, c'est l'inverse : un workflow ordonnance
+l'opération, et il ne peut en ordonnancer une que si son journal **est** le cluster.
 
 ---
 
@@ -37,29 +40,30 @@ $billing = $env->nexusStub(BillingContract::class, endpoint: 'payments');
 $recu = $env->await($billing->charge('CMD-42', 1200));
 ```
 
-Le contrat s'écrit **une fois** et se lit des deux côtés de la frontière : l'appelant en dérive un
-stub typé, le gestionnaire l'implémente. Aucun nom d'opération n'est recopié en chaîne, si bien
-qu'une faute de frappe est une erreur de type et non une opération qui attend un gestionnaire dont
-le nom ne correspondra jamais.
+Vous écrivez le contrat **une fois**, et les deux côtés de la frontière le lisent : l'appelant en
+dérive un stub typé, le gestionnaire l'implémente. Vous ne recopiez jamais un nom d'opération en
+chaîne, si bien qu'une faute de frappe devient une erreur de type, au lieu d'une opération qui
+attend un gestionnaire dont le nom ne correspond jamais.
 
-L'endpoint est un paramètre du stub, pas du contrat : il dit *où* le service est servi, ce qui
-relève du déploiement et change d'un environnement à l'autre, quand le contrat ne change pas.
+L'endpoint est un paramètre du stub, et le contrat ne le mentionne pas. L'endpoint dit *où* le
+service est servi. Cela relève du déploiement et change d'un environnement à l'autre ; le contrat,
+lui, reste le même.
 
-`nexusStub()` assemble ; `await()` attend. C'est la règle partout ailleurs ; voir
+`nexusStub()` assemble l'appel et `await()` l'attend, comme partout ailleurs dans un workflow ; voir
 [Créer un workflow](../workflows/).
 
-La charge voyage **telle que vous l'avez écrite**. Aucune enveloppe Durable ne l'entoure, donc un
+La charge voyage **telle que vous l'avez écrite**. Durable ne l'entoure d'aucune enveloppe, donc un
 gestionnaire écrit avec le SDK Go, Java ou TypeScript y lit les champs qu'il déclare.
 
-C'est aussi ce qui contraint ce qu'un contrat peut déclarer. La charge est du JSON simple, clée par
-nom de paramètre, et elle est décodée **en tableau associatif** de l'autre côté. Un paramètre typé
-objet y arriverait en tableau, et le gestionnaire lèverait un `TypeError` au moment de l'appel,
-pas à l'écriture du contrat. Les contrats portent donc des scalaires et des tableaux. Un détail PHP
-mérite d'être connu : un tableau associatif **vide** s'encode `[]` et non `{}`, si bien qu'un champ
-qui peut être vide a besoin d'un champ voisin qui dise s'il faut le lire.
+Cela limite aussi ce qu'un contrat peut déclarer. La charge est du JSON simple, clée par nom de
+paramètre, et l'autre côté la décode **en tableau associatif**. Un paramètre typé objet y arrive en
+tableau, et le gestionnaire lève un `TypeError` au moment de l'appel, et non à l'écriture du
+contrat. Les contrats portent donc des scalaires et des tableaux. En PHP, un tableau associatif
+**vide** s'encode `[]` et non `{}`, si bien qu'un champ qui peut être vide a besoin d'un champ
+voisin qui dise s'il faut le lire.
 
-Que le gestionnaire réponde tout de suite ou dans deux heures ne change rien ici : le workflow
-attend l'opération, et le résultat arrive quand il arrive.
+Que le gestionnaire réponde tout de suite ou dans deux heures, le code appelant reste le même : le
+workflow attend l'opération jusqu'à l'arrivée de son résultat.
 
 ---
 
@@ -80,8 +84,8 @@ final class Billing implements BillingServed
 }
 ```
 
-L'enregistrement du gestionnaire dépend de l'hôte. Sous Symfony, `#[AsNexusServiceHandler]` sur un
-service suffit : le bundle l'autoconfigure. Laravel ne trouve aucun gestionnaire par son
+L'enregistrement du gestionnaire dépend de l'hôte. Sous Symfony, placez `#[AsNexusServiceHandler]`
+sur un service, et le bundle l'autoconfigure. Laravel ne découvre pas les gestionnaires par leur
 attribut : il sert les classes listées dans `nexus.handlers` de `config/durable.php`, chacune sous
 la forme `gestionnaire => contrat`, ou la classe du gestionnaire seule, dont le
 `#[AsNexusServiceHandler]` nomme alors le contrat ([la forme en paire plus bas](#servir-est-du-travail-dhôte-et-ce-nest-pas-du-travail-symfony)).
@@ -91,9 +95,9 @@ gestionnaire dans l'argument `nexusHandlers` de `RuntimeFactory` dans `di.xml`, 
 
 ### Pourquoi le contrat vient en deux morceaux
 
-Une opération remplie par un workflow n'a pas de corps de gestionnaire : la plomberie démarre le
-workflow, et le serveur en livre le résultat. Le contrat se sépare donc : l'interface qu'un
-gestionnaire **implémente**, et celle qui l'**étend** pour l'appelant.
+Une opération remplie par un workflow n'a pas de corps de gestionnaire. Durable démarre le
+workflow, et le serveur en livre le résultat. Le contrat se sépare donc en deux interfaces :
+celle qu'un gestionnaire **implémente**, et celle qui l'**étend** pour l'appelant.
 
 ```php
 #[AsNexusService('billing')]
@@ -115,14 +119,15 @@ interface BillingContract extends BillingServed // + ce qu'un workflow remplit
 final class Charge { /* … */ }
 ```
 
-Sans cette séparation, PHP exigerait un corps pour `charge()` sur le gestionnaire, une méthode
-vide dont le seul rôle serait de dire qu'il n'y a rien à écrire. C'est le workflow qui réclame
-l'opération, là où son code vit, et le contrat de l'appelant déclare quand même tout, pour que le
-stub puisse tout appeler.
+Sans cette séparation, PHP exige un corps pour `charge()` sur le gestionnaire : une méthode vide
+qui n'existe que pour montrer qu'il n'y a rien à écrire. Avec la séparation, le workflow réclame
+l'opération dans sa propre classe, là où vit son code, et le contrat de l'appelant déclare quand
+même chaque opération, pour que le stub puisse toutes les appeler.
 
 ### Répondre maintenant, ou répondre plus tard
 
-Il y a deux formes, et choisir entre elles est la seule décision qui compte.
+Un gestionnaire répond sous l'une de deux formes, et le choix entre elles est la décision
+principale quand vous servez une opération.
 
 ```php
 // Maintenant : le gestionnaire rend le type déclaré par le contrat.
@@ -133,15 +138,15 @@ public function verify(string $ordre): array { … }
 final class Charge { … }
 ```
 
-**Un gestionnaire dispose d'environ neuf secondes.** Ce n'est pas le budget de l'opération, c'est
-celui pour répondre à *cette tâche* : le `scheduleToClose` de l'appelant peut valoir cinq minutes,
-la tâche elle-même porte un `request-timeout` d'environ neuf secondes. Un gestionnaire encore au
-travail quand il expire voit sa tâche redélivrée, et recommence. Redélivrances mesurées : ~9,9 s,
-~20,7 s, ~33,6 s.
+**Un gestionnaire dispose d'environ neuf secondes.** Ce délai couvre la réponse à *cette tâche*,
+quel que soit le budget de l'opération elle-même. Le `scheduleToClose` de l'appelant peut valoir
+cinq minutes, alors que la tâche porte un `request-timeout` d'environ neuf secondes. Quand un
+gestionnaire travaille encore à l'expiration, sa tâche est redélivrée et le gestionnaire
+recommence. Redélivrances mesurées : ~9,9 s, ~20,7 s, ~33,6 s.
 
-Une méthode implémentée est donc pour une lecture, une validation, un calcul dont vous savez qu'il
+Réservez une méthode implémentée à une lecture, une validation ou un calcul dont vous savez qu'il
 est rapide. Tout ce qui parle à un prestataire de paiement, attend un humain ou réessaie pendant une
-journée appartient à un workflow, et c'est ce que déclare `#[FulfilsNexusOperation]`.
+journée appartient à un workflow, que vous déclarez avec `#[FulfilsNexusOperation]`.
 
 Quand vous nommez un workflow, Durable le démarre avec le callback de l'appelant attaché, et le
 serveur livre le résultat de ce workflow à l'appelant quand il se termine. Votre gestionnaire n'est
@@ -150,35 +155,35 @@ pas rappelé.
 ### Annulation
 
 Si l'appelant annule, Durable annule le workflow qui remplit l'opération. Vous n'écrivez aucun
-crochet d'annulation : votre workflow observe déjà son annulation et compense, exactement comme
-décrit dans [Annulation](../cancellation/).
+crochet d'annulation : votre workflow observe déjà son annulation et compense, comme décrit dans
+[Annulation](../cancellation/).
 
-Une annulation n'atteint un gestionnaire que pour une opération **démarrée** ; une opération qui
-attend encore sa première réponse n'a rien à annuler de votre côté.
+Une annulation n'atteint un gestionnaire que pour une opération **démarrée**. Pour une opération
+qui attend encore sa première réponse, il n'y a rien à annuler de votre côté.
 
-### Échouer
+### Faire échouer une opération {#échouer}
 
-Levez, et l'opération échoue :
+Pour faire échouer l'opération, levez une exception :
 
 ```php
 throw new \RuntimeException('le prestataire de paiement est injoignable');
 ```
 
 Une exception ordinaire est rapportée en `INTERNAL`, qui est **réessayable** : la tâche revient,
-jusqu'au budget de l'opération. C'est juste pour une panne et faux pour une requête invalide, qui
-ne s'améliorera jamais. Pour un refus définitif, dites de quelle nature il est :
+jusqu'au budget de l'opération. Cela convient à une panne. Cela ne convient pas à une requête
+invalide, qu'aucun réessai ne corrige. Pour un échec définitif, indiquez sa nature :
 
 | définitif, ne pas réessayer | réessayable, retenter |
 |---|---|
 | `BAD_REQUEST`, `UNAUTHENTICATED`, `UNAUTHORIZED` | `RESOURCE_EXHAUSTED`, `INTERNAL` |
 | `NOT_FOUND`, `NOT_IMPLEMENTED`, `CONFLICT` | `UNAVAILABLE`, `UPSTREAM_TIMEOUT`, `REQUEST_TIMEOUT` |
 
-La ligne de partage est *à qui la faute*. Une requête malformée ou un droit manquant ne se répare
-pas en réessayant ; une surcharge ou un délai en amont, peut-être. La table est celle de nexus-rpc,
-partagée par tous les SDK, ce n'est pas une invention de Durable.
+Les deux colonnes se séparent selon *à qui revient la faute*. Réessayer ne répare pas une requête
+malformée ou un droit manquant ; cela peut passer une surcharge ou un délai dépassé en amont. La
+table vient de nexus-rpc, et tous les SDK la partagent ; Durable ne l'a pas définie.
 
-Une opération que personne ne sert reçoit `NOT_IMPLEMENTED`, définitif, et le worker continue de
-servir les autres.
+Une opération que personne ne sert reçoit `NOT_IMPLEMENTED`, qui est définitif, et le worker
+continue de servir ses autres opérations.
 
 ---
 
