@@ -74,6 +74,7 @@ final class UndecodableTaskTest extends TestCase
         self::assertSame('test-namespace', $failed->getNamespace());
         self::assertStringContainsString('unknown key k2', (string) $failed->getFailure()?->getMessage());
         self::assertSame('', $failed->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
+        self::assertSame(\RuntimeException::class, $failed->getFailure()->getApplicationFailureInfo()?->getType());
         self::assertSame(WorkflowTaskFailedCause::WORKFLOW_TASK_FAILED_CAUSE_WORKFLOW_WORKER_UNHANDLED_FAILURE, $failed->getCause());
     }
 
@@ -144,6 +145,7 @@ final class UndecodableTaskTest extends TestCase
             'history' => new History(['events' => [new HistoryEvent(['workflow_execution_started_event_attributes' => $started])]]),
         ]));
         $inner->expects(self::never())->method('RespondWorkflowTaskFailed');
+        $inner->expects(self::never())->method('RespondActivityTaskFailed');
 
         $this->expectExceptionMessage('unknown key k2');
         (new PayloadCodecWorkflowServiceClient($inner, new FailingCodec()))->GetWorkflowExecutionHistory(new GetWorkflowExecutionHistoryRequest());
