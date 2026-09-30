@@ -110,6 +110,41 @@ final class TheJournalKeepsItsStringIdsTest extends TestCase
     }
 
     /**
+     * A stored child or next id names an execution: an empty one is refused on read (#682).
+     *
+     * @return iterable<string, array{class-string<Event>, array<string, mixed>}>
+     */
+    public static function emptyOtherIds(): iterable
+    {
+        yield 'child id' => [ChildWorkflowCompleted::class, ['childExecutionId' => '', 'result' => null]];
+        yield 'next id' => [WorkflowContinuedAsNew::class, ['nextWorkflowType' => 'App\\Next', 'nextPayload' => [], 'newExecutionId' => '']];
+    }
+
+    /**
+     * @param class-string<Event>  $type
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('emptyOtherIds')]
+    public function testAnEmptyStoredOtherIdIsRefused(string $type, array $payload): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        EventDataMapper::toDomainEvent(['execution_id' => 'exec-1', 'event_type' => $type, 'payload' => $payload]);
+    }
+
+    public function testAnEmptyStoredSourceParentReadsBackAsNull(): void
+    {
+        $event = EventDataMapper::toDomainEvent([
+            'execution_id' => 'exec-1',
+            'event_type' => WorkflowExecutionCancelled::class,
+            'payload' => ['reason' => 'stop', 'sourceParentExecutionId' => ''],
+        ]);
+
+        self::assertInstanceOf(WorkflowExecutionCancelled::class, $event);
+        self::assertNull($event->sourceParentExecutionId());
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function readBack(Event $event): array
