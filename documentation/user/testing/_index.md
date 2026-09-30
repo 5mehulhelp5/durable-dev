@@ -321,6 +321,7 @@ Some tests need namespace-level setup. The file that needs it documents that set
 ```bash
 temporal operator search-attribute create --name DurableOrderId --type Keyword
 temporal operator search-attribute create --name DurableAmount  --type Int
+temporal operator search-attribute create --name DurablePrice   --type Double
 ```
 
 ---
