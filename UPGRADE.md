@@ -465,6 +465,19 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Temporal: a child starts with its memo, summary and details (#804)
+
+`ChildWorkflowOptions::$memo`, `$staticSummary` and `$staticDetails` now reach the
+`StartChildWorkflowExecution` command: the memo as the child's memo, the summary and details as the
+command's user metadata, which the Temporal UI shows. Before, the SQL and in-memory journals
+recorded them and the Temporal bridge dropped them. Server 1.20 predates user metadata on commands
+(1.25 has it) and ignores the summary and details; the memo reaches every supported server.
+
+A child memo key `durableExecutionId` or `durableWaitingOn` now throws
+`UnsupportedByBackendException` on Temporal: Durable writes both keys itself.
+
+**What to do:** rename a child memo key if it is one of those two.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
