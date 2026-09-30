@@ -5,8 +5,10 @@ weight: 40
 
 # Testing workflows
 
-Durable ships a **testing toolkit** so you can validate your workflows and activities with standard PHPUnit.
-There are two entry points depending on whether you write framework-agnostic tests or Symfony bundle integration tests:
+Durable ships a **testing toolkit** for testing your workflows and activities with standard PHPUnit.
+A workflow describes the steps of an execution, and an activity is one of those steps that has a
+side effect, such as an HTTP call; see the [glossary](../glossary/). Pick the entry point that
+matches your tests, framework-agnostic or Symfony bundle integration:
 
 | Utility | Package | When to use |
 |---|---|---|
@@ -17,8 +19,10 @@ There are two entry points depending on whether you write framework-agnostic tes
 
 ## Unit and functional tests with `DurableTestCase` {#unit-and-functional-tests--durabletestcase}
 
-`DurableTestCase` is an abstract PHPUnit `TestCase` that wires an **in-memory backend** for you.
-Subclass it, call `createWorkflowTestEnvironment()`, run your workflow, and use the built-in assertions.
+`DurableTestCase` is an abstract PHPUnit `TestCase` that wires an **in-memory backend** for you:
+the journal, the record of an execution's steps and their results, stays in memory. Extend it, call
+`createWorkflowTestEnvironment()`, run your workflow, then check the result with the built-in
+assertions.
 
 ```php
 <?php
@@ -109,7 +113,7 @@ final class GreetingWorkflow
 
 ## Controlling activity behaviour with `ActivitySpy` {#controlling-activity-behaviour--activityspy}
 
-`ActivitySpy` is a **callable test double** for activities. You can preset its return value, make it throw, or give it a sequence of results to simulate retries.
+`ActivitySpy` is a **callable test double** for activities. Set its return value, make it throw, or give it a sequence of results to simulate retries.
 
 ### Always return the same value
 
@@ -126,8 +130,8 @@ $spy = ActivitySpy::throws(new \RuntimeException('External API unavailable'));
 ### Return a sequence (useful for retry scenarios)
 
 The first call returns the first value, the second call the second, and so on.
-If a `\Throwable` appears in the sequence, it is **thrown** on that attempt.
-The last entry is repeated once the sequence is exhausted.
+A `\Throwable` in the sequence is **thrown** on its attempt.
+Once the sequence is exhausted, the spy repeats the last entry.
 
 ```php
 $spy = ActivitySpy::returnsSequence(
@@ -153,7 +157,7 @@ $spy->assertNeverCalled();
 
 ## Low-level environment: `WorkflowTestEnvironment` {#low-level-environment--workflowtestenvironment}
 
-`WorkflowTestEnvironment` is the backing object that `DurableTestCase` uses. You can use it directly when you do not want to subclass `DurableTestCase`, for instance in test-support helper classes.
+`DurableTestCase` relies on `WorkflowTestEnvironment`. Use it directly when you do not want to extend `DurableTestCase`, for instance in test-support helper classes.
 
 ```php
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
@@ -185,7 +189,7 @@ assert($result === 'HELLO');
 
 ## Symfony integration tests with `DurableBundleTestTrait` {#symfony-integration-tests--durablebundletesttrait}
 
-For tests that boot your Symfony application kernel, use `DurableBundleTestTrait` in any class that extends `KernelTestCase`. The trait assumes that your **Messenger transports** in the `test` environment are configured as **in-memory** (see [Getting started](../getting-started/)).
+For tests that boot your Symfony application kernel, use `DurableBundleTestTrait` in any class that extends `KernelTestCase`. The trait works with **Messenger transports** configured as **in-memory** in the `test` environment (see [Getting started](../getting-started/)).
 
 ```php
 <?php
@@ -237,7 +241,7 @@ final class OrderWorkflowIntegrationTest extends KernelTestCase
 
 ### Prerequisites
 
-In `config/packages/messenger.yaml` (under `when@test:`), ensure you have in-memory transports with names matching `DurableBundleTestTrait::$durableWorkflowTransports`:
+In `config/packages/messenger.yaml`, under `when@test:`, declare in-memory transports whose names match `DurableBundleTestTrait::$durableWorkflowTransports`:
 
 ```yaml
 when@test:
@@ -250,7 +254,7 @@ when@test:
 
 ### Customising the transport list or drain timeout
 
-Override the static properties before each test:
+To change them, override the static properties before each test:
 
 ```php
 protected function setUp(): void
@@ -297,8 +301,8 @@ Temporal integration (real Temporal server)
 
 ## Testing against a real Temporal server
 
-Unit tests check that the bridge builds well-formed protobuf commands. Only a real server tells you
-they are **accepted**.
+Unit tests check that the bridge builds well-formed protobuf commands. Only a real server shows
+whether it **accepts** them.
 
 ```bash
 temporal server start-dev --namespace durable-test --port 7233
@@ -306,13 +310,13 @@ temporal server start-dev --namespace durable-test --port 7233
 DURABLE_TEMPORAL_ADDRESS=127.0.0.1:7233 vendor/bin/phpunit --testsuite integration
 ```
 
-Without `DURABLE_TEMPORAL_ADDRESS` the suite is skipped, so it stays harmless in a pipeline that has
-no server.
+Without `DURABLE_TEMPORAL_ADDRESS`, the suite is skipped, so it causes no failure in a pipeline that
+has no server.
 
-Two workers run in **separate processes**, as in production. Both roles long-poll for tens of
-seconds; alternating them in one process starves whichever is not currently polling.
+The suite runs two workers in **separate processes**, as in production. Both roles long-poll for
+tens of seconds, and alternating them in one process starves whichever role is not polling.
 
-Some tests need namespace-level setup, documented at the top of the file that needs it:
+Some tests need namespace-level setup. The file that needs it documents that setup at its top:
 
 ```bash
 temporal operator search-attribute create --name DurableOrderId --type Keyword
@@ -321,10 +325,10 @@ temporal operator search-attribute create --name DurableAmount  --type Int
 
 ---
 
-## Time is skipped, not waited for
+## Timers run on a virtual clock in tests {#time-is-skipped-not-waited-for}
 
-A workflow that sleeps is testable in milliseconds. The harness runs on a **virtual clock** it
-advances to the next due timer, so `sleep(Duration::hours(24))` costs no real time:
+A workflow that sleeps runs in milliseconds under test. The harness uses a **virtual clock** and
+advances it to the next due timer, so `sleep(Duration::hours(24))` takes no real time:
 
 ```php
 interface PingActivities
@@ -342,22 +346,23 @@ $result = $env->run(function (WorkflowEnvironment $wf): string {
 }, 'nightly-1');
 ```
 
-The clock only moves when **nothing else can progress**. Skipping earlier would make the timer win
-every `any(activity, timer)` race that an activity was about to win, so a race behaves the same
-here as it does in production.
+The clock only moves when **nothing else can progress**. Advancing it earlier would make the timer
+win every `any(activity, timer)` race that the activity was about to win. Because the clock waits,
+a race has the same outcome here as in production.
 
-Retry backoff is a different matter: it uses real time, because a retry is queued on the transport
-rather than recorded as a timer. Pass `initialInterval: Duration::zero()` to keep those tests fast.
+Retry backoff uses real time, because a retry is queued on the transport instead of being recorded
+as a timer. Pass `initialInterval: Duration::zero()` to keep those tests fast.
 
 ---
 
-## Two traps of the in-memory runner
+## Stuck executions and endless retries in the in-memory runner {#two-traps-of-the-in-memory-runner}
 
-**An execution that cannot progress fails instead of hanging.** A workflow waiting on a signal you
-forgot to deliver raises `WorkflowStuckException` rather than spinning.
+**An execution that cannot progress fails instead of hanging.** A workflow waiting on a signal that
+the test never delivers raises `WorkflowStuckException` instead of spinning.
 
 **Attempts are unlimited by default.** An activity that always fails retries forever, so the runner
-enforces an overall budget and then reports which of the two situations you are in:
+enforces an overall budget. When the budget runs out, the runner reports which of the two situations
+applies:
 
 ```
 Workflow x did not finish within 10.0s. Activities retry indefinitely by default
@@ -372,14 +377,14 @@ $env = WorkflowTestEnvironment::inMemory(
 );
 ```
 
-Retry backoff is honoured for real, so an activity configured with the default one-second interval
-makes the test wait. Pass `initialInterval: Duration::zero()` to keep tests fast.
+Retry backoff takes real time, so an activity configured with the default one-second interval makes
+the test wait. Pass `initialInterval: Duration::zero()` to keep tests fast.
 
 ---
 
 ## Testing child workflows
 
-The harness needs the child types registered, since it must resolve them by name:
+Register the child workflow types with the harness, which resolves them by name:
 
 ```php
 $env = WorkflowTestEnvironment::inMemory(['work' => $spy]);
@@ -391,4 +396,4 @@ $result = $env->run(
 );
 ```
 
-`registerWorkflowClass()` takes an attribute-annotated workflow class instead.
+To register a workflow class that carries the attributes, use `registerWorkflowClass()` instead.
