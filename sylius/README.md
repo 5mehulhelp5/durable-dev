@@ -16,7 +16,7 @@ It serves two things:
 |---|---|
 | PHP | 8.3, Sylius 2.2's floor |
 | database | MySQL in CI and in `.env`; the demonstration uses PostgreSQL |
-| Durable backend | DBAL, on the default Doctrine connection |
+| Durable backend | DBAL, on a Doctrine connection of its own (`durable`) to the same database (DUR054) |
 
 ## Profiles
 
