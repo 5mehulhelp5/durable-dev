@@ -424,6 +424,9 @@ framework:
             durable_activities: 'doctrine://default?queue_name=durable_activities'
 ```
 
+On PostgreSQL, add `use_notify: false` to both transports; the
+[DBAL backend page](../backends/#doctrine-transport-on-postgresql) shows how and says why.
+
 
 **With a Temporal cluster: the DSN only.** An environment where `durable.temporal.dsn` is set runs
 on Temporal. The cluster holds the journal and the queues, and the

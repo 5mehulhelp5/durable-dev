@@ -324,6 +324,29 @@ Ajouter un `temporal.dsn` garde le journal en SQL et n'utilise le cluster que po
 opérations Nexus. Avec `backend: temporal`, c'est le cluster qui porte le journal. Dans aucun des
 deux cas il n'y a de seconde source de vérité.
 
+### Le transport Doctrine sur PostgreSQL {#doctrine-transport-on-postgresql}
+
+Sur PostgreSQL, réglez `use_notify: false` sur les transports Doctrine de Durable :
+
+```yaml
+framework:
+    messenger:
+        transports:
+            durable_workflows:
+                dsn: 'doctrine://default?queue_name=durable_workflows'
+                options: { use_notify: false }
+            durable_activities:
+                dsn: 'doctrine://default?queue_name=durable_activities'
+                options: { use_notify: false }
+```
+
+Une fois une file vide, le transport PostgreSQL de Messenger ne la relit qu'à réception d'une
+notification, qu'un worker qui consomme les deux files sur une seule connexion peut manquer, ou au
+bout de 60 secondes (`check_delayed_interval`). La reprise qu'envoie une activité attend alors
+jusqu'à 60 secondes, ou le prochain lancement de `durable:worker`, quelle que soit la valeur de
+`--sleep`. Avec `use_notify: false`, le transport interroge chaque file à chaque tour, comme sur
+MySQL.
+
 ### Une seule reprise à la fois par exécution {#une-reprise-à-la-fois--la-chose-à-ne-pas-rater}
 
 Temporal sérialise les tâches de workflow d'une exécution côté serveur. Ici il n'y a pas de serveur :

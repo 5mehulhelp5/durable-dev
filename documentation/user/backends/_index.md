@@ -307,6 +307,28 @@ Adding a `temporal.dsn` keeps the journal in SQL and uses the cluster only to se
 With `backend: temporal`, the cluster holds the journal instead. In neither case is there a second
 source of truth.
 
+### The Doctrine transport on PostgreSQL {#doctrine-transport-on-postgresql}
+
+On PostgreSQL, set `use_notify: false` on Durable's Doctrine transports:
+
+```yaml
+framework:
+    messenger:
+        transports:
+            durable_workflows:
+                dsn: 'doctrine://default?queue_name=durable_workflows'
+                options: { use_notify: false }
+            durable_activities:
+                dsn: 'doctrine://default?queue_name=durable_activities'
+                options: { use_notify: false }
+```
+
+Once a queue is empty, Messenger's PostgreSQL transport reads it again only on a notification, which
+a worker consuming both queues over one connection can miss, or after 60 seconds
+(`check_delayed_interval`). The resume an activity sends then waits up to 60 seconds, or until the
+next `durable:worker` starts, whatever `--sleep` says. With `use_notify: false`, the transport polls
+each queue on every loop, as it does on MySQL.
+
 ### One resume at a time per execution {#one-resume-at-a-time--the-thing-to-get-right}
 
 Temporal serialises workflow tasks for one execution server-side. There is no server here, so two
