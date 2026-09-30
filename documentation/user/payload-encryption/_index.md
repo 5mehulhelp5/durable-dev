@@ -29,6 +29,8 @@ and `decode(Payload): Payload`. The contract is Temporal's:
 - `decode()` returns a payload without that mark unchanged, so history written before the codec was
   enabled stays readable;
 - `decode()` throws on a payload it recognises but cannot decode, an unknown key for instance.
+  The exception message reaches the Temporal server and its Web UI, so it never contains payload
+  or key bytes.
 
 Durable provides no implementation. The algorithm, the keys and their rotation are yours. The class
 below is an **example** to start from, not a class Durable ships or supports. It needs PHP's
@@ -176,8 +178,10 @@ out again: once the key is available, the task goes through. An activity task co
 attempt under its retry policy. The failure carries the error's class and message, never its stack
 trace, which could quote the key or the plaintext.
 
-A long history arrives in several pages, and the worker reads the pages after the first one while
-it replays. A payload that cannot be decoded in one of those pages still stops the worker. Run
+Two cases still stop the worker. A long history arrives in several pages, and the worker reads the
+pages after the first one while it replays: a payload that cannot be decoded in one of those pages
+stops it. A Nexus worker stops on any payload it cannot decode. [#824](https://github.com/gplanchat/durable-dev/issues/824)
+tracks both. Run
 workers under a supervisor that restarts them (systemd, Supervisor, Kubernetes), and alert on
 repeated exits. Neither a worker nor a dashboard shows ciphertext as if it were data.
 

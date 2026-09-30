@@ -30,7 +30,8 @@ et `decode(Payload): Payload`. Le contrat est celui de Temporal :
 - `decode()` rend tel quel un payload qui ne porte pas cette marque, si bien que l'historique écrit
   avant l'activation du codec reste lisible ;
 - `decode()` lève une exception sur un payload qu'il reconnaît mais ne sait pas décoder, par exemple
-  à cause d'une clé inconnue.
+  à cause d'une clé inconnue. Le message de cette exception parvient au serveur Temporal et à son
+  interface web : il ne contient donc jamais d'octets de payload ni de clé.
 
 Durable ne fournit aucune implémentation. L'algorithme, les clés et leur rotation vous
 appartiennent. La classe ci-dessous est un **exemple** sur lequel vous appuyer, pas une classe que
@@ -185,9 +186,10 @@ tâche d'activité compte comme une tentative échouée au regard de sa politiqu
 transmet la classe et le message de l'erreur, jamais sa trace d'appels, qui pourrait citer la clé
 ou le texte en clair.
 
-Un long historique arrive en plusieurs pages, et le worker lit celles qui suivent la première
-pendant le rejeu. Un payload indéchiffrable dans l'une de ces pages arrête encore le worker.
-Faites tourner vos workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes),
+Deux cas arrêtent encore le worker. Un long historique arrive en plusieurs pages, et le worker lit
+celles qui suivent la première pendant le rejeu : un payload indéchiffrable dans l'une de ces pages
+l'arrête. Un worker Nexus, lui, s'arrête sur tout payload indéchiffrable. Le ticket
+[#824](https://github.com/gplanchat/durable-dev/issues/824) suit ces deux cas. Faites tourner vos workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes),
 et alertez sur les arrêts répétés. Ni un worker ni un tableau de bord ne présente du chiffré comme
 s'il s'agissait de données.
 
