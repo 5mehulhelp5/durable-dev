@@ -381,18 +381,18 @@ composer config prefer-stable true
 composer require gplanchat/durable-magento
 ```
 
-A Magento 2.4 / Mage-OS module, `Gplanchat_DurableModule` in `bin/magento module:status`. It declares
-workflow and activity classes to the runtime, assembles the engine for a Magento process, ships the
-workers as `bin/magento` commands, and adds a read-only admin screen under
+A Magento 2.4 / Mage-OS module, listed as `Gplanchat_DurableModule` in `bin/magento module:status`.
+It declares workflow and activity classes to the runtime, assembles the engine for a Magento
+process, ships the workers as `bin/magento` commands, and adds a read-only admin screen under
 **System > Durable processes > Process history**.
 
-The chrome is Magento's: a standard grid (paging, bookmarks, column controls, export, and a
-multi-select status filter whose options come from the status enum itself) with the state of the
-backend and the outcome counters above it. What the screen *shows* is not Magento's and not this
-package's: see [The dashboard](../dashboard/), which every host renders in its own chrome.
+The screen uses Magento's chrome: a standard grid (paging, bookmarks, column controls, export, and
+a multi-select status filter whose options come from the status enum itself), with the state of the
+backend and the outcome counters above it. The content of the screen comes from neither Magento
+nor this package; see [the dashboard](../dashboard/), which every host renders in its own chrome.
 
-Magento's container has no equivalent of Symfony's tag autoconfiguration, so declaration is
-explicit: two arrays in `di.xml`:
+Magento's container has no equivalent of Symfony's tag autoconfiguration, so you declare classes
+explicitly, in two arrays in `di.xml`:
 
 ```xml
 <type name="Gplanchat\DurableModule\Runtime\RuntimeFactory">
@@ -407,9 +407,9 @@ explicit: two arrays in `di.xml`:
 </type>
 ```
 
-The *contract* is not declared: the factory reads each handler's interfaces and keeps those carrying
-`#[AsActivityMethod]`. One declaration fewer to get wrong, and the activity names stay the
-attributes'.
+You do not declare the *contract*. The factory reads each handler's interfaces and keeps those
+carrying `#[AsActivityMethod]`, which leaves one declaration fewer to get wrong and keeps the
+activity names those of the attributes.
 
 Two more arguments of the same factory bound a run, and `di.xml` is the only place to set them:
 
@@ -418,18 +418,20 @@ Two more arguments of the same factory bound a run, and `di.xml` is the only pla
 <argument name="budgetSeconds" xsi:type="number">30</argument>
 ```
 
-- `maxActivityRetries` is the retry ceiling of the activities `MagentoRuntime::run()` runs in the
-  calling process, the Symfony bundle's [`max_activity_retries`](../configuration/#max_activity_retries).
-  `0`, the default, caps nothing. Temporal workers never read it: there, the cluster retries from the activity's own `RetryLimit`.
+- `maxActivityRetries` is the retry ceiling of the activities that `MagentoRuntime::run()` runs in
+  the calling process, the equivalent of the Symfony bundle's
+  [`max_activity_retries`](../configuration/#max_activity_retries). The default, `0`, sets no cap.
+  Temporal workers never read it: there, the cluster retries from the activity's own `RetryLimit`.
 - `budgetSeconds` bounds `MagentoRuntime::run()`, which runs a workflow to its end inside the
-  calling process: past it, the call throws `WorkflowStuckException` instead of waiting on. Default
-  `10`. It exists because of the first one: with no ceiling, an activity that keeps failing would
-  keep that process busy forever. Workers and `workflowClient()` never read either argument.
+  calling process. Past the budget, the call throws `WorkflowStuckException` instead of waiting
+  longer. The default is `10`. The budget exists because of the retry ceiling: with no ceiling, an
+  activity that keeps failing would keep that process busy forever. Workers and `workflowClient()`
+  read neither argument.
 
-**Two backends, and Composer enforces it.** Magento reaches in-memory and Temporal, and the module
-declares `conflict` on both SQL bridges: `Magento\Framework\App\ResourceConnection` is neither
-Doctrine DBAL nor Illuminate's connection. Which one you get is decided by a DSN in
-`app/etc/env.php`, not by a setting:
+**Magento supports two backends, and Composer enforces it.** Magento reaches in-memory and
+Temporal, and the module declares a `conflict` on both SQL bridges, because
+`Magento\Framework\App\ResourceConnection` is neither a Doctrine DBAL connection nor Illuminate's.
+A DSN in `app/etc/env.php` selects the backend; no other setting does:
 
 ```php
 'durable' => [
@@ -437,10 +439,10 @@ Doctrine DBAL nor Illuminate's connection. Which one you get is decided by a DSN
 ],
 ```
 
-Without it the journal lives in the process that writes it, and dies with it, which is fine for a console
-command, ruinous for anything else.
+Without the DSN, the journal lives in the process that writes it and is lost when that process
+ends. That is acceptable for a console command and unsuitable for anything else.
 
-**Workers are commands, not queue consumers**, and an operator supervises them like any other
+**Workers are `bin/magento` commands**, not queue consumers. Supervise them like any other
 long-running process:
 
 ```bash
@@ -448,41 +450,43 @@ bin/magento durable:worker --role=journal   --time-limit=3600
 bin/magento durable:worker --role=activity  --time-limit=3600
 ```
 
-One process, one queue, one role: they are two distinct Temporal queues, and their concurrency is
-tuned apart. Nothing rides Magento's own `MessageQueue`: on Temporal an activity is a Temporal
-command and a resume is a workflow task, so a topic here would be a second queue for an operator to
-supervise, for nothing.
+Each process serves one role on one queue. The two roles use two distinct Temporal queues, and you
+tune their concurrency separately. Nothing goes through Magento's own `MessageQueue`: on Temporal,
+an activity is a Temporal command and a resume is a workflow task, so a Magento topic would only
+add a second queue for an operator to supervise.
 
-**Two processes, and forgetting one is not symmetric.** Without `--role=journal` nothing advances
-at all: executions start, their history fills, and no one answers their workflow tasks. Without
-`--role=activity` it is worse, because it looks like it works: an execution advances **up to its
-first activity** and stops there, the order charged and the stock not, and you learn it from the
-customer. That is the failure this integration exists to remove, put back by hand.
+**A missing worker shows differently depending on its role.** Without `--role=journal`, nothing
+advances: executions start, their history fills, and no process answers their workflow tasks.
+Without `--role=activity`, the execution appears to work, which makes it harder to notice: it
+advances **up to its first activity** and stops there, with the order charged and the stock
+untouched, and you find out from the customer. Running without the activity worker puts back the
+failure this integration exists to remove.
 
-The `--time-limit` and `--max-tasks` bounds are for the supervisor: they make the process end so
-that whatever restarts it can. And retries are the cluster's business; an activity's attempts are
-scheduled whether or not anything is listening, so a run whose activity "failed after 3 attempts" in
-seconds is the sign of a worker that was not there, not of code that is wrong three times over.
+The `--time-limit` and `--max-tasks` bounds serve the supervisor: they end the process so that the
+supervisor can restart it. Retries belong to the cluster, which schedules an activity's attempts
+whether or not a worker is listening. A run whose activity "failed after 3 attempts" within seconds
+points to a missing worker, not to code that failed three times.
 
-⚠ **Magento's own queue settings are not part of this.** `retry_inprogress_after`, the
-`messagequeue_*` cron jobs, `queue_lock`: none of them carries anything of Durable's, because
-nothing of Durable's rides `MessageQueue`. Tune them for your own consumers.
+> [!WARNING]
+> **Magento's own queue settings do not apply to Durable.** `retry_inprogress_after`, the
+> `messagequeue_*` cron jobs and `queue_lock` carry nothing of Durable's, because nothing of
+> Durable's goes through `MessageQueue`. Tune them for your own consumers.
 
 > [!NOTE]
-> Start executions **on the cluster**, not in the request that triggers them. An observer on
+> Start executions **on the cluster**, outside the request that triggers them. An observer on
 > `sales_order_place_after` that calls `RuntimeFactory::workflowClient()->startAsync()` hands the
-> execution to Temporal and returns (`workflowClient()` needs the cluster: `startAsync()` is
-> Temporal-only); starting it inline would kill it with the request, which is the
-> very failure this integration exists to remove.
+> execution to Temporal and returns. `workflowClient()` needs the cluster, because `startAsync()`
+> exists only on Temporal. An execution started inline would end with the request, which is the
+> failure this integration exists to remove.
 
 ---
 
 ## Which do I install?
 
-Every command below is the one the chooser on the [home page](/) hands you, written out in full.
+Each command below is the one the chooser on the [home page](/) gives you, written out in full.
 
-The chooser reads its state from the URL, so a single link can open the page with a situation
-already selected, which is useful in an issue, a README or a support answer:
+The chooser reads its state from the URL, so a link can open the page with a situation already
+selected, for example in an issue, a README or a support answer:
 
 ```
 https://durable.rocks/?fw=magento&be=temporal#install
@@ -490,13 +494,13 @@ https://durable.rocks/?fw=magento&be=temporal#install
 
 `fw` is the framework (`none`, `symfony`, `laravel`, `sylius`, `apiplatform`, `magento`), `be` is
 where the state lives (`memory`, `temporal`, `dbal`, `illuminate`), and `dist` is the base
-underneath a distribution (`none`, `symfony`, `laravel`). Any axis may be omitted. A value the
-chooser refuses (a framework that has not shipped, a backend that pairing forbids) is ignored
-rather than forced, so an old link degrades to the default instead of showing a combination that
-does not exist. Choosing in the page rewrites the address bar, so the link to share is the one you
-are already looking at.
+underneath a distribution (`none`, `symfony`, `laravel`). Each axis is optional. The chooser
+ignores a value it cannot apply (a framework that has not shipped, a backend that the pairing
+forbids) instead of forcing it, so an old link falls back to the default instead of showing a
+combination that does not exist. Choosing in the page rewrites the address bar, so the link to
+share is the one already in your address bar.
 
-Every command in the table assumes the project allows the beta line first:
+Each command in the table assumes that the project allows the beta line first:
 
 ```bash
 composer config minimum-stability beta
@@ -517,31 +521,31 @@ composer config prefer-stable true
 | Laravel, one SQL database | `composer require gplanchat/durable gplanchat/durable-bridge-illuminate` |
 | Magento, Temporal cluster | `composer require gplanchat/durable-magento gplanchat/durable-bridge-temporal` |
 
-Each line names the integration only: the bundle pulls the library in, and the plugin pulls the
-bundle in. Without a framework you name the library yourself, and you wire the workers yourself too.
+Each line names only the integration: the bundle pulls in the library, and the plugin pulls in the
+bundle. Without a framework, you name the library yourself, and you also wire the workers yourself.
 
-The Laravel line names the library rather than an integration, and that is now a *choice* rather
-than a gap. `gplanchat/durable-laravel` exists: a service provider binding the four storage ports,
-workflows declared in `config/durable.php`, work riding the queue the application already drains.
-Until it is tagged, the bridge installs on its own and you wire it yourself; see the section above
-for what the integration takes off your hands.
+The Laravel line names the library instead of an integration, and that is now a *choice*, no longer
+a gap. `gplanchat/durable-laravel` exists: a service provider that binds the four storage ports,
+workflows declared in `config/durable.php`, and work on the queue the application already drains.
+Until it is tagged, the bridge installs on its own and you wire it yourself; the section above
+lists what the integration does for you.
 
 ---
 
-## One codebase, one behaviour
+## Same behaviour on every backend {#one-codebase-one-behaviour}
 
 Every backend runs the **same fiber driver** and the **same activity execution path**. A workflow
-you tested in memory behaves the same way against DBAL or Temporal, retry counting and failure
-classification, cancellation and compensation included.
+you tested in memory behaves the same way against DBAL or Temporal, including retry counting,
+failure classification, cancellation and compensation.
 
-Where a capability genuinely has no equivalent, the backend **fails with an explicit message**
-rather than pretending. The differences are listed in
-[Backends](../backends/#capability-matrix).
+When a capability has no equivalent on a backend, that backend **fails with an explicit message**.
+[Backends](../backends/#capability-matrix) lists the
+differences.
 
 ---
 
 ## Monorepo and releases
 
-Development happens in a single repository, `gplanchat/durable-dev`. Each package is published to
-its own read-only repository by a split, so `composer require` pulls a small package rather than
+Durable is developed in a single repository, `gplanchat/durable-dev`. A split publishes each
+package to its own read-only repository, so `composer require` pulls a small package instead of
 the whole tree.
