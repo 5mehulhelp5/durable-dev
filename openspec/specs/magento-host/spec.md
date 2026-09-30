@@ -109,7 +109,13 @@ the operation is declared on the handler class here, by that attribute.
 - **AND** a workflow the module declares claims it with `#[FulfilsNexusOperation]`
 - **THEN** the caller receives that workflow's result when it completes
 
-#### Scenario: A mistake is refused at startup
+#### Scenario: A mistake stops the Nexus worker at startup
 
 - **WHEN** a listed handler carries no `#[AsNexusServiceHandler]`, or no cluster is configured
-- **THEN** the Nexus registry refuses at startup, naming the handler or the missing cluster
+- **AND** `bin/magento durable:worker --role=nexus` starts
+- **THEN** it refuses to serve, naming the handler or the missing `durable/temporal/dsn`
+
+#### Scenario: The Nexus worker is a role of the bounded worker command
+
+- **WHEN** `bin/magento durable:worker --role=nexus` runs with a cluster configured
+- **THEN** it polls the DSN's `nexus_task_queue` within the same task and time limits as the other roles

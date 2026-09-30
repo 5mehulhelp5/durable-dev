@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable\Store;
 
 use Gplanchat\Durable\Event\ExecutionStarted;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
 use Gplanchat\Durable\Store\ProjectingEventStore;
@@ -20,7 +21,7 @@ final class ProjectingEventStorePickupTest extends TestCase
     {
         $events = new InMemoryEventStore();
         $catalog = new InMemoryWorkflowRunCatalog($events);
-        $catalog->recordStart('exec-1', 'App\\OrderWorkflow');
+        $catalog->recordStart(ExecutionId::fromString('exec-1'), 'App\\OrderWorkflow');
 
         self::assertNotNull($catalog->listRuns()->runs[0]->waitingForWorkerSince, 'dispatched, nobody consumed it');
 

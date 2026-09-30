@@ -37,6 +37,17 @@ underneath.
 - `gplanchat/durable` — pulled in as a dependency
 - `gplanchat/durable-bridge-temporal` for anything that must outlive a process
 
+**What CI proves, and what it only resolves.** Two different claims:
+
+| Claim | Lines |
+|---|---|
+| **Booted**: `setup:install`ed, a workflow run in process, and the admin screen serving runs read from a Temporal cluster | Mage-OS 2.2.0 on PHP 8.2 and 8.4 |
+| **Resolved**: Composer accepts the module on that line, nothing is installed | Mage-OS 1.3.0 (PHP 8.2), 2.2.0 (8.2), 2.3.0 (8.4), 3.4.0 (8.3, 8.5) |
+
+Magento Open Source and Adobe Commerce are not in CI: their packages come from
+`repo.magento.com`, which needs credentials. Mage-OS 2.2.0 replaces `magento/framework` 103.0.8-p4,
+Magento 2.4.8-p4's framework: the closest booted line to a Magento 2.4.8 shop, not proof of one.
+
 ## Two backends, and Composer enforces it
 
 Magento reaches **in-memory** and **Temporal**, and nothing else. The module declares `conflict` on
@@ -126,9 +137,11 @@ final class BillingHandler implements BillingServed
 An operation the handler has no method for is fulfilled by a workflow that carries
 `#[FulfilsNexusOperation(BillingContract::class, 'charge')]` and is listed in `workflowClasses`.
 Magento discovers nothing on its own, so the class is still listed; the attribute spares you writing
-the contract by hand. Serving needs a cluster: without `durable/temporal/dsn`, a listed handler is
-refused at startup, and so is a handler without the attribute. The endpoint points at the DSN's
-`nexus_task_queue`, which defaults to the workflow task queue.
+the contract by hand. Serving needs a cluster: `durable:worker --role=nexus` refuses to start
+without `durable/temporal/dsn`. The declarations are checked when that worker starts, not before:
+a handler without the attribute, or one that does not match its contract, stops it there, naming
+the class. The endpoint points at the DSN's `nexus_task_queue`, which defaults to the workflow task
+queue.
 
 ## Workers are commands, not queue consumers
 
@@ -209,6 +222,12 @@ Two processes, and the failure of forgetting one is not symmetric.
 
 That second line is the failure this integration exists to remove, put back by hand. Supervise both,
 or supervise neither.
+
+**Alert on `bin/magento durable:health`.** It exits non-zero when the cluster does not answer, or
+when a role's queue has gone two minutes without a poll, and names the `--role` to start. Without a
+DSN it exits zero: there is no worker to miss. With a DSN, the admin screen shows the same state
+above the grid. Two minutes, because a live worker polls about once a minute and the server keeps
+listing a stopped one for several.
 
 **The bounds are for the supervisor, not for you.** `--time-limit` and `--max-tasks` make the
 process end so that whatever restarts it can restart it. A worker without them is an immortal

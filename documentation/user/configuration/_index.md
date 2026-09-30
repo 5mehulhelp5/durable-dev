@@ -148,7 +148,7 @@ otherwise, so it costs nothing to leave at its defaults.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `connection` | service ID | `doctrine.dbal.default_connection` | The `Doctrine\DBAL\Connection` the stores write to. |
+| `connection` | service ID | `doctrine.dbal.default_connection` | The `Doctrine\DBAL\Connection` the stores write to. Give them one of their own: sharing the application's is strongly discouraged (DUR054), since Durable's transactions then nest inside business ones. |
 | `auto_setup` | bool | `true` | Creates the missing tables on the first write, never inside an open transaction. Set it to `false` once Doctrine Migrations owns the schema, so that the two do not both write it. `bin/console durable:setup` creates the tables either way. |
 | `lock_factory` | service ID | `lock.factory` | The `LockFactory` that serialises resumes of one execution. **It is only as safe as your lock store**: an in-memory or per-process factory with several workers gives back the failure the lock exists to prevent. |
 | `allow_local_lock` | bool | `false` | The container refuses a per-process store (`flock`, `semaphore`, `in-memory`, `null`) behind `lock_factory`: at compile time for a literal DSN, when the lock is first built for one read from an env var. `true` accepts it, for exactly one worker. `framework.lock` takes a DBAL URL (`pgsql://…`, `mysql://…`), not a Doctrine connection name. |
@@ -407,7 +407,7 @@ reaches two journals only, in memory and Temporal, so the SQL rows do not apply 
 | `child_workflow.async_messenger` | — | — | host-specific: Messenger only |
 | workflows: `#[AsWorkflow]` on a service | `workflows` | `workflowClasses` argument | host-specific: neither container autoconfigures by attribute |
 | activity handlers: `#[AsActivityHandler]` on a service | — (the application registers them on `RegistryActivityExecutor` itself) | `activityHandlers` argument | to add on Laravel: a key beside `workflows` |
-| Nexus handlers: `#[AsNexusServiceHandler]` on a service | `nexus.handlers` | — | host-specific: Magento serves no Nexus operation |
+| Nexus handlers: `#[AsNexusServiceHandler]` on a service | `nexus.handlers`: `handler => contract`, or the handler class alone when its `#[AsNexusServiceHandler]` names the contract | — | host-specific: Magento serves no Nexus operation |
 
 ---
 

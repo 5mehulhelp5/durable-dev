@@ -16,7 +16,7 @@ l'exécution est enregistrée.
 | `gplanchat/durable-bundle` | câblage Symfony, transports Messenger, panneau du profileur | la bibliothèque et Symfony Messenger |
 | `gplanchat/durable-bridge-temporal` | le pilote Temporal, en gRPC | la bibliothèque, `ext-grpc`, un cluster Temporal |
 | `gplanchat/durable-bridge-dbal` | l'exécution durable sur une base SQL | la bibliothèque, Doctrine DBAL 3 ou 4, `symfony/lock` |
-| `gplanchat/durable-bridge-illuminate` | la même chose, sur la connexion que Laravel possède déjà | la bibliothèque, `illuminate/database` 11, 12 ou 13 |
+| `gplanchat/durable-bridge-illuminate` | la même chose, par la couche de base de données de Laravel | la bibliothèque, `illuminate/database` 11, 12 ou 13 |
 | `gplanchat/durable-laravel` | le câblage Laravel : les ports liés depuis la configuration, le travail sur la file de l'application | la bibliothèque, le pont Illuminate, `illuminate/support` |
 | `gplanchat/durable-magento` | un module Magento 2.4 / Mage-OS : déclaration, workers, écran d'administration | la bibliothèque ; Temporal pour tout ce qui doit survivre à un processus |
 | `gplanchat/durable-plugin` | un tableau de bord Sylius pour les exécutions | le bundle, `knplabs/knp-menu` ; Sylius 2.x pour apparaître dans son menu |
@@ -173,11 +173,12 @@ Les mêmes quatre stockages que le pont DBAL, et le même échange face à Tempo
 ci-dessus s'applique mot pour mot. Ce qui change, c'est la connexion : ceux-ci sont écrits contre
 `Illuminate\Database\Connection`, le constructeur de requêtes plutôt qu'Eloquent.
 
-C'est toute la raison d'être du paquet. **DUR030** ne paie que si l'ajout au journal et l'écriture
-métier atterrissent dans **une seule transaction**, et un stockage sur `DB::connection()` est dans
-`DB::transaction()` par construction. Passer à Doctrine DBAL le PDO tiré de
-`DB::connection()->getPdo()` atteint la même garantie et reste un contournement ; ceci est la
-réponse simple.
+Donnez aux stockages une connexion à eux dans `config/database.php`, pas la connexion par défaut de
+l'application (DUR054). Sur une connexion partagée, les transactions propres à Durable s'imbriquent
+dans celles de l'application : un rollback métier efface des événements du journal, et une prise de
+main reste invisible aux autres workers tant que le code métier n'a pas validé. Une activité qui
+écrit puis meurt se traite en la rendant idempotente, jamais par une transaction partagée avec le
+code métier.
 
 Les quatre tables sont livrées en migration, chargée depuis le paquet : `migrate` suffit.
 `vendor:publish --tag=durable-migrations` sert à les modifier, et à partir de là, elles sont à
