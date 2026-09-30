@@ -10,13 +10,13 @@ envoyer un reçu est **une** opération métier, mais elle touche trois système
 qu'une connexion ne reste ouverte, et peut être interrompue entre deux étapes quelconques par un
 déploiement, un plantage ou un OOM kill.
 
-PHP n'apporte pas de réponse à ça, donc chaque projet invente la sienne. Durable est cette réponse,
-écrite une fois.
+PHP n'apporte pas de réponse intégrée à ce problème, donc chaque projet construit la sienne. Durable
+fournit cette réponse sous forme de bibliothèque, écrite une fois.
 
 ## Vous avez déjà le problème si
 
-Cherchez ceci dans votre propre code. Chacun de ces éléments est un morceau d'exécution durable,
-construit à la main :
+Cherchez ces éléments dans votre propre code. Chacun est un morceau d'exécution durable construit à
+la main :
 
 - une **colonne d'état qui veut dire *peut-être*** (`pending`, `processing`, `in_progress`), et
   personne ne sait quelles lignes sont bloquées ;
@@ -29,13 +29,14 @@ construit à la main :
 - aucun moyen de répondre à *pourquoi la commande 4242 s'est arrêtée il y a trois jours*, sinon
   relire des journaux applicatifs.
 
-Ces six choses existent pour qu'un traitement survive à une interruption. Durable fait survivre le
-traitement directement : le runtime enregistre chaque étape terminée dans un **journal**, et après
-un redémarrage il rejoue la méthode en rendant les résultats enregistrés au lieu de refaire ces
-étapes. Le traitement reprend sur la ligne où il en était.
+Ces six éléments existent pour qu'un traitement survive à une interruption. Durable fait survivre
+le traitement lui-même. Le runtime enregistre chaque étape terminée dans un **journal** (la suite
+d'événements, en ajout seul, de tout ce qu'une exécution a décidé et reçu ; voir le
+[glossaire](../glossary/)). Après un redémarrage, il rejoue la méthode et renvoie les résultats
+enregistrés au lieu de refaire ces étapes. Le traitement reprend sur la ligne où il en était.
 
-Un worker peut être redéployé en plein traitement. Aucune étape terminée ne se rejoue, rien n'est
-perdu, et aucun cron n'intervient.
+Vous pouvez redéployer un worker (le processus qui exécute les workflows et les activités) en plein
+traitement. Aucune étape terminée ne se rejoue et rien n'est perdu, sans aucun cron.
 
 ## Ce que ça remplace
 
@@ -55,22 +56,23 @@ de code sous les yeux.
 
 ## Quand vous n'en avez pas besoin
 
-Durable n'est pas gratuit : ça ajoute un journal à écrire, des workers à faire tourner, et une règle
-de déterminisme que le code de workflow doit respecter. Passez votre chemin quand :
+Durable a un coût : il ajoute un journal à écrire, des workers à faire tourner, et une règle
+de déterminisme que le code de workflow doit respecter. Vous pouvez vous en passer quand :
 
 - le traitement **tient dans une requête** et n'a aucun effet de bord qui vaille d'être rattrapé :
   rendre une page, une requête de recherche, un rapport que vous pouvez relancer ;
 - le traitement **peut repartir de zéro sans dommage**. Un export nocturne qui réécrit tout le
   fichier ne perd rien à être relancé depuis le début ; un débit partiel, si ;
 - vos consommateurs de file sont **déjà idempotents et déjà observables**, et vous savez répondre à
-  *qu'est-il arrivé à ce travail* sans ouvrir un fichier de journal. Vous avez déjà construit la
-  chose ; inutile de l'avoir deux fois ;
+  *qu'est-il arrivé à ce travail* sans ouvrir un fichier de journal. Dans ce cas, vous avez déjà
+  construit ce que Durable fournit ;
 - il y a **exactement un effet de bord**. Un seul `INSERT` dans une transaction est déjà atomique.
   Le problème commence à la deuxième étape, quand la première a déjà eu lieu et ne peut plus être
   annulée.
 
-Une bonne règle : si perdre sa place en cours de traitement coûte de l'argent, du stock ou la
-confiance d'un client, le traitement veut un journal. Si ça coûte une relance, non.
+Pour trancher, regardez ce que coûte la perte de votre position en cours de traitement. Si elle
+coûte de l'argent, du stock ou la confiance d'un client, donnez un journal au traitement. Si elle
+coûte une relance, vous n'en avez pas besoin.
 
 ## Où aller ensuite
 
@@ -81,4 +83,5 @@ confiance d'un client, le traitement veut un journal. Si ça coûte une relance,
 | [Paquets](../packages/) | quoi installer pour votre framework, et quel backend |
 | [Durable et le SDK PHP de Temporal](../comparison/) | si l'exécution durable est décidée et que vous choisissez entre les deux |
 
-La dernière suppose que la décision dont parle cette page est déjà prise. À lire en second.
+La comparaison suppose que vous avez déjà pris la décision dont parle cette page. Lisez-la après
+celle-ci.
