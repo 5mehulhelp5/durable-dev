@@ -5,9 +5,8 @@ weight: 27
 
 # Annulation
 
-Une exécution est un déroulement durable d'un workflow, et son journal est l'historique, en ajout
-seul, de ce qu'elle a décidé et reçu (voir le [glossaire](../glossary/)). Quand vous annulez une
-exécution, Durable ne la tue pas. L'annulation est **levée à l'intérieur du workflow, à l'endroit
+Quand vous annulez une exécution (un déroulement durable d'un workflow ; voir le
+[glossaire](../glossary/)), Durable ne la tue pas. L'annulation est **levée à l'intérieur du workflow, à l'endroit
 où il attend**, pour qu'il puisse compenser avant de se terminer. C'est l'équivalent du
 `CanceledFailure` de Temporal.
 
@@ -60,8 +59,8 @@ final class CheckoutWorkflow
 
 `Saga` enregistre une compensation par étape terminée et, à l'appel de `compensate()`, les exécute
 dans l'ordre inverse. Chaque compensation fait son propre `await()`, si bien qu'elle se termine avant
-que la suivante ne commence. Une compensation qui renvoie un `Awaitable` à la place fait lever une
-`LogicException` à `compensate()`. Une étape qui ne s'est jamais terminée n'a rien à défaire,
+que la suivante ne commence. Si une compensation renvoie un `Awaitable` à la place, `compensate()` lève une
+`LogicException`. Une étape qui ne s'est jamais terminée n'a rien à défaire,
 puisque sa compensation n'a jamais été ajoutée. La première compensation qui lève une exception
 arrête la série, et son exception remplace celle en cours de compensation.
 
@@ -85,9 +84,9 @@ L'annulation est levée **une fois par exécution**. Si elle était levée de no
 dont se sert la compensation seraient annulées à leur tour, et la compensation n'aurait jamais lieu.
 
 Le rejeu (la réexécution du code du workflow depuis sa première ligne, où chaque étape enregistrée
-renvoie son résultat) reste déterministe parce que le dénouement figure dans le journal ; Durable
-n'écrit aucun marqueur à part. L'opération en attente est annulée avec la raison `workflow_cancelled`, et au rejeu ce dénouement
-enregistré rejette le même awaitable au même endroit. Le workflow prend donc la même branche à
+renvoie son résultat) reste déterministe parce que le dénouement figure dans le journal (l'historique, en ajout seul, de ce que l'exécution
+a décidé et reçu), sans marqueur à part. L'opération en attente est annulée avec la raison
+`workflow_cancelled`, et au rejeu ce dénouement enregistré rejette le même awaitable au même endroit. Le workflow prend donc la même branche à
 chaque rejeu.
 
 ---

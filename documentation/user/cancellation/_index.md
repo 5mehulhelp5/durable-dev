@@ -5,9 +5,8 @@ weight: 27
 
 # Cancellation
 
-An execution is one durable run of a workflow, and its journal is the append-only history of what
-it decided and received (see the [glossary](../glossary/)). When you cancel an execution, Durable
-does not kill it. The cancellation is **raised inside the workflow, at the point where it is
+When you cancel an execution (one durable run of a workflow; see the [glossary](../glossary/)),
+Durable does not kill it. The cancellation is **raised inside the workflow, at the point where it is
 waiting**, so the workflow can compensate before it ends. It is the equivalent of Temporal's
 `CanceledFailure`.
 
@@ -84,8 +83,8 @@ The cancellation is raised **once per execution**. If it were raised again, the 
 compensation uses would be cancelled in turn, and the compensation would never run.
 
 Replay (running the workflow code again from its first line, with each recorded step returning its
-result) stays deterministic because the outcome is in the journal; Durable writes no separate
-marker. The pending operation
+result) stays deterministic because the outcome is in the journal (the append-only history of what
+the execution decided and received), with no separate marker. The pending operation
 is cancelled with reason `workflow_cancelled`, and on replay that recorded outcome rejects the same
 awaitable at the same place. The workflow therefore takes the same branch on every replay.
 
