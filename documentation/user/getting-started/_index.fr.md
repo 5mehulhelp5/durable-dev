@@ -156,12 +156,12 @@ Chaque hôte enregistre les trois sortes de classe à sa manière :
 |---|---|---|---|
 | workflow | `#[AsWorkflow]` sur un service, autoconfiguré | listé dans `workflows` | listé dans l'argument `workflowClasses` |
 | gestionnaire d'activités | `#[AsActivityHandler]` sur un service, autoconfiguré | listé dans `activity_handlers` | listé dans l'argument `activityHandlers` |
-| gestionnaire Nexus | `#[AsNexusServiceHandler]` sur un service, autoconfiguré | listé dans `nexus.handlers` | non servi |
+| gestionnaire Nexus | `#[AsNexusServiceHandler]` sur un service, autoconfiguré | listé dans `nexus.handlers` | listé dans l'argument `nexusHandlers` |
 
 Seul Symfony enregistre une classe d'après son attribut. Laravel et Magento ne scannent rien : une
 classe qu'ils ne listent pas n'est pas enregistrée, quel que soit l'attribut qu'elle porte. Sous
 Laravel, `#[AsActivityHandler]` et `#[AsNexusServiceHandler]` sur un gestionnaire listé nomment le
-contrat qu'il sert. Le
+contrat qu'il sert ; sous Magento, `#[AsNexusServiceHandler]` le fait. Le
 [tableau par hôte](../configuration/#host-table) donne tous les autres réglages. La suite de cette
 section suit le chemin Symfony.
 

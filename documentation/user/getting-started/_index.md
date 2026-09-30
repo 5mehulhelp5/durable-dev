@@ -156,11 +156,12 @@ Each host registers the three kinds of class its own way:
 |---|---|---|---|
 | workflow | `#[AsWorkflow]` on a service, autoconfigured | listed in `workflows` | listed in the `workflowClasses` argument |
 | activity handler | `#[AsActivityHandler]` on a service, autoconfigured | listed in `activity_handlers` | listed in the `activityHandlers` argument |
-| Nexus handler | `#[AsNexusServiceHandler]` on a service, autoconfigured | listed in `nexus.handlers` | not served |
+| Nexus handler | `#[AsNexusServiceHandler]` on a service, autoconfigured | listed in `nexus.handlers` | listed in the `nexusHandlers` argument |
 
 Only Symfony registers a class from its attribute. Laravel and Magento scan nothing: a class they
 do not list is not registered, whatever attribute it carries. On Laravel, `#[AsActivityHandler]` and
-`#[AsNexusServiceHandler]` on a listed handler name the contract it serves. The [per-host table](../configuration/#host-table)
+`#[AsNexusServiceHandler]` on a listed handler name the contract it serves; on Magento,
+`#[AsNexusServiceHandler]` does. The [per-host table](../configuration/#host-table)
 lists every other setting. The rest of this section is the Symfony path.
 
 ### Tag workflows
