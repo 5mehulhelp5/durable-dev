@@ -13,6 +13,17 @@ It is not the [dashboard](../) in a smaller frame. The dashboard lists the runs 
 this panel lists the runs of **one request**, so it has no backend banner, no counters and no
 filters.
 
+
+## Screenshots
+
+![The Summary tab of the Durable panel: two executions of the request, one completed and one running](/images/dashboard/profiler-summary.png)
+
+*The Summary tab after a request that dispatched two workflows: one completed, one running with no event in its journal yet.*
+
+![The Executions tab of the Durable panel with the History of the completed execution](/images/dashboard/profiler-executions.png)
+
+*The Executions tab, open on the completed execution: its outcome, then its History, one row per journal event.*
+
 ## Open the panel
 
 1. Load a page of your application that dispatches a workflow, with the debug toolbar enabled.

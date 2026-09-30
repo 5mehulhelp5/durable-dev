@@ -14,6 +14,17 @@ Ce n'est pas le [tableau de bord](../) dans un cadre plus petit. Le tableau de b
 exécutions d'une application ; ce panneau liste les exécutions d'**une requête**, il n'a donc ni
 bandeau d'état du backend, ni compteurs, ni filtres.
 
+
+## Captures d'écran
+
+![L'onglet Summary du panneau Durable : deux exécutions de la requête, une terminée et une en cours](/images/dashboard/profiler-summary.png)
+
+*L'onglet Summary après une requête qui a envoyé deux workflows : un terminé, un en cours dont le journal ne contient pas encore d'événement.*
+
+![L'onglet Executions du panneau Durable avec l'historique de l'exécution terminée](/images/dashboard/profiler-executions.png)
+
+*L'onglet Executions, ouvert sur l'exécution terminée : son issue, puis son historique, une ligne par événement du journal.*
+
 ## Ouvrir le panneau
 
 1. Chargez une page de votre application qui envoie un workflow, avec la barre de débogage activée.

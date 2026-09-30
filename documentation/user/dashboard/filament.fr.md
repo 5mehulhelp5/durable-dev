@@ -18,6 +18,16 @@ Le panneau affiche alors **Exécutions Durable** dans sa navigation. Le plugin f
 Filament 3 et 4, lit le catalogue que `gplanchat/durable-laravel` lie dans le conteneur (en mémoire,
 Illuminate ou Temporal) et est en lecture seule.
 
+## Captures d'écran
+
+![La page Exécutions Durable de Filament : état du backend, filtres, compteurs par issue et liste des exécutions](/images/dashboard/filament-runs.fr.png)
+
+*Exécutions Durable, sur quatre exécutions d'un workflow de commande. Les compteurs en comptent une en attente d'un worker.*
+
+![La page d'une exécution sous Filament, en attente d'un minuteur, avec sa frise d'historique](/images/dashboard/filament-run.fr.png)
+
+*La page d'order/4244 : ce qu'elle attend, et une frise d'historique où `reserveStock` est hachuré pour le temps passé dans la file.*
+
 ## Ce que la page propose
 
 - **L'état du backend**, daté.

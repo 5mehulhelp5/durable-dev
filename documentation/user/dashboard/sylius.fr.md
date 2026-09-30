@@ -9,6 +9,20 @@ Pour suivre les workflows de votre boutique depuis le back-office Sylius, instal
 `gplanchat/durable-plugin` ([Paquets](../../packages/)) et ouvrez **Configuration > Tableau de bord
 Durable**. La page est en lecture seule.
 
+## Captures d'écran
+
+![Le tableau de bord Sylius : état du backend, compteurs par issue, filtres et liste des exécutions](/images/dashboard/sylius-runs.fr.png)
+
+*Configuration > Tableau de bord Durable, sur quatre exécutions d'un workflow de commande : une terminée, une en échec, une en attente d'un minuteur et une en attente d'un worker.*
+
+![La page d'une exécution en attente d'un minuteur, avec sa frise d'historique](/images/dashboard/sylius-run.fr.png)
+
+*La page d'order/4244. La partie hachurée de `reserveStock` est le temps que la tâche a passé dans la file avant qu'un worker la prenne en charge ; le minuteur qui suit est posé et n'a pas expiré.*
+
+![La page d'une exécution en échec, avec l'activité en échec en rouge](/images/dashboard/sylius-run-failed.fr.png)
+
+*La page d'order/4243 : `chargePayment` a échoué, et l'exécution avec elle.*
+
 ## Ce que la page propose
 
 - **L'état du backend**, au-dessus de tout, daté, avec une ligne par rôle de worker quand Temporal

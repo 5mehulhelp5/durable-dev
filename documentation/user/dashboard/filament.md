@@ -18,6 +18,16 @@ The panel then shows **Durable runs** in its navigation. It works on Filament 3 
 catalog that `gplanchat/durable-laravel` binds (in memory, Illuminate or Temporal), and is
 read-only.
 
+## Screenshots
+
+![The Filament Durable runs page: backend state, filters, counters per outcome and the list of runs](/images/dashboard/filament-runs.png)
+
+*Durable runs, over four runs of an order workflow. The counters include one run waiting for a worker.*
+
+![The Filament run page of an execution waiting on a timer, with its History timeline](/images/dashboard/filament-run.png)
+
+*The run page of order/4244: what it waits on, and a History timeline where `reserveStock` is hatched for the time it spent in the queue.*
+
 ## What the page offers
 
 - **The backend state**, dated.
