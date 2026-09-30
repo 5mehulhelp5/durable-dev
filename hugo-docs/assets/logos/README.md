@@ -84,7 +84,7 @@ Two things set it apart from every other row above:
   Platform logos, read our Trademark and Logo Policy."* Files being available to fetch is not
   permission to reproduce them.
 
-The user asked Les-Tilleuls.coop for approval on 2026-09-29 (#370): Webby as a small single-colour
+The user asked Les-Tilleuls.coop for approval on 2026-09-28 (#370), answer pending: Webby as a small single-colour
 icon in the chip, following the page's colour like the other marks here. If approval comes, record
 its terms here before `api-platform.svg` changes; if it does not, the braces stay. A notice cannot
 stand in for either: the policy asks for approval, not attribution.
