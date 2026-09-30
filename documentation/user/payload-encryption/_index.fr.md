@@ -178,14 +178,18 @@ Chaque processus qui parle au namespace a besoin du même codec, dans le même d
 workers, ce qui démarre ou signale des workflows, et le tableau de bord.
 
 Un payload indéchiffrable, sous une clé inconnue par exemple, lève une exception dans l'appel qui
-l'a lu. Un tableau de bord affiche une erreur de lecture. Un worker est plus durement touché : le
-décodage a lieu sur la réponse du poll, avant tout traitement de la tâche, et rien ne l'y
-intercepte. Le processus du worker s'arrête sans signaler l'échec de la tâche, et Temporal ne la
-redistribue qu'à l'expiration de son délai, à un worker qui s'arrête de la même façon. Faites
-tourner vos workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes), et
-alertez sur les arrêts répétés. Le ticket [#775](https://github.com/gplanchat/durable-dev/issues/775) prévoit de faire échouer la tâche à
-la place. Ni un worker ni un tableau de bord ne présente du chiffré comme s'il s'agissait de
-données.
+l'a lu. Un tableau de bord affiche une erreur de lecture. Un worker, lui, signale l'échec de la
+tâche qu'il a reçue, avec l'erreur de décodage pour cause, puis reprend son poll. Une tâche de
+workflow retourne au serveur, qui la redistribue : dès que la clé est disponible, elle passe. Une
+tâche d'activité compte comme une tentative échouée au regard de sa politique de relance. L'échec
+transmet la classe et le message de l'erreur, jamais sa trace d'appels, qui pourrait citer la clé
+ou le texte en clair.
+
+Un long historique arrive en plusieurs pages, et le worker lit celles qui suivent la première
+pendant le rejeu. Un payload indéchiffrable dans l'une de ces pages arrête encore le worker.
+Faites tourner vos workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes),
+et alertez sur les arrêts répétés. Ni un worker ni un tableau de bord ne présente du chiffré comme
+s'il s'agissait de données.
 
 ---
 

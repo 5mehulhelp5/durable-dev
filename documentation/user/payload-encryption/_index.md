@@ -170,12 +170,16 @@ Every process that talks to the namespace needs the same codec in the same deplo
 whatever starts or signals workflows, and the dashboard.
 
 A payload that cannot be decoded, under an unknown key for instance, throws from the call that read
-it. A dashboard shows a read failure. A worker is hit harder: the decode runs on the poll response,
-before any task handling, and nothing catches it there. The worker process stops without reporting
-the task as failed, and Temporal hands the task out again only once its timeout expires, to a
-worker that stops the same way. Run workers under a supervisor that restarts them (systemd,
-Supervisor, Kubernetes), and alert on repeated exits. [#775](https://github.com/gplanchat/durable-dev/issues/775) tracks failing the task
-instead. Neither a worker nor a dashboard shows ciphertext as if it were data.
+it. A dashboard shows a read failure. A worker answers the task it received as failed, with the
+decode error as the cause, and polls again. A workflow task goes back to the server, which hands it
+out again: once the key is available, the task goes through. An activity task counts as a failed
+attempt under its retry policy. The failure carries the error's class and message, never its stack
+trace, which could quote the key or the plaintext.
+
+A long history arrives in several pages, and the worker reads the pages after the first one while
+it replays. A payload that cannot be decoded in one of those pages still stops the worker. Run
+workers under a supervisor that restarts them (systemd, Supervisor, Kubernetes), and alert on
+repeated exits. Neither a worker nor a dashboard shows ciphertext as if it were data.
 
 ---
 
