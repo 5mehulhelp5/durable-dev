@@ -370,7 +370,7 @@ class RuntimeFactory
                 throw new \InvalidArgumentException(\sprintf(
                     'Durable: %s is listed in the nexusHandlers argument of RuntimeFactory (di.xml), but carries no #[AsNexusServiceHandler(contract: ...)] naming the contract it serves.',
                     $handler::class,
-                ));
+                ) . self::diagnose766($handler));
             }
             $handlers[$handler::class] = $handler;
             $contracts[$handler::class] = $attribute->newInstance()->contract;
@@ -461,6 +461,22 @@ class RuntimeFactory
         }
 
         return $activities;
+    }
+
+    // TEMPORARY #766 diagnostic, removed before merge.
+    private static function diagnose766(object $handler): string
+    {
+        $parent = get_parent_class($handler);
+        $file = (new \ReflectionClass($handler))->getFileName();
+
+        return "\nDIAG766 source=\n" . (false === $file ? '' : substr((string) file_get_contents($file), 0, 1200))
+            . "\nDIAG766 class=" . $handler::class
+            . "\nDIAG766 parents=" . json_encode(class_parents($handler))
+            . "\nDIAG766 implements=" . json_encode(class_implements($handler))
+            . "\nDIAG766 instanceof=" . var_export($handler instanceof InterceptorInterface, true)
+            . "\nDIAG766 parentAttributes=" . json_encode(false === $parent ? null : array_map(static fn(\ReflectionAttribute $a): string => $a->getName(), (new \ReflectionClass($parent))->getAttributes()))
+            . "\nDIAG766 parentFile=" . (false === $parent ? '' : (string) (new \ReflectionClass($parent))->getFileName())
+            . "\nDIAG766 file=" . (string) $file;
     }
 
     /**

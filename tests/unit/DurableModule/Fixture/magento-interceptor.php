@@ -16,13 +16,12 @@ if (!interface_exists(InterceptorInterface::class)) {
     interface InterceptorInterface
     {
         /**
-         * @param string               $method
-         * @param array<mixed>         $arguments
-         * @param array<string, mixed> $pluginInfo
+         * @param string       $method
+         * @param array<mixed> $arguments
          *
          * @return mixed
          */
-        public function ___callPlugins($method, array $arguments, array $pluginInfo);
+        public function ___callParent($method, array $arguments);
     }
 }
 
@@ -32,7 +31,7 @@ use Magento\Framework\Interception\InterceptorInterface;
 
 class Interceptor extends \unit\DurableModule\Fixture\NexusBillingHandler implements InterceptorInterface
 {
-    public function ___callPlugins($method, array $arguments, array $pluginInfo)
+    public function ___callParent($method, array $arguments)
     {
         return null;
     }
@@ -44,7 +43,7 @@ use Magento\Framework\Interception\InterceptorInterface;
 
 class Interceptor extends \unit\DurableModule\Fixture\NarrowedOrderActivities implements InterceptorInterface
 {
-    public function ___callPlugins($method, array $arguments, array $pluginInfo)
+    public function ___callParent($method, array $arguments)
     {
         return null;
     }
