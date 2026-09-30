@@ -404,7 +404,7 @@ everything a workflow can do, and nothing the engine keeps for itself.
 | `hasSignalHandler($name)`, `hasUpdateHandler($name)` | Whether a handler is registered under that name, for code that registers one only once. |
 | `sideEffect($closure)` | Runs non-deterministic local work once and journals its result, so replay reproduces it. |
 | `continueAsNew($type, $payload = [], $options = null)` | Ends this run and starts the next with a fresh history. |
-| `executionId()` | This execution's identifier. |
+| `executionId()` | This execution's identifier, an `ExecutionId`. Call `toString()` to put it in a payload or a log context: the object encodes to `{}` in JSON. |
 
 Activities are **only** reachable through a stub. Naming one as a string with a free-form payload
 is not on this surface: a typo there produces an activity that is never scheduled, instead of an
