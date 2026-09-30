@@ -23,9 +23,14 @@ use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payload;
 use Temporal\Api\Common\V1\Payloads;
+use Temporal\Api\Enums\V1\ActivityTaskFailedCause;
+use Temporal\Api\Enums\V1\WorkflowTaskFailedCause;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
+use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryRequest;
+use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
+use Temporal\Api\Workflowservice\V1\PollActivityTaskQueueRequest;
 use Temporal\Api\Workflowservice\V1\PollActivityTaskQueueResponse;
 use Temporal\Api\Workflowservice\V1\PollWorkflowTaskQueueResponse;
 use Temporal\Api\Workflowservice\V1\RespondActivityTaskFailedRequest;
@@ -68,6 +73,8 @@ final class UndecodableTaskTest extends TestCase
         self::assertSame('wf-token', $failed->getTaskToken());
         self::assertSame('test-namespace', $failed->getNamespace());
         self::assertStringContainsString('unknown key k2', (string) $failed->getFailure()?->getMessage());
+        self::assertSame('', $failed->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
+        self::assertSame(WorkflowTaskFailedCause::WORKFLOW_TASK_FAILED_CAUSE_WORKFLOW_WORKER_UNHANDLED_FAILURE, $failed->getCause());
     }
 
     public function testAnUndecodableActivityTaskIsAnsweredAsFailedAndTheWorkerPollsAgain(): void
@@ -99,6 +106,47 @@ final class UndecodableTaskTest extends TestCase
         self::assertSame('act-token', $failed->getTaskToken());
         self::assertStringContainsString('unknown key k2', (string) $failed->getFailure()?->getMessage());
         self::assertSame('', $failed->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
+        self::assertSame(ActivityTaskFailedCause::ACTIVITY_TASK_FAILED_CAUSE_ACTIVITY_WORKER_UNHANDLED_FAILURE, $failed->getCause());
+    }
+
+    /**
+     * The task closed or timed out before the answer: nothing is left to answer, and the poll ends empty.
+     */
+    public function testAStaleTaskOnTheFailedAnswerStillEndsInAnEmptyPoll(): void
+    {
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->method('PollActivityTaskQueue')->willReturn(new PollActivityTaskQueueResponse(['task_token' => 'act-token', 'input' => self::undecodable()]));
+        $inner->expects(self::once())->method('RespondActivityTaskFailed')->willThrowException(new \RuntimeException('Temporal gRPC error [5]: not found', 5));
+
+        $poll = (new PayloadCodecWorkflowServiceClient($inner, new FailingCodec()))->PollActivityTaskQueue(new PollActivityTaskQueueRequest());
+
+        self::assertSame('', $poll->getTaskToken());
+    }
+
+    public function testAnyOtherErrorOnTheFailedAnswerPropagates(): void
+    {
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->method('PollActivityTaskQueue')->willReturn(new PollActivityTaskQueueResponse(['task_token' => 'act-token', 'input' => self::undecodable()]));
+        $inner->method('RespondActivityTaskFailed')->willThrowException(new \RuntimeException('Temporal gRPC error [14]: unavailable', 14));
+
+        $this->expectExceptionCode(14);
+        (new PayloadCodecWorkflowServiceClient($inner, new FailingCodec()))->PollActivityTaskQueue(new PollActivityTaskQueueRequest());
+    }
+
+    /**
+     * Outside a task poll there is no task to fail: the caller gets the decode error.
+     */
+    public function testADecodeFailureOutsideATaskPollReachesTheCaller(): void
+    {
+        $started = new WorkflowExecutionStartedEventAttributes(['input' => self::undecodable()]);
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->method('GetWorkflowExecutionHistory')->willReturn(new GetWorkflowExecutionHistoryResponse([
+            'history' => new History(['events' => [new HistoryEvent(['workflow_execution_started_event_attributes' => $started])]]),
+        ]));
+        $inner->expects(self::never())->method('RespondWorkflowTaskFailed');
+
+        $this->expectExceptionMessage('unknown key k2');
+        (new PayloadCodecWorkflowServiceClient($inner, new FailingCodec()))->GetWorkflowExecutionHistory(new GetWorkflowExecutionHistoryRequest());
     }
 
     private static function undecodable(): Payloads
