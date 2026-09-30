@@ -341,10 +341,10 @@ framework:
 ```
 
 Une fois une file vide, le transport PostgreSQL de Messenger ne la relit qu'à réception d'une
-notification, qu'un worker qui consomme les deux files sur une seule connexion peut manquer, ou au
-bout de 60 secondes (`check_delayed_interval`). La reprise qu'envoie une activité attend alors
-jusqu'à 60 secondes, ou le prochain lancement de `durable:worker`, quelle que soit la valeur de
-`--sleep`. Avec `use_notify: false`, le transport interroge chaque file à chaque tour, comme sur
+notification ou au bout de 60 secondes (`check_delayed_interval`). Un worker qui consomme les deux
+files sur une seule connexion peut manquer cette notification, et la reprise qu'envoie une activité
+attend alors jusqu'à 60 secondes, ou le prochain lancement de `durable:worker`, quelle que soit la
+valeur de `--sleep`. Avec `use_notify: false`, le transport interroge chaque file à chaque tour, comme sur
 MySQL.
 
 ### Une seule reprise à la fois par exécution {#une-reprise-à-la-fois--la-chose-à-ne-pas-rater}

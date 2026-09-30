@@ -323,10 +323,10 @@ framework:
                 options: { use_notify: false }
 ```
 
-Once a queue is empty, Messenger's PostgreSQL transport reads it again only on a notification, which
-a worker consuming both queues over one connection can miss, or after 60 seconds
-(`check_delayed_interval`). The resume an activity sends then waits up to 60 seconds, or until the
-next `durable:worker` starts, whatever `--sleep` says. With `use_notify: false`, the transport polls
+Once a queue is empty, Messenger's PostgreSQL transport reads it again only on a notification or
+after 60 seconds (`check_delayed_interval`). A worker that consumes both queues over one connection
+can miss that notification, and the resume an activity sends then waits up to 60 seconds, or until
+the next `durable:worker` starts, whatever the `--sleep` value. With `use_notify: false`, the transport polls
 each queue on every loop, as it does on MySQL.
 
 ### One resume at a time per execution {#one-resume-at-a-time--the-thing-to-get-right}
