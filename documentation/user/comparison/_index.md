@@ -470,8 +470,8 @@ See [Changing a running workflow](../deploying/).
 ## 8. Nexus: the one place Durable is ahead
 
 [Nexus](https://docs.temporal.io/nexus) routes a call from a workflow to an operation served in
-another namespace or another cluster. **A Durable workflow can call one, and can serve one. A
-workflow written with the official PHP SDK can do neither.**
+another namespace or another cluster. **A Durable workflow can call a Nexus operation and can serve
+one. A workflow written with the official PHP SDK can do neither.**
 
 ```php
 $checkout = $env->nexusStub(CheckoutContract::class, endpoint: 'checkout-endpoint');
@@ -479,36 +479,37 @@ $checkout = $env->nexusStub(CheckoutContract::class, endpoint: 'checkout-endpoin
 $order = $env->await($checkout->placeOrder($cartId));
 ```
 
-The contract is written once and read from both sides, so no operation name is retyped as a string.
-That matters because the server only guards the endpoint: it refuses a malformed one outright, and
-accepts an empty or whitespace-only service or operation without a word, leaving the call waiting
-for a handler whose name will never match.
+You write the contract once and both sides read it, so you never retype an operation name as a
+string. This matters because the server validates only the endpoint. It rejects a malformed
+endpoint outright, but accepts an empty or whitespace-only service or operation without an error,
+and the call then waits for a handler whose name never matches.
 
 As of v2.18, "Nexus" appears in the PHP SDK only as generated gRPC plumbing (endpoint CRUD on the
-operator client, a task-slot option on the worker, history dumping) with no API a workflow can
-reach. Temporal's own documentation carries a Nexus section for Go, Java, Python, TypeScript and
-.NET, and none for PHP.
+operator client, a task-slot option on the worker, history dumping), with no API a workflow can
+reach. Temporal's own documentation has a Nexus section for Go, Java, Python, TypeScript and .NET,
+and none for PHP.
 
-**This one is being built.** An integration is open in a pull request
+**Nexus support in the SDK is in progress.** An integration is open in a pull request
 ([#768](https://github.com/temporalio/sdk-php/pull/768)), following the issue that opened the
-subject ([#580](https://github.com/temporalio/sdk-php/issues/580)), and its maintainers have said it
-is slated for an upcoming major. Read "the one place Durable is ahead" as a lead measured in
-releases, not as a gap that will stay open.
+subject ([#580](https://github.com/temporalio/sdk-php/issues/580)), and its maintainers have said
+that it is planned for an upcoming major. The lead described in this section is therefore measured
+in releases, and the SDK work may close it.
 
-On the Durable side the caller path is exercised by integration tests against a real Temporal
-server: round trips, cancellation and failure, operation bounds, the endpoint, service, operation
-and header naming rules, and, on the handler side, both response shapes and the cancellation path,
-a Durable caller and a Durable handler in the same test.
+On the Durable side, integration tests against a real Temporal server exercise the caller path:
+round trips, cancellation and failure, operation bounds, and the naming rules for the endpoint,
+service, operation and headers. On the handler side, they cover both response shapes and the
+cancellation path, with a Durable caller and a Durable handler in the same test.
 
-**And the call interoperates.** The payload travels as the caller wrote it, with no wrapper and no
-envelope, so a handler written with another SDK reads the fields it declares. Measured against a
-handler served by the **Go SDK**, which declares `Greeting{Name string}`, receives `{"name":"ada"}`
-and answers `hello ada`. The reverse was measured too: a Go caller invoking an operation served by
-Durable gets its own declared type back, and the two histories are identical event for event.
+**The call also interoperates with other SDKs.** The payload travels as the caller wrote it, with
+no wrapper and no envelope, so a handler written with another SDK reads the fields it declares.
+This was measured against a handler served by the **Go SDK**, which declares
+`Greeting{Name string}`, receives `{"name":"ada"}` and answers `hello ada`. The reverse direction
+was measured too: a Go caller that invokes an operation served by Durable gets its own declared type
+back, and the two histories are identical, event for event.
 
-### Serving, too
+### Serving a Nexus operation {#serving-too}
 
-A handler declares the operation it serves, and answers now or later:
+A handler declares the operation it serves, and answers either now or later:
 
 ```php
 #[AsNexusServiceHandler(contract: BillingContract::class)]
@@ -524,33 +525,35 @@ final class Billing implements BillingServed
 final class Charge { /* … */ }
 ```
 
-The nine seconds are not a Durable limit but the task's own `request-timeout`, measured: a handler
-still working when it expires has its task redelivered and starts over. That budget is exactly why
-the deferred form exists, and why it was built before the immediate one.
+The nine seconds come from the task's own `request-timeout`, not from Durable, and were measured.
+When a handler is still working as the timeout expires, its task is redelivered and starts over.
+That budget is the reason for the deferred form, and the reason I built it before the immediate
+one.
 
-Cancellation needs no hook: Durable cancels the workflow fulfilling the operation, and a workflow
+Cancellation needs no hook. Durable cancels the workflow that fulfils the operation, and a workflow
 already observes its own cancellation with its compensations.
 
-See [Nexus operations](../nexus/) for the whole surface.
+[Nexus operations](../nexus/) covers the whole surface.
 
 **What this means for PHP.** No other PHP implementation serves Nexus, because no other PHP
-implementation reaches Nexus at all. Until now, a PHP service could not be a Nexus provider: a team
+implementation reaches Nexus at all. Until now, a PHP service could not be a Nexus provider. A team
 running PHP was reachable over HTTP like any other service, but not through the boundary Temporal
-gives to Go, Java, Python, TypeScript and .NET: no durable operation, no server-side correlation,
-no cancellation that follows the call. Durable puts PHP on both sides of that boundary.
+gives to Go, Java, Python, TypeScript and .NET, with its durable operations, server-side
+correlation and cancellation that follows the call. Durable puts PHP on both sides of that
+boundary.
 
-One limit, and it is deliberate:
+One limit is deliberate:
 
-- **Temporal backend only.** Nexus routes to an endpoint served elsewhere; a backend keeping its
+- **Temporal backend only.** Nexus routes to an endpoint served elsewhere. A backend that keeps its
   journal in one database has no such route and no honest fallback. The DBAL backend therefore
-  **refuses immediately** with `NexusUnsupportedByBackendException`, which names the backend and
-  what to do instead, rather than leaving the workflow waiting on a result nobody will produce.
-  On the handler side the same refusal fires **when the container is built**, not at request time;
-  a handler with no route is not a call that fails, it is a service that never receives anything.
+  **fails immediately** with `NexusUnsupportedByBackendException`, which names the backend and
+  what to do instead, so the workflow does not wait for a result nobody will produce. On the
+  handler side, the same check fails **when the container is built**, not at request time, because
+  a handler with no route never receives a request at all.
 
-The reasoning is recorded in
 [DUR036](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR036-nexus-caller-only-and-the-backend-asymmetry.md)
-and [DUR045](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR045-serving-a-nexus-operation.md).
+and [DUR045](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR045-serving-a-nexus-operation.md)
+record the reasoning.
 
 ---
 
@@ -560,11 +563,11 @@ and [DUR045](https://github.com/gplanchat/durable-dev/blob/main/documentation/ad
 |---|---|
 | **Maintenance** | Official Temporal project, kept in parity with the other language SDKs |
 | **Maturity** | Long production track record. Durable is `0.1.0-beta`, a pre-release: breaking changes between releases remain possible |
-| **API coverage** | Broad. Durable covers search attributes, cron schedules, updates, deadlines and child workflows, but search attributes are **start options** here, where the SDK also lets a running workflow upsert its own; anything beyond that is worth checking against the [Configuration reference](../configuration/) before you commit |
+| **API coverage** | Broad. Durable covers search attributes, cron schedules, updates, deadlines and child workflows, but search attributes are **start options** here, while the SDK also lets a running workflow upsert its own. For anything beyond that, check the [Configuration reference](../configuration/) before you commit |
 
-A comparison with no losses column is marketing. These are real, and **maturity** is the one that
-weighs most: `0.1.0-beta` is still a pre-release, where breaking changes between versions remain
-possible, each shipped with its migration procedure, but breaking changes all the same.
+These differences are real, and **maturity** weighs the most. `0.1.0-beta` is still a pre-release,
+so breaking changes between versions remain possible. Each one ships with its migration procedure,
+and it is still a breaking change.
 
 ---
 
@@ -574,25 +577,26 @@ possible, each shipped with its migration procedure, but breaking changes all th
 maintained client with cross-language parity, need **worker** versioning (build ids, pinning a run
 to a worker version) or a Nexus **handler**, and RoadRunner is acceptable in your deployment.
 
-**Coming from the SDK?** `gplanchat/durable-rector` does the mechanical part: the attributes and
-the failure classes, keeping the workflow and activity **type names** a running server already knows,
-the part a hand migration silently gets wrong, and the execution model, where the static
-`Workflow::` facade becomes an injected environment and `yield` goes, along with the `\Generator`
-return type it leaves behind. What it will not do is invent the return type that replaces it, or
-convert what has no counterpart here: those it comments, so you know before you start whether the
-migration is open to you at all.
+**Coming from the SDK?** `gplanchat/durable-rector` does the mechanical part of the migration. It
+converts the attributes and the failure classes, and keeps the workflow and activity **type
+names** that a running server already knows, the part a hand migration silently gets wrong. It
+also converts the execution model: the static `Workflow::` facade becomes an injected environment,
+and `yield` goes, along with the `\Generator` return type it leaves behind. It does not invent the
+return type that replaces `\Generator`, and it does not convert what has no counterpart in Durable.
+It adds a comment at those places instead, so you know before you start whether the migration is
+open to you at all.
 
 **Use Durable** when you want durable execution without adding a second runtime to your
 application, when a single SQL database is the right operational footprint, when you want workflow
 logic covered by unit tests that need no infrastructure, or when you need to **call** Nexus
-operations from PHP at all, and when a pre-release with possible breaking changes between releases is a trade
-you can make.
+operations from PHP at all. In each case, a pre-release with possible breaking changes between
+releases must be a trade you can make.
 
 ---
 
 ## See also
 
-- [Packages](../packages/) says what each package contains and what it requires.
-- [Backends](../backends/) puts In-Memory, DBAL, Illuminate and Temporal side by side.
+- [Packages](../packages/) describes what each package contains and what it requires.
+- [Backends](../backends/) compares In-Memory, DBAL, Illuminate and Temporal side by side.
 - [Testing workflows](../testing/) covers the full testing toolkit.
 - [Creating a workflow](../workflows/) covers the authoring surface in detail.
