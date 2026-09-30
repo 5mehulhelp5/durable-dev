@@ -189,22 +189,26 @@ continue de servir ses autres opérations.
 
 ## Lancer le worker
 
-Servir demande un worker sur la file de tâches Nexus. Le bundle l'enregistre lui-même, comme les
-workers de workflow et d'activité, dès qu'un handler est déclaré ; `messenger.yaml` ne déclare rien :
+Servir demande un worker (le processus qui tire le travail et sert les opérations Nexus ; voir le
+[glossaire](../glossary/)) sur la file de tâches Nexus. Le bundle l'enregistre, comme les workers de
+workflow et d'activité, dès qu'un gestionnaire est déclaré, et vous n'ajoutez rien à
+`messenger.yaml` :
 
 ```bash
 php bin/console messenger:consume durable_nexus --time-limit=3600
 ```
 
 La file vient du DSN. `nexus_task_queue` la fixe ; **par défaut elle suit la file de workflow**,
-parce qu'un endpoint Nexus vise une file et que le serveur n'y livre que si quelqu'un y poll. Une
-file que personne ne sert est un endpoint qui ne répond jamais, sans erreur nulle part.
+parce qu'un endpoint Nexus vise une file et que le serveur ne livre qu'à une file qu'un worker
+interroge. Si aucun worker n'interroge la file, l'endpoint ne répond jamais et aucune erreur
+n'apparaît nulle part.
 
 ---
 
 ## Enregistrer l'endpoint
 
-Un endpoint est un objet du cluster entier, créé une fois par un opérateur, pas par l'application :
+Un endpoint est un objet de tout le cluster. Un opérateur le crée une fois ; l'application ne le
+crée pas :
 
 ```bash
 temporal operator nexus endpoint create \
@@ -213,13 +217,13 @@ temporal operator nexus endpoint create \
     --target-task-queue durable-workflows
 ```
 
-Le `--target-task-queue` doit être la file que votre worker Nexus poll.
+Le `--target-task-queue` doit être la file qu'interroge votre worker Nexus.
 
 ---
 
 ## Si vous déclarez un gestionnaire sur le mauvais backend
 
-Le conteneur refuse de se construire, et nomme ce qui manque :
+La construction du conteneur échoue, et le message nomme ce qui manque :
 
 ```
 durable.nexus_handler: a Nexus handler is declared, but this backend cannot route
@@ -227,17 +231,16 @@ Nexus operations. Nexus needs the Temporal backend — set durable.temporal.dsn.
 Declared by: app.charge.
 ```
 
-C'est délibéré, et ce n'est pas ainsi que se comporte le côté appelant. Un appel sur un backend sans
-route échoue à l'appel, vous l'apprenez tout de suite. Un *gestionnaire* sans route n'est pas un
-appel qui échoue, c'est un service qui ne reçoit jamais rien, en silence. Il ne reste aucune requête
-à faire échouer, alors le refus a lieu au démarrage de l'application.
+Le côté appelant se comporte autrement, et c'est voulu. Un appel sur un backend sans route échoue à
+l'appel, et vous l'apprenez tout de suite. Un *gestionnaire* sans route ne reçoit rien, et rien
+n'échoue : aucune requête ne lui parvient. Le contrôle a donc lieu au démarrage de l'application.
 
 ---
 
-## Quatre applications, en vrai
+## Une démonstration à quatre applications {#quatre-applications-en-vrai}
 
 Le dépôt embarque une démonstration où quatre applications Durable s'appellent, à travers trois
-frameworks. Ce qu'elle montre se lit mieux qu'il ne se décrit.
+frameworks.
 
 | | `sylius/`, la boutique | `symfony/`, le métier | `magento/`, le banc Magento | `laravel/`, la logistique |
 |---|---|---|---|---|
@@ -266,7 +269,7 @@ return [
 `verify` est répondue par une méthode que le métier a écrite. `charge` n'a aucun corps de
 gestionnaire : un workflow la réclame, dort douze secondes, appelle une activité de paiement, et son
 résultat devient celui de l'opération. **Rien dans le code ci-dessus ne distingue les deux.**
-L'historique de l'appelant, si :
+L'historique de l'appelant montre la différence :
 
 ```
  5  NexusOperationScheduled     verify
@@ -277,32 +280,32 @@ L'historique de l'appelant, si :
 19  WorkflowExecutionCompleted
 ```
 
-Pendant un passage, le worker qui devait faire avancer le workflow remplissant est resté **éteint
-quatre minutes**. L'opération est restée en `NexusOperationStarted`, l'appelant n'a rien consommé,
-et tout s'est terminé normalement au retour du worker. C'est cela, « l'attente ne tient rien
-d'ouvert », et ce n'est pas une chose qu'un schéma permet d'affirmer.
+Pendant un passage, le worker qui fait avancer le workflow remplissant est resté **éteint quatre
+minutes**. L'opération est restée en `NexusOperationStarted`, l'appelant n'a rien consommé, et
+tout s'est terminé normalement au retour du worker. Ce passage montre, mesure à l'appui, qu'une
+opération en attente ne garde rien d'ouvert.
 
 ### Appeler ne demande rien à votre hôte
 
-La troisième application est là pour séparer ce que Nexus demande au framework de ce qu'il vous
-demande à vous. Les deux premières sont toutes deux en Symfony : elles partagent son conteneur, la
-passe de compilation qui enregistre les gestionnaires et le transport Messenger qui tourne les
-workers. On pouvait raisonnablement lire tout cela comme une fonctionnalité du bundle.
+La troisième application sépare ce que Nexus exige du framework de ce qu'il exige de vous. Les deux
+premières sont toutes deux en Symfony : elles partagent son conteneur, la passe de compilation qui
+enregistre les gestionnaires et le transport Messenger qui fait tourner les workers. À ne voir que
+ces deux-là, tout cela pourrait passer pour une fonctionnalité du bundle.
 
-Le banc Magento n'a rien de tout ça. Il câble ses services en `di.xml`, tourne son worker par
+Le banc Magento n'a rien de tout cela. Il câble ses services en `di.xml`, lance son worker par
 `bin/magento durable:worker --role=journal`, et lit son DSN dans `app/etc/env.php`. Il appelle les
-trois services, les immédiats et les deux qu'un workflow remplit, et **pas une ligne n'a été
-ajoutée au cœur, au pont Temporal ou à `gplanchat/durable-magento`** pour cela.
+trois services, les immédiats et les deux qu'un workflow remplit, **sans aucune modification du
+cœur, du pont Temporal ou de `gplanchat/durable-magento`**.
 
-La raison est que les deux côtés ne sont pas symétriques :
+Les deux côtés ne sont pas symétriques :
 
 - **Appeler** demande un workflow dont le journal est la grappe, et rien d'autre.
   `WorkflowEnvironment::nexusStub()` lit le contrat par réflexion ; aucun conteneur n'intervient.
-- **Servir** demande à l'hôte d'enregistrer des gestionnaires et de poller une file de tâches Nexus.
+- **Servir** demande à l'hôte d'enregistrer des gestionnaires et d'interroger une file de tâches Nexus.
   C'est du travail d'hôte, écrit une fois par hôte : une passe de compilation en Symfony, un fichier
   de configuration en Laravel, un argument de `di.xml` en Magento.
 
-Cette asymétrie se voit dans la grappe : quatre namespaces, **trois endpoints**. Un endpoint dit où
+La grappe montre cette asymétrie : quatre namespaces, **trois endpoints**. Un endpoint dit où
 un service est servi, donc une application qui ne fait qu'appeler n'en a pas.
 
 ```php
@@ -315,17 +318,18 @@ $receipt = $this->environment->await($this->billing->charge($order, $amount, $cu
 $shipment = $this->environment->await($this->delivery->ship($order, $delivery['slot']));
 ```
 
-⚠ **L'ordre de ces cinq appels n'est pas cosmétique.** Deux inversions ont été écrites d'abord, et
-toutes deux mesurées : une commande en USD retenait le stock **puis** se faisait refuser sa facture,
-et une commande de six colis était **encaissée** avant que la logistique ne refuse de la porter.
-Aucun des trois contrats n'a d'opération qui rende ce qu'il a pris. **Demander d'abord tout ce qui
-peut dire non, n'engager qu'ensuite.** Quand une opération n'a pas de contrepartie compensatoire,
-l'ordre des appels **est** la compensation.
+> [!WARNING]
+> **L'ordre de ces cinq appels compte.** Deux ordres inversés ont été écrits d'abord, et tous deux
+> mesurés : une commande en USD retenait le stock **puis** se faisait refuser sa facture, et une
+> commande de six colis était **encaissée** avant que la logistique ne refuse de la porter. Aucun
+> des trois contrats n'a d'opération qui rende ce qu'il a pris. **Appelez d'abord toutes les
+> opérations qui peuvent dire non, et n'engagez qu'ensuite.** Quand une opération n'a pas de
+> contrepartie compensatoire, l'ordre des appels tient lieu de compensation.
 
-### Servir est du travail d'hôte, et ce n'est pas du travail Symfony
+### Servir sur un autre hôte que Symfony {#servir-est-du-travail-dhôte-et-ce-nest-pas-du-travail-symfony}
 
-L'autre moitié de l'asymétrie a sa propre démonstration, parce que jusqu'à la maquette Laravel toute
-opération servie l'avait été par une passe de compilation Symfony et pollée par un transport
+L'autre moitié de l'asymétrie a sa propre démonstration. Avant le banc Laravel, toute opération
+servie était enregistrée par une passe de compilation Symfony et interrogée par un transport
 Messenger. Voici **tout** le câblage d'hôte, sur un framework qui n'a ni l'une ni l'autre :
 
 ```php
@@ -340,21 +344,23 @@ Messenger. Voici **tout** le câblage d'hôte, sur un framework qui n'a ni l'une
 
 `DeclaredNexusOperations` lit ce fichier comme `NexusHandlerPass` lit les balises de Symfony, par le
 même `NexusContractResolver` et le même `NexusHandlerInvoker` ; `php artisan durable:nexus-worker`
-poll la file. La classe du gestionnaire, elle, n'en sait rien : elle implémente `DeliveryServed` et
-ne dit pas un mot de Nexus.
+interroge la file. La classe du gestionnaire ne contient rien de tout cela : elle implémente
+`DeliveryServed` et ne mentionne pas Nexus.
 
-⚠ **Le contrôle qui tient cela honnête vit au cœur, et non chez l'un des deux hôtes.** Un workflow
-remplissant dont un paramètre obligatoire ne correspond à rien dans la signature du contrat est
-refusé à l'enregistrement, et le message nomme les deux signatures, car la charge est clée par nom
-aux deux bouts, et sans ce refus le paramètre recevrait `null`. Symfony appelle le contrôle
-depuis sa passe de compilation, Laravel depuis `durable.nexus.handlers` ; il a été écrit pour le
-premier hôte et a déménagé le jour où il en a eu un second.
+> [!WARNING]
+> **Le contrôle des signatures vit au cœur, partagé par les deux hôtes.** L'enregistrement échoue
+> pour un workflow remplissant dont un paramètre obligatoire ne correspond à rien dans la signature
+> du contrat, et le message nomme les deux signatures. La charge est clée par nom de paramètre aux
+> deux bouts : sans ce contrôle, le paramètre recevrait `null`. Symfony appelle le contrôle depuis
+> sa passe de compilation, Laravel depuis `durable.nexus.handlers`. Il a été écrit pour le premier
+> hôte et a rejoint le cœur quand un second hôte est arrivé.
 
 ### Un workflow qui sert peut appeler
 
 `ShipWorkflow` remplit `delivery/ship`. Avant de sortir la marchandise, il redemande son
-verdict à la boutique par `stock/reserve`, sur un endpoint qui n'est pas le sien, une même
-exécution porte donc une opération qu'elle sert et une opération qu'elle appelle :
+verdict à la boutique par `stock/reserve`, sur l'endpoint d'une autre application. Une même
+exécution (un déroulement durable d'un workflow ; voir le [glossaire](../glossary/)) porte donc une
+opération qu'elle sert et une opération qu'elle appelle :
 
 ```
  5  TimerStarted              ← les six secondes de préparation
@@ -372,14 +378,14 @@ boutique relit la décision prise à la commande au lieu d'en prendre une nouvel
 lignes passées sont vides.
 
 Les prérequis, les processus à démarrer et les commandes à lancer sont dans
-[`demo/README.md`](https://github.com/gplanchat/durable-dev/blob/main/demo/README.md). Deux choses à
-savoir avant de commencer : un serveur qui répond `Nexus APIs are disabled` ne convient pas,
-mais `temporal server start-dev`, si ; et les quatre maquettes ne tournent pas sur le même binaire PHP.
+[`demo/README.md`](https://github.com/gplanchat/durable-dev/blob/main/demo/README.md). Avant de
+commencer, notez deux points. Un serveur qui répond `Nexus APIs are disabled` ne convient pas,
+`temporal server start-dev` convient. Les quatre applications ne tournent pas sur le même binaire PHP.
 
 ---
 
 ## Voir aussi
 
-- [Backends](../backends/) dit quel backend sait router Nexus, et pourquoi les autres refusent.
+- [Backends](../backends/) dit quel backend peut router Nexus, et pourquoi les autres ne le peuvent pas.
 - [Annulation](../cancellation/) couvre ce que fait votre workflow quand l'appelant annule.
 - [DUR045](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR045-serving-a-nexus-operation.md) porte la décision, et les mesures derrière.
