@@ -560,7 +560,7 @@
         </div>
       </div>
     </div>
-    <p style="margin: 22px 0 0; font-size: 15px; color: var(--fg2, #6c6459);">Aucune étape terminée ne s’est exécutée deux fois et aucune n’a été perdue. Aucun cron n’intervient dans cette exécution.</p>
+    <p style="margin: 22px 0 0; font-size: 15px; color: var(--fg2, #6c6459);">Aucune étape terminée ne s’est exécutée deux fois et aucune n’a été perdue. Aucun cron n’est intervenu dans cette exécution.</p>
   </section>
 
   <section id="code" style="border-top: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df);">
@@ -575,7 +575,7 @@
         <div style="border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--code-bg, #ffffff); overflow: hidden; transition: transform 0.32s cubic-bezier(.2,.7,.2,1), box-shadow 0.32s;" style-hover="transform: translateY(-3px); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.45);">
           <div style="display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--line, #ddd6ca); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg2, #6c6459);">
             <span>src/Workflow/CheckoutWorkflow.php</span>
-            <span>PHP 8.2+<span data-hoverhint> · taquinez une ligne</span></span>
+            <span>PHP 8.2+<span data-hoverhint> · survolez une ligne</span></span>
           </div>
           <div style="display: flex; flex-wrap: wrap; align-items: stretch;">
             <div style="flex: 1 1 640px; min-width: 0; overflow-x: auto; padding: 22px 0; font-family: 'JetBrains Mono', monospace; font-size: calc(14px * var(--ts, 1)); line-height: 1.9; color: var(--code-fg, #1d1a16);" onMouseLeave="{{ hClear }}">
@@ -912,7 +912,7 @@
         </div>
         <div style="border: 1px solid var(--line, #ddd6ca); border-left: 3px solid var(--accent2, #2f6f6b); border-radius: 0 6px 6px 0; padding: 20px 24px 22px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2, #2f6f6b); margin-bottom: 12px;">Avec lui, le même appel, rendu durable</div>
-          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459);">L'appelant attend sans rien tenir d'ouvert, pendant quatre minutes comme pendant six heures. Un échec revient <strong style="color: var(--fg, #2c2822); font-weight: 500;">typé</strong>, donc une compensation peut décider de ce qu'il signifie. Annuler l'appelant annule le travail en face. Et aucune des deux équipes ne voit jamais les workflows de l'autre.</p>
+          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459);">L'appelant attend sans rien tenir d'ouvert, pendant quatre minutes comme pendant six heures. Un échec revient <strong style="color: var(--fg, #2c2822); font-weight: 500;">typé</strong>, donc vous pouvez écrire la compensation qui lui correspond. Annuler l'appelant annule le travail en face. Et aucune des deux équipes ne voit jamais les workflows de l'autre.</p>
         </div>
       </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px;">
@@ -966,7 +966,7 @@ final class Billing implements BillingServed
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">Le backend SQL. Exécution durable sur une seule base, sans cluster d’orchestration. Doctrine DBAL 3 ou 4.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); text-wrap: balance; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">un des trois ponts</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-bridge-illuminate</code>
-        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">Le backend SQL, par la couche de base de données de Laravel, sur une connexion à lui. Illuminate 11, 12 ou 13.</p>
+        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">Le backend SQL, par la couche de base de données de Laravel, sur une connexion dédiée. Illuminate 11, 12 ou 13.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">un des trois ponts</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-laravel</code>
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">L’intégration Laravel. Un service provider qui lie les quatre ports de stockage depuis un seul fichier de configuration publié, des workflows déclarés plutôt que scannés, et le travail qui voyage sur la file que l’application draine déjà.</p>
@@ -1094,7 +1094,7 @@ final class Billing implements BillingServed
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 36px; align-items: start;">
           <div>
             <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(27px * var(--ts, 1)); line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 12px; text-wrap: balance;">Installez la skill pour Claude Code, et laissez l’agent écrire le workflow</h3>
-            <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); font-size: calc(16px * var(--ts, 1)); margin: 0 0 20px;">La skill ajoute deux commandes à Claude Code. Elle enseigne les trois formes (classe de workflow, contrat d’activité et son handler, contrat Nexus), la règle de déterminisme qu’un corps rejoué doit respecter, et une migration Rector pour le code déjà écrit. Cette migration réécrit ce qu’elle peut et laisse quatre cas qu’elle ne devine pas.</p>
+            <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); font-size: calc(16px * var(--ts, 1)); margin: 0 0 20px;">La skill ajoute deux commandes à Claude Code. Elle enseigne les trois formes (classe de workflow, contrat d’activité et son handler, contrat Nexus), la règle de déterminisme qu’un corps rejoué doit respecter, et une migration Rector pour le code déjà écrit. Cette migration réécrit ce qu’elle peut et laisse quatre cas sans les réécrire.</p>
             <div><a href="https://github.com/gplanchat/durable-skill" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" style-hover="border-bottom-color: var(--accent, #b4552f);">gplanchat/durable-skill →</a></div>
           </div>
           <div>
@@ -1104,7 +1104,7 @@ final class Billing implements BillingServed
           <button type="button" data-skill-copy style="justify-self: start; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; background: transparent; border: 1px solid var(--line, #ddd6ca); color: var(--fg2, #6c6459); border-radius: 999px; padding: 6px 14px; cursor: pointer;" style-hover="border-color: var(--accent, #b4552f); color: var(--accent, #b4552f);">Copier</button>
         </div>
             <div data-skill-traps style="margin: 22px 0 0;">
-              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">Quatre erreurs qui passent sans le moindre message</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">Quatre erreurs qui passent sans le moindre message, couvertes par la skill</span>
               <ul style="margin: 12px 0 0; padding: 0 0 0 18px; font-size: calc(14.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459);">
                 <li>un nom d’activité écrit en chaîne littérale, au lieu d’être lu sur l’attribut de son contrat</li>
                 <li>un timer sans résumé, que vous ne retrouvez pas parmi dix mille exécutions</li>
