@@ -5,9 +5,11 @@ weight: 40
 
 # Tester des workflows
 
-Durable embarque une **boîte à outils de test** pour valider vos workflows et vos activités avec
-PHPUnit ordinaire. Deux points d'entrée, selon que vous écrivez des tests indépendants du framework
-ou des tests d'intégration du bundle Symfony :
+Durable fournit une **boîte à outils de test** pour tester vos workflows et vos activités avec
+PHPUnit tel quel. Un workflow décrit les étapes d'une exécution, et une activité est l'une de ces
+étapes qui a un effet de bord, comme un appel HTTP ; voir le [glossaire](../glossary/). Choisissez
+le point d'entrée qui correspond à vos tests, indépendants du framework ou d'intégration du bundle
+Symfony :
 
 | Outil | Paquet | Quand l'employer |
 |---|---|---|
@@ -18,9 +20,10 @@ ou des tests d'intégration du bundle Symfony :
 
 ## Tests unitaires et fonctionnels avec `DurableTestCase` {#tests-unitaires-et-fonctionnels--durabletestcase}
 
-`DurableTestCase` est un `TestCase` PHPUnit abstrait qui câble pour vous un **backend en mémoire**.
-Héritez-en, appelez `createWorkflowTestEnvironment()`, faites tourner votre workflow, et servez-vous
-des assertions fournies.
+`DurableTestCase` est un `TestCase` PHPUnit abstrait qui câble pour vous un **backend en mémoire** :
+le journal, qui enregistre les étapes d'une exécution et leurs résultats, reste en mémoire.
+Héritez-en, appelez `createWorkflowTestEnvironment()`, faites tourner votre workflow, puis vérifiez
+le résultat avec les assertions fournies.
 
 ```php
 <?php
@@ -111,8 +114,8 @@ final class GreetingWorkflow
 
 ## Piloter le comportement d'une activité avec `ActivitySpy` {#piloter-le-comportement-dune-activité--activityspy}
 
-`ActivitySpy` est un **doublure de test appelable** pour les activités. Vous pouvez lui fixer une
-valeur de retour, la faire lever, ou lui donner une séquence de résultats pour simuler des réessais.
+`ActivitySpy` est une **doublure de test appelable** pour les activités. Fixez sa valeur de retour,
+faites-la lever une exception, ou donnez-lui une séquence de résultats pour simuler des réessais.
 
 ### Toujours rendre la même valeur
 
@@ -128,9 +131,9 @@ $spy = ActivitySpy::throws(new \RuntimeException('External API unavailable'));
 
 ### Rendre une séquence (pratique pour les scénarios de réessai)
 
-Le premier appel rend la première valeur, le deuxième la deuxième, et ainsi de suite. Si un
-`\Throwable` figure dans la séquence, il est **levé** à cette tentative-là. La dernière entrée est
-répétée une fois la séquence épuisée.
+Le premier appel rend la première valeur, le deuxième la deuxième, et ainsi de suite. Un
+`\Throwable` placé dans la séquence est **levé** à sa tentative. Une fois la séquence épuisée,
+l'espion répète la dernière entrée.
 
 ```php
 $spy = ActivitySpy::returnsSequence(
@@ -156,9 +159,8 @@ $spy->assertNeverCalled();
 
 ## L'environnement de bas niveau : `WorkflowTestEnvironment`
 
-`WorkflowTestEnvironment` est l'objet sur lequel `DurableTestCase` s'appuie. Vous pouvez l'employer
-directement quand vous ne voulez pas hériter de `DurableTestCase`, par exemple dans des classes
-utilitaires de test.
+`DurableTestCase` s'appuie sur `WorkflowTestEnvironment`. Employez-le directement quand vous ne
+voulez pas hériter de `DurableTestCase`, par exemple dans des classes utilitaires de test.
 
 ```php
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
@@ -191,8 +193,8 @@ assert($result === 'HELLO');
 ## Tests d'intégration Symfony avec `DurableBundleTestTrait` {#tests-dintégration-symfony--durablebundletesttrait}
 
 Pour les tests qui démarrent le noyau de votre application Symfony, employez `DurableBundleTestTrait`
-dans n'importe quelle classe héritant de `KernelTestCase`. Le trait suppose que vos **transports
-Messenger** de l'environnement `test` sont configurés **en mémoire** (voir
+dans n'importe quelle classe héritant de `KernelTestCase`. Le trait repose sur des
+**transports Messenger** configurés **en mémoire** dans l'environnement `test` (voir
 [Premiers pas](../getting-started/)).
 
 ```php
@@ -245,8 +247,8 @@ final class OrderWorkflowIntegrationTest extends KernelTestCase
 
 ### Prérequis
 
-Dans `config/packages/messenger.yaml` (sous `when@test:`), assurez-vous d'avoir des transports en
-mémoire dont les noms correspondent à `DurableBundleTestTrait::$durableWorkflowTransports` :
+Dans `config/packages/messenger.yaml`, sous `when@test:`, déclarez des transports en mémoire dont
+les noms correspondent à `DurableBundleTestTrait::$durableWorkflowTransports` :
 
 ```yaml
 when@test:
@@ -259,7 +261,7 @@ when@test:
 
 ### Adapter la liste des transports ou le délai de vidange
 
-Redéfinissez les propriétés statiques avant chaque test :
+Pour les changer, redéfinissez les propriétés statiques avant chaque test :
 
 ```php
 protected function setUp(): void
@@ -308,7 +310,7 @@ Intégration Temporal (vrai serveur Temporal)
 ## Tester contre un vrai serveur Temporal
 
 Les tests unitaires vérifient que le pont construit des commandes protobuf bien formées. Seul un
-vrai serveur vous dit qu'elles sont **acceptées**.
+vrai serveur montre s'il les **accepte**.
 
 ```bash
 temporal server start-dev --namespace durable-test --port 7233
@@ -316,15 +318,15 @@ temporal server start-dev --namespace durable-test --port 7233
 DURABLE_TEMPORAL_ADDRESS=127.0.0.1:7233 vendor/bin/phpunit --testsuite integration
 ```
 
-Sans `DURABLE_TEMPORAL_ADDRESS`, la suite est ignorée : elle reste donc inoffensive dans une chaîne
-qui n'a pas de serveur.
+Sans `DURABLE_TEMPORAL_ADDRESS`, la suite est ignorée : elle reste donc inoffensive dans une
+chaîne qui n'a pas de serveur.
 
-Deux workers tournent dans des **processus séparés**, comme en production. Les deux rôles font de
-longues interrogations de plusieurs dizaines de secondes ; les alterner dans un seul processus
-affamerait celui qui n'interroge pas.
+La suite fait tourner deux workers dans des **processus séparés**, comme en production. Les deux
+rôles font de longues interrogations de plusieurs dizaines de secondes, et les alterner dans un
+seul processus affame le rôle qui n'interroge pas.
 
-Certains tests demandent une préparation au niveau de l'espace de noms, documentée en tête du
-fichier qui en a besoin :
+Certains tests demandent une préparation au niveau de l'espace de noms. Le fichier concerné la
+documente en tête :
 
 ```bash
 temporal operator search-attribute create --name DurableOrderId --type Keyword
@@ -333,11 +335,11 @@ temporal operator search-attribute create --name DurableAmount  --type Int
 
 ---
 
-## Le temps est sauté, pas attendu {#time-is-skipped-not-waited-for}
+## Les minuteurs tournent sur une horloge virtuelle en test {#time-is-skipped-not-waited-for}
 
-Un workflow qui dort se teste en millisecondes. Le harnais tourne sur une **horloge virtuelle**
-qu'il avance jusqu'au prochain minuteur échu : `sleep(Duration::hours(24))` ne coûte donc aucun
-temps réel.
+Un workflow qui dort s'exécute en quelques millisecondes sous test. Le harnais emploie une
+**horloge virtuelle** et l'avance jusqu'au prochain minuteur échu : `sleep(Duration::hours(24))` ne
+prend donc aucun temps réel.
 
 ```php
 interface PingActivities
@@ -355,24 +357,24 @@ $result = $env->run(function (WorkflowEnvironment $wf): string {
 }, 'nightly-1');
 ```
 
-L'horloge n'avance que lorsque **rien d'autre ne peut progresser**. Sauter plus tôt ferait gagner le
-minuteur à chaque course `any(activité, minuteur)` qu'une activité était sur le point de gagner ;
-ainsi une course se comporte ici comme en production.
+L'horloge n'avance que lorsque **rien d'autre ne peut progresser**. L'avancer plus tôt ferait
+gagner le minuteur à chaque course `any(activité, minuteur)` que l'activité était sur le point de
+gagner. Comme l'horloge attend, une course a ici la même issue qu'en production.
 
-Le recul entre réessais est une autre affaire : il consomme du temps réel, parce qu'un réessai est
-mis en file sur le transport plutôt qu'enregistré comme un minuteur. Passez
-`initialInterval: Duration::zero()` pour garder ces tests rapides.
+Le recul entre réessais consomme du temps réel, parce qu'un réessai est mis en file sur le
+transport au lieu d'être enregistré comme un minuteur. Passez `initialInterval: Duration::zero()`
+pour garder ces tests rapides.
 
 ---
 
-## Deux pièges du moteur en mémoire
+## Exécutions bloquées et réessais sans fin dans le moteur en mémoire {#deux-pièges-du-moteur-en-mémoire}
 
 **Une exécution qui ne peut plus progresser échoue au lieu de se figer.** Un workflow qui attend un
-signal que vous avez oublié de livrer lève `WorkflowStuckException` plutôt que de tourner à vide.
+signal que le test ne livre jamais lève `WorkflowStuckException` au lieu de tourner à vide.
 
 **Les tentatives sont illimitées par défaut.** Une activité qui échoue systématiquement réessaie
-indéfiniment : le moteur impose donc un budget global, puis vous dit dans laquelle des deux
-situations vous êtes :
+indéfiniment : le moteur impose donc un budget global. Quand le budget est épuisé, il indique
+laquelle des deux situations s'applique :
 
 ```
 Workflow x did not finish within 10.0s. Activities retry indefinitely by default
@@ -387,16 +389,15 @@ $env = WorkflowTestEnvironment::inMemory(
 );
 ```
 
-Le recul entre réessais est honoré pour de vrai : une activité configurée avec l'intervalle par
-défaut d'une seconde fait donc attendre le test. Passez `initialInterval: Duration::zero()` pour
-garder les tests rapides.
+Le recul entre réessais prend du temps réel : une activité configurée avec l'intervalle par défaut
+d'une seconde fait donc attendre le test. Passez `initialInterval: Duration::zero()` pour garder
+les tests rapides.
 
 ---
 
 ## Tester les workflows enfants
 
-Le harnais a besoin que les types enfants soient enregistrés, puisqu'il doit les résoudre par leur
-nom :
+Enregistrez les types de workflows enfants auprès du harnais, qui les résout par leur nom :
 
 ```php
 $env = WorkflowTestEnvironment::inMemory(['work' => $spy]);
@@ -408,4 +409,5 @@ $result = $env->run(
 );
 ```
 
-`registerWorkflowClass()` prend à la place une classe de workflow annotée.
+Pour enregistrer une classe de workflow qui porte les attributs, employez plutôt
+`registerWorkflowClass()`.

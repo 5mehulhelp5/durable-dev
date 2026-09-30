@@ -5,16 +5,18 @@ weight: 30
 
 # Creating activities
 
-This page summarizes how you **author** activities in Durable. Normative detail is in [**DUR023**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR023-activity-authoring-and-asynchronous-activity-proxy.md) and [**DUR004**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR004-activity-stub-and-activities.md); this guide stays practical.
+This page shows how to **write** an activity, a unit of side effect such as an HTTP call, a database write or an e-mail (see the [glossary](../glossary/)), and how to call it from a workflow. The normative detail is in [**DUR023**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR023-activity-authoring-and-asynchronous-activity-proxy.md) and [**DUR004**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR004-activity-stub-and-activities.md); this page covers the practical side.
 
-## Two pieces
+## The contract interface and the implementation class {#two-pieces}
 
-1. **Activity contract interface.** Methods the workflow may call, each marked with **`#[AsActivityMethod]`**. From the workflow you interact through **`ActivityStub`** (**ActivityInvoker** in ADRs).
-2. **Activity implementation class.** A concrete class carrying **`#[AsActivityHandler]`**, naming the contract it implements. On Symfony, that attribute is what registers the class: the bundle autoconfigures it, and without it the workflow finds no handler at run time. Laravel lists the class in `activity_handlers` in `config/durable.php`, where the attribute, if present, names the contract it serves; without it, the class serves its interfaces whose methods carry `#[AsActivityMethod]`. Magento lists it in the `activityHandlers` argument of `RuntimeFactory` in `di.xml`. Neither scans attributes: an unlisted class serves nothing. See [who registers what, per host](../getting-started/#register-workflows-and-activities).
+An activity has two parts.
+
+1. **Activity contract interface.** It lists the methods the workflow may call, each marked with **`#[AsActivityMethod]`**. The workflow calls them through an **`ActivityStub`**, an object that exposes the contract's methods to the workflow (**ActivityInvoker** in the ADRs).
+2. **Activity implementation class.** A concrete class carrying **`#[AsActivityHandler]`**, naming the contract it implements. On Symfony, that attribute is what registers the class: the bundle autoconfigures it, and without it the workflow finds no handler at run time. Laravel lists the class in `activity_handlers` in `config/durable.php`, where the attribute, if present, names the contract it serves; without it, the class serves its interfaces whose methods carry `#[AsActivityMethod]`. Magento lists it in the `activityHandlers` argument of `RuntimeFactory` in `di.xml`. Neither host scans attributes, so a class missing from the list serves nothing. See [who registers what, per host](../getting-started/#register-workflows-and-activities).
 
 ## Example: activity contract and implementation
 
-The **interface** lists methods the workflow may schedule. Each exposed method carries **`#[AsActivityMethod]`** with a **stable activity name** for the orchestrator. The **implementation** class performs I/O and may use **constructor injection**.
+The **interface** lists the methods the workflow can schedule. Each exposed method carries **`#[AsActivityMethod]`** with a **stable activity name** for the orchestrator. The **implementation** class performs the I/O and can use **constructor injection**.
 
 ```php
 <?php
@@ -49,7 +51,7 @@ final class OrderActivitiesHandler implements OrderActivities
 }
 ```
 
-Register **`OrderActivitiesHandler`** with your activity worker / container so the worker can execute **`charge-order`** when the workflow schedules it.
+Register **`OrderActivitiesHandler`** with your activity worker or your container, so that the worker, the process that runs activities, can execute **`charge-order`** when the workflow schedules it.
 
 ## Example: calling an activity from a workflow
 
@@ -83,7 +85,7 @@ public function run(
 Some workflows build the stub themselves with `$env->activityStub(OrderActivities::class)`: see
 [When to build the stub yourself](../workflows/#when-to-build-the-stub-yourself).
 
-The **`ActivityStub`** type (see [Creating a workflow](../workflows/) for the **ActivityInvoker** naming note) resolves method names via reflection on **`OrderActivities`** and builds **`#[AsActivityMethod]`** payloads.
+The **`ActivityStub`** type resolves method names by reflection on **`OrderActivities`** and builds the **`#[AsActivityMethod]`** payloads. [Creating a workflow](../workflows/) explains the **ActivityInvoker** name.
 
 ## ActivityOptions (timeouts, retries, task queue)
 
@@ -126,18 +128,17 @@ object and pass it as the second argument of `$env->activityStub()`. Retry limit
 then **value objects**, not numbers; see [Options and value objects](../options/).
 
 > [!WARNING]
-> With no `RetryLimit`, attempts are **unlimited**, which is Temporal's default. An activity that always
-> fails retries forever instead of failing the workflow. Pass `RetryLimit::once()` when a failure
-> should be final.
+> With no `RetryLimit`, attempts are **unlimited**, which is Temporal's default. An activity that
+> always fails retries forever, and the workflow does not fail. Pass `RetryLimit::once()` when a
+> failure must be final.
 
 > [!NOTE]
-> **Two timeouts, two owners.** `ActivityTimeouts` bounds an activity **attempt** and is enforced
-> by the **backend**: it survives a worker crash, and it applies to that activity only. A
-> **deadline** passed to `await()`, over an awaitable or a condition, is enforced
-> **workflow-side**: it bounds
-> *this* wait in *this* execution, and it covers what activity bounds cannot: a child workflow, a
-> signal, a composed group. Reach for `ActivityTimeouts` to bound a single attempt, and for a
-> deadline to bound anything else. See
+> **Activity timeouts and deadlines.** `ActivityTimeouts` bounds one activity **attempt**, and the
+> **backend** enforces it. It survives a worker crash and applies to that activity only. A
+> **deadline** passed to `await()`, over an awaitable or a condition, is enforced **workflow-side**.
+> It bounds *this* wait in *this* execution, and it also covers waits that activity timeouts do not
+> cover, such as a child workflow, a signal or a composed group. Use `ActivityTimeouts` to bound a
+> single attempt, and a deadline to bound any other wait. See
 > [Bounding a wait in time](../workflows/#bounding-a-wait-in-time).
 
 Declare **separate stubs** when different calls need different policies: one with aggressive
@@ -173,14 +174,16 @@ public function run(
 
 ## Idempotency
 
-The journal keeps a **completed** activity from running again. It cannot do the same for an
-attempt that stops between its side effect and the recording of its result: the payment provider
-charged the card, then the attempt timed out or the worker died. That attempt failed, and it is
-retried. An activity runs **at least once**.
+The journal, the record of an execution's steps and their results, prevents a **completed**
+activity from running again. It does not cover an attempt that stops between its side effect and
+the recording of its result. For example, the payment provider charges the card, then the attempt
+times out or the worker dies. That attempt counts as failed, and it is retried. An activity runs
+**at least once**.
 
-Anything an activity does to the outside world therefore needs a key that is the same on every
-attempt. The workflow passes the same arguments to each attempt, so build the key from them and a
-fixed prefix naming the operation (`charge-`, `refund-`), never from a random value or the time:
+Anything an activity does to the outside world therefore needs a key that stays the same on every
+attempt. The workflow passes the same arguments to each attempt. Build the key from those arguments
+and a fixed prefix that names the operation (`charge-`, `refund-`), never from a random value or the
+current time:
 
 ```php
 public function charge(string $orderId): string
@@ -190,22 +193,23 @@ public function charge(string $orderId): string
 ```
 
 The key is the same for every attempt of one operation, and different for two distinct
-operations. `charge-<orderId>` is right only if an order is charged once. If the same order can be
-charged again (a second instalment, a new execution for the same order), add what tells the charges
-apart, such as the instalment number. Check also how long your provider remembers a key.
+operations. `charge-<orderId>` fits only when an order is charged once. If the same order can be
+charged again (a second instalment, a new execution for the same order), add the value that tells
+the charges apart, such as the instalment number. Also check how long your provider keeps a key.
 
-A `RetryLimit` bounds how many attempts reach the provider; it does not make the second one safe.
-With `RetryLimit::once()`, a cut-off attempt is not retried: the call may or may not have happened,
-and the workflow sees a failure.
+A `RetryLimit` bounds how many attempts reach the provider. It does not make a second attempt safe.
+With `RetryLimit::once()`, a cut-off attempt is not retried. The call may or may not have
+happened, and the workflow receives a failure.
 
 ## Dependency injection
 
-Unlike workflows, the **activity implementation** **may** use a normal constructor with **dependency injection**: HTTP clients, databases, loggers, etc., as provided by the **activity worker** host (for example the Symfony container in the worker process).
+Unlike a workflow, an **activity implementation** **can** have an ordinary constructor with **dependency injection**. It receives HTTP clients, databases, loggers and other services from the host of the **activity worker**, for example the Symfony container in the worker process.
 
-### Heartbeats: a long activity says it is alive
+### Heartbeats from a long-running activity {#heartbeats-a-long-activity-says-it-is-alive}
 
-A long activity injects `ActivityHeartbeatSenderInterface` and calls `sendHeartbeat()` between
-steps. The call returns `true` once cancellation was requested: stop there and clean up.
+To report that a long activity is still alive, inject `ActivityHeartbeatSenderInterface` and call
+`sendHeartbeat()` between steps. The call returns `true` once cancellation has been requested. When
+it does, stop at that point and clean up.
 
 ```php
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
@@ -232,24 +236,25 @@ final class ImportCatalog implements CatalogActivities
 }
 ```
 
-On Temporal, on every host, the heartbeat resets the activity's `heartbeat` timeout (see
+On Temporal, whatever the host, the heartbeat resets the activity's `heartbeat` timeout (see
 [ActivityTimeouts](../options/#activitytimeouts)) and carries the progress details. On the other
-backends it is a no-op that never reports a cancellation, so the same code runs everywhere.
+backends the call does nothing and never reports a cancellation, so the same code runs on every
+backend.
 
 ## Workflow side: ActivityInvoker
 
-From **`WorkflowEnvironment`** (see [Creating a workflow](../workflows/)), you call **`activityStub(YourActivityInterface::class)`** and obtain an **`ActivityStub`** (same concept as **`ActivityInvoker`** in ADRs).
+On **`WorkflowEnvironment`** (see [Creating a workflow](../workflows/)), call **`activityStub(YourActivityInterface::class)`** to get an **`ActivityStub`**, the concept the ADRs call **`ActivityInvoker`**.
 
 A stub that needs no **`ActivityOptions`** can also be declared as an argument of the workflow method: a parameter typed **`ActivityStub`** and marked **`#[Activities(YourActivityInterface::class)]`** receives the same stub. See [Arguments Durable supplies](../workflows/#arguments-durable-supplies).
 
 - For each **`#[AsActivityMethod]`** on the interface, the stub exposes the **same method name and parameters**; each call returns an **`Awaitable`** you pass to **`$environment->await(...)`** (the synchronous return type **`T`** on the interface is what you get after **`await`**).
-- The invoker **does not** run I/O inside the workflow process: it **schedules** a durable step and ties the result to history and replay.
+- The invoker **does not** run I/O inside the workflow process. It **schedules** a durable step and ties its result to the history and to replay.
 
-This separation is what keeps workflow code deterministic while activities do blue-side (non-deterministic) work.
+This separation keeps the workflow code deterministic, while the activities do the non-deterministic work.
 
 ## Serialization
 
-Arguments and return values must be **serializable** across the orchestrator boundary (**DUR007**). Avoid raw resources, unsupported closures, or types your configured serializer cannot handle.
+Arguments and return values cross the orchestrator boundary, so they must be **serializable** (**DUR007**). Do not pass raw resources, unsupported closures, or types that your configured serializer does not handle.
 
 ## Checklist
 
@@ -257,7 +262,7 @@ Arguments and return values must be **serializable** across the orchestrator bou
 |-------|----------------|
 | Interface | `#[AsActivityMethod]` on callable methods; serializable types |
 | Implementation | I/O and DI; implements the interface |
-| Workflow | Uses **`activityStub()`** / **`ActivityStub`** from **`WorkflowEnvironment`** or an **`#[Activities]`** argument only; never `new` the activity class for durable effects; optional second arg **`ActivityOptions`** |
+| Workflow | Uses only **`activityStub()`** / **`ActivityStub`** from **`WorkflowEnvironment`**, or an **`#[Activities]`** argument; never instantiates the activity class with `new` for a durable effect; optional second argument **`ActivityOptions`** |
 
 ## See also
 
