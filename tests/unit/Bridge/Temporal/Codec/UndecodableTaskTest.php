@@ -23,10 +23,12 @@ use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payload;
 use Temporal\Api\Common\V1\Payloads;
+use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Enums\V1\ActivityTaskFailedCause;
 use Temporal\Api\Enums\V1\WorkflowTaskFailedCause;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
+use Temporal\Api\History\V1\WorkflowExecutionSignaledEventAttributes;
 use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryRequest;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
@@ -75,6 +77,47 @@ final class UndecodableTaskTest extends TestCase
         self::assertStringContainsString('unknown key k2', (string) $failed->getFailure()?->getMessage());
         self::assertSame('', $failed->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
         self::assertSame(\RuntimeException::class, $failed->getFailure()->getApplicationFailureInfo()?->getType());
+        self::assertSame(WorkflowTaskFailedCause::WORKFLOW_TASK_FAILED_CAUSE_WORKFLOW_WORKER_UNHANDLED_FAILURE, $failed->getCause());
+    }
+
+    /**
+     * #824: the first page decodes, the payload that fails is on the page the cursor fetches during
+     * replay. The task is answered as failed all the same.
+     */
+    public function testAPayloadThatFailsToDecodeOnALaterHistoryPageFailsTheTaskAndTheLoopPollsAgain(): void
+    {
+        $task = new PollWorkflowTaskQueueResponse([
+            'task_token' => 'wf-token',
+            'workflow_execution' => new WorkflowExecution(['workflow_id' => 'wf-1', 'run_id' => 'run-1']),
+            'history' => new History(['events' => [new HistoryEvent(['workflow_execution_started_event_attributes' => new WorkflowExecutionStartedEventAttributes()])]]),
+            'next_page_token' => 'page-2',
+        ]);
+        $signaled = new WorkflowExecutionSignaledEventAttributes(['signal_name' => 'go', 'input' => self::undecodable()]);
+        $failed = null;
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->expects(self::exactly(2))->method('PollWorkflowTaskQueue')
+            ->willReturnOnConsecutiveCalls($task, new PollWorkflowTaskQueueResponse());
+        $inner->expects(self::once())->method('GetWorkflowExecutionHistory')->willReturn(new GetWorkflowExecutionHistoryResponse([
+            'history' => new History(['events' => [new HistoryEvent(['workflow_execution_signaled_event_attributes' => $signaled])]]),
+        ]));
+        $inner->expects(self::once())->method('RespondWorkflowTaskFailed')->willReturnCallback(static function (RespondWorkflowTaskFailedRequest $request) use (&$failed): RespondWorkflowTaskFailedResponse {
+            $failed = $request;
+
+            return new RespondWorkflowTaskFailedResponse();
+        });
+        $client = new PayloadCodecWorkflowServiceClient($inner, new FailingCodec());
+        $connection = new TemporalConnection('localhost:7233', 'test-namespace');
+        $runner = new WorkflowTaskRunner(new TemporalHistoryCursor($client, 'test-namespace'), new WorkflowRegistry(), $connection);
+
+        $polls = 0;
+        (new WorkflowTaskProcessor($client, $connection, $runner))->run(static function () use (&$polls): bool {
+            return ++$polls < 2;
+        });
+
+        self::assertInstanceOf(RespondWorkflowTaskFailedRequest::class, $failed);
+        self::assertSame('wf-token', $failed->getTaskToken());
+        self::assertStringContainsString('unknown key k2', (string) $failed->getFailure()?->getMessage());
+        self::assertSame('', $failed->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
         self::assertSame(WorkflowTaskFailedCause::WORKFLOW_TASK_FAILED_CAUSE_WORKFLOW_WORKER_UNHANDLED_FAILURE, $failed->getCause());
     }
 
