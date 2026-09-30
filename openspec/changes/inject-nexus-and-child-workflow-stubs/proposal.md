@@ -55,11 +55,14 @@ Two things keep this from being a copy of `#[Activities]`:
   endpoint, so the explicit form gains the same fallback.
 - **Child workflow stubs as arguments.** A parameter typed `ChildWorkflowStub` and marked with a
   new attribute naming the child workflow class receives a child stub. The attribute takes the
-  options that are constants: parent close policy, task queue, namespace, id reuse policy, the
-  three workflow timeouts in seconds, a static summary.
+  options that are constants: parent close policy, id reuse policy, task queue, namespace, the
+  three workflow timeouts in seconds. The journal backends honour the first two; the others fail
+  registration there until the options-parity change that PR #782 announces. Cron schedule, static
+  summary and static details are left out (design.md).
 - **A per-call workflow id.** `ChildWorkflowStub::withWorkflowId(string)` returns a stub that
   starts the child under that id. The stub it is called on is unchanged.
-- **Errors at registration.** An endpoint that neither the attribute nor the configuration names,
+- **Errors at registration.** A child option the backend in use does not honour, an endpoint that
+  neither the attribute nor the configuration names,
   an attribute on a parameter of another type, a class that is not a workflow, or a child whose
   entry method is named `withWorkflowId` fails when the workflow that declares the parameter is
   registered, naming the parameter.

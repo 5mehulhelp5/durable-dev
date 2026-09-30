@@ -25,10 +25,10 @@ makes it pass. Each commit stays under 200 changed lines.
 - [ ] 1.4 `$env->nexusStub()` with the endpoint optional, falling back to the same resolver.
       Tests: an explicit endpoint still wins; an omitted one is resolved; an unresolved one fails at
       the call, naming the contract.
-- [ ] 1.5 The `#[ChildWorkflow]` attribute, with `parentClosePolicy`, `taskQueue`, `namespace`,
-      `workflowIdReusePolicy`, `executionTimeout`, `runTimeout`, `taskTimeout`, `staticSummary`.
-      Tests: a child started through the injected stub carries those options; a class that is not
-      a workflow fails at registration.
+- [ ] 1.5 The `#[ChildWorkflow]` attribute, with `parentClosePolicy`, `workflowIdReusePolicy`,
+      `taskQueue`, `namespace`, `executionTimeout`, `runTimeout`, `taskTimeout`. Tests: a child
+      started through the injected stub carries those options on the Temporal backend; a class
+      that is not a workflow fails at registration.
 - [ ] 1.6 `ChildWorkflowStub::withWorkflowId()`. Tests: the child starts under that id; the stub it
       was called on keeps its own id; a replay starts no second child; a child class whose entry
       method is named `withWorkflowId` is refused at registration.
@@ -39,6 +39,12 @@ makes it pass. Each commit stays under 200 changed lines.
       for `nexusStub()` without an endpoint. `ExecutionEngine::createEnvironment()` and
       `WorkflowTaskRunner` pass it. Test: `$env->nexusStub()` without an endpoint schedules on the
       configured one, on the memory backend and on the Temporal backend.
+- [ ] 1.9 The loader takes the backend in use and the child options it honours, and fails
+      registration on any other option, naming the parameter, the option and the backend. A
+      loader built without that information applies the journal backends' list. Tests: on the
+      memory backend, `parentClosePolicy` and `workflowIdReusePolicy` register and are honoured;
+      `taskQueue` fails registration, naming the three; two unhonoured options are named together.
+      The hosts pass the backend through the wiring of 2.6 to 2.8.
 
 ## 2. Hosts: the endpoint configuration
 
@@ -68,6 +74,9 @@ makes it pass. Each commit stays under 200 changed lines.
       `TemporalRuntimeAssembly` instead of a second `new WorkflowDefinitionLoader()`. Tests: the
       memory path through `create()`; the Temporal path through the first call that builds the
       assembly.
+- [ ] 2.9 Probe, on a real server: a child started with a task queue, a namespace and the three
+      timeouts set runs on that queue, in that namespace, under those bounds. Record the result in
+      design.md, "Probed and assumed", before the documentation states it.
 
 ## 3. PHPStan
 

@@ -18,6 +18,10 @@ an option the engine would refuse.
 
 The same workflow, declared the same way, SHALL receive the same arguments on every host.
 
+An option declared on a supplied stub SHALL be honoured by the backend in use. When the backend
+does not honour it, registering the workflow SHALL fail, naming the parameter, every such option
+and the backend. The option SHALL NOT be recorded and then ignored.
+
 #### Scenario: A workflow receives its three stubs
 
 - **WHEN** a workflow method declares an input parameter, an activity stub, a Nexus stub and a
@@ -37,6 +41,22 @@ The same workflow, declared the same way, SHALL receive the same arguments on ev
   attribute naming its contract or its class
 - **THEN** registering the workflow fails, naming the parameter
 - **AND** no execution of that workflow can start
+
+#### Scenario: A child option the backend in use cannot honour
+
+- **WHEN** a workflow declares a supplied child workflow stub with a task queue for the child
+- **AND** the application runs on a backend that runs a child in the parent's process and cannot
+  route it to a task queue
+- **THEN** registering the workflow fails, naming the parameter, the task queue option and the
+  backend
+- **AND** no execution of that workflow can start
+
+#### Scenario: A child option every backend honours
+
+- **WHEN** a workflow declares a supplied child workflow stub whose parent close policy abandons
+  the child
+- **AND** the parent completes while the child is still running
+- **THEN** the child keeps running, on every backend
 
 #### Scenario: The same declaration on every host
 

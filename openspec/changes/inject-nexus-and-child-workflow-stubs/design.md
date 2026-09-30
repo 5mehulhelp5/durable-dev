@@ -85,16 +85,70 @@ As in `#[Activities]`, durations are seconds and enums are cases:
 #[NexusOperations(StockContract::class, endpoint: 'demo-shop-stock', scheduleToClose: 300.0)]
 NexusStub $stock,
 
-#[ChildWorkflow(ShipWorkflow::class, parentClosePolicy: ParentClosePolicy::Abandon, executionTimeout: 86400.0)]
+#[ChildWorkflow(ShipWorkflow::class, parentClosePolicy: ParentClosePolicy::Abandon, workflowIdReusePolicy: WorkflowIdReusePolicy::RejectDuplicate)]
 ChildWorkflowStub $ship,
 ```
 
 `#[NexusOperations]` takes `endpoint`, `scheduleToClose`, `scheduleToStart`, `startToClose`.
-`#[ChildWorkflow]` takes `parentClosePolicy`, `taskQueue`, `namespace`, `workflowIdReusePolicy`,
-`executionTimeout`, `runTimeout`, `taskTimeout`, `staticSummary`. The value objects
-(`NexusOperationTimeouts`, `WorkflowTimeouts`, `ChildWorkflowOptions`) are built from them at
-registration, so their own checks run there. `NexusOperationTimeouts` already refuses bounds the
-server would clamp silently; that refusal moves from the first call to registration.
+`#[ChildWorkflow]` takes `parentClosePolicy`, `workflowIdReusePolicy`, `taskQueue`, `namespace`,
+`executionTimeout`, `runTimeout`, `taskTimeout`. The value objects (`NexusOperationTimeouts`,
+`WorkflowTimeouts`, `ChildWorkflowOptions`) are built from them at registration, so their own
+checks run there. `NexusOperationTimeouts` already throws on bounds the server would clamp
+silently; that failure moves from the first call to registration.
+
+### Child options: honoured by the backend in use, or a registration error
+
+The rule for this change: the same API and the same behaviour on every backend, Nexus limits
+excepted. An option declared on `#[ChildWorkflow]` is honoured by the backend in use, or
+registering the workflow fails, naming the parameter, the option and the backend. It is never
+journaled and then ignored.
+
+What each backend does with each field of `ChildWorkflowOptions` on `main`:
+
+| Option | Temporal: sent in the start-child command | Journal backends (memory, DBAL, Illuminate) |
+|---|---|---|
+| `parentClosePolicy` | sent (`TemporalWorkflowCommandBuffer`, line 203) | honoured: `ParentChildWorkflowCoordinator` terminates, cancels or abandons the child when the parent closes |
+| `workflowIdReusePolicy` | sent (line 204) | honoured: `ExecutionContext::assertChildWorkflowIdAllowed()` checks the journal before the start |
+| `taskQueue` | sent (line 188) | recorded in `ChildWorkflowScheduled`, not applied: the child runs where the parent runs |
+| `namespace` | sent (lines 192-193) | recorded, not applied |
+| the three timeouts | sent (line 198) | recorded, not enforced |
+| `cronSchedule` | sent (lines 195-196) | recorded, not applied |
+| search attributes | sent (line 199) | recorded |
+| memo | not sent: the buffer sets a memo on continue-as-new only | recorded |
+| `staticSummary`, `staticDetails` | not sent: the command carries no user metadata | recorded |
+
+"Recorded" means `EventStoreCommandBuffer::scheduleChildWorkflow()` writes the value into the
+event's metadata through `ChildWorkflowOptions::toSchedulingMetadata()`, and no code reads it back
+to act on it.
+
+What `#[ChildWorkflow]` does with that:
+
+- **In the attribute, honoured everywhere:** `parentClosePolicy`, `workflowIdReusePolicy`.
+- **In the attribute, Temporal only for now:** `taskQueue`, `namespace`, `executionTimeout`,
+  `runTimeout`, `taskTimeout`. On a journal backend, registering a workflow that declares one of
+  them fails, naming the parameter, the option and the backend. The options-parity change that
+  PR #782 names as its successor (its design, "Non-Goals": "Parity of the options a workflow
+  passes to its activities and children (next change)"; its task 7.2) closes that gap; each
+  option it makes a journal backend honour leaves this list.
+- **Not in the attribute:** `cronSchedule`, because PR #782 refuses a cron schedule at start on
+  the journal backends until the same options-parity change, and a child on a schedule is a start
+  option of its own rather than a declaration of the parent. `staticSummary` and `staticDetails`,
+  because the Temporal backend does not send them: accepting them would mean failing on Temporal,
+  or changing the start-child command, which this change leaves as it is. Memo and search
+  attributes, because their values are usually computed at run time (Non-Goals).
+
+To fail at registration, the loader needs to know the backend. Each host passes it, with the child
+options that backend honours, through the same wiring as the endpoint resolver (the table in
+Context). A loader built without that information, the fallbacks and the test harness, applies the
+journal backends' list: that is what the memory test harness runs.
+
+Failing at the start of the child, as PR #782 does for the start options of a top-level
+execution, was rejected here: an attribute argument is a constant, known at registration, and a
+start-time failure would surface inside a running parent, possibly days after a deploy.
+
+The explicit `$env->childWorkflowStub($class, $options)` keeps its current behaviour in this
+change. Making it fail on an option the backend does not honour changes code that runs today, and
+belongs to the options-parity change, with its migration note.
 
 ### The endpoint: attribute first, then host configuration, else a registration error
 
@@ -190,6 +244,9 @@ on.
 - **Assumed, unchanged:** a child started with an explicit workflow id behaves on Temporal as it
   does today with `ChildWorkflowOptions::$workflowId`. `withWorkflowId()` produces the same
   command.
+- **Assumed, unchanged:** the server applies the task queue, namespace and timeouts sent in the
+  start-child command. The explicit form sends them today; nothing in the repository probes a child
+  in another namespace. The tasks probe it (2.9) before the documentation states it.
 - **Assumed, unchanged:** the server clamps Nexus bounds it does not accept.
   `NexusOperationTimeouts` already encodes what was probed about that; this change only calls it
   earlier.
@@ -211,6 +268,10 @@ on.
 - **Several stubs for one contract** are allowed: two parameters may name the same contract with
   two endpoints, and each keeps its own. Nothing is shared between them.
 
+- **A child option that works on Temporal and fails registration on a journal backend** makes a
+  workflow that declares a task queue or a timeout untestable with the memory test harness until
+  the options-parity change lands. The error names the option and the backend, so the gap shows
+  at registration, where a test sees it.
 - **A configuration key on three hosts** is three places to document and test. The tasks require
   one test per host that resolves an endpoint from configuration.
 - **An endpoint in the attribute** stays possible, and it is what every current example does.
