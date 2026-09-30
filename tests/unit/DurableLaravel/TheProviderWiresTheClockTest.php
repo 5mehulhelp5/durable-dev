@@ -14,6 +14,7 @@ use Gplanchat\Durable\Transport\ActivityMessage;
 use Gplanchat\Durable\Transport\ActivityTransportInterface;
 use Illuminate\Container\Container;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 use unit\Durable\Fixtures\FrozenClock;
 
 /**
@@ -44,6 +45,36 @@ final class TheProviderWiresTheClockTest extends TestCase
         foreach ($journal->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')) as $row) {
             self::assertSame('1700000000', $row['recordedAt']->format('U'));
         }
+    }
+
+    public function testTheClockIsBoundByItsInterfaceAndTheStringIdIsItsAlias(): void
+    {
+        // #879: durable-filament resolves the clock by class; the string id stays for compatibility.
+        $app = $this->registered();
+
+        self::assertInstanceOf(SystemClock::class, $app->make(ClockInterface::class));
+        self::assertSame($app->make(ClockInterface::class), $app->make('durable.clock'));
+    }
+
+    public function testAClockBoundByItsInterfaceReachesTheRuntime(): void
+    {
+        $clock = new FrozenClock(1_700_000_000.0);
+        $app = $this->registered();
+        $app->instance(ClockInterface::class, $clock);
+
+        self::assertSame($clock, $app->make(ExecutionRuntime::class)->clock());
+    }
+
+    public function testAClockBoundUnderTheStringIdBeforeTheProviderIsTheOneTheInterfaceResolves(): void
+    {
+        $clock = new FrozenClock(1_700_000_000.0);
+        $app = new Container();
+        $app->instance('config', new \ArrayObject(['durable' => ['backend' => 'memory']], \ArrayObject::ARRAY_AS_PROPS));
+        $app->instance('durable.clock', $clock);
+        (new DurableServiceProvider($app))->register();
+
+        self::assertSame($clock, $app->make(ClockInterface::class));
+        self::assertSame($clock, $app->make(ExecutionRuntime::class)->clock());
     }
 
     private function registered(): Container
