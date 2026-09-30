@@ -17,7 +17,7 @@ final class LeftAlone
             new TimerCompleted(...$args),
             new TimerCompleted(executionId: 'exec-1', timerId: 'timer-1'),
             WorkflowExecutionFailed::workflowHandlerFailure($id, $e),
-            new \ArrayObject(['exec-1']),
+            new \SplFileInfo('exec-1'),
             \DateTimeImmutable::createFromFormat('Y', '2026'),
         ];
     }
