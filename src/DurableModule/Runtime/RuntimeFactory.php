@@ -34,7 +34,6 @@ use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use Gplanchat\Durable\WorkflowRegistry;
 use Magento\Framework\App\DeploymentConfig;
-use Magento\Framework\Interception\InterceptorInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
@@ -370,7 +369,7 @@ class RuntimeFactory
                 throw new \InvalidArgumentException(\sprintf(
                     'Durable: %s is listed in the nexusHandlers argument of RuntimeFactory (di.xml), but carries no #[AsNexusServiceHandler(contract: ...)] naming the contract it serves.',
                     $handler::class,
-                ) . self::diagnose766($handler));
+                ));
             }
             $handlers[$handler::class] = $handler;
             $contracts[$handler::class] = $attribute->newInstance()->contract;
@@ -463,25 +462,13 @@ class RuntimeFactory
         return $activities;
     }
 
-    // TEMPORARY #766 diagnostic, removed before merge.
-    private static function diagnose766(object $handler): string
-    {
-        $parent = get_parent_class($handler);
-        $file = (new \ReflectionClass($handler))->getFileName();
-
-        return "\nDIAG766 source=\n" . (false === $file ? '' : substr((string) file_get_contents($file), 0, 1200))
-            . "\nDIAG766 class=" . $handler::class
-            . "\nDIAG766 parents=" . json_encode(class_parents($handler))
-            . "\nDIAG766 implements=" . json_encode(class_implements($handler))
-            . "\nDIAG766 instanceof=" . var_export($handler instanceof InterceptorInterface, true)
-            . "\nDIAG766 parentAttributes=" . json_encode(false === $parent ? null : array_map(static fn(\ReflectionAttribute $a): string => $a->getName(), (new \ReflectionClass($parent))->getAttributes()))
-            . "\nDIAG766 parentFile=" . (false === $parent ? '' : (string) (new \ReflectionClass($parent))->getFileName())
-            . "\nDIAG766 file=" . (string) $file;
-    }
-
     /**
      * A handler's attribute, read from the class it intercepts when a plugin made Magento hand over
      * its generated `Interceptor`: that subclass carries none of its parent's attributes (#766).
+     *
+     * Recognised by its name, `<Class>\Interceptor` extending `<Class>`, and not by
+     * `InterceptorInterface`: Mage-OS ships creatuity/magento2-interceptors, whose compiled
+     * Interceptor does not implement it.
      *
      * @template T of object
      *
@@ -493,7 +480,7 @@ class RuntimeFactory
     {
         $class = new \ReflectionClass($handler);
         $parent = $class->getParentClass();
-        if ($handler instanceof InterceptorInterface && false !== $parent) {
+        if (false !== $parent && $class->getName() === $parent->getName() . '\\Interceptor') {
             $class = $parent;
         }
 
