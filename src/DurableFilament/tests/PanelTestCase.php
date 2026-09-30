@@ -71,6 +71,6 @@ abstract class PanelTestCase extends TestCase
         $projection = $this->app->make(WorkflowRunCatalogInterface::class);
         self::assertInstanceOf(WorkflowRunProjectionInterface::class, $projection);
         $projection->recordStart(ExecutionId::fromString($executionId), 'App\\ShipWorkflow');
-        $this->app->make(EventStoreInterface::class)->append(new ExecutionStarted($executionId, []));
+        $this->app->make(EventStoreInterface::class)->append(new ExecutionStarted(ExecutionId::fromString($executionId), []));
     }
 }
