@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed. An agent drafted this ADR. `documentation/adr/` is supervised, so it takes effect only
-when the user approves it on its pull request.
+Accepted by the user on 2026-09-30. An agent drafted it; it was merged as Proposed on 2026-09-29
+(#691); #693 and #695 carry its implementation.
 
 The user decided the direction on 2026-09-29: sharing a database connection between Durable's
 stores and the application's business code is **strongly discouraged**. The user settled the three

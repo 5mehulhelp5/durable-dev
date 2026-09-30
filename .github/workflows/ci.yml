@@ -458,6 +458,137 @@ jobs:
               working-directory: /tmp/resolve
               run: composer update --dry-run --no-interaction --no-audit --no-progress
 
+    magento-without-temporal:
+        # The module only *suggests* the Temporal bridge, so it has to install without it (#725).
+        # The matrix only resolves, and the bench carries the bridge: this is the one job where a
+        # bridge type reachable from a reflected constructor, or a preference the DI compiler
+        # cannot see, fails the build. Services and install flags are magento-boot's.
+        name: Magento · installs without the Temporal bridge (Mage-OS 2.2.0 / PHP 8.2)
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        services:
+            mysql:
+                image: mysql:8.4
+                env:
+                    MYSQL_ROOT_PASSWORD: magento
+                    MYSQL_DATABASE: magento
+                    MYSQL_USER: magento
+                    MYSQL_PASSWORD: magento
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1"
+                    --health-interval=5s --health-timeout=5s --health-retries=20
+            opensearch:
+                image: opensearchproject/opensearch:2.12.0
+                env:
+                    discovery.type: single-node
+                    DISABLE_SECURITY_PLUGIN: 'true'
+                    OPENSEARCH_JAVA_OPTS: '-Xms512m -Xmx512m'
+                ports:
+                    - 9200:9200
+                options: >-
+                    --health-cmd="curl -sf http://localhost:9200/_cluster/health || exit 1"
+                    --health-interval=10s --health-timeout=5s --health-retries=30
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.2'
+                  extensions: bcmath, ctype, curl, dom, gd, iconv, intl, mbstring, openssl, pdo_mysql, simplexml, soap, sodium, xsl, zip
+                  ini-values: memory_limit=-1
+                  coverage: none
+
+            - name: Cache Composer
+              uses: actions/cache@v6
+              with:
+                  path: ~/.composer/cache
+                  key: magento-no-temporal-${{ hashFiles('magento/composer.lock') }}
+                  restore-keys: magento-no-temporal-
+
+            - name: MySQL accepts triggers
+              run: mysql -h 127.0.0.1 -uroot -pmagento -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+
+            # A throwaway project on the bench's pin, with no path repository for
+            # src/Bridge/Temporal: the bridge cannot be pulled in.
+            - name: Project without the bridge
+              run: |
+                mkdir -p /tmp/no-temporal
+                cat > /tmp/no-temporal/composer.json <<JSON
+                {
+                    "minimum-stability": "dev",
+                    "prefer-stable": true,
+                    "repositories": [
+                        { "type": "composer", "url": "https://repo.mage-os.org/" },
+                        { "type": "path", "url": "${{ github.workspace }}/src/DurableModule", "options": { "symlink": false } },
+                        { "type": "path", "url": "${{ github.workspace }}/src/Durable", "options": { "symlink": false } }
+                    ],
+                    "require": {
+                        "mage-os/product-community-edition": "2.2.0",
+                        "gplanchat/durable-magento": "@dev"
+                    },
+                    "autoload": {
+                        "psr-4": { "Magento\\\\Setup\\\\": "setup/src/Magento/Setup/" },
+                        "files": [ "app/etc/NonComposerComponentRegistration.php" ]
+                    },
+                    "config": {
+                        "allow-plugins": {
+                            "mage-os/composer-dependency-version-audit-plugin": false,
+                            "mage-os/magento-composer-installer": true,
+                            "mage-os/inventory-composer-installer": true,
+                            "laminas/laminas-dependency-plugin": true
+                        }
+                    }
+                }
+                JSON
+
+            # `--no-autoloader`: the autoload `files` entry comes with the skeleton, deployed below.
+            - name: Composer install
+              working-directory: /tmp/no-temporal
+              run: composer install --no-interaction --prefer-dist --no-progress --no-autoloader
+
+            # Same reason as magento-boot: the skeleton comes from mage-os/magento2-base.
+            - name: Deploy the Magento skeleton
+              working-directory: /tmp/no-temporal
+              run: |
+                cp -Rn vendor/mage-os/magento2-base/. . || true
+                composer dump-autoload --no-interaction
+                test -f bin/magento
+                chmod +x bin/magento
+
+            # `if`, not `! cmd`: bash's errexit ignores a negated command.
+            - name: The bridge is absent
+              working-directory: /tmp/no-temporal
+              run: |
+                if composer show gplanchat/durable-bridge-temporal >/dev/null 2>&1; then exit 1; fi
+                test ! -e vendor/gplanchat/durable-bridge-temporal
+                php -r 'require "vendor/autoload.php"; exit(class_exists("Gplanchat\\Bridge\\Temporal\\Http\\Psr18Http") ? 1 : 0);'
+
+            - name: Magento install
+              working-directory: /tmp/no-temporal
+              run: |
+                bin/magento setup:install \
+                  --base-url=http://127.0.0.1:8080/ \
+                  --db-host=127.0.0.1 --db-name=magento --db-user=magento --db-password=magento \
+                  --admin-firstname=Durable --admin-lastname=Ops --admin-email=durable@example.com \
+                  --admin-user=durable --admin-password='Durable123!' \
+                  --language=en_US --currency=USD --timezone=UTC --use-rewrites=1 \
+                  --search-engine=opensearch --opensearch-host=127.0.0.1 --opensearch-port=9200 \
+                  --backend-frontname=admin --no-interaction
+                bin/magento module:status Gplanchat_DurableModule | tee /tmp/status.txt
+                grep -q 'Module is enabled' /tmp/status.txt
+
+            - name: setup:di:compile
+              working-directory: /tmp/no-temporal
+              run: bin/magento setup:di:compile
+
+            # No DSN, no bridge: the module runs in memory and says so.
+            - name: The module answers in memory
+              working-directory: /tmp/no-temporal
+              run: bin/magento durable:health
+
     magento-boot:
         # The counterpart of "Sylius shop" for the other host: the job that
         # really **boots** Magento. It exists because until now every claim about this module
@@ -1256,7 +1387,7 @@ jobs:
         # job names can move without touching the protection. A skipped job is not a failure.
         name: ci-ok
         if: always()
-        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, temporal-transport, manifests]
+        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-without-temporal, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, temporal-transport, manifests]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
