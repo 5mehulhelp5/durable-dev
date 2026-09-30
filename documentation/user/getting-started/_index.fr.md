@@ -150,6 +150,21 @@ DURABLE_DSN=temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durab
 
 ## Déclarer workflows et activités
 
+Chaque hôte enregistre les trois sortes de classe à sa manière :
+
+| | Symfony | Laravel (`config/durable.php`) | Magento (`di.xml`, `RuntimeFactory`) |
+|---|---|---|---|
+| workflow | `#[AsWorkflow]` sur un service, autoconfiguré | listé dans `workflows` | listé dans l'argument `workflowClasses` |
+| gestionnaire d'activités | `#[AsActivityHandler]` sur un service, autoconfiguré | listé dans `activity_handlers` | listé dans l'argument `activityHandlers` |
+| gestionnaire Nexus | `#[AsNexusServiceHandler]` sur un service, autoconfiguré | listé dans `nexus.handlers` | listé dans l'argument `nexusHandlers` |
+
+Seul Symfony enregistre une classe d'après son attribut. Laravel et Magento ne scannent rien : une
+classe qu'ils ne listent pas n'est pas enregistrée, quel que soit l'attribut qu'elle porte. Sous
+Laravel, `#[AsActivityHandler]` et `#[AsNexusServiceHandler]` sur un gestionnaire listé nomment le
+contrat qu'il sert ; sous Magento, `#[AsNexusServiceHandler]` le fait, et `#[AsActivityHandler]` peut le faire. Le
+[tableau par hôte](../configuration/#host-table) donne tous les autres réglages. La suite de cette
+section suit le chemin Symfony.
+
 ### Marquer les workflows
 
 Rien à écrire. Une classe portant `#[AsWorkflow]` est enregistrée dès qu'elle est un service — ce
@@ -172,7 +187,7 @@ chaque service qu'elle attrape est passé au registre des workflows, qui exige e
 
 ### Déclarer les implémentations d'activité
 
-Rien à écrire. Une classe portant `#[AsActivityHandler]` est ramassée par l'autoconfiguration du bundle dès qu'elle est un service, ce qu'avec l'`autoconfigure: true` par défaut d'une application Symfony elle est déjà.
+Sous Symfony, rien à écrire. Une classe portant `#[AsActivityHandler]` est ramassée par l'autoconfiguration du bundle dès qu'elle est un service, ce qu'avec l'`autoconfigure: true` par défaut d'une application Symfony elle est déjà.
 
 ---
 
@@ -210,7 +225,7 @@ namespace App\Workflow\Activity;
 
 use Gplanchat\Durable\Attribute\AsActivityHandler;
 
-// C'est cet attribut qui enregistre la classe ; le bundle l'autoconfigure.
+// Sous Symfony, cet attribut enregistre la classe ; Laravel et Magento la listent.
 #[AsActivityHandler(contract: GreetingActivities::class)]
 final class GreetingActivitiesHandler implements GreetingActivities
 {
