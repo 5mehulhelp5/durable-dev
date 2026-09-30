@@ -267,15 +267,15 @@ public function run(
 - Un paramètre typé **`ActivityStub`** et marqué **`#[Activities(Contrat::class)]`** reçoit
   `$env->activityStub(Contrat::class)`. PHP n'a pas de génériques à l'exécution : c'est l'attribut
   qui nomme le contrat.
-- Tout autre paramètre est une **entrée**, lue par son nom, comme avant. Les paramètres fournis ne
+- Tout autre paramètre est une **entrée**, lue par son nom. Les paramètres fournis ne
   sont jamais passés par l'appelant : ni par le code qui démarre le workflow, ni par un parent qui
   l'appelle comme enfant, ni par une opération Nexus.
 - Le docblock **`@param ActivityStub<Contrat>`** sert à PHPStan. Avec
   [`gplanchat/durable-phpstan`](../packages/), un docblock qui nomme un autre contrat que
   l'attribut est une erreur (`durable.activities.contractMismatch`), et son absence aussi
-  (`durable.activities.missingGeneric`, que l'on peut ignorer), puisque PHPStan ne peut pas
+  (`durable.activities.missingGeneric`, qu'un projet peut ignorer), puisque PHPStan ne peut pas
   vérifier les appels sans lui.
-- L'attribut prend aussi les **options** du stub, en scalaires : un argument d'attribut ne peut pas
+- L'attribut prend aussi les **options** du stub, en scalaires. Un argument d'attribut ne peut pas
   appeler `Duration::seconds()`, les durées s'écrivent donc en secondes :
 
   ```php
@@ -287,14 +287,14 @@ public function run(
   Disponibles : `attempts`, `startToClose`, `scheduleToClose`, `scheduleToStart`, `heartbeat`,
   `initialInterval`, `backoffCoefficient`, `maximumInterval`, `nonRetryable`, `taskQueue`,
   `cancellationType`, `summary`. Chaque option omise garde sa valeur par défaut
-  d'`ActivityOptions` ; sans aucune, le stub est exactement celui d'avant. Sous Temporal, un stub
+  d'`ActivityOptions` ; sans aucune, le stub est celui qu'`activityStub()` construit sans options. Sous Temporal, un stub
   sans `startToClose` ni `scheduleToClose` reçoit une borne de 30 secondes par tentative.
 - Les erreurs surviennent dès l'**enregistrement** du workflow (compilation du conteneur, avec le
   bundle) : un `ActivityStub` sans `#[Activities]`, un `#[Activities]` sur un autre type, un
   contrat introuvable, un contrat qui ne déclare aucun `#[AsActivityMethod]`, ou une option
-  impossible — zéro tentative, une durée négative, un heartbeat plus long que `startToClose`, un
+  impossible (zéro tentative, une durée négative, un heartbeat plus long que `startToClose`, un
   `backoffCoefficient` inférieur à 1, un `maximumInterval` plus court que le premier délai de
-  réessai, une entrée non rejouable qui n'est pas une exception. Le message nomme le paramètre et l'option.
+  réessai, une entrée non réessayable qui n'est pas une exception). Le message nomme le paramètre et l'option.
 
 ### Quand construire le stub soi-même {#when-to-build-the-stub-yourself}
 
@@ -367,11 +367,15 @@ et chaque option est décrite dans [Options et objets valeur](../options/).
 
 ### Nommage : `ActivityStub` ou `ActivityInvoker`
 
-Les ADR emploient le terme canonique **`ActivityInvoker`** pour ce motif. Dans le paquet actuel, le type s'appelle **`ActivityStub`** et vient de **`WorkflowEnvironment::activityStub()`**, dans le même rôle : des appels typés qui renvoient un **`Awaitable`**. Le stub délègue à un port de planification étroit qu'un workflow ne reçoit jamais, c'est pourquoi désigner une activité par une chaîne n'est pas quelque chose que le code d'un workflow puisse faire.
+Les ADR emploient le terme canonique **`ActivityInvoker`** pour ce motif. Dans le paquet actuel, le
+type s'appelle **`ActivityStub`** et vient de **`WorkflowEnvironment::activityStub()`**, dans le même
+rôle : des appels typés qui renvoient un **`Awaitable`**. Le stub délègue à un port de planification
+étroit qu'un workflow ne reçoit jamais, si bien que le code d'un workflow ne peut pas désigner une
+activité par une chaîne.
 
 ## Exemple : deux méthodes d'entrée
 
-Si vous exposez **deux** méthodes `#[AsWorkflowMethod]` sur le même type de workflow, **DUR022** exige qu'**exactement une** porte **`default: true`** sur l'attribut. Quand l'attribut expose ce paramètre dans votre version, cela donne :
+Si vous exposez **deux** méthodes `#[AsWorkflowMethod]` sur le même type de workflow, **DUR022** exige qu'**exactement une** porte **`default: true`** sur l'attribut. Quand l'attribut expose ce paramètre dans votre version, le code ressemble à ceci :
 
 ```php
 #[AsWorkflowMethod]
@@ -386,20 +390,20 @@ Tant que **`default`** n'existe pas sur **`#[AsWorkflowMethod]`**, suivez les r�
 ## Ce que vous définissez
 
 1. Une **interface de workflow** (contrat facultatif) et/ou une **classe** portant **`#[AsWorkflow]`** (l'attribut se pose sur la **classe** avec les chargeurs actuels). C'est le contrat typé, pour l'enregistrement et pour les tests.
-2. Une **classe concrète** déclarée au moteur ; si vous avez écrit une interface de contrat, elle l'implémente (forme par constructeur).
-3. **`WorkflowEnvironment`** et des stubs d'activités, rien d'autre : en [arguments de la méthode de workflow](#arguments-durable-supplies) ou, avec la forme par constructeur, comme son **unique** paramètre **`WorkflowEnvironment $environment`**. N'injectez **pas** de services, de dépôts ni d'autres dépendances applicatives dans la classe de workflow : les effets de bord appartiennent aux [activités](../activities/).
+2. Une **classe concrète** déclarée au moteur. Si vous avez écrit une interface de contrat, la classe l'implémente (forme par constructeur).
+3. **`WorkflowEnvironment`** et des stubs d'activités, rien d'autre : en [arguments de la méthode de workflow](#arguments-durable-supplies) ou, avec la forme par constructeur, comme son **unique** paramètre **`WorkflowEnvironment $environment`**. N'injectez **pas** de services, de dépôts ni d'autres dépendances applicatives dans la classe de workflow. Les effets de bord vont dans les [activités](../activities/).
 
 ## Registre : alias et nom pleinement qualifié
 
-Quand une classe de workflow est enregistrée, le moteur l'indexe sous **deux** chaînes : le **nom** donné à **`#[AsWorkflow]`** (premier argument), ou le **nom court** de la classe si l'attribut est absent, et le **nom de classe pleinement qualifié** (FQCN). **`WorkflowRegistry::getHandler()`** accepte **l'une ou l'autre** clé pour l'aiguillage.
+Quand vous enregistrez une classe de workflow, le moteur l'indexe sous **deux** chaînes : le **nom** donné à **`#[AsWorkflow]`** (premier argument), ou le **nom court** de la classe si l'attribut est absent, et le **nom de classe pleinement qualifié** (FQCN). **`WorkflowRegistry::getHandler()`** accepte **l'une ou l'autre** clé pour l'aiguillage.
 
-**Temporal et le journal durable** emploient l'**alias** comme nom de type de workflow, jamais le FQCN. **`WorkflowRunHandler`** et **`TemporalWorkflowStarter`** normalisent les charges utiles de **`WorkflowRunMessage`** avec **`WorkflowDefinitionLoader::aliasForTemporalInterop()`** : si vous passez un FQCN, il est résolu en alias avant que **`ExecutionStarted`** ne soit persisté et avant que le **`WorkflowType`** Temporal ne soit posé. Les métadonnées stockées emploient l'alias, par cohérence avec le serveur.
+**Temporal et le journal durable** emploient l'**alias** comme nom de type de workflow, jamais le FQCN. **`WorkflowRunHandler`** et **`TemporalWorkflowStarter`** normalisent les charges utiles de **`WorkflowRunMessage`** avec **`WorkflowDefinitionLoader::aliasForTemporalInterop()`** : un FQCN que vous passez est résolu en alias avant que **`ExecutionStarted`** ne soit persisté et avant que le **`WorkflowType`** Temporal ne soit posé. Les métadonnées stockées emploient l'alias, comme le serveur.
 
 ## Entrée et gestionnaires facultatifs {#entry-and-optional-handlers}
 
 - Déclarez **au moins une** méthode portant **`#[AsWorkflowMethod]`**, votre entrée durable principale (le démarrage du scénario).
-- Si vous exposez **plusieurs** méthodes `#[AsWorkflowMethod]` sur le même type de workflow, **exactement une** doit porter **`default: true`** pour que le moteur sache laquelle est l'entrée principale.
-- Ajoutez éventuellement :
+- Si vous exposez **plusieurs** méthodes `#[AsWorkflowMethod]` sur le même type de workflow, **exactement une** doit porter **`default: true`** pour désigner au moteur l'entrée principale.
+- Ajoutez éventuellement ces gestionnaires :
   - **`#[AsSignalMethod]`** porte une entrée externe qui met à jour l'état du workflow de façon déterministe ;
   - **`#[AsQueryMethod]`** donne une vue en lecture seule de l'état (aucun effet de bord durable depuis le gestionnaire) ;
   - **`#[AsUpdateMethod]`** porte des mises à jour validées, avec sémantique de réponse quand elle est prise en charge.
@@ -408,44 +412,46 @@ Paramètres et types de retour doivent être **sérialisables** (voir l'ADR de s
 
 ## `WorkflowEnvironment`
 
-Le moteur fournit **`WorkflowEnvironment`** en argument de la méthode de workflow, ou à votre constructeur. Voici toute sa surface : tout
-ce qu'un workflow peut faire, et rien de ce que le moteur garde pour lui.
+Le moteur fournit **`WorkflowEnvironment`** en argument de la méthode de workflow, ou à votre
+constructeur. Le tableau donne toute sa surface, chaque opération offerte à un workflow. Les
+opérations que le moteur garde pour lui n'y figurent pas.
 
 | | |
 |---|---|
-| `await($awaitable, $deadline = null)` | La seule attente. Une échéance écoulée lève `DeadlineExceededException`, un échec et non une valeur, pour qu'un travail rendant légitimement `null` reste distinguable. |
+| `await($awaitable, $deadline = null)` | La seule attente. Une échéance écoulée lève `DeadlineExceededException` et ne renvoie aucune valeur, pour qu'un travail rendant légitimement `null` reste distinguable. |
 | `all(...$awaitables)` | Se résout quand tous les membres réussissent. Un seul échec fait tout échouer. |
 | `any(...$awaitables)` | Se résout au premier membre qui se résout ; les perdants sont annulés. |
 | `some($count, ...$awaitables)` | Se résout quand `$count` membres ont **réussi**, indexés par position de déclaration. Les autres sont annulés. |
 | `timer($duration, $summary = '')` | Un awaitable qui se résout à l'échéance de la durée. Se compose comme n'importe quel autre. |
-| `sleep($duration, $summary = '')` | Attend, et fait l'attente pour vous. Dit ce qu'il fait. |
+| `sleep($duration, $summary = '')` | Attend, et fait l'attente pour vous, comme son nom l'indique. |
 | `activityStub($contract, $options = null)` | Un proxy typé sur un contrat d'activité. Construisez-le dans le constructeur, ou déclarez-le en [argument `#[Activities]`](#arguments-durable-supplies), options comprises ; tous ses appels portent `$options`. |
 | `childWorkflowStub($class, $options = null)` | Le même, pour un workflow enfant : résolu depuis la classe de l'enfant, et ses appels se composent comme les autres. |
-| `onSignal($name, $handler)` | Enregistre un gestionnaire de signal. Le gestionnaire mute l'état du workflow et `await()` l'observe ; il n'y a pas d'attente séparée. Le nom prend une énumération adossée, donc une faute de frappe est une erreur de type et non une attente qui ne se résout jamais. |
+| `onSignal($name, $handler)` | Enregistre un gestionnaire de signal. Le gestionnaire mute l'état du workflow et `await()` l'observe ; il n'y a pas d'attente séparée. Le nom prend une énumération adossée, donc une faute de frappe donne une erreur de type au lieu d'une attente qui ne se résout jamais. |
 | `onUpdate($name, $handler)` | Le même pour une mise à jour, dont la valeur de retour du gestionnaire est la réponse rendue à l'appelant. |
-| `hasSignalHandler($name)`, `hasUpdateHandler($name)` | Si un gestionnaire est enregistré sous ce nom, pour un code qui ne veut l'enregistrer qu'une fois. |
+| `hasSignalHandler($name)`, `hasUpdateHandler($name)` | Indique si un gestionnaire est enregistré sous ce nom, pour le code qui n'en enregistre un qu'une fois. |
 | `sideEffect($closure)` | Exécute une fois un travail local non déterministe et en journalise le résultat, pour que le rejeu le reproduise. |
 | `continueAsNew($type, $payload = [], $options = null)` | Termine cette exécution et démarre la suivante avec un historique neuf. |
 | `executionId()` | L'identifiant de cette exécution. |
 
-Les activités ne sont joignables **qu'**à travers un stub. En désigner une par une chaîne, avec une
-charge utile libre, ne figure pas sur cette surface : une faute de frappe y produirait une activité
-jamais planifiée, au lieu d'une erreur que votre IDE et votre analyseur statique attrapent d'abord.
+Les activités ne sont joignables **qu'**à travers un stub. Cette surface n'offre aucun moyen d'en
+désigner une par une chaîne, avec une charge utile libre. Une faute de frappe y produirait une
+activité jamais planifiée, là où un appel de stub donne une erreur que votre IDE et votre
+analyseur statique attrapent d'abord.
 
 Les gestionnaires de requête, de signal et de mise à jour se déclarent par `#[AsQueryMethod]`,
 `#[AsSignalMethod]` et `#[AsUpdateMethod]`, et le moteur les câble. Signaux et mises à jour peuvent
-aussi s'enregistrer de façon impérative, par `onSignal()` et `onUpdate()`, ce qu'un workflow exprimé
-sous forme de fermeture est obligé d'employer, une fermeture ne pouvant pas porter d'attribut.
-Préférez l'attribut : c'est la forme qu'un lecteur voit sans rien exécuter.
+aussi s'enregistrer de façon impérative, par `onSignal()` et `onUpdate()`. Un workflow exprimé sous
+forme de fermeture doit les employer, puisqu'une fermeture ne peut pas porter d'attribut. Préférez
+l'attribut, qu'un lecteur voit sans rien exécuter.
 
 **Les requêtes n'ont pas de forme impérative.** Elles sont lues par le worker, hors de la fibre du
 workflow : leurs gestionnaires vivent côté moteur et `#[AsQueryMethod]` est le seul moyen d'en
-déclarer un. Un workflow en forme de fermeture ne peut pas répondre à une requête ; s'il doit le
-faire, il doit être une classe.
+déclarer un. Un workflow en forme de fermeture ne peut pas répondre à une requête. Un workflow qui
+doit y répondre doit être une classe.
 
 `WorkflowEnvironment::wrap($context, $runtime)` construit un environnement sur un `ExecutionContext`
-sans les résolveurs de contrats. Il sert à un exécuteur ou à un banc de test à vous, pas au code du
-workflow, qui reçoit toujours l'environnement construit par le moteur.
+sans les résolveurs de contrats. Servez-vous-en dans un exécuteur ou un harnais de test à vous. Le
+code du workflow reçoit toujours l'environnement construit par le moteur.
 
 Vous n'instanciez jamais d'implémentation d'activité dans le corps du workflow.
 
@@ -462,8 +468,9 @@ Vous n'instanciez jamais d'implémentation d'activité dans le corps du workflow
 
 ## `finally` s'exécute à chaque passe qui se suspend
 
-Un workflow qui attend n'est pas gardé en mémoire d'une passe à l'autre. Chaque passe le rejoue
-jusqu'à la prochaine attente, puis l'abandonne, et PHP exécute ses blocs `finally` à ce moment-là.
+Durable ne garde pas en mémoire un workflow qui attend, d'une passe à l'autre. Chaque passe le
+rejoue jusqu'à la prochaine attente, puis l'abandonne, et PHP exécute ses blocs `finally` à ce
+moment-là.
 Les SDK Java et Go de Temporal font de même quand ils évincent un workflow de leur cache.
 
 ```php
@@ -478,15 +485,15 @@ try {
 - **Le code ordinaire d'un `finally` s'exécute à chaque passe.** Affecter un champ, ou ajouter à
   un journal tenu dans le workflow, se refait à chaque fois que le workflow reprend et attend de
   nouveau.
-- **Le travail lancé depuis un `finally` est refusé pendant l'abandon de la passe.** Une activité,
+- **Le travail lancé depuis un `finally` échoue pendant l'abandon de la passe.** Une activité,
   un timer, un enfant ou un side effect lancé à ce moment n'atteint jamais le journal, et un
   `await` n'y attend pas. La passe se termine comme elle l'aurait fait sans le `finally`.
 - **Sur la passe où le workflow se termine vraiment**, par un retour, un échec ou une annulation,
   le `finally` s'exécute normalement, et le travail qu'il lance est enregistré.
 
-Un nettoyage qui doit avoir lieu une seule fois se place dans un `catch`, ou après le `try`, là où
-le workflow n'arrive que lorsqu'il y arrive vraiment : c'est ainsi que s'écrit une compensation,
-voir [Annulation](../cancellation/).
+Placez un nettoyage qui doit avoir lieu une seule fois dans un `catch`, ou après le `try`, là où le
+workflow n'arrive que lorsqu'il y arrive vraiment. Une compensation s'écrit ainsi ; voyez
+[Annulation](../cancellation/).
 
 ## Voir aussi
 
