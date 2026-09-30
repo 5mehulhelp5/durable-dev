@@ -7,7 +7,11 @@ weight: 20
 
 Pour suivre les workflows d'une boutique depuis l'administration Magento, installez
 `gplanchat/durable-magento` ([Paquets](../../packages/)) et ouvrez **System > Durable processes >
-Process history**. La page est en lecture seule et en anglais.
+Process history** (**Exécutions Durable > Historique des exécutions** pour un compte
+d'administration en français). La page est en lecture seule. Elle s'affiche en anglais ou en
+français, selon la langue de l'interface (**Interface Locale**) du compte d'administration. Les textes que compose le
+cœur, comme les libellés d'événements et les valeurs `waiting on …`, restent en anglais, comme sous
+Sylius et Filament.
 
 ## Captures d'écran
 
