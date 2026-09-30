@@ -448,9 +448,9 @@ les régler :
 - `budgetSeconds` borne `MagentoRuntime::run()`. Sans DSN, l'appel mène un workflow à son terme dans
   le processus appelant ; avec un DSN, il attend aussi longtemps le résultat du cluster. Au-delà du
   budget, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. La valeur par défaut est
-  `10`. Le budget existe à cause du plafond de tentatives : sans plafond, une activité qui échoue
-  sans cesse occuperait ce processus pour toujours. Les workers et `workflowClient()` ne lisent ni
-  l'un ni l'autre.
+  `10`. Dans le processus, le budget existe à cause du plafond de tentatives : sans plafond, une
+  activité qui échoue sans cesse occuperait ce processus pour toujours. Les workers et
+  `workflowClient()` ne lisent ni l'un ni l'autre.
 
 **Magento prend en charge deux backends, et Composer l'impose.** Magento atteint la mémoire et
 Temporal, et le module déclare un `conflict` sur les deux ponts SQL, car
@@ -468,12 +468,15 @@ termine. C'est acceptable pour une commande en ligne, inadapté à tout le reste
 
 `MagentoRuntime::run()` suit le même choix. Sans DSN, il exécute le workflow dans le processus
 appelant. Avec un DSN, il démarre le workflow sur le cluster et attend son résultat, que produisent
-les workers ci-dessous. L'attente dure `budgetSeconds` et se termine par `WorkflowStuckException`.
+les workers ci-dessous. L'attente dure environ `budgetSeconds` et se termine par
+`WorkflowStuckException`.
 
-Un workflow qui échoue arrive autrement chez l'appelant avec un DSN : sous la forme d'une
-`\RuntimeException` simple, dont le message commence par `Workflow "<execution id>" failed`, sans
-exception précédente. Un workflow qui attend un signal attend tout le budget au lieu d'échouer
+Un workflow qui échoue, expire ou est terminé arrive autrement chez l'appelant avec un DSN : sous la
+forme d'une `\RuntimeException` simple, dont le message commence par `Workflow "<execution id>"`,
+sans exception précédente. Un workflow qui attend un signal attend tout le budget au lieu d'échouer
 aussitôt.
+
+Le résultat revient décodé du JSON : un objet que le workflow renvoie arrive sous forme de tableau.
 
 Pour démarrer un workflow sans attendre, depuis une requête web par exemple, appelez
 `workflowClient()->startAsync()`.
