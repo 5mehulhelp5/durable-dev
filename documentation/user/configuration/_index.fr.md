@@ -413,10 +413,9 @@ SQL ne s'y appliquent pas.
 | — | `lock.backoff`, `lock.max_deferrals`, `lock.wait` | — | propre à l'hôte : Laravel rend à la file une reprise dont le tour est pris ; le worker Symfony attend que le verrou se libère |
 | `event_store.table_name`, `workflow_metadata.table_name`, `child_workflow.parent_link_store.table_name` | `tables.events`, `tables.metadata`, `tables.parent_links`, `tables.runs` | — | à ajouter : le nom de la table des exécutions sous Symfony |
 | `temporal.dsn` | `temporal.dsn` | argument `temporalDsn`, qui l'emporte sur `durable/temporal/dsn` | identique |
-| `temporal.payload_codec` | — | argument `codec` de `RuntimeFactory` dans `di.xml`, déclaré `null` ; le codec lit sa clé dans `env.php` | identique (DUR055) |
 | `temporal.search_attributes` | `temporal.search_attributes` | `durable/temporal/search_attributes` | identique |
 | `temporal.guzzle_client`, `temporal.psr18_client`, `temporal.psr17_factory` | les trois mêmes clés | arguments `guzzle`, `jsonGateway` | identique |
-| `temporal.payload_codec` | `temporal.payload_codec`, une liaison du conteneur ; le codec lit sa clé dans `.env` | — | identique (DUR055) |
+| `temporal.payload_codec` | `temporal.payload_codec`, une liaison du conteneur ; le codec lit sa clé dans `.env` | argument `codec` de `RuntimeFactory`, dans le `di.xml` de la boutique ; le codec lit sa clé dans `env.php` | identique (DUR055) |
 | `backend: dbal` avec un `temporal.dsn` (servir Nexus depuis un journal SQL) | — (`nexus.handlers` exige `backend: temporal`) | — | à ajouter sous Laravel |
 | `activity_transport.type`, `activity_transport.transport_name` | `queue.connection`, `queue.name` | — (les activités tournent dans le processus, ou sur la file de tâches de Temporal) | propre à l'hôte : la file de chaque hôte |
 | `messenger.buses` | — | — | propre à l'hôte : Messenger seulement |
