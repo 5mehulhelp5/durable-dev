@@ -71,6 +71,18 @@ final class AnUpdateCompletionFindsItsOwnUpdateTest extends TestCase
         self::assertNull($history->updateOutcome('upd-b'));
     }
 
+    public function testACompletionWhoseMetaIdMatchesNothingFallsBackOnTheAcceptedEventId(): void
+    {
+        $history = TemporalExecutionHistory::fromEvents([
+            $this->accepted(5, 'upd-a', 'approve'),
+            $this->accepted(8, 'upd-b', 'reject'),
+            $this->completed(9, 'upd-unknown', 5, $this->success('approved')),
+        ]);
+
+        self::assertSame('approved', $history->updateOutcome('upd-a')?->result);
+        self::assertNull($history->updateOutcome('upd-b'));
+    }
+
     private function accepted(int $eventId, string $updateId, string $updateName): HistoryEvent
     {
         $request = new Request();
