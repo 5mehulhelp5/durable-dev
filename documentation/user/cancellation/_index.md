@@ -5,13 +5,18 @@ weight: 27
 
 # Cancellation
 
-Cancelling an execution does not kill it. The cancellation is **raised inside the workflow, at the
-point where it is waiting**, so the workflow can compensate before it ends. This is the equivalent of
-Temporal's `CanceledFailure`.
+An execution is one durable run of a workflow, and its journal is the append-only history of what
+it decided and received (see the [glossary](../glossary/)). When you cancel an execution, Durable
+does not kill it. The cancellation is **raised inside the workflow, at the point where it is
+waiting**, so the workflow can compensate before it ends. It is the equivalent of Temporal's
+`CanceledFailure`.
 
 ---
 
 ## Compensating
+
+To undo the steps that completed before a failure or a cancellation, register one compensation per
+step with `Saga`, and run them from a `catch`:
 
 ```php
 use Gplanchat\Durable\Activity\ActivityStub;
@@ -54,12 +59,13 @@ final class CheckoutWorkflow
 ```
 
 `Saga` records one compensation per completed step and, on `compensate()`, runs them in reverse
-order. Each compensation does its own `await()`, so it finishes before the next one starts; one that
-returns an `Awaitable` instead is refused with a `LogicException`. A step that never completed has nothing to undo, because its
-compensation was never added. The first compensation that throws stops the run, and its exception
-replaces the one being compensated.
+order. Each compensation does its own `await()`, so it finishes before the next one starts. A
+compensation that returns an `Awaitable` instead makes `compensate()` throw a `LogicException`. A
+step that never completed has nothing to undo, because its compensation was never added. The first
+compensation that throws stops the run, and its exception replaces the one being compensated.
 
-Three outcomes, all legitimate:
+The way the execution ends depends on what the workflow does with the exception. Each of these
+outcomes is legitimate:
 
 | The workflow… | Outcome |
 |---|---|
@@ -67,28 +73,30 @@ Three outcomes, all legitimate:
 | swallows it and returns | the execution **completes** normally; a workflow may ignore cancellation |
 | never awaits anything | the cancellation is never observed and the workflow completes |
 
-The operation being awaited is cancelled at the same time. In a race, every pending branch is.
+The operation being awaited is cancelled at the same time. In a race, every pending branch is
+cancelled.
 
 ---
 
 ## Delivered exactly once
 
-The cancellation is raised **once per execution**. Without that bound, the very awaits used to
-compensate would be cancelled in turn and the compensation would never run.
+The cancellation is raised **once per execution**. If it were raised again, the awaits that the
+compensation uses would be cancelled in turn, and the compensation would never run.
 
-Determinism comes from the journal rather than from a marker: the pending operation is cancelled
-with reason `workflow_cancelled`, and on replay that recorded outcome rejects the same awaitable at
-the same place. The workflow therefore takes the same branch on every replay.
+Replay (running the workflow code again from its first line, with each recorded step returning its
+result) reads this from the journal, and Durable writes no separate marker. The pending operation
+is cancelled with reason `workflow_cancelled`, and on replay that recorded outcome rejects the same
+awaitable at the same place. The workflow therefore takes the same branch on every replay.
 
 ---
 
 ## Requesting cancellation
 
-- **From a parent.** A child scheduled with `ParentClosePolicy::RequestCancel` is asked to cancel
-  when the parent closes.
-- **From outside, on Temporal.** `temporal workflow cancel`, or any client calling
-  `RequestCancelWorkflowExecution`. The server records the request and reschedules a workflow task;
-  the worker answers it.
+- **From a parent.** When the parent closes, a child scheduled with
+  `ParentClosePolicy::RequestCancel` receives a cancellation request.
+- **From outside, on Temporal.** Run `temporal workflow cancel`, or call
+  `RequestCancelWorkflowExecution` from any client. The server records the request and reschedules a
+  workflow task, which the worker then processes.
 
 ---
 
@@ -96,12 +104,12 @@ the same place. The workflow therefore takes the same branch on every replay.
 
 | Event | Meaning |
 |---|---|
-| `WorkflowCancellationRequested` | someone asked |
+| `WorkflowCancellationRequested` | a cancellation was requested |
 | `WorkflowExecutionCancelled` | the execution ended cancelled |
 | `ActivityCancelled` / `TimerCancelled` with reason `workflow_cancelled` | the awaited operation was removed |
 
 A race loser is cancelled with reason `race_superseded` instead, and surfaces as
-`ActivitySupersededException`, a different situation that stays distinguishable.
+`ActivitySupersededException`. The two situations stay distinguishable.
 
 ---
 
@@ -117,18 +125,18 @@ $winner = $this->environment->await(
 );
 ```
 
-When one branch wins, the others are cancelled: pending activities are removed from the queue and
-pending timers stop waking the execution. An elapsed deadline cancels them the same way, and
-raises `DeadlineExceededException`.
+When one branch wins, the others are cancelled. Their pending activities are removed from the
+queue, and their pending timers no longer wake the execution. An elapsed deadline cancels them the
+same way, and raises `DeadlineExceededException`.
 
 **The time bound is the deadline on `await()`, not a third branch.** A timer racing the providers
-would look like a winner: `any()` resolves to the winning *value* and nothing else, so a provider
+would look like a winner. `any()` resolves to the winning *value* and nothing else, so a provider
 that legitimately answers `null` becomes indistinguishable from thirty seconds of silence, and a
 compensation path meant for the timeout runs on the empty answer too.
 
-`timer()` does return an `Awaitable`, exactly like a stub call, so it *can* be a branch. Put it
-there when the timer is a real outcome (send a nudge, take the fallback path), never when it is a
-deadline in disguise. When you only want to wait, `sleep()` says so in its name and awaits for you.
+`timer()` does return an `Awaitable`, exactly like a stub call, so it *can* be a branch. Use it as
+a branch when the timer is a real outcome, such as sending a nudge or taking the fallback path. Do
+not use it as a deadline. When you only want to wait, call `sleep()`, which awaits for you.
 
-See [Creating a workflow](../workflows/#bounding-a-wait-in-time), where the deadline is written
-out with what the exception carries: `deadline()` and `awaited()`.
+[Creating a workflow](../workflows/#bounding-a-wait-in-time) shows the deadline in full, with what
+the exception carries, `deadline()` and `awaited()`.
