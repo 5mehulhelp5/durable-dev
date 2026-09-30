@@ -7,8 +7,8 @@ approves its text on its pull request.
 
 On 2026-09-30 the user chose option B of spike #709, which goes through Magento's own database
 layer; option A used Doctrine DBAL. The measurements below come from that spike, draft PR #723.
-The same day the user settled decision 3. A `resource/durable` that names the shop's `default`
-connection boots with a warning, as in DUR054 decision 6.
+The same day the user settled decision 3. When `resource/durable` names the shop's `default`
+connection, the backend boots and logs a warning, as in DUR054 decision 6.
 
 Related:
 - [DUR046](DUR046-magento-a-tier-1-host-that-improved-the-core.md), the Magento host. This ADR
@@ -47,8 +47,8 @@ The spike measured Magento's adapter on Mage-OS 2.2.0 and MySQL 8.4 (`probe-b.ph
 - Unless `resource/durable` is also declared, `getConnection('durable')` silently returns the
   **shop's** connection (same `CONNECTION_ID()`, database `magento`).
   `getConnectionByName('durable')` returns a connection to the journal's server.
-- `db_schema.xml` with `resource="durable"` has no working setup. Without `resource/durable` in
-  `env.php`, `setup:upgrade` exits 0 and creates the table in the shop's database. With it,
+- `db_schema.xml` with `resource="durable"`: without `resource/durable` in `env.php`,
+  `setup:upgrade` exits 0 and creates the table in the shop's database. With it,
   developer mode fails to validate the file, because `resource` is an XSD enumeration (`default`,
   `checkout`, `sales`) that a module cannot extend.
 - The SQL of the DUR053 fence works through the adapter. A pass claim's `UPDATE` (the statement
@@ -68,8 +68,8 @@ from Illuminate's (825), they come to about 1000 lines of new code.
    The recommended target is a dedicated `db/connection/durable`.
 3. **The backend never falls back silently to the shop's connection.** If `resource/durable` is
    not declared, or names a connection absent from `db/connection`, the backend fails at boot with
-   an exception that names the missing key. It never calls `getConnection('durable')` and uses
-   whatever comes back. A `resource/durable` that names `default` boots, and the backend logs a
+   an exception that names the missing key. It never calls `getConnection('durable')` and takes
+   the connection it returns. When `resource/durable` names `default`, the backend boots and logs a
    warning that names it, as DUR054 decision 6 does on Symfony and Laravel. On `default`, the
    journal and the shop share one adapter. A workflow started inside a shop transaction, such as
    an observer during checkout, then hits the nesting constraint below and fails.
@@ -82,8 +82,8 @@ from Illuminate's (825), they come to about 1000 lines of new code.
    used. Timers travel as `FireWorkflowTimersMessage`. The spike first sent them as delayed plain
    resumes and ran 1146 passes on a timer that never fired.
 7. **The locks also use the journal's connection.** The per-execution resume lock and the activity
-   attempt claim are each a TTL row or a `GET_LOCK` on that connection, whichever the measurement
-   in #732 selects. Magento's `LockManagerInterface` is not used. DUR046 objected to its database
+   attempt claim are each a TTL row or a `GET_LOCK` on that connection, chosen after the
+   measurement in #732. Magento's `LockManagerInterface` is not used. DUR046 objected to its database
    backend, `GET_LOCK` on the **shop's** connection, which returns `true` without locking when the
    database is unavailable.
 
