@@ -84,7 +84,7 @@ L'enregistrement du gestionnaire dépend de l'hôte. Sous Symfony, `#[AsNexusSer
 service suffit : le bundle l'autoconfigure. Laravel ne trouve aucun gestionnaire par son
 attribut : il sert les classes listées dans `nexus.handlers` de `config/durable.php`, chacune sous
 la forme `gestionnaire => contrat`, ou la classe du gestionnaire seule, dont le
-`#[AsNexusServiceHandler]` nomme alors le contrat ([un exemple plus bas](#servir-est-du-travail-dhôte-et-ce-nest-pas-du-travail-symfony)).
+`#[AsNexusServiceHandler]` nomme alors le contrat ([la forme en paire plus bas](#servir-est-du-travail-dhôte-et-ce-nest-pas-du-travail-symfony)).
 Magento liste chaque
 gestionnaire dans l'argument `nexusHandlers` de `RuntimeFactory` dans `di.xml`, et son
 `#[AsNexusServiceHandler]` nomme le contrat. Voir [qui enregistre quoi, par hôte](../getting-started/#déclarer-workflows-et-activités).

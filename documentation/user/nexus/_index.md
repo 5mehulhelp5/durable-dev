@@ -83,7 +83,7 @@ Registering the handler depends on the host. On Symfony, `#[AsNexusServiceHandle
 enough: the bundle autoconfigures it. Laravel finds no handler by its attribute: it serves the
 classes listed in `nexus.handlers` in `config/durable.php`, each as `handler => contract`, or as
 the handler class alone, whose `#[AsNexusServiceHandler]` then names the contract
-([an example below](#serving-is-host-work-and-it-is-not-symfony-work)). Magento lists each
+([the pair form below](#serving-is-host-work-and-it-is-not-symfony-work)). Magento lists each
 handler in the `nexusHandlers` argument of `RuntimeFactory` in `di.xml`, and its
 `#[AsNexusServiceHandler]` names the contract. See [who registers what, per host](../getting-started/#register-workflows-and-activities).
 

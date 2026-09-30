@@ -161,7 +161,7 @@ Chaque hôte enregistre les trois sortes de classe à sa manière :
 Seul Symfony enregistre une classe d'après son attribut. Laravel et Magento ne scannent rien : une
 classe qu'ils ne listent pas n'est pas enregistrée, quel que soit l'attribut qu'elle porte. Sous
 Laravel, `#[AsActivityHandler]` et `#[AsNexusServiceHandler]` sur un gestionnaire listé nomment le
-contrat qu'il sert ; sous Magento, `#[AsNexusServiceHandler]` le fait. Le
+contrat qu'il sert ; sous Magento, `#[AsNexusServiceHandler]` le fait, et `#[AsActivityHandler]` peut le faire. Le
 [tableau par hôte](../configuration/#host-table) donne tous les autres réglages. La suite de cette
 section suit le chemin Symfony.
 

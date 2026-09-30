@@ -161,7 +161,7 @@ Each host registers the three kinds of class its own way:
 Only Symfony registers a class from its attribute. Laravel and Magento scan nothing: a class they
 do not list is not registered, whatever attribute it carries. On Laravel, `#[AsActivityHandler]` and
 `#[AsNexusServiceHandler]` on a listed handler name the contract it serves; on Magento,
-`#[AsNexusServiceHandler]` does. The [per-host table](../configuration/#host-table)
+`#[AsNexusServiceHandler]` does, and `#[AsActivityHandler]` may. The [per-host table](../configuration/#host-table)
 lists every other setting. The rest of this section is the Symfony path.
 
 ### Tag workflows
