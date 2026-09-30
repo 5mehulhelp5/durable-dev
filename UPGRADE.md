@@ -319,6 +319,17 @@ connection of its own, as the configuration examples show (**DUR054**).
 migrate: once `queue:work` restarts on the new code, a run stuck on a due timer wakes on its next
 resume, since the pass that suspends on the timer now queues the firing.
 
+### New: a Magento module serves Nexus operations (#668)
+
+**Who is affected**: nobody has to change anything. A Magento module can now serve a Nexus contract:
+list the handler in `di.xml` under `nexusHandlers` on `RuntimeFactory`, name its contract with
+`#[AsNexusServiceHandler(contract: …)]` as on Symfony, declare the workflows that fulfil the rest in
+`workflowClasses` with `#[FulfilsNexusOperation]`, and run `bin/magento durable:worker --role=nexus`.
+The module's README shows it. Laravel's `DeclaredNexusOperations` now delegates to the core's
+`NexusHandlerDeclarations`, which both hosts share, so a module gets the refusals of #714 above:
+an operation nobody serves, a workflow class that does not exist, or a contract the attribute
+contradicts stops the Nexus worker when it starts.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
