@@ -5,15 +5,34 @@ weight: 20
 
 # Concepts
 
-Cette page pose le vocabulaire et le modèle mental de Durable. À lire avant de se lancer dans les guides pratiques.
+Cette page pose le vocabulaire et le modèle de Durable. Lisez-la avant les guides pratiques. Le
+[glossaire](../glossary/) définit chaque terme en un paragraphe.
 
 ---
 
 ## L'exécution durable
 
-L'**exécution durable**, c'est un processus long (quelques secondes, quelques heures ou quelques jours) qui survit aux redémarrages, aux plantages et aux déploiements. Le moteur enregistre chaque décision (résultat d'activité, minuteur échu, signal reçu) dans un **historique**, puis **rejoue** cet historique pour restaurer l'état exact où le programme se trouvait.
+L'**exécution durable**, c'est un processus long (quelques secondes, quelques heures ou quelques jours) qui survit aux redémarrages, aux plantages et aux déploiements.
 
-Vu du développeur, cela ressemble à du PHP séquentiel ordinaire : on `await` une activité, on reçoit le résultat, on continue. La tolérance aux pannes est prise en charge sans qu'on ait à s'en occuper.
+Si vous avez écrit du `async`/`await` en JavaScript, partez de là. Une fonction JavaScript qui fait
+`await` doit être `async`, et ses appelants aussi : la couleur remonte la pile d'appels (Bob
+Nystrom, *What Color Is Your Function?*). Dans un workflow Durable, `$env->await()` suspend
+l'exécution avec une fibre PHP, dans le moteur, si bien qu'une méthode qui attend reste une
+méthode ordinaire, avec son propre type de retour. La
+[comparaison avec le SDK PHP de Temporal](../comparison/#5-fibers-or-generators-the-colouring-problem)
+détaille ce problème de coloration.
+
+Ce que JavaScript ne fait pas, c'est conserver l'attente quand le processus s'arrête. Le moteur
+enregistre chaque décision (résultat d'activité, minuteur échu, signal reçu) dans un
+**historique**. Après un redémarrage, il **rejoue** cet historique pour restaurer l'état exact où
+le programme se trouvait : la méthode s'exécute de nouveau, et chaque étape déjà enregistrée
+renvoie son résultat. L'analogie avec JavaScript s'arrête là. Une méthode rejouée doit prendre les
+mêmes décisions à chaque passage, d'où la
+[règle de déterminisme](#déterminisme-et-contrat-de-rejeu).
+
+Dans votre code, cela se lit comme du PHP séquentiel ordinaire : vous faites `await` sur une
+activité, vous recevez le résultat, vous continuez. Le moteur prend en charge la tolérance aux
+pannes, et votre code n'a pas à s'en occuper.
 
 ---
 
@@ -29,7 +48,7 @@ Un **workflow** est de la pure logique d'orchestration. Il :
 
 Une fonction de workflow doit être **déterministe** : à historique identique, la ré-exécuter doit produire la même suite de commandes. C'est ce qui rend le rejeu possible.
 
-**Ce qui n'a rien à faire dans un workflow :**
+**Ce qui n'a pas sa place dans un workflow :**
 - appels HTTP, requêtes en base, nombres aléatoires, horodatages : tout cela est non déterministe ;
 - accès au système de fichiers, lecture de variables d'environnement ;
 - toute E/S qui donnerait un résultat différent au rejeu.
@@ -47,7 +66,7 @@ Une **activité** est l'unité de travail non déterministe, celle qui peut éch
 - sont **réessayées** automatiquement en cas d'échec, selon leurs `ActivityOptions` ;
 - voient leur résultat enregistré une fois pour toutes ; au rejeu, ce résultat est repris de l'historique sans que l'activité soit ré-exécutée.
 
-Un workflow parle aux activités à travers un **`ActivityInvoker`** (le stub typé qu'on obtient par `WorkflowEnvironment::activityStub()`). Appeler une méthode du stub renvoie un **`Awaitable`** ; `await()` suspend le workflow jusqu'à ce que l'activité se termine.
+Un workflow parle aux activités à travers un **`ActivityInvoker`** (le stub typé que vous obtenez par `WorkflowEnvironment::activityStub()`). Appeler une méthode du stub renvoie un **`Awaitable`** ; `await()` suspend le workflow jusqu'à ce que l'activité se termine.
 
 ---
 
@@ -205,7 +224,7 @@ $client->signal($workflowId, OrderSignal::Approve, ['by' => 'alice']);
 > Routez `DeliverWorkflowSignalMessage` dans `messenger.yaml` comme le fait
 > [Premiers pas](../getting-started/). Le paquet Laravel ne livre pas encore de signaux.
 
-Une chaîne nue reste acceptée, et doit l'être : un signal peut arriver de `curl`, de la ligne de commande Temporal, ou d'un service écrit dans un autre langage. L'énumération type l'intérieur ; elle ne peut pas typer cette frontière.
+Une chaîne nue reste acceptée, et doit l'être, parce qu'un signal peut arriver de `curl`, de la ligne de commande Temporal, ou d'un service écrit dans un autre langage. L'énumération type le côté application ; elle ne peut pas typer cette frontière.
 
 > [!IMPORTANT]
 > **Migrer depuis `waitSignal()`.** La méthode a disparu. Elle lisait l'historique directement, d'où
@@ -237,7 +256,7 @@ Les requêtes servent à suivre une progression, lire un compteur, inspecter une
 
 Une **mise à jour** est un message transactionnel : le workflow la traite et **renvoie une réponse** à l'appelant. L'échange est enregistré dans l'historique. Les mises à jour combinent la sémantique du signal (changement d'état) et celle de la requête (valeur de retour).
 
-La valeur de retour du gestionnaire *est* la réponse, c'est toute la différence avec un signal, qui n'en a pas :
+La valeur de retour du gestionnaire *est* la réponse. C'est la différence avec un signal, qui n'en a pas :
 
 ```php
 #[AsUpdateMethod('greet')]
@@ -270,7 +289,7 @@ $env->await($env->timer(new \DateInterval('PT30M')));
 
 Un workflow peut **lancer des workflows enfants** pour découper un processus complexe en sous-unités suivies indépendamment. Chaque enfant a son propre historique et se surveille séparément dans l'interface Temporal.
 
-Un workflow enfant peut tourner de façon **asynchrone** (on le lance et on l'oublie) ou être attendu par le parent.
+Un workflow enfant peut tourner de façon **asynchrone** (lancé sans être attendu) ou être attendu par le parent.
 
 ---
 
@@ -299,7 +318,7 @@ Durable tourne sur quatre backends qui partagent le même code de workflows et d
 - Tourne entièrement dans un seul processus PHP.
 - Aucun serveur externe, rien de persisté d'une requête à l'autre.
 - L'envoi asynchrone des activités est simulé par un transport en processus.
-- Le choix idéal pour tous les **tests automatisés** et les essais locaux rapides.
+- Convient à tous les **tests automatisés** et aux essais locaux rapides.
 
 ### DBAL
 
@@ -321,7 +340,8 @@ Durable tourne sur quatre backends qui partagent le même code de workflows et d
 - Une orchestration de production, avec un vrai cluster Temporal.
 - Historique persisté intégralement, réessais durables, interface Temporal, et les trois choses
   qu'aucun backend à journal n'a : les attributs de recherche, les planifications cron, et Nexus.
-- Les workers interrogent Temporal en gRPC, par ce avec quoi l'hôte fait tourner ses workers.
+- Les workers (les processus qui tirent le travail : ils rejouent les workflows et exécutent les
+  activités) interrogent Temporal en gRPC, par ce avec quoi l'hôte fait tourner ses workers.
 - Nécessite l'extension PHP `ext-grpc`.
 
 > [!NOTE]
@@ -337,8 +357,8 @@ Pour la mise en place, voir [Backends](../backends/).
 
 ## Par où le travail atteint un worker
 
-Durable n'apporte aucun transport à lui. Le travail de workflow et d'activité roule sur ce que l'hôte
-a déjà, et chaque hôte le dit autrement :
+Durable n'a pas de transport propre. Le travail de workflow et d'activité passe par ce que l'hôte a
+déjà, et le mécanisme change d'un hôte à l'autre.
 
 **Symfony** se sert de **Messenger**. `ResumeWorkflowMessage` est routé vers la file des tâches de workflow,
 `ActivityMessage` vers celle des activités, et les signaux, les mises à jour et les échéances de
@@ -351,7 +371,7 @@ worker.
 
 **Magento** ne se sert ni de l'un ni de l'autre. Les workers sont des commandes
 `bin/magento durable:worker --role=journal|activity` qui interrogent le backend directement ; rien ne
-roule sur le `MessageQueue` de Magento, parce que sur Temporal une activité est déjà une commande
+passe par le `MessageQueue` de Magento, parce que sur Temporal une activité est déjà une commande
 Temporal et une reprise une tâche de workflow.
 
 ### Une reprise est livrée au moins une fois
