@@ -130,7 +130,7 @@ What `#[ChildWorkflow]` does with that:
   PR #782 names as its successor (its design, "Non-Goals": "Parity of the options a workflow
   passes to its activities and children (next change)"; its task 7.2) closes that gap; each
   option it makes a journal backend honour leaves this list.
-- **Not in the attribute:** `cronSchedule`, because PR #782 refuses a cron schedule at start on
+- **Not in the attribute:** `cronSchedule`, because under PR #782 a start with a cron schedule fails on
   the journal backends until the same options-parity change, and a child on a schedule is a start
   option of its own rather than a declaration of the parent. `staticSummary` and `staticDetails`,
   because the Temporal backend does not send them: accepting them would mean failing on Temporal,
