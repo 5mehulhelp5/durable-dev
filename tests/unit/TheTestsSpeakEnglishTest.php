@@ -59,6 +59,9 @@ final class TheTestsSpeakEnglishTest extends TestCase
             'demandé' => 'same',
             'Opérations Nexus' => 'same',
         ],
+        'src/DurableFilament/tests/TheRunListTest.php' => [
+            'Issues des 2 exécutions de cette page' => 'asserts the French catalogue renders, the one product exception WA006 makes',
+        ],
         'tests/unit/TheRootDocumentsSpeakEnglishTest.php' => [
             "'" . self::SHARED_ACCENTED . "'" => 'a detector: the characters it looks for',
             "'" . self::FUNCTION_WORDS . "'" => 'a detector: the words it looks for',

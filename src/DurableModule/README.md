@@ -80,6 +80,24 @@ already ships. To hand it the application's client — its proxy, its TLS option
 </type>
 ```
 
+To encrypt payloads before they reach the cluster (DUR055), name your
+`Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface` in the same place. Magento does not
+autowire an optional argument, so the line is required. Your codec reads its key from `env.php`;
+Durable reads none:
+
+```xml
+<argument name="codec" xsi:type="object">Vendor\Module\Temporal\PayloadCodec</argument>
+```
+
+Make the module that sets the codec load after Durable's, in its `etc/module.xml`. Otherwise a
+later `di.xml` can replace your arguments, and payloads would leave in clear:
+
+```xml
+<sequence>
+    <module name="Gplanchat_DurableModule"/>
+</sequence>
+```
+
 ## Installation
 
 ```bash

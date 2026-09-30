@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\DurableModule\Runtime;
 
+use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Gplanchat\Bridge\Temporal\Http\Psr18Http;
 use Gplanchat\Bridge\Temporal\Store\TaskQueueKind;
 use Gplanchat\Bridge\Temporal\Store\TaskQueuePollers;
@@ -148,6 +149,16 @@ class RuntimeFactory
          * @var array<array-key, object>
          */
         private readonly array $nexusHandlers = [],
+        /**
+         * The shop's payload codec (DUR055): every payload sent to the cluster encoded, every
+         * payload read decoded. The codec reads its own key, from `env.php`; Durable reads none.
+         * Magento does not autowire an optional argument: a shop names its codec with an
+         * `<argument name="codec" xsi:type="object">` in its own `di.xml`.
+         *
+         * Typed `?object` and narrowed in `client()`, like `jsonGateway`: no bridge type in this
+         * signature (#725).
+         */
+        private readonly ?object $codec = null,
     ) {}
 
     /** One per factory, and the ObjectManager shares the factory: one gRPC client per request (#356). */
@@ -322,7 +333,11 @@ class RuntimeFactory
             throw new \InvalidArgumentException(\sprintf('RuntimeFactory\'s jsonGateway must be a %s, %s given.', Psr18Http::class, get_debug_type($this->jsonGateway)));
         }
 
-        return $this->client ??= WorkflowServiceClientFactory::create($settings, $this->logger, $this->guzzle, $this->jsonGateway);
+        if (null !== $this->codec && !$this->codec instanceof PayloadCodecInterface) {
+            throw new \InvalidArgumentException(\sprintf('RuntimeFactory\'s codec must be a %s, %s given.', PayloadCodecInterface::class, get_debug_type($this->codec)));
+        }
+
+        return $this->client ??= WorkflowServiceClientFactory::create($settings, $this->logger, $this->guzzle, $this->jsonGateway, $this->codec);
     }
 
     private function assembly(TemporalConnection $settings): TemporalRuntimeAssembly

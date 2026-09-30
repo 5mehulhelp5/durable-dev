@@ -30,6 +30,7 @@ use Gplanchat\Durable\ExecutionEngine;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
 use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
+use Gplanchat\Durable\Laravel\Activity\DeclaredActivityHandlers;
 use Gplanchat\Durable\Laravel\Nexus\DeclaredNexusOperations;
 use Gplanchat\Durable\Laravel\Queue\InProcessWorkflowResumeDispatcher;
 use Gplanchat\Durable\Laravel\Queue\LaravelActivityTransport;
@@ -317,6 +318,8 @@ final class DurableServiceProvider extends ServiceProvider
                 \is_string($temporal['guzzle_client'] ?? null) && '' !== $temporal['guzzle_client'] ? $app->make($temporal['guzzle_client']) : null,
                 // transport=http over the application's PSR-18 client instead of curl.
                 self::psr18Http($app, $temporal),
+                // DUR055: the application's codec, which reads its own key; Durable reads none.
+                \is_string($temporal['payload_codec'] ?? null) && '' !== $temporal['payload_codec'] ? $app->make($temporal['payload_codec']) : null,
             ),
         );
         // The graph is the bridge's (#356); each binding below is one of its objects.
@@ -488,7 +491,10 @@ final class DurableServiceProvider extends ServiceProvider
             return $value;
         };
 
-        $this->app->singleton(RegistryActivityExecutor::class, fn() => new RegistryActivityExecutor());
+        /** @var list<string> $activityHandlers */
+        $activityHandlers = $config['activity_handlers'] ?? [];
+        $declaredActivities = new DeclaredActivityHandlers($activityHandlers);
+        $this->app->singleton(RegistryActivityExecutor::class, fn($app) => $declaredActivities->registerInto(new RegistryActivityExecutor(), $app));
         // The port, not only the class: `RunActivityJob` asks for an `ActivityMessageProcessor`,
         // which asks for an `ActivityExecutor`. Without this line the container tries to
         // instantiate an interface, and the activity fails on the first attempt.
