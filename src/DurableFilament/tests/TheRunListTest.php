@@ -92,8 +92,8 @@ final class TheRunListTest extends PanelTestCase
 
         $first = (string) $this->get('/admin/durable/runs?status=failed&cursor=cursor-2')->getContent();
         self::assertSame(WorkflowRunStatus::Failed, $this->catalog->askedStatus);
-        preg_match('/href="([^"]*)"[^>]*>\s*First page/', $first, $link);
-        self::assertStringContainsString('status=failed', $link[1] ?? '');
+        // The first page link: the list without a cursor, with the outcome kept.
+        self::assertStringContainsString('/admin/durable/runs?status=failed"', $first);
     }
 
     public function testItOffersNoFilterTheCatalogCannotApply(): void
