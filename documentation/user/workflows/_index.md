@@ -203,7 +203,7 @@ to approximate this; here `array_shift()` does it.
 > runs, and the condition never holds. Put the attribute on the class.
 >
 > The handler is called with **one** argument, the payload array. A signature like
-> `approve(string $by)` fails when the signal is delivered, and the worker boots without error.
+> `approve(string $by)` fails when the signal is delivered. Starting the worker raises no error for it.
 
 
 A condition must be a function of **workflow state and nothing else**. It is re-evaluated on every

@@ -85,8 +85,8 @@ L'annulation est levée **une fois par exécution**. Si elle était levée de no
 dont se sert la compensation seraient annulées à leur tour, et la compensation n'aurait jamais lieu.
 
 Le rejeu (la réexécution du code du workflow depuis sa première ligne, où chaque étape enregistrée
-renvoie son résultat) lit ce fait dans le journal, et Durable n'écrit aucun marqueur à part.
-L'opération en attente est annulée avec la raison `workflow_cancelled`, et au rejeu ce dénouement
+renvoie son résultat) reste déterministe parce que le dénouement figure dans le journal ; Durable
+n'écrit aucun marqueur à part. L'opération en attente est annulée avec la raison `workflow_cancelled`, et au rejeu ce dénouement
 enregistré rejette le même awaitable au même endroit. Le workflow prend donc la même branche à
 chaque rejeu.
 

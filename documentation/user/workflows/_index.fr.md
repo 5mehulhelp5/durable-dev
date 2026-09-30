@@ -48,7 +48,7 @@ final class OrderWorkflow
 }
 ```
 
-`WorkflowEnvironment` fournit **`await`**, les assembleurs **`all`** / **`any`** / **`some`**, **`async`**, les minuteurs, les workflows enfants, les signaux, et le reste. La classe, dans le dépôt, porte l'API complète.
+`WorkflowEnvironment` fournit **`await`**, les assembleurs **`all`** / **`any`** / **`some`**, **`async`**, les minuteurs, les workflows enfants, les signaux, et le reste. L'API complète figure dans la classe elle-même, dans le dépôt.
 
 ### Attendre ou assembler {#waiting-versus-assembling}
 
@@ -208,7 +208,7 @@ compteur côté moteur pour s'en approcher ; ici, `array_shift()` suffit.
 > l'attribut sur la classe.
 >
 > Le gestionnaire est appelé avec **un** argument, le tableau de charge utile. Une signature comme
-> `approve(string $by)` échoue à la livraison du signal, et le worker démarre sans erreur.
+> `approve(string $by)` échoue à la livraison du signal. Le démarrage du worker ne lève aucune erreur pour elle.
 
 
 Une condition doit être fonction de **l'état du workflow et de rien d'autre**. Elle est réévaluée à

@@ -84,7 +84,8 @@ The cancellation is raised **once per execution**. If it were raised again, the 
 compensation uses would be cancelled in turn, and the compensation would never run.
 
 Replay (running the workflow code again from its first line, with each recorded step returning its
-result) reads this from the journal, and Durable writes no separate marker. The pending operation
+result) stays deterministic because the outcome is in the journal; Durable writes no separate
+marker. The pending operation
 is cancelled with reason `workflow_cancelled`, and on replay that recorded outcome rejects the same
 awaitable at the same place. The workflow therefore takes the same branch on every replay.
 
