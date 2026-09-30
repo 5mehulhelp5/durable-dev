@@ -5,17 +5,19 @@ weight: 29
 
 # Nexus operations
 
-Nexus lets a workflow call an operation owned by another team, another namespace, another
-deployment, without either side knowing the other's workflows. Durable does both roles: it
-**calls** operations, and it **serves** them.
+A Nexus operation is an operation served by another service, with its own contract, that a
+workflow calls the way it calls an activity (see the [glossary](../glossary/)). With Nexus, a
+workflow calls an operation owned by another team, namespace or deployment, and neither side knows
+the other's workflows. Durable covers both roles: it **calls** operations and it **serves** them.
 
 Serving requires the **Temporal backend**. The in-memory and DBAL backends have no cross-namespace
-route, and they say so rather than pretending; see [Backends](../backends/).
+route, and they report it with an error; see [Backends](../backends/).
 
-That does not mean giving up a SQL journal. `durable.backend: dbal` with a `temporal.dsn` says the
-cluster is reachable while the SQL journal stays the source of truth, which is how a shop whose dashboard reads
-DBAL serves a Nexus operation without that dashboard changing what it reads. Calling is the other
-way round: an operation is scheduled by a workflow, and a workflow can only schedule one if its
+You can keep a SQL journal (the append-only record of everything a workflow run decided and
+received) while serving. `durable.backend: dbal` with a `temporal.dsn` declares the cluster
+reachable while the SQL journal stays the source of truth. A shop whose dashboard reads DBAL
+serves a Nexus operation this way, and the dashboard keeps reading the same data. Calling works the
+other way round: a workflow schedules the operation, and a workflow can only schedule one if its
 journal **is** the cluster.
 
 ---
@@ -37,28 +39,28 @@ $billing = $env->nexusStub(BillingContract::class, endpoint: 'payments');
 $receipt = $env->await($billing->charge('ORD-42', 1200));
 ```
 
-The contract is written **once** and read from both sides of the boundary: the caller derives a
-typed stub from it, the handler implements it. No operation name is retyped as a string, so a typo
-is a type error rather than an operation waiting for a handler whose name will never match.
+You write the contract **once**, and both sides of the boundary read it: the caller derives a
+typed stub from it, and the handler implements it. You never retype an operation name as a string,
+so a typo is a type error instead of an operation waiting for a handler whose name never matches.
 
-The endpoint is a parameter of the stub, not of the contract: it says *where* the service is served,
-which is a deployment concern and changes between environments, while the contract does not.
+The endpoint is a parameter of the stub, and the contract does not mention it. The endpoint says
+*where* the service is served. That is a deployment concern and changes between environments; the
+contract stays the same.
 
-`nexusStub()` assembles; `await()` waits. Same rule as everywhere else; see
+`nexusStub()` assembles the call and `await()` waits for it, as everywhere else in a workflow; see
 [Creating a workflow](../workflows/).
 
-The payload travels **as you wrote it**. There is no Durable envelope around it, so a handler
-written with the Go, Java or TypeScript SDK reads the fields it declares.
+The payload travels **as you wrote it**. Durable adds no envelope around it, so a handler written
+with the Go, Java or TypeScript SDK reads the fields it declares.
 
-That is also the constraint on what a contract may declare. The payload is plain JSON, keyed by
-parameter name, and it is decoded **associatively** on the other side. A parameter typed as an
-object would arrive as an array, and the handler would raise a `TypeError` at the moment it is
-called, not when you wrote the contract. Contracts therefore carry scalars and arrays. One PHP
-detail is worth knowing: an *empty* associative array encodes as `[]` and not `{}`, so a field that
-can be empty needs a companion field saying whether to read it at all.
+This also limits what a contract may declare. The payload is plain JSON, keyed by parameter name,
+and the other side decodes it **associatively**. A parameter typed as an object arrives as an
+array, and the handler raises a `TypeError` at call time, and not when you write the contract.
+Contracts therefore carry scalars and arrays. In PHP, an *empty* associative array encodes as `[]`
+and not `{}`, so a field that can be empty needs a companion field saying whether to read it at all.
 
-Whether the handler answers immediately or hours later changes nothing here: the workflow waits on
-the operation, and the result arrives when it arrives.
+Whether the handler answers immediately or hours later, the calling code is the same: the workflow
+waits on the operation until its result arrives.
 
 ---
 
@@ -79,8 +81,8 @@ final class Billing implements BillingServed
 }
 ```
 
-Registering the handler depends on the host. On Symfony, `#[AsNexusServiceHandler]` on a service is
-enough: the bundle autoconfigures it. Laravel finds no handler by its attribute: it serves the
+How you register the handler depends on the host. On Symfony, put `#[AsNexusServiceHandler]` on a
+service and the bundle autoconfigures it. Laravel does not discover handlers by their attribute: it serves the
 classes listed in `nexus.handlers` in `config/durable.php`, each as `handler => contract`, or as
 the handler class alone, whose `#[AsNexusServiceHandler]` then names the contract
 ([the pair form below](#serving-is-host-work-and-it-is-not-symfony-work)). Magento lists each
@@ -89,9 +91,9 @@ handler in the `nexusHandlers` argument of `RuntimeFactory` in `di.xml`, and its
 
 ### Why the contract comes in two pieces
 
-An operation fulfilled by a workflow has no handler body: the plumbing starts the workflow, and the
-server delivers its result. So the contract splits: the interface a handler **implements**, and the
-one that **extends** it for the caller.
+An operation fulfilled by a workflow has no handler body. Durable starts the workflow, and the
+server delivers its result. The contract therefore splits into two interfaces: the one a handler
+**implements**, and the one that **extends** it for the caller.
 
 ```php
 #[AsNexusService('billing')]
@@ -113,13 +115,15 @@ interface BillingContract extends BillingServed // + what a workflow fulfils
 final class Charge { /* … */ }
 ```
 
-Without the split, PHP would demand a body for `charge()` on the handler, an empty method whose only
-job is to say there is nothing to write. The workflow claims the operation instead, where its code
-actually lives, and the caller's contract still declares everything so the stub can call it all.
+Without the split, PHP requires a body for `charge()` on the handler: an empty method that exists
+only to show there is nothing to write. With the split, the workflow claims the operation in its
+own class, where its code lives, and the caller's contract still declares every operation so the
+stub can call them all.
 
 ### Answering now, or answering later
 
-There are two forms, and choosing between them is the one decision that matters.
+A handler answers in one of two forms, and choosing between them is the main decision when you
+serve an operation.
 
 ```php
 // Now: the handler returns the contract's own type.
@@ -131,49 +135,49 @@ public function verify(string $order): array { … }
 final class Charge { … }
 ```
 
-**A handler has roughly nine seconds.** That is not the operation's budget, it is the budget for
-answering *this task*: the caller's `scheduleToClose` may be five minutes, but the task itself
-carries a `request-timeout` of about nine seconds. A handler still working when it expires has its
-task redelivered, and starts over. Measured redeliveries: ~9.9 s, ~20.7 s, ~33.6 s.
+**A handler has roughly nine seconds.** This budget covers answering *this task*, whatever the
+operation's own budget. The caller's `scheduleToClose` may be five minutes, while the task itself
+carries a `request-timeout` of about nine seconds. When a handler is still working at expiry, its
+task is redelivered and the handler starts over. Measured redeliveries: ~9.9 s, ~20.7 s, ~33.6 s.
 
-So an implemented method is for a lookup, a validation, a computation you already know is fast.
+Use an implemented method for a lookup, a validation, or a computation you already know is fast.
 Anything that talks to a payment provider, waits on a human, or retries for a day belongs in a
-workflow, and that is what `#[FulfilsNexusOperation]` declares.
+workflow, which you declare with `#[FulfilsNexusOperation]`.
 
 When you name a workflow, Durable starts it with the caller's callback attached, and the server
 delivers that workflow's result to the caller when it finishes. Your handler is not called again.
 
 ### Cancellation
 
-If the caller cancels, Durable cancels the workflow fulfilling the operation. You do not write a
-cancellation hook: your workflow already observes cancellation, and compensates, exactly as
-described in [Cancellation](../cancellation/).
+If the caller cancels, Durable cancels the workflow fulfilling the operation. You write no
+cancellation hook: your workflow already observes cancellation and compensates, as described in
+[Cancellation](../cancellation/).
 
-A cancellation only reaches a handler for an operation that has **started**; an operation still
-waiting for its first answer has nothing to cancel on your side.
+A cancellation reaches a handler only for an operation that has **started**. For an operation still
+waiting for its first answer, there is nothing to cancel on your side.
 
-### Failing
+### Failing an operation {#failing}
 
-Raise, and the operation fails:
+To fail the operation, throw an exception:
 
 ```php
 throw new \RuntimeException('the payment provider is unreachable');
 ```
 
 An ordinary exception is reported as `INTERNAL`, which is **retryable**: the task comes back, up to
-the operation's budget. That is right for an outage and wrong for a bad request, which will never
-improve. For a terminal refusal, say which kind it is:
+the operation's budget. That suits an outage. It does not suit a bad request, which no retry can
+fix. For a terminal failure, state its kind:
 
 | terminal, do not retry | retryable, try again |
 |---|---|
 | `BAD_REQUEST`, `UNAUTHENTICATED`, `UNAUTHORIZED` | `RESOURCE_EXHAUSTED`, `INTERNAL` |
 | `NOT_FOUND`, `NOT_IMPLEMENTED`, `CONFLICT` | `UNAVAILABLE`, `UPSTREAM_TIMEOUT`, `REQUEST_TIMEOUT` |
 
-The line is *whose fault is it*. A malformed request or a missing right will not be fixed by
-retrying; an overload or an upstream timeout might. The table is nexus-rpc's, shared by every
-language SDK, not a Durable invention.
+The two columns split by *whose fault it is*. Retrying does not fix a malformed request or a
+missing right; it may get past an overload or an upstream timeout. The table comes from nexus-rpc
+and every language SDK shares it; Durable did not define it.
 
-An operation nobody serves is answered `NOT_IMPLEMENTED`, terminal, and the worker keeps serving
+An operation nobody serves gets `NOT_IMPLEMENTED`, which is terminal, and the worker keeps serving
 its other operations.
 
 ---
