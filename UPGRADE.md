@@ -339,19 +339,21 @@ such a row if a run was started under an empty id.
 
 **Rector does the building side it can prove.** The `durable-upgrade` set carries a new rule,
 `ExecutionIdEventArgumentRector`. It wraps the first argument in `ExecutionId::fromString()` in
-`new <Event>(...)`, for any class that implements `Event`, including your own, and in the static
-factories listed above, when that argument is typed `string`. It leaves a named, unpacked, nullable,
-`mixed` or unknown argument alone, and it does not touch code that reads `executionId()`.
+`new <Event>(...)`, for any class that implements `Event`, and in the static factories listed
+above, when that argument is typed `string` and the parameter it reaches is typed `ExecutionId`.
+A custom event whose constructor still takes a string is left alone until you retype it. It also
+leaves a named, unpacked, nullable, `mixed` or unknown argument alone, and it does not touch code
+that reads `executionId()`.
 
 **What to do**, in this order:
 
-1. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id left in
+1. **In a custom `Event` class**, type the constructor's id `ExecutionId` and return it from
+   `executionId()`. If you map it to storage yourself, write `->toString()`, not the object.
+2. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id left in
    `ExecutionId::fromString()`. An empty string is refused.
-2. Where you read `$event->executionId()`, call `->toString()` when a string is needed: an array
+3. Where you read `$event->executionId()`, call `->toString()` when a string is needed: an array
    key, a JSON field, a log line or a comparison with a string. `json_encode()` turns the object
    into `{}`, and `===` against a string is always false. Compare two ids with `->equals()`.
-3. **In a custom `Event` class**, type the constructor's id `ExecutionId` and return it from
-   `executionId()`. If you map it to storage yourself, write `->toString()`, not the object.
 4. In a test, compare ids with `->toString()` or `->equals()`, not `assertSame()` on the objects:
    two value objects with the same id are equal, not identical.
 
