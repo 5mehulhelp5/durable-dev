@@ -29,7 +29,7 @@ au-dessus changent seulement l'endroit où l'exécution est enregistrée, jamais
 Un workflow est la classe PHP qui décrit les étapes d'une exécution, et une activité est une unité
 d'effet de bord qu'un workflow appelle, comme un appel HTTP ou une écriture en base.
 
-Les trois ponts sont des **alternatives** : vous installez Temporal, DBAL ou Illuminate, jamais deux
+Les trois ponts sont des **alternatives** et ne se superposent pas : vous installez Temporal, DBAL ou Illuminate, jamais deux
 d'entre eux.
 
 Les deux derniers paquets sont des **outils de développement** et se placent en `require-dev` :
@@ -180,7 +180,7 @@ php artisan migrate
 
 Ce pont fournit les mêmes quatre stockages que le pont DBAL, avec les mêmes compromis face à
 Temporal : le tableau ci-dessus s'applique mot pour mot. La connexion change. Ces stockages
-utilisent `Illuminate\Database\Connection` et son constructeur de requêtes, pas Eloquent.
+utilisent `Illuminate\Database\Connection` et son constructeur de requêtes, sans Eloquent.
 
 Donnez aux stockages leur propre connexion dans `config/database.php`, distincte de la connexion par
 défaut de l'application (DUR054). Sur une connexion partagée, les transactions propres à Durable
@@ -255,7 +255,8 @@ fait bien son travail ; si vous cherchez un moteur pensé d'abord pour Laravel, 
 contre un cluster Temporal (Temporal Cloud et Nexus compris, avec un historique que l'interface de
 Temporal lit) *ou* contre une base SQL, sans cluster à opérer. Un parc mixte Symfony / Sylius /
 Laravel partage aussi un seul moteur : une classe de workflow écrite pour `gplanchat/durable-bundle`
-tourne ici sans modification. `durable-workflow/workflow` n'offre pas cette possibilité.
+tourne ici sans modification. Ces deux points sont toute la promesse du paquet, et
+`durable-workflow/workflow` ne la fait pas.
 
 Cette section existe parce que les deux paquets portent des noms voisins sur Packagist.
 
@@ -323,7 +324,7 @@ d'exécutions dans le cluster, et deux workers drainent ce que la file de l'appl
 porter : `php artisan durable:temporal-worker` draine les tâches de workflow, et
 `php artisan durable:temporal-worker --role=activity` les tâches d'activité.
 
-`gplanchat/durable-bridge-temporal` est **suggéré, pas exigé**. Il installe huit paquets, dont cinq
+`gplanchat/durable-bridge-temporal` est seulement **suggéré**. Il installe huit paquets, dont cinq
 composants Symfony qu'une application Laravel ne charge jamais, pour quelque 36 Mo. Une application
 qui ne choisit pas ce backend ne les installe jamais, et celle qui le choisit reçoit une erreur qui
 nomme le paquet à installer. Scinder le pont, dont la partie couplée à Symfony fait huit fichiers

@@ -28,7 +28,7 @@ change only where the execution is recorded, never the workflow code.
 A workflow is the PHP class that describes an execution's steps, and an activity is a unit of side
 effect that a workflow calls, such as an HTTP call or a database write.
 
-The three bridges are **alternatives**: you install Temporal, DBAL or Illuminate, never two of them.
+The three bridges are **alternatives** and do not stack: you install Temporal, DBAL or Illuminate, never two of them.
 
 The last two packages are **development-time tools** and belong in `require-dev`:
 
@@ -169,7 +169,7 @@ php artisan migrate
 
 This bridge provides the same four stores as the DBAL bridge, with the same trade-offs against
 Temporal: the table above applies here word for word. The connection differs. These stores use
-`Illuminate\Database\Connection` and its query builder, not Eloquent.
+`Illuminate\Database\Connection` and its query builder, without Eloquent.
 
 Give the stores their own connection in `config/database.php`, separate from the application's
 default one (DUR054). On a shared connection, Durable's own transactions nest inside the
@@ -240,7 +240,8 @@ Laravel-first engine, choose it.
 against a Temporal cluster (Temporal Cloud and Nexus included, with a history the Temporal UI
 reads) *or* against a SQL database, with no cluster to run. A mixed Symfony / Sylius / Laravel
 estate also shares a single engine: a workflow class written for `gplanchat/durable-bundle` runs
-here unmodified. `durable-workflow/workflow` does not make that claim.
+here unmodified. These two points are the package's whole claim, and `durable-workflow/workflow`
+does not make it.
 
 This section exists because the two packages have neighbouring names on Packagist.
 
@@ -306,7 +307,7 @@ the cluster, and two workers drain what the application's own queue cannot carry
 `php artisan durable:temporal-worker` drains the workflow tasks, and
 `php artisan durable:temporal-worker --role=activity` the activity tasks.
 
-`gplanchat/durable-bridge-temporal` is **suggested, not required**. It installs eight packages,
+`gplanchat/durable-bridge-temporal` is only **suggested**. It installs eight packages,
 five of them Symfony components that a Laravel application never loads, for some 36 MB. An
 application that does not select the backend never installs them, and one that does gets an error
 naming the package to install. Splitting the bridge, whose Symfony-coupled part is eight files out
