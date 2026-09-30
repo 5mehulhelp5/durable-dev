@@ -445,11 +445,12 @@ les régler :
   [`max_activity_retries`](../configuration/#max_activity_retries) du bundle Symfony. La valeur par
   défaut, `0`, ne fixe aucun plafond. Les workers Temporal ne le lisent jamais : là, le cluster
   relance d'après la `RetryLimit` propre à l'activité.
-- `budgetSeconds` borne `MagentoRuntime::run()` quand aucun DSN n'est configuré : l'appel mène
-  alors un workflow à son terme dans le processus appelant. Au-delà du budget, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. La
-  valeur par défaut est `10`. Le budget existe à cause du plafond de tentatives : sans plafond, une
-  activité qui échoue sans cesse occuperait ce processus pour toujours. Les workers et
-  `workflowClient()` ne lisent ni l'un ni l'autre.
+- `budgetSeconds` borne `MagentoRuntime::run()`. Sans DSN, l'appel mène un workflow à son terme dans
+  le processus appelant ; avec un DSN, il attend aussi longtemps le résultat du cluster. Au-delà du
+  budget, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. La valeur par défaut est
+  `10`. Le budget existe à cause du plafond de tentatives : sans plafond, une activité qui échoue
+  sans cesse occuperait ce processus pour toujours. Les workers et `workflowClient()` ne lisent ni
+  l'un ni l'autre.
 
 **Magento prend en charge deux backends, et Composer l'impose.** Magento atteint la mémoire et
 Temporal, et le module déclare un `conflict` sur les deux ponts SQL, car
@@ -467,9 +468,15 @@ termine. C'est acceptable pour une commande en ligne, inadapté à tout le reste
 
 `MagentoRuntime::run()` suit le même choix. Sans DSN, il exécute le workflow dans le processus
 appelant. Avec un DSN, il démarre le workflow sur le cluster et attend son résultat, que produisent
-les workers ci-dessous ; faute de résultat au bout d'environ 60 secondes, il lève une
-`\RuntimeException`. Pour démarrer un workflow sans attendre, depuis une requête web par exemple,
-appelez `workflowClient()->startAsync()`.
+les workers ci-dessous. L'attente dure `budgetSeconds` et se termine par `WorkflowStuckException`.
+
+Un workflow qui échoue arrive autrement chez l'appelant avec un DSN : sous la forme d'une
+`\RuntimeException` simple, dont le message commence par `Workflow "<execution id>" failed`, sans
+exception précédente. Un workflow qui attend un signal attend tout le budget au lieu d'échouer
+aussitôt.
+
+Pour démarrer un workflow sans attendre, depuis une requête web par exemple, appelez
+`workflowClient()->startAsync()`.
 
 **Les workers sont des commandes `bin/magento`**, pas des consommateurs de file. Supervisez-les
 comme n'importe quel processus long :

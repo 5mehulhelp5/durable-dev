@@ -152,10 +152,11 @@ Run                                   | Workflow                 | Status  | Sta
 d81bfb25-af86-43b9-a310-9d9d34695a30  | durable.demo.place-order | running | 2026-08-28 09:23:45
 ```
 
-⚠ **Two caveats to know.** `RuntimeFactory::create()->run()`, as `durable:demo` calls it, follows
-the DSN (#765): without one it runs in the process and is **not durable**; with one it starts on the
+**Two caveats to know.** `RuntimeFactory::create()->run()`, as `durable:demo` calls it, follows the
+DSN (#765): without one it runs in the process and is **not durable**; with one it starts on the
 cluster and waits for the result, so it needs the workers below. What has to survive the process
-without anyone waiting is started with `workflowClient()->startAsync()`. And a started run stays `running` until a worker drains the task
+without anyone waiting is started with `workflowClient()->startAsync()`. And a started run stays
+`running` until a worker drains the task
 queue: nothing advances an execution on the cluster but
 
 ```bash
