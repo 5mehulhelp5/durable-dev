@@ -124,7 +124,7 @@ a hung worker is the job of whatever supervises the process. `messenger:consume 
 checks between two messages, so it cannot stop one.
 
 Temporal requires a closing bound. When none is set, the bridge supplies a default. That fallback
-has its own name, `executionBoundOr()`, instead of being hidden inside command construction.
+has its own name, `executionBoundOr()`.
 
 ---
 
@@ -194,8 +194,8 @@ WorkflowTimeouts::run(Duration::minutes(10))->withTask(Duration::seconds(10));
 ```
 
 A run bound longer than the execution bound is **rejected** at construction. The server accepts
-it and silently lowers the run bound to the execution bound, so the configuration you wrote would
-not be the one that applies.
+it and silently lowers the run bound to the execution bound, so the configuration you wrote is
+not the one that applies.
 
 `ContinueAsNewOptions` rejects any execution bound: the new run belongs to the current
 execution and inherits it. Use `withoutExecutionBound()` to reuse a `WorkflowTimeouts` there.

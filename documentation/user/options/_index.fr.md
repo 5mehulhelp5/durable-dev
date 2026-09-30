@@ -126,8 +126,7 @@ la main. Arrêter un worker bloqué revient à ce qui supervise le processus.
 `messenger:consume --time-limit` ne vérifie qu'entre deux messages, il ne peut donc pas l'arrêter.
 
 Temporal exige une borne de clôture. Quand aucune n'est posée, le pont en fournit une par défaut.
-Ce repli porte son propre nom, `executionBoundOr()`, au lieu d'être caché dans la construction de la
-commande.
+Ce repli porte son propre nom, `executionBoundOr()`.
 
 ---
 
@@ -198,7 +197,7 @@ WorkflowTimeouts::run(Duration::minutes(10))->withTask(Duration::seconds(10));
 
 Une borne de run plus longue que la borne d'exécution est **rejetée** à la construction. Le
 serveur l'accepte et rabaisse silencieusement la borne de run à la borne d'exécution, si bien que la
-configuration que vous avez écrite ne serait pas celle qui s'applique.
+configuration que vous avez écrite n'est pas celle qui s'applique.
 
 `ContinueAsNewOptions` rejette toute borne d'exécution : le nouveau run
 appartient à l'exécution courante et en hérite. Employez `withoutExecutionBound()` pour y réutiliser

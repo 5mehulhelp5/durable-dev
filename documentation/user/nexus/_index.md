@@ -5,10 +5,9 @@ weight: 29
 
 # Nexus operations
 
-A Nexus operation is an operation served by another service, with its own contract, that a
-workflow calls the way it calls an activity (see the [glossary](../glossary/)). With Nexus, a
-workflow calls an operation owned by another team, namespace or deployment, and neither side knows
-the other's workflows. Durable covers both roles: it **calls** operations and it **serves** them.
+A Nexus operation is an operation that another team, namespace or deployment serves behind its own
+contract (see the [glossary](../glossary/)). A workflow calls it the way it calls an activity, and
+neither side knows the other's workflows. Durable covers both roles: it **calls** operations and it **serves** them.
 
 Serving requires the **Temporal backend**. The in-memory and DBAL backends have no cross-namespace
 route, and they report it with an error; see [Backends](../backends/).
@@ -175,7 +174,7 @@ fix. For a terminal failure, state its kind:
 
 The two columns split by *whose fault it is*. Retrying does not fix a malformed request or a
 missing right; it may get past an overload or an upstream timeout. The table comes from nexus-rpc
-and every language SDK shares it; Durable did not define it.
+and every language SDK shares it.
 
 An operation nobody serves gets `NOT_IMPLEMENTED`, which is terminal, and the worker keeps serving
 its other operations.
@@ -275,8 +274,7 @@ difference:
 
 During one run, the worker that advances the fulfilling workflow stayed **off for four minutes**.
 The operation stayed at `NexusOperationStarted`, the caller consumed nothing, and everything
-finished normally when the worker came back. This run is the measured evidence that a waiting
-operation holds nothing open.
+finished normally when the worker came back.
 
 ### Calling asks nothing of your host
 
