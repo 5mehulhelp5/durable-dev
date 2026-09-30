@@ -386,8 +386,8 @@ only plain data, and `InMemoryEventStore` still files each stream under the stri
 
 The other ids an event carries keep their string type for now: the child id of the `ChildWorkflow*`
 events, `WorkflowCancellationRequested::sourceParentExecutionId()`, the next id of
-`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They follow in the last part
-of #682.
+`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They became `ExecutionId`s too:
+see the section on the other ids an event carries, below.
 
 **Reading back is stricter in one case.** `EventDataMapper::toDomainEvent()` converts the stored
 `execution_id` with `ExecutionId::fromString()`, so a row stored with an empty id now throws
@@ -475,29 +475,26 @@ An empty `sourceParentExecutionId` reads back as `null` on both cancellation eve
 `WorkflowExecutionCancelled` used to keep the empty string. `TemporalEventConverter` refuses a child
 event whose workflow id is empty.
 
-**Rector covers both sides.** In the `durable-upgrade` set:
+**Rector does the building side.** In the `durable-upgrade` set:
 
 - `ExecutionIdEventArgumentRector` now wraps **every** positional string argument whose parameter
   accepts an `ExecutionId`, not only the first one. It reaches the constructors and the factory
   in the table.
 - `ExecutionIdArgumentRector` wraps the id passed to `TemporalExecutionHistory::waitJournal()` and
   `AwaitedFact::isJournalledIn()`.
-- `ExecutionIdReturnValueRector` is new. It appends `->toString()` to `executionId()`,
-  `childExecutionId()`, `sourceParentExecutionId()` and `newExecutionId()`, using `?->toString()`
-  on the nullable ones, so code that read a string keeps the same string. It skips a call that is
-  already the receiver of another call, such as `->toString()` or `->equals()`. A second run
-  changes nothing.
+
+It does not touch code that reads `executionId()`, `childExecutionId()`,
+`sourceParentExecutionId()` or `newExecutionId()`: after the upgrade, such a call may already be
+where an `ExecutionId` belongs.
 
 **What to do**, in this order:
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id they report in
    `ExecutionId::fromString()`. An empty string is refused.
-2. Where the rule wrote `$env->executionId()->toString()` and the value goes to a port that takes
-   an `ExecutionId`, drop the `->toString()` and the `fromString()` around it.
-3. Without Rector, look for `executionId()` in workflow code, and call `->toString()` wherever the
-   value lands in an activity payload, a log context, an array key or a comparison with a string.
-   `json_encode()` turns the object into `{}`, and `===` against a string is always false.
-   Compare two ids with `->equals()`.
+2. Look for these four getters in your code, workflow code first. Call `->toString()` wherever
+   the value lands in an activity payload, a log context, an array key or a comparison with a
+   string: `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+   Compare two ids with `->equals()`, and pass the object as it is to a port.
 
 ## 0.1.0-beta1
 
