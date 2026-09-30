@@ -12,15 +12,14 @@ Dashboard**. The page is read-only.
 ## What the page offers
 
 - **The backend state**, above everything, dated, and one line per worker role when Temporal holds
-  the journal.
+  the [journal](../../glossary/) (the recorded steps of an execution and their results).
 - **Counters** per outcome, with a **Waiting for a worker** count, over the runs on the page.
 - **A filter** on outcome, and on workflow name and execution id prefix where the backend can apply
   them.
 - **The run list**, 20 a page, forward by cursor, with a **First page** link. Each row carries the
   outcome, the workflow, the execution id, and a note: `waiting for a worker · 42 s`, or
   `waiting on timer "grace period"…`.
-- **A run page**, opened from a row: the workflow, the execution id, the outcome, its Nexus
-  operations, and its history, one block per action, under a timeline. See [Read a
+- **A run page**, opened from a row: the workflow, the execution id, the outcome, its [Nexus operations](../../nexus/), and its history, one block per action, under a timeline. See [Read a
   run](../reading-a-run/).
 
 ## Addresses

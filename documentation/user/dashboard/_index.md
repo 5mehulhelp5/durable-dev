@@ -12,7 +12,7 @@ reads the same journals but answers a narrower question, what happened during on
 keeps its own layout. [Parity](parity/) lists, row by row, what each surface shows today and where
 they differ.
 
-That is not tidiness. A panel one surface has and another lacks is a question one application can
+The point is not consistency for its own sake. A panel one surface has and another lacks is a question one application can
 answer about a run and another cannot, about the same run, recorded by the same backend. An operator
 who works on two applications of the same house should have nothing to translate.
 
@@ -53,19 +53,16 @@ start of the execution id. Both are exact about case and take `%` and `_` litera
 where the backend can apply them. On Temporal, that means [turning on its search
 attributes](../backends/#register-durables-search-attributes); without them, the page filters by
 outcome only. The Magento grid offers its own text filters on workflow name, execution id and run
-id: each one looks for the text anywhere in the value, ignoring case, among the runs of its
-window.
+id: the workflow name filter ignores case, the two id filters match the text as typed, and each looks for it anywhere in the value, among the runs of its window.
 
 A **continued-as-new** run is not a failure. It is a normal ending: the component treats it as a
 fresh execution, and the run that handed over finished without error. Painting both alike would put
 perfectly healthy long-running workflows in red.
 
 A running run that **no worker has picked up yet** says so, and since when:
-`waiting for a worker · 42 s`. It was dispatched, and nothing consumed it, which usually means no
-worker is running: start one with [`durable:worker`](../getting-started/#5-run-a-consumer-or-nothing-happens)
+`waiting for a worker · 42 s`. It was dispatched, and nothing consumed it, which means the queue has no worker, or its worker is stopped: start one with [`durable:worker`](../getting-started/#5-run-a-consumer-or-nothing-happens)
 on Symfony, or `php artisan queue:work` on Laravel.
-A running run without that line has been picked up, and is working or waiting on a timer or a signal,
-as it should. On Sylius and Filament, the counters add a **Waiting for a worker** count over the
+A running run without that line has been picked up, and is working or waiting on a timer or a signal. On Sylius and Filament, the counters add a **Waiting for a worker** count over the
 same page.
 
 The SQL backends can tell (DBAL on Symfony, Illuminate on Laravel), on a runs table that has the
@@ -172,7 +169,7 @@ filters), and the Filament one a table in the panel's own components: on Filamen
 Eloquent query and nothing else, and a catalog's cursor only goes forward. It renders the same on
 Filament 3 and 4.
 
-All four are **read-only**, and will stay so: what you come to a dashboard for is to know whether an
+All four are **read-only**: what you come to a dashboard for is to know whether an
 order went through, not to restart it by hand. Resuming an execution from a browser would bypass the
 per-execution lock.
 

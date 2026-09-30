@@ -12,7 +12,7 @@ Durable**. La page est en lecture seule.
 ## Ce que la page propose
 
 - **L'état du backend**, au-dessus de tout, daté, avec une ligne par rôle de worker quand Temporal
-  tient le journal.
+  tient le [journal](../../glossary/) (les étapes enregistrées d'une exécution et leurs résultats).
 - **Des compteurs** par issue, avec un nombre **En attente d'un worker**, sur les exécutions de la
   page.
 - **Un filtre** sur l'issue, et sur le nom du workflow et le début de l'identifiant d'exécution là
@@ -21,7 +21,7 @@ Durable**. La page est en lecture seule.
   Chaque ligne porte l'issue, le workflow, l'identifiant d'exécution et une note :
   `waiting for a worker · 42 s`, ou `waiting on timer "grace period"…`.
 - **Une page d'exécution**, ouverte depuis une ligne : le workflow, l'identifiant d'exécution,
-  l'issue, ses opérations Nexus, et son historique, un bloc par action, sous une frise. Voir [Lire
+  l'issue, ses [opérations Nexus](../../nexus/), et son historique, un bloc par action, sous une frise. Voir [Lire
   une exécution](../reading-a-run/).
 
 ## Adresses

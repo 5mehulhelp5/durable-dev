@@ -25,10 +25,9 @@ Illuminate ou Temporal) et est en lecture seule.
   page.
 - **Des filtres** sur le nom du workflow et sur le début de l'identifiant d'exécution, là où le
   backend sait les appliquer.
-- **La liste des exécutions**, 20 par page, en avant par curseur. Chaque ligne porte l'issue, le
-  workflow, la date de démarrage et une note (`waiting for a worker`, `waiting on …`).
-- **Une page d'exécution**, ouverte depuis une ligne : l'issue, ce qu'elle attend, ses opérations
-  Nexus quand le catalogue sait les lister, et son historique, un bloc par action, sous une frise.
+- **La liste des exécutions**, 20 par page, en avant par curseur. Chaque ligne porte l'identifiant d'exécution (un lien vers l'exécution), l'issue, le workflow, la date de démarrage et une note (`waiting for a worker`, `waiting on …`).
+- **Une page d'exécution**, ouverte depuis une ligne : l'issue, ce qu'elle attend, ses [opérations
+  Nexus](../../nexus/) quand le catalogue sait les lister, et son historique, un bloc par action, sous une frise.
   Voir [Lire une exécution](../reading-a-run/).
 
 ## Ce qu'elle ne montre pas

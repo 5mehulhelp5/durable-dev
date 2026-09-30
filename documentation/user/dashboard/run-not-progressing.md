@@ -6,13 +6,11 @@ weight: 60
 # A run does not progress
 
 You opened the dashboard and a run stays where it was, or the list shows nothing. Each entry below
-starts from what the page says. None of these states loses a step already recorded: the journal
-keeps every completed step, and the run resumes at the first one missing.
+starts from what the page says. None of these states loses a step already recorded: the [journal](../../glossary/) (the recorded steps of an execution) keeps every completed step, and the run resumes at the first one missing.
 
 ## The line says `waiting for a worker · 42 s`
 
-The run was dispatched and nothing has consumed it. In most cases no worker is running for that
-queue. Start one:
+The run was dispatched and nothing has consumed it. The queue has no worker, or its worker is stopped. Start one:
 
 - Symfony: [`durable:worker`](../../getting-started/#5-run-a-consumer-or-nothing-happens)
 - Laravel: `php artisan queue:work`
@@ -48,9 +46,9 @@ exits non-zero when a role's queue has gone two minutes without a poll, and name
 
 ## `waiting for a worker` never appears
 
-The backend cannot tell. The SQL backends can, on a runs table that has the `picked_up_at` column
+The backend records no pickup time. The SQL backends record it, on a runs table that has the `picked_up_at` column
 (see [Upgrading](https://github.com/gplanchat/durable-dev/blob/main/UPGRADE.md) for a table created
-before it existed). Temporal cannot from the run list, and the Magento grid does not show it:
+before it existed). Temporal records none the run list can read, and the Magento grid does not show it:
 Temporal UI lists the pending tasks.
 
 ## The name and id filters are missing

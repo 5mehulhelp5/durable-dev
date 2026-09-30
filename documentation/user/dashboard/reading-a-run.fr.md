@@ -35,8 +35,7 @@ première ligne est l'exécution elle-même.
 
 - **La barre est la durée**, placée là où l'action a eu lieu, d'après l'heure enregistrée.
 - **Un intervalle hachuré est une file.** Le travail avait été demandé et personne ne l'avait
-  commencé. Une exécution qui a passé 22 de ses 24 secondes en hachuré attendait un worker, et la
-  lenteur ne vient pas du code.
+  commencé. Une exécution qui a passé 22 de ses 24 secondes en hachuré attendait un worker.
 - **Le rouge marque l'événement qui a échoué.** Une activité qui a échoué deux fois puis réussi porte
   du rouge et se termine bien. Une annulation n'est pas en rouge.
 - **Le nom sur la ligne** est celui de l'activité, du workflow enfant ou de l'opération. Un minuteur
@@ -59,7 +58,7 @@ Un événement sans rien d'enregistré reste une ligne simple.
 ## Les opérations Nexus
 
 Quand l'exécution a appelé une [opération Nexus](../../nexus/), un tableau liste son endpoint, son
-service, son opération et son état : en cours, terminée, en échec ou expirée. Une opération en cours
+service, son opération et son état : en cours, terminée, en échec, expirée ou annulée. Une opération en cours
 est une attente servie par un autre service : la cause d'une exécution lente peut s'y trouver plutôt
 que dans votre code.
 

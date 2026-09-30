@@ -28,7 +28,7 @@ sur une même échelle de temps et liste les envois Messenger de la requête.
 
 ## Charger un journal que la requête n'a pas envoyé
 
-Le panneau collecte les identifiants d'exécution des envois Messenger faits pendant la requête.
+Le panneau collecte les identifiants d'exécution vus dans la trace de processus de la requête : les envois Messenger, et les workflows et activités exécutés dans le même processus.
 Pour en ajouter un qu'un worker ou une autre requête a démarré, placez `durable_execution` dans
 l'URL de la requête que vous profilez, avec l'identifiant d'exécution, ou plusieurs séparés par des
 virgules :
@@ -51,7 +51,7 @@ dans ce processus. Le panneau affiche **Journal still empty**. Lancez un worker,
 
 ## Ce qui diffère du tableau de bord
 
-- **Vocabulaire.** La colonne de statut affiche Finished, Queued, Pending, Cancellation requested
+- **Vocabulaire.** La colonne de statut affiche Finished, Queued (no journal yet), Pending, Cancellation requested
   ou Continue as new, et le panneau est en anglais seulement.
 - **Frise.** Une ligne par événement, dans l'ordre du journal, et non une ligne par action. Le
   temps de file n'est pas hachuré et un événement en échec n'est pas peint en rouge.

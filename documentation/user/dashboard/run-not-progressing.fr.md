@@ -7,13 +7,12 @@ weight: 60
 
 Vous avez ouvert le tableau de bord et une exécution reste où elle était, ou la liste n'affiche
 rien. Chaque entrée ci-dessous part de ce que dit la page. Aucun de ces états ne perd une étape déjà
-enregistrée : le journal garde chaque étape terminée, et l'exécution reprend à la première qui
+enregistrée : le [journal](../../glossary/) (les étapes enregistrées d'une exécution) garde chaque étape terminée, et l'exécution reprend à la première qui
 manque.
 
 ## La ligne affiche `waiting for a worker · 42 s`
 
-L'exécution a été envoyée et rien ne l'a consommée. Dans la plupart des cas, aucun worker ne tourne
-pour cette file. Démarrez-en un :
+L'exécution a été envoyée et rien ne l'a consommée. La file n'a pas de worker, ou son worker est arrêté. Démarrez-en un :
 
 - Symfony : [`durable:worker`](../../getting-started/#5-faire-tourner-un-consommateur-sinon-rien-narrive)
 - Laravel : `php artisan queue:work`

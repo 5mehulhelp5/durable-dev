@@ -23,9 +23,8 @@ read-only.
 - **The backend state**, dated.
 - **Counters** per outcome, with a **Waiting for a worker** count, over the runs on the page.
 - **Filters** on workflow name and on execution id prefix, where the backend can apply them.
-- **The run list**, 20 a page, forward by cursor. Each row carries the outcome, the workflow, the
-  start date and a note (`waiting for a worker`, `waiting on …`).
-- **A run page**, opened from a row: status, what it waits on, its Nexus operations where the
+- **The run list**, 20 a page, forward by cursor. Each row carries the execution id (a link to the run), the outcome, the workflow, the start date and a note (`waiting for a worker`, `waiting on …`).
+- **A run page**, opened from a row: status, what it waits on, its [Nexus operations](../../nexus/) where the
   catalog can list them, and its history, one block per action, under a timeline. See [Read a
   run](../reading-a-run/).
 

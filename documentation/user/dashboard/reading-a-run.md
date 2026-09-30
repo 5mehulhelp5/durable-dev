@@ -29,13 +29,12 @@ it has waited.
 ## The timeline
 
 Each line is one **action**: an activity, a timer, a child workflow, a Nexus operation, a signal
-received. An activity that was scheduled, started and completed is one line, not three. The first
+received. An activity that was scheduled, started and completed is one line. The first
 line is the run itself.
 
 - **The bar is the duration**, placed where it happened, from the recorded time.
 - **A hatched stretch is a queue.** The work had been asked for and nobody had started it. A run
-  that spent 22 of its 24 seconds hatched was waiting for a worker, and the code is not the
-  slow part.
+  that spent 22 of its 24 seconds hatched was waiting for a worker.
 - **Red marks the event that failed.** An activity that failed twice and then succeeded carries
   red and ends well. A cancellation is not red.
 - **The name on the row** is the name of the activity, the child workflow or the operation. A timer
@@ -56,7 +55,7 @@ An event with nothing recorded stays a plain line.
 ## Nexus operations
 
 When the run called a [Nexus operation](../../nexus/), a table lists its endpoint, its service, its
-operation and its state: in flight, completed, failed or timed out. An operation in flight is a
+operation and its state: in flight, completed, failed, timed out or cancelled. An operation in flight is a
 wait served by another service, so the cause of a slow run may be there rather than in your code.
 
 ## See also

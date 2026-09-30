@@ -13,7 +13,7 @@ mais répond à une question plus étroite, ce qui s'est passé pendant une requ
 propre mise en page. [Parité](parity/) liste, ligne par ligne, ce que chaque surface montre
 aujourd'hui et où elles diffèrent.
 
-Ce n'est pas du rangement. Un panneau qu'une surface a et qu'une autre n'a pas est une question à
+Il ne s'agit pas d'uniformité pour elle-même. Un panneau qu'une surface a et qu'une autre n'a pas est une question à
 laquelle une application sait répondre et l'autre non, sur la même exécution, enregistrée par le même
 backend. Un exploitant qui travaille sur deux applications de la même maison ne devrait rien avoir à
 traduire.
@@ -48,8 +48,7 @@ aussi, pour les rôles journal et activity.
 
 ### 2. Les exécutions
 
-Sylius et Magento filtrent par issue (en cours, terminée, échouée, annulée, poursuivie sous un
-nouveau nom) ; Filament et le profileur non. Toutes les listes sauf celle du profileur sont
+Sylius et Magento filtrent par issue (en cours, terminée, échouée, annulée, poursuivie à neuf) ; Filament et le profileur non. Toutes les listes sauf celle du profileur sont
 paginées.
 
 Sous Sylius et Filament, la liste se filtre aussi par nom de workflow (le nom entier) et par le début de
@@ -57,19 +56,16 @@ l'identifiant d'exécution. Les deux respectent la casse et prennent `%` et `_` 
 n'apparaissent que là où le backend sait les appliquer : sur Temporal, il faut [activer ses
 attributs de recherche](../backends/#register-durables-search-attributes) ; sans eux, la page ne
 filtre que par issue. La grille Magento propose ses propres filtres texte sur le nom du workflow,
-l'identifiant d'exécution et l'identifiant de run : chacun cherche le texte n'importe où dans la
-valeur, sans tenir compte de la casse, parmi les exécutions de sa fenêtre.
+l'identifiant d'exécution et l'identifiant de run : le filtre sur le nom du workflow ignore la casse, les deux filtres sur les identifiants respectent le texte tel que saisi, et chacun le cherche n'importe où dans la valeur, parmi les exécutions de sa fenêtre.
 
-Une exécution **poursuivie sous un nouveau nom** n'est pas un échec. C'est une fin normale : le
+Une exécution **poursuivie à neuf** n'est pas un échec. C'est une fin normale : le
 composant la traite comme une exécution neuve, et celle qui passe la main s'est terminée sans erreur.
 Les confondre ferait apparaître en rouge des workflows longs parfaitement sains.
 
 Une exécution en cours qu'**aucun worker n'a encore prise en charge** le dit, avec depuis quand :
-`waiting for a worker · 42 s`. Elle a été envoyée, et rien ne l'a consommée, ce qui veut en général
-dire qu'aucun worker ne tourne : lancez-en un avec [`durable:worker`](../getting-started/#5-faire-tourner-un-consommateur-sinon-rien-narrive)
+`waiting for a worker · 42 s`. Elle a été envoyée, et rien ne l'a consommée, ce qui veut dire que la file n'a pas de worker, ou que son worker est arrêté : lancez-en un avec [`durable:worker`](../getting-started/#5-faire-tourner-un-consommateur-sinon-rien-narrive)
 sous Symfony, ou `php artisan queue:work` sous Laravel.
-Une exécution en cours sans cette mention a été prise en charge : elle travaille, ou elle attend un
-minuteur ou un signal, comme prévu. Sous Sylius et Filament, les compteurs ajoutent un nombre
+Une exécution en cours sans cette mention a été prise en charge : elle travaille, ou elle attend un minuteur ou un signal. Sous Sylius et Filament, les compteurs ajoutent un nombre
 **En attente d'un worker** (**Waiting for a worker** en anglais) sur la même page.
 
 Les backends SQL savent le dire (DBAL sous Symfony, Illuminate sous Laravel), sur une table des exécutions qui a la
@@ -182,7 +178,7 @@ La liste Sylius est une grille Sylius, celle de Magento la grille standard de l'
 panneau : sur Filament 3, une table ne lit qu'une requête Eloquent, et le curseur d'un catalogue ne
 va qu'en avant. Elle se rend pareil sur Filament 3 et 4.
 
-Les quatre sont en **lecture seule**, et le resteront : ce qu'on vient chercher sur un tableau de bord,
+Les quatre sont en **lecture seule** : ce qu'on vient chercher sur un tableau de bord,
 c'est de savoir si une commande est passée, pas de la relancer à la main. Reprendre une exécution
 depuis un navigateur contournerait le verrou par exécution.
 

@@ -27,7 +27,7 @@ lists the Messenger dispatches of the request.
 
 ## Load a journal the request did not dispatch
 
-The panel collects the execution ids of the Messenger dispatches made during the request. To add
+The panel collects the execution ids seen in the request's process trace: the Messenger dispatches, and the workflows and activities run in the same process. To add
 one that a worker or another request started, put `durable_execution` on the URL of the request
 you profile, with the execution id, or several separated by commas:
 
@@ -47,7 +47,7 @@ queued: with an asynchronous transport, the handler has not run in this process.
 
 ## What differs from the dashboard
 
-- **Wording.** The status column reads Finished, Queued, Pending, Cancellation requested or
+- **Wording.** The status column reads Finished, Queued (no journal yet), Pending, Cancellation requested or
   Continue as new, and the panel is in English only.
 - **Timeline.** One row per event, in journal order. Queue time is not hatched and a failed event
   is not painted red.
