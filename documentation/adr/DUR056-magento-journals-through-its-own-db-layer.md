@@ -6,18 +6,21 @@ Proposed. ADRs in `documentation/adr/` are supervised, so this one takes effect 
 approves its text on its pull request.
 
 On 2026-09-30 the user chose option B of spike #709, which goes through Magento's own database
-layer; option A used Doctrine DBAL. The measurements below come from that spike, draft PR #723.
-The same day the user settled decision 3. When `resource/durable` names the shop's `default`
+layer; option A goes through Doctrine DBAL. The measurements below come from that spike, draft PR
+#723. The same day the user settled decision 3. When `resource/durable` names the shop's `default`
 connection, the backend boots and logs a warning, as in DUR054 decision 6.
 
 Related:
 - [DUR046](DUR046-magento-a-tier-1-host-that-improved-the-core.md), the Magento host. This ADR
   supersedes part of it, listed under Decision, and leaves its text unchanged.
 - [DUR054](DUR054-the-journal-does-not-share-the-applications-connection.md): the journal (the
-  append-only sequence of events that records everything an execution did) does not share the
-  application's connection. Decision 3 below applies that rule to Magento.
+  append-only sequence of events that records everything an execution decided and received; see the
+  [glossary](../user/glossary/_index.md)) does not share the application's connection. Decision 3
+  below applies that rule to Magento.
 - [DUR051](DUR051-a-backend-refuses-what-it-cannot-honour.md): a backend that cannot perform an
-  operation throws an exception that names it. Decision 5 applies that rule to Nexus.
+  operation throws an exception that names it. Decision 5 applies that rule to Nexus operations
+  (operations served by another service, which a workflow calls the way it calls an activity; see
+  the [glossary](../user/glossary/_index.md)).
 - [DUR053](DUR053-a-superseded-pass-cannot-write.md): the fencing epoch, which the new event store
   implements. A pass (one replay of an execution by a worker) claims the next epoch of its
   execution when it starts, and its appends carry that epoch, so an older pass can no longer write.
@@ -33,7 +36,8 @@ Nexus.
 Spike #709 compared two ways to get that connection:
 
 - **A:** a Doctrine DBAL connection built from its own `env.php` entry, `durable/db/url`, with the
-  `durable-bridge-dbal` stores unchanged.
+  `durable-bridge-dbal` stores (the classes that persist the journal, metadata and queues)
+  unchanged.
 - **B:** a connection declared through Magento (`db/connection/durable` plus `resource/durable`),
   read through `Magento\Framework\App\ResourceConnection`, with a new family of stores over
   `Magento\Framework\DB\Adapter\AdapterInterface` (`Pdo\Mysql`).
@@ -55,8 +59,8 @@ The spike measured Magento's adapter on Mage-OS 2.2.0 and MySQL 8.4 (`probe-b.ph
   that raises the execution's epoch) held the heads row, the one row per execution that stores
   its epoch. A `LOCK IN SHARE MODE` read from another process waited 2.53 s for that row.
 
-The spike did not build the B stores. Extrapolated from the DBAL stores and schema (1007 lines) and
-from Illuminate's (825), they come to about 1000 lines of new code.
+The spike did not build the B stores. An extrapolation from the DBAL stores and schema (1007
+lines) and from Illuminate's (825) puts them at about 1000 lines of new code.
 
 ## Decision
 
@@ -66,15 +70,16 @@ from Illuminate's (825), they come to about 1000 lines of new code.
 2. **The connection is a declared resource.** The backend reads `resource/durable` from `env.php`
    through `DeploymentConfig` and resolves the connection it names with `getConnectionByName()`.
    The recommended target is a dedicated `db/connection/durable`.
-3. **The backend never falls back silently to the shop's connection.** If `resource/durable` is
-   not declared, or names a connection absent from `db/connection`, the backend fails at boot with
-   an exception that names the missing key. It never calls `getConnection('durable')` and takes
-   the connection it returns. When `resource/durable` names `default`, the backend boots and logs a
-   warning that names it, as DUR054 decision 6 does on Symfony and Laravel. On `default`, the
-   journal and the shop share one adapter. A workflow started inside a shop transaction, such as
-   an observer during checkout, then hits the nesting constraint below and fails.
-4. **Declaring both `resource/durable` and `durable/temporal/dsn` fails at boot**, with an exception
-   that says so.
+3. **The backend never falls back silently to the shop's connection.** If `resource/durable` is not
+   declared, or names a connection absent from `db/connection`, the backend fails at boot with an
+   exception that names the missing key. It never calls `getConnection('durable')`, so it never
+   takes the shop's connection that call returns. When `resource/durable` names `default`, the
+   backend boots and logs a warning that names it, as DUR054 decision 6 does on Symfony and Laravel.
+   On `default`, the journal and the shop share one adapter. A workflow started inside a shop
+   transaction, such as an observer during checkout, then hits the nesting constraint below and
+   fails.
+4. **Declaring both `resource/durable` and `durable/temporal/dsn` fails at boot** with an exception
+   that names both keys.
 5. **No Nexus.** Registering a Nexus handler throws `NexusUnsupportedByBackendException`, and so
    does calling a Nexus operation, as on the other journal backends (DUR051).
 6. **Resumes, timers and activities go through a leased table on the journal's connection.** A
@@ -82,10 +87,10 @@ from Illuminate's (825), they come to about 1000 lines of new code.
    used. Timers travel as `FireWorkflowTimersMessage`. The spike first sent them as delayed plain
    resumes and ran 1146 passes on a timer that never fired.
 7. **The locks also use the journal's connection.** The per-execution resume lock and the activity
-   attempt claim are each a TTL row or a `GET_LOCK` on that connection, chosen after the
-   measurement in #732. Magento's `LockManagerInterface` is not used. DUR046 objected to its database
-   backend, `GET_LOCK` on the **shop's** connection, which returns `true` without locking when the
-   database is unavailable.
+   attempt claim are each a TTL row or a `GET_LOCK` on that connection. The choice between them
+   follows the measurement in #732, still open. Magento's `LockManagerInterface` is not used. DUR046
+   objected to its database backend, `GET_LOCK` on the **shop's** connection, which returns `true`
+   without locking when the database is unavailable.
 
 ### Design constraints from the adapter's measured behaviour
 
@@ -108,9 +113,9 @@ None of the measured flaws above rules out B. The implementation must handle eac
 `createTable()`, `isTableExists()`, `tableColumnExists()`, `addColumn()`), on the connection of
 decision 2, outside any transaction. The command is idempotent and additive. It creates what is
 missing and adds any column a later version needs. At runtime, a store that finds a table missing
-throws an exception that points to `durable:setup`. Stores create no table at their first write.
+throws an exception that names the missing table and points to `durable:setup`.
 
-Three other ways to create the tables were considered:
+Three other ways to create the tables do not fit Magento:
 
 - **Creating tables at the first write**, as `DurableSchema::ensure()` does on DBAL. The first
   write is a store's own unit of work (a pass claim, a fenced append, a queue take), which runs in
@@ -141,7 +146,8 @@ A workflow with an activity, an 8 s timer and a signal completed through two `ki
 worker and a signal sent with no worker running. The DBAL conformance classes, the shared test
 cases every store adapter runs, passed there (60 tests). Option A added 5 packages
 (doctrine/dbal, doctrine/deprecations, symfony/lock, symfony/messenger, symfony/clock), which
-resolve on every Mage-OS line the module admits. The spike recommended it.
+resolve on every Mage-OS line that the module's Composer constraint allows. The spike recommended
+it.
 
 The user rejected it because Magento manages its database through its own layer, and the journal
 follows that layer. The results above remain in PR #723, and none of them was measured under B.
@@ -156,15 +162,15 @@ follows that layer. The results above remain in PR #723, and none of them was me
   repository's test Magento application) and CI's Magento jobs exercise them.
 - The restart experiment, the conformance suites and the Nexus exception check, which A passed on
   DBAL, have to pass again on B.
-- The application API stays the same across backends. The user set that rule on 2026-09-30. An
-  application uses the same API whatever the backend and the host, and the only accepted exception
-  is a functional limit of Nexus. The Magento SQL backend exposes the same application API as the
-  other backends, and "no Nexus" (decision 5) is that one exception. The same day, the user also
+- On 2026-09-30 the user set the rule that an application uses the same API whatever the backend
+  and the host, with one accepted exception, a functional limit of Nexus. The Magento SQL backend
+  follows that rule, and "no Nexus" (decision 5) is the exception. The same day, the user also
   accepted that Magento cannot resolve an attribute on a constructor parameter. That is a limit of
   the host's object manager, not of this backend, and it changes none of the decisions above.
-- The parity audit of the same day found two gaps on Magento: no dispatcher, and no signal delivery
-  on the application side. They stay open under this ADR. The OpenSpec change proposed in PR #782
+- The parity audit of the same day found two gaps on Magento: no dispatcher
+  (`WorkflowResumeDispatcher`, the only way an application starts a run), and no signal delivery
+  on the application side. They stay open under this ADR. PR #782 proposes an OpenSpec change that
   closes them with one client API on every backend and host, through a repository per workflow.
 - The public documentation changes: the picker, the backends and configuration pages (EN and FR),
-  the module README, and an UPGRADE entry. #739 makes those changes last, in a pull request
-  separate from this ADR's.
+  the module README, and an UPGRADE entry. #739 tracks those changes. They land last, in a
+  pull request separate from this ADR's.
