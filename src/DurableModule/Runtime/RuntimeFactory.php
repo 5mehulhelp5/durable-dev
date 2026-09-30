@@ -34,6 +34,7 @@ use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use Gplanchat\Durable\WorkflowRegistry;
 use Magento\Framework\App\DeploymentConfig;
+use Magento\Framework\Interception\InterceptorInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
@@ -364,7 +365,7 @@ class RuntimeFactory
         $handlers = [];
         $contracts = [];
         foreach ($this->nexusHandlers as $handler) {
-            $attribute = (new \ReflectionClass($handler))->getAttributes(AsNexusServiceHandler::class)[0] ?? null;
+            $attribute = self::attributeOf($handler, AsNexusServiceHandler::class);
             if (null === $attribute) {
                 throw new \InvalidArgumentException(\sprintf(
                     'Durable: %s is listed in the nexusHandlers argument of RuntimeFactory (di.xml), but carries no #[AsNexusServiceHandler(contract: ...)] naming the contract it serves.',
@@ -463,6 +464,26 @@ class RuntimeFactory
     }
 
     /**
+     * A handler's attribute, read from the class it intercepts when a plugin made Magento hand over
+     * its generated `Interceptor`: that subclass carries none of its parent's attributes (#766).
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $attribute
+     *
+     * @return \ReflectionAttribute<T>|null
+     */
+    private static function attributeOf(object $handler, string $attribute): ?\ReflectionAttribute
+    {
+        $class = new \ReflectionClass($handler);
+        if ($handler instanceof InterceptorInterface && false !== $class->getParentClass()) {
+            $class = $class->getParentClass();
+        }
+
+        return $class->getAttributes($attribute)[0] ?? null;
+    }
+
+    /**
      * The declared activities, resolved just once: the in-process engine and the worker both read
      * them from here, so they necessarily execute the same thing.
      *
@@ -476,7 +497,7 @@ class RuntimeFactory
         foreach ($this->activityHandlers as $handler) {
             // `#[AsActivityHandler(contract)]` narrows the handler to that one contract, as
             // Symfony's ActivityHandlerPass does; without it, every activity interface it implements.
-            $named = (new \ReflectionClass($handler))->getAttributes(AsActivityHandler::class)[0] ?? null;
+            $named = self::attributeOf($handler, AsActivityHandler::class);
             $contracts = null !== $named ? [$named->newInstance()->contract] : (\class_implements($handler) ?: []);
 
             foreach ($contracts as $contract) {
