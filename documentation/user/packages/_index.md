@@ -208,39 +208,41 @@ php artisan migrate
 php artisan vendor:publish --tag=durable-config
 ```
 
-Package auto-discovery registers the provider. It binds the four storage ports, the activity and
-resume jobs, and the per-execution lock, from one published `config/durable.php`.
+Package auto-discovery registers the provider. From one published `config/durable.php`, the
+provider binds the four storage ports, the activity and resume jobs, and the per-execution lock.
 
-**One choice of backend binds every port.** A journal on one backend under a catalogue on another is
-not a configuration, it is a fault, so `backend` is a single value and one this package does not
-serve is refused **by name** at registration, naming the two it does: `illuminate` and `memory`.
+**One `backend` value binds every port.** A journal on one backend with a run catalogue on another
+is a fault, so `backend` takes a single value. A value this package does not serve fails at
+registration with an error that names it and the two backends the package serves: `illuminate` and
+`memory`.
 
-**Workflows are declared, not scanned.** Laravel has no equivalent of Symfony's attribute
-autoconfiguration, so the `workflows` key names the classes. Measured: naming them costs 0,14 ms and
-does not grow with the application, while a reflection scan costs 15 ms at a thousand classes **and
-loads all of them into every process** to find five. There is no `durable:cache` for the same
-reason: `config:cache` already caches the file it would duplicate.
+**You declare workflows in configuration.** Laravel has no equivalent of Symfony's attribute
+autoconfiguration, so the `workflows` key names the classes. Naming them costs 0,14 ms, measured,
+and does not grow with the application. A reflection scan costs 15 ms at a thousand classes **and
+loads all of them into every process** to find five. For the same reason, there is no
+`durable:cache`: `config:cache` already caches the file it would duplicate.
 
-**Work rides the queue the application already drains**, with `php artisan queue:work` as the only
-worker. Activities and resumes are jobs; a timer is a deferred timer-firing job on the queue's own delay.
+**Work runs on the queue the application already drains**, with `php artisan queue:work` as the
+only worker. Activities and resumes are jobs; a timer is a deferred timer-firing job that uses the
+queue's own delay.
 
-### It is not a durable engine for Laravel, and that square is taken
+### Comparison with `durable-workflow/workflow` {#it-is-not-a-durable-engine-for-laravel-and-that-square-is-taken}
 
 [`durable-workflow/workflow`](https://github.com/durable-workflow/workflow), formerly
-`laravel-workflow/laravel-workflow`, is durable execution **on Laravel queues**, with its own
-storage, explicitly inspired by Temporal and Azure Durable Functions, more than a thousand stars.
-Since 2.0 it writes workflows as straight-line methods on Fibers, and it runs embedded in your
-application, on its own standalone server, or on its managed Cloud, with PHP, Python and Rust SDKs.
-It ships a monitoring UI, Waterline. It is good at what it does, and if a Laravel-first engine is
-what you want, take it.
+`laravel-workflow/laravel-workflow`, provides durable execution **on Laravel queues**, with its own
+storage. It is explicitly inspired by Temporal and Azure Durable Functions and has more than a
+thousand stars. Since 2.0 it writes workflows as straight-line methods on Fibers, and it runs
+embedded in your application, on its own standalone server, or on its managed Cloud, with PHP,
+Python and Rust SDKs. It ships a monitoring UI, Waterline. It does its job well; if you want a
+Laravel-first engine, choose it.
 
-What this package sells is a **different backend choice**: the same workflow code against a
-Temporal cluster — Temporal Cloud and Nexus included, with a history the Temporal UI reads — *or*
-against a SQL database, with no cluster to run. And a mixed Symfony / Sylius / Laravel estate shares a single engine:
-a workflow class written for `gplanchat/durable-bundle` runs here unmodified. That is the whole
-claim, and it is the one the other package does not make.
+`gplanchat/durable-laravel` offers a **different backend choice**. The same workflow code runs
+against a Temporal cluster (Temporal Cloud and Nexus included, with a history the Temporal UI
+reads) *or* against a SQL database, with no cluster to run. A mixed Symfony / Sylius / Laravel
+estate also shares a single engine: a workflow class written for `gplanchat/durable-bundle` runs
+here unmodified. `durable-workflow/workflow` does not make that claim.
 
-Two neighbouring names on Packagist deserve the sentence rather than the hope that nobody notices.
+This section exists because the two packages have neighbouring names on Packagist.
 
 ### Starting a run
 
@@ -250,65 +252,67 @@ Two neighbouring names on Packagist deserve the sentence rather than the hope th
 - on `temporal`, it starts the workflow on the cluster, which delivers everything after that;
 - on `memory`, it drives the run **in the caller's process**: the call returns once the run has
   completed, or once it waits on a signal or on something due later than the ten-second drain
-  budget. The journal of this backend lives in the process, so nothing else could advance it.
+  budget. This backend's journal lives in the process, so nothing outside the process can advance
+  the run.
 
-### Nexus, on the backend that can route it
+### Serving Nexus operations {#nexus-on-the-backend-that-can-route-it}
 
-Serving a Nexus operation means answering a call that arrives from another namespace, and only the
-cluster routes those. The `nexus.handlers` key names the handlers and the contracts they serve:
+A Nexus operation is an operation served by another service, with its own contract, that a
+workflow calls the way it calls an activity (see the [glossary](../glossary/)). Serving one means
+answering a call that arrives from another namespace, and only the cluster routes those calls. The
+`nexus.handlers` key names the handlers and the contracts they serve:
 
 ```php
 'nexus' => ['handlers' => [App\Nexus\BillingHandler::class => App\Contracts\BillingService::class]],
 ```
 
-What a handler does not serve, a workflow fulfils: it carries `#[FulfilsNexusOperation]`, and being
-in the `workflows` list above is enough. A contract splits into two interfaces because PHP cannot
-say *"implements partially"*, and the registry is what puts the halves back together.
+A workflow fulfils the operations that no handler serves. It carries `#[FulfilsNexusOperation]`,
+and listing it in `workflows` above is enough. A contract splits into two interfaces because PHP
+has no way to express a partial implementation; the registry puts the two halves back together.
 
-**Declaring one under a backend that cannot route is refused at registration**, not at the first
-call, and the backend is named. Calling a Nexus operation declares nothing here: that is the
-workflow's business, and it is the common case.
+**A Nexus declaration under a backend that cannot route fails at registration**, before the first
+call, with an error that names the backend. Calling a Nexus operation needs no declaration here:
+the workflow makes the call, and that is the common case.
 
 `php artisan durable:nexus-worker` drains the operations the cluster routes to this application.
 
-### Three settings that are refused rather than tolerated
+### Three rejected settings {#three-settings-that-are-refused-rather-than-tolerated}
 
-| setting | refused | why |
+| Setting | Rejected | Reason |
 |---|---|---|
 | `lock.store: null` | always | it grants every lock, in every deployment |
 | `lock.store: array` | under `illuminate` | a resume runs in a worker separate from whatever dispatched it, so two `array` locks never see each other: 15 overlapping critical sections out of 20, measured |
 | the `sync` queue connection | under `illuminate` | it runs jobs inline, so a resume that dispatches another resume recurses until the stack ends |
 
-`array` stays allowed under `memory`: it is Laravel's own testing default, and excluding inside one
-process is exactly what a test wants.
+`array` remains allowed under `memory`. It is Laravel's own testing default, and a test needs
+mutual exclusion within one process only.
 
-### Two things that read like bugs and are not
+### Two behaviours that look like bugs {#two-things-that-read-like-bugs-and-are-not}
 
-**The `sqlite` driver cannot host more than one worker.** Four workers popping the `jobs` table
-produce `SQLSTATE[HY000]: General error: 5 database is locked`, and three of the four die on their
-first job, with WAL enabled and a 60 s busy timeout. Use MySQL, PostgreSQL or Redis for the queue
-as soon as there is a second worker.
+**The `sqlite` driver cannot host more than one worker.** With four workers popping the `jobs`
+table, the queue returns `SQLSTATE[HY000]: General error: 5 database is locked`, and three of the
+four die on their first job, with WAL enabled and a 60 s busy timeout. Use MySQL, PostgreSQL or
+Redis for the queue as soon as you run a second worker.
 
 **A killed worker's job stays reserved until `retry_after`**, 90 seconds by default. A worker
-started with `--stop-when-empty` inside that window sees an empty queue and exits **having done
-nothing**, which looks exactly like a resume that failed. It is a resume that has not been offered
-the job yet; a supervised worker, which outlives the window, picks it up and the execution
-completes.
+started with `--stop-when-empty` inside that window finds an empty queue and exits **without doing
+anything**, which looks exactly like a failed resume. The resume has not received the job yet. A
+supervised worker outlives the window, picks the job up, and the execution completes.
 
 ### Not in this package
 
-**Nothing about Temporal**, which is served. `backend: 'temporal'` puts the journal and the run
-catalogue in the cluster, and two workers drain what the application's own queue cannot carry:
-`php artisan durable:temporal-worker` the workflow tasks, and
+**Temporal support is present.** `backend: 'temporal'` puts the journal and the run catalogue in
+the cluster, and two workers drain what the application's own queue cannot carry:
+`php artisan durable:temporal-worker` drains the workflow tasks, and
 `php artisan durable:temporal-worker --role=activity` the activity tasks.
 
-`gplanchat/durable-bridge-temporal` is **suggested rather than required**: it installs eight packages,
-five of them Symfony components a Laravel application never loads, for some 36 MB. An application
-that does not select the backend never pays for it, and one that does is told by name what to
-install. Splitting the bridge, whose Symfony-coupled part is eight files out of 774, would remove
-the weight, and that is its own change.
+`gplanchat/durable-bridge-temporal` is **suggested, not required**. It installs eight packages,
+five of them Symfony components that a Laravel application never loads, for some 36 MB. An
+application that does not select the backend never installs them, and one that does gets an error
+naming the package to install. Splitting the bridge, whose Symfony-coupled part is eight files out
+of 774, would remove that weight; it is a separate change.
 
-**A dashboard.** [`gplanchat/durable-filament`](#gplanchatdurable-filament--the-filament-dashboard)
+**No dashboard.** [`gplanchat/durable-filament`](#gplanchatdurable-filament--the-filament-dashboard)
 requires this package, and this package never requires, suggests or detects Filament.
 
 ---
@@ -321,22 +325,22 @@ composer config prefer-stable true
 composer require gplanchat/durable-plugin
 ```
 
-The Sylius chrome for [The dashboard](../dashboard/): an entry in the admin menu, the run list on
-Tabler cards with cursor paging, and the run detail beside it. The panels, the grouping and the
-wording come from `gplanchat/durable` itself, so the same run reads the same here and on the Magento
-screen; what this package owns is the chrome around them.
+The plugin renders [the dashboard](../dashboard/) in the Sylius admin: an entry in the admin menu,
+the run list on Tabler cards with cursor paging, and the run detail beside it. The panels, the
+grouping and the wording come from `gplanchat/durable` itself, so a run reads the same here and on
+the Magento screen. This package provides the Sylius chrome around them.
 
-Labels prefer the human-readable `ActivityType.name` and fall back to technical IDs only when there
-is nothing better.
+Labels show the human-readable `ActivityType.name` and fall back to technical IDs only when no
+name is available.
 
-It **observes**; it does not execute. It requires `gplanchat/durable-bundle`, which wires the run
-catalog it reads, so the command above is the whole install.
+The plugin **reads** runs and executes nothing. It requires `gplanchat/durable-bundle`, which wires
+the run catalog it reads, so the command above is the whole install.
 
 > [!NOTE]
-> Live data comes from whichever backend is installed. No bridge is a `require` here: the
-> backend is suggested by `gplanchat/durable`, once, for every integration. Without one the plugin
-> still installs, the route and the menu entry still work, and the dashboard renders its degraded
-> state instead of live runs.
+> Live data comes from whichever backend is installed. The plugin requires no bridge:
+> `gplanchat/durable` suggests the backend, once, for every integration. Without a backend, the
+> plugin still installs, the route and the menu entry still work, and the dashboard renders its
+> degraded state instead of live runs.
 
 ## `gplanchat/durable-filament`, the Filament dashboard {#gplanchatdurable-filament--the-filament-dashboard}
 
@@ -355,19 +359,19 @@ return $panel
     ->plugin(DurableFilamentPlugin::make());
 ```
 
-The Filament chrome for [The dashboard](../dashboard/), on Filament 3 or 4: a **Durable runs** entry
-in the panel's navigation, the run list with cursor paging and the name and execution-id filters
-the backend can apply, and a page per run with its status, what it waits on, its Nexus operations
-and its history. English and French.
+The plugin renders [the dashboard](../dashboard/) in a Filament 3 or 4 panel: a **Durable runs**
+entry in the panel's navigation, the run list with cursor paging and the name and execution-id
+filters that the backend can apply, and a page per run with its status, what it waits on, its
+Nexus operations and its history. It is available in English and French.
 
-It **observes**; it does not execute. It requires `gplanchat/durable-laravel` and reads the run
-catalog that package binds for its backend: in-memory, Illuminate or Temporal. Nothing in it names a
-backend, and nothing in `gplanchat/durable-laravel` names Filament.
+The plugin **reads** runs and executes nothing. It requires `gplanchat/durable-laravel` and reads
+the run catalog that package binds for its backend: in-memory, Illuminate or Temporal. Nothing in
+the plugin names a backend, and nothing in `gplanchat/durable-laravel` names Filament.
 
 > [!NOTE]
-> The run page lists a run's Nexus operations when the catalog reports them, which only the Temporal
-> one can: a journal cannot hold a Nexus operation, so on in-memory and Illuminate the section never
-> shows.
+> The run page lists a run's Nexus operations when the catalog reports them, and only the Temporal
+> catalog does: a journal cannot hold a Nexus operation, so on in-memory and Illuminate the section
+> never appears.
 
 ## `gplanchat/durable-magento`, the Magento integration {#gplanchatdurable-magento--the-magento-integration}
 
