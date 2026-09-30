@@ -4,15 +4,40 @@
 `planArguments()`: one closure per parameter, which later produces the argument from the
 environment and the input. Two kinds of parameter are supplied today, `WorkflowEnvironment` and an
 `ActivityStub` marked `#[Activities]`. `isInjected()` answers "does the loader supply this
-parameter?" for every other reader of a workflow signature:
+parameter?" for every reader of a workflow signature. There are four:
 
-- `inputParameters()`, the parameters a caller passes when it starts the workflow;
-- `ChildWorkflowStub::argumentsToInput()`, the payload a parent sends to a child;
-- `NexusFulfilmentParameterNames`, the names a fulfilling workflow must share with its contract.
+- `inputParameters()`, the parameters a caller passes when it starts the workflow. It calls
+  `isInjected()` directly, and the next two readers go through it;
+- `ChildWorkflowStub::argumentsToInput()`, the payload a parent sends to a child, through
+  `inputParameters()`;
+- `NexusFulfilmentParameterNames`, the names a fulfilling workflow must share with its contract,
+  through `workflowMethodParameters()`, which calls `inputParameters()`;
+- `SchedulingMethodReflection::callerParameters()` in the PHPStan extension
+  (`src/DurablePhpstan/Reflection/SchedulingMethodReflection.php`, line 84 on `main`), the
+  parameters PHPStan checks on a call through a child workflow stub. It calls `isInjected()`
+  directly.
 
-Every host registers workflows through `WorkflowRegistry::registerClass()`, which calls the
-loader: the Symfony bundle's `WorkflowPass` (Sylius included), Laravel's `DurableServiceProvider`,
-Magento's `RuntimeFactory`. What the loader supplies, every host supplies.
+Every host registers workflows through `WorkflowRegistry::registerClass()`, which calls
+`load()` on the registry's loader, or on a `new WorkflowDefinitionLoader()` when the registry was
+built without one (`WorkflowRegistry` line 37). What the loader supplies, every host supplies. The
+loaders that call `load()` today, and when they run:
+
+| Host | Where `load()` runs | Loader | When |
+|---|---|---|---|
+| Symfony, Sylius | `WorkflowPass` | its own `new WorkflowDefinitionLoader()` (line 28) | container compilation |
+| Symfony, Sylius | the `durable.workflow_registry` service | the `durable.workflow_definition_loader` service | the first time the container builds the registry, in each process |
+| Laravel | the `WorkflowRegistry` singleton (`DurableServiceProvider::bindWorkflowRegistry()`) | none: `new WorkflowRegistry()`, so the fallback | the first time the container resolves the registry, in each process: the resume handler, the Temporal assembly and `DeclaredWorkflowTypes` ask for it. Not at boot |
+| Magento, memory | `RuntimeFactory::create()` | none: `new WorkflowRegistry()` (line 179), so the fallback | each call to `create()` |
+| Magento, Temporal | `RuntimeFactory::assembly()` | none: `new WorkflowRegistry()` (line 346), so the fallback | the first call that needs the cluster: the event store when a DSN is set (so `create()` too), the run catalogue, the workers, `workflowClient()` |
+
+`RuntimeFactory::assembly()` also hands a second `new WorkflowDefinitionLoader()` (line 350) to
+`TemporalRuntimeAssembly`, which the Temporal worker passes to each `WorkflowEnvironment`.
+`WorkflowEnvironment::childWorkflowStub()` falls back to `new WorkflowDefinitionLoader()` (line 519)
+when it was built without one.
+
+Other loaders on `main` never call `load()`: `NexusFulfilmentParameterNames`,
+`NexusHandlerDeclarations`, `NexusHandlerPass` and the resume dispatchers only read a workflow
+type or its parameter names. They need no endpoint resolver.
 
 `WorkflowEnvironment::nexusStub(string $contract, NexusEndpoint|string $endpoint, ?NexusOperationTimeouts $timeouts)`
 requires the endpoint. `WorkflowEnvironment::childWorkflowStub(string $class, ?ChildWorkflowOptions $options)`
@@ -86,10 +111,23 @@ that contract, then an error at registration that names the parameter, the contr
 configuration key of the host in use.
 
 The resolver is a port of the core, `NexusEndpointResolver`, with one method from contract class to
-endpoint or null. Each host builds it from its own configuration and hands it to the registry's
-loader. The loader resolves at registration, so a missing endpoint is found at container
-compilation on Symfony, at boot on Laravel, at `RuntimeFactory::create()` on Magento, and never by
-the first workflow that runs.
+endpoint or null. Each host builds it from its own configuration and hands it to every loader in
+the table above, and to each `WorkflowEnvironment` for `nexusStub()` without an endpoint. The
+loader the environment falls back to in `childWorkflowStub()` only reads the child's type and entry
+method, never calls `load()`, and needs no resolver. The loader resolves at
+registration, so a missing endpoint is found:
+
+- on Symfony and Sylius, at container compilation, by `WorkflowPass`;
+- on Laravel, the first time a process resolves the workflow registry. A worker finds it when it
+  handles its first job, not when the application boots;
+- on Magento, in `create()` for the memory path, and at the first call that builds the Temporal
+  assembly for the Temporal path.
+
+It is never found by a workflow execution: registration fails before any execution of the
+workflow can run in that process. A loader built without a resolver (the fallbacks above, a test
+harness) resolves no endpoint from configuration: an injected stub without an endpoint in its
+attribute fails at registration there, and the error names the attribute's `endpoint` argument,
+since no host configuration is in play.
 
 `$env->nexusStub()` gets the same fallback: `$endpoint` becomes optional, and when it is omitted
 the environment asks the same resolver. That call runs inside a workflow, so a missing endpoint
@@ -130,8 +168,10 @@ breaking anything.
 
 ### One place decides what is injected
 
-`isInjected()` gains the two parameter types, so the three readers listed in Context stop counting
-them as input without any change of their own. A parameter typed `NexusStub` or
+`isInjected()` gains the two parameter types, so the four readers listed in Context stop counting
+them as input without any change of their own. The PHPStan reader runs in the analyser's process,
+where no host configuration exists; it needs only `isInjected()`, which reads the parameter's
+type and attributes, never the endpoint. A parameter typed `NexusStub` or
 `ChildWorkflowStub` without its attribute is refused at registration, as an `ActivityStub` without
 `#[Activities]` is today, because the loader cannot tell which contract or class to stub.
 

@@ -28,7 +28,8 @@ page that explains when to build a stub yourself has to list "Nexus and child wo
 case of its own. The loader already has one place that decides which parameters it supplies
 (`WorkflowDefinitionLoader::isInjected()`). Every reader of a workflow signature consults it: the
 input a caller passes, the parameter names a fulfilling workflow must share with its Nexus contract,
-the payload a parent sends to a child. Extending it covers all of them at once.
+the payload a parent sends to a child, and the parameters PHPStan checks on a call through a child
+stub. Extending it covers the four of them at once.
 
 Two things keep this from being a copy of `#[Activities]`:
 

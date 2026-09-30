@@ -34,6 +34,11 @@ makes it pass. Each commit stays under 200 changed lines.
       method is named `withWorkflowId` is refused at registration.
 - [ ] 1.7 A `NexusStub` or `ChildWorkflowStub` parameter without its attribute is refused at
       registration, as an `ActivityStub` without `#[Activities]` is.
+- [ ] 1.8 `WorkflowEnvironment` receives the endpoint resolver as a new last constructor argument,
+      after `$nexusContractResolver` (the comment on that argument says why a new one goes last),
+      for `nexusStub()` without an endpoint. `ExecutionEngine::createEnvironment()` and
+      `WorkflowTaskRunner` pass it. Test: `$env->nexusStub()` without an endpoint schedules on the
+      configured one, on the memory backend and on the Temporal backend.
 
 ## 2. Hosts: the endpoint configuration
 
@@ -50,6 +55,19 @@ makes it pass. Each commit stays under 200 changed lines.
       changed to map its contract to another endpoint; the worker restarts and the execution
       replays. Record whether the replay diverges, and document the rule that follows (design.md,
       Risks).
+- [ ] 2.6 Symfony wiring: `WorkflowPass` builds its compile-time loader with a resolver read from
+      the `durable.nexus.endpoints` parameter, and the `durable.workflow_definition_loader`
+      service receives the same resolver, so the registry, `ExecutionEngine` and the Temporal
+      assembly share it. Test: a missing endpoint fails the container compilation.
+- [ ] 2.7 Laravel wiring: the `WorkflowRegistry` singleton in `bindWorkflowRegistry()` is built
+      with the `WorkflowDefinitionLoader` singleton, which receives the resolver. Test: resolving
+      the registry fails, naming the parameter, when the endpoint is missing; resolving it
+      succeeds when `nexus.endpoints` names it.
+- [ ] 2.8 Magento wiring: the registry built in `create()` and the one built in `assembly()` each
+      receive a loader with the resolver, and `assembly()` passes that loader to
+      `TemporalRuntimeAssembly` instead of a second `new WorkflowDefinitionLoader()`. Tests: the
+      memory path through `create()`; the Temporal path through the first call that builds the
+      assembly.
 
 ## 3. PHPStan
 
