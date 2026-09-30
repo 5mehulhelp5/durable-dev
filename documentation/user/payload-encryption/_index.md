@@ -180,7 +180,8 @@ So **keep personal data out of execution ids**. `order-8f3c2a`, or a UUID, rathe
 
 ## Wiring it
 
-The codec is a service of your application; Durable reads no key itself.
+The codec is a service of your application; Durable reads no key itself. The three hosts share one
+setting, the `temporal.payload_codec` row of the [host table](../configuration/#host-table).
 
 **Symfony.** Name the service in `durable.temporal.payload_codec`. The keyring is an array, so
 declare its arguments; the key comes from Symfony secrets (`bin/console secrets:set
@@ -211,7 +212,8 @@ $this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fr
 ```
 
 **Magento.** Name the codec in the `codec` argument of `RuntimeFactory`, in your module's
-`di.xml`; the module declares it `null`, and Magento does not autowire it:
+`di.xml`. Durable's module declares no `codec` argument, and Magento does not autowire an optional
+one, so this line is required:
 
 ```xml
 <type name="Gplanchat\DurableModule\Runtime\RuntimeFactory">
@@ -219,6 +221,18 @@ $this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fr
         <argument name="codec" xsi:type="object">Vendor\Module\Temporal\PayloadCodec</argument>
     </arguments>
 </type>
+```
+
+Make your module load after Durable's, in its `etc/module.xml`. Without that `<sequence>`, Magento
+may merge Durable's `di.xml` after yours, your arguments for `RuntimeFactory` can be silently
+replaced, and payloads leave in clear:
+
+```xml
+<module name="Vendor_Module">
+    <sequence>
+        <module name="Gplanchat_DurableModule"/>
+    </sequence>
+</module>
 ```
 
 The keys live in `env.php`, under `'durable' => ['codec' => ['active' => '2026-09', 'keys' =>

@@ -191,7 +191,9 @@ attributs de recherche.
 
 ## Le brancher
 
-Le codec est un service de votre application ; Durable ne lit lui-même aucune clé.
+Le codec est un service de votre application ; Durable ne lit lui-même aucune clé. Les trois hôtes
+partagent un seul réglage, la ligne `temporal.payload_codec` du
+[tableau des hôtes](../configuration/#host-table).
 
 **Symfony.** Nommez le service dans `durable.temporal.payload_codec`. Le trousseau est un tableau ;
 déclarez donc ses arguments. La clé vient des secrets Symfony (`bin/console secrets:set
@@ -223,7 +225,8 @@ $this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fr
 ```
 
 **Magento.** Nommez le codec dans l'argument `codec` de `RuntimeFactory`, dans le `di.xml` de votre
-module ; le module le déclare à `null`, et Magento ne l'injecte pas automatiquement :
+module. Le module de Durable ne déclare aucun argument `codec`, et Magento n'injecte pas
+automatiquement un argument facultatif ; cette ligne est donc indispensable :
 
 ```xml
 <type name="Gplanchat\DurableModule\Runtime\RuntimeFactory">
@@ -231,6 +234,18 @@ module ; le module le déclare à `null`, et Magento ne l'injecte pas automatiqu
         <argument name="codec" xsi:type="object">Vendor\Module\Temporal\PayloadCodec</argument>
     </arguments>
 </type>
+```
+
+Faites charger votre module après celui de Durable, dans son `etc/module.xml`. Sans cette
+`<sequence>`, Magento peut fusionner le `di.xml` de Durable après le vôtre : vos arguments de
+`RuntimeFactory` peuvent alors être remplacés sans bruit, et les payloads partent en clair.
+
+```xml
+<module name="Vendor_Module">
+    <sequence>
+        <module name="Gplanchat_DurableModule"/>
+    </sequence>
+</module>
 ```
 
 Les clés vivent dans `env.php`, sous `'durable' => ['codec' => ['active' => '2026-09', 'keys' =>
