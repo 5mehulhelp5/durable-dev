@@ -444,6 +444,59 @@ classes, and `StatusColor`.
 If you used a class that is now `@internal`, open an issue describing the use: it tells us which
 part of it should become API.
 
+### The other ids an event carries, the pass and `WorkflowEnvironment::executionId()` are `ExecutionId`s (#682)
+
+**Who is affected**: workflow code that reads `$env->executionId()`, code that reads the child,
+parent or next id of a journal event, and code that builds an `ExecutionContext`, a command buffer
+or a `TemporalEventConverter` itself, such as a test harness. **Nothing stored or sent changes.**
+Each payload still writes these ids as strings, and the Temporal memo and search attributes still
+carry the string. `TheJournalKeepsItsStringIdsTest` pins the payloads, and the Temporal command
+buffer's tests pin the memo.
+
+| Where                                                                   | Changes                              |
+|-------------------------------------------------------------------------|--------------------------------------|
+| `WorkflowEnvironment::executionId()`, `ExecutionContext::executionId()` | return `ExecutionId`                 |
+| `ChildWorkflowScheduled`, `ChildWorkflowCompleted`, `ChildWorkflowFailed`: second constructor argument, `childExecutionId()` | `ExecutionId` |
+| `WorkflowCancellationRequested`, `WorkflowExecutionCancelled`: `$sourceParentExecutionId`, `sourceParentExecutionId()` | `?ExecutionId` |
+| `WorkflowContinuedAsNew`: `$newExecutionId`, `newExecutionId()`         | `?ExecutionId`                       |
+| `WorkflowExecutionFailed::terminatedByParent()`                         | the parent id is an `ExecutionId`    |
+| The constructors of `ExecutionContext`, `EventStoreCommandBuffer`, `TemporalWorkflowCommandBuffer` and `TemporalEventConverter`, and `TemporalEventConverter::forHistory()` | take `ExecutionId` |
+| `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
+
+`WorkflowRunDescription::$runId` stays a string (decision on #682). So do `PendingTimers`,
+`WaitReason`, `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the
+`EventStoreHistorySource` constructor, `ExecutionEngine::start()` and `resume()`, and
+`InMemoryWorkflowRunner::run()`.
+
+**Reading back is stricter.** `EventDataMapper::toDomainEvent()` converts the stored child id and
+the next id with `ExecutionId::fromString()`, so an empty one now throws `InvalidArgumentException`.
+An empty `sourceParentExecutionId` reads back as `null` on both cancellation events;
+`WorkflowExecutionCancelled` used to keep the empty string. `TemporalEventConverter` refuses a child
+event whose workflow id is empty.
+
+**Rector covers both sides.** In the `durable-upgrade` set:
+
+- `ExecutionIdEventArgumentRector` now wraps **every** positional string argument whose parameter
+  accepts an `ExecutionId`, not only the first one. It reaches the constructors and the factory
+  in the table.
+- `ExecutionIdArgumentRector` wraps the argument of `TemporalExecutionHistory::waitJournal()`.
+- `ExecutionIdReturnValueRector` is new. It appends `->toString()` to `executionId()`,
+  `childExecutionId()`, `sourceParentExecutionId()` and `newExecutionId()`, using `?->toString()`
+  on the nullable ones, so code that read a string keeps the same string. It skips a call that is
+  already the receiver of another call, such as `->toString()` or `->equals()`. A second run
+  changes nothing.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id they report in
+   `ExecutionId::fromString()`. An empty string is refused.
+2. Where the rule wrote `$env->executionId()->toString()` and the value goes to a port that takes
+   an `ExecutionId`, drop the `->toString()` and the `fromString()` around it.
+3. Without Rector, look for `executionId()` in workflow code, and call `->toString()` wherever the
+   value lands in an activity payload, a log context, an array key or a comparison with a string.
+   `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+   Compare two ids with `->equals()`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
