@@ -32,7 +32,7 @@ processes > Process history** dans les ressources du rôle.
   filtres de la grille.
 - **La grille standard de l'administration** : pagination (20 par défaut), contrôle des colonnes,
   et filtres sur l'issue, le nom du workflow, l'identifiant d'exécution et l'identifiant d'exécution
-  côté backend. Les filtres texte cherchent le texte n'importe où dans la valeur, parmi les exécutions de la fenêtre. Le filtre sur le nom du workflow ignore la casse ; les deux filtres sur les identifiants respectent le texte tel que saisi. Un avis indique la fenêtre quand elle est pleine.
+  côté backend. Les filtres texte suivent la règle des autres surfaces, parmi les exécutions de la fenêtre : le nom entier du workflow, le début de l'identifiant d'exécution et de l'identifiant de run côté backend, le tout tel que saisi. Un avis indique la fenêtre quand elle est pleine.
 - **Une page d'exécution**, ouverte depuis une ligne : l'exécution, son exécution côté backend,
   l'issue, les dates de démarrage et de fin, ce qu'elle attend, ses opérations Nexus, une frise **History** et un tableau **Journal** avec une ligne par événement (nature, phase, action, ce qui s'est passé). Voir
   [Lire une exécution](../reading-a-run/).

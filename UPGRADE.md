@@ -465,6 +465,16 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Magento grid: the text filters match the whole workflow name and the start of an id (#815)
+
+The workflow name, execution id and backend run id filters of the process history grid used to look
+for the typed text anywhere in the value (the workflow name ignoring case). They now follow the rule
+of the Sylius and Filament lists: the whole workflow name, and the start of the execution id or of
+the run id, all as typed, with `%` and `_` as ordinary characters.
+
+**What to do:** nothing in your code. An operator who typed a fragment of a name, or the middle of
+an id, types the whole name or the start of the id instead.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
