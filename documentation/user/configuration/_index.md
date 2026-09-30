@@ -419,7 +419,7 @@ reaches two journals only, in memory and Temporal, so the SQL rows do not apply 
 | `messenger.buses` | none | none | host-specific: Messenger only |
 | `profiler.enabled` | none | none | host-specific: the Symfony web profiler |
 | `max_activity_retries` | `max_activity_retries` | `maxActivityRetries` argument, read by `MagentoRuntime::run()` only; Temporal workers ignore it | same on Symfony and Laravel; host-specific on Magento, whose workers leave retries to the cluster. On Temporal, no host reads it |
-| none | none | `budgetSeconds` argument | host-specific: bounds `MagentoRuntime::run()`, the one host call that runs a workflow to its end in the calling process |
+| none | none | `budgetSeconds` argument | host-specific: bounds `MagentoRuntime::run()` without a DSN, the one host call that runs a workflow to its end in the calling process |
 | `activity_contracts.cache`, `activity_contracts.contracts` | none | none | to add on Laravel and Magento |
 | `child_workflow.async_messenger` | none | none | host-specific: Messenger only |
 | workflows: `#[AsWorkflow]` on a service | `workflows` | `workflowClasses` argument | host-specific: neither container autoconfigures by attribute |

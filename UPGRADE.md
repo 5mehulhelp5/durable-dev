@@ -465,6 +465,28 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
+
+With `durable/temporal/dsn` set in `app/etc/env.php`, `run()` used to execute the workflow in the
+calling process, its activities included, and the cluster never saw it. It now starts the workflow
+on the cluster with `workflowClient()->startAsync()` and waits for its result with
+`pollForCompletion()`, as the Symfony bench does. Without a DSN, `run()` still executes in the
+calling process.
+
+With a DSN, three things differ from the in-process run:
+
+- The journal and activity workers (`bin/magento durable:worker --role=journal` and
+  `--role=activity`) carry the execution. Without them, `run()` throws a `\RuntimeException` after
+  about 60 seconds.
+- `budgetSeconds` and `maxActivityRetries` no longer apply: the wait is `pollForCompletion()`'s
+  default, and the cluster retries from each activity's own `RetryLimit`.
+- The result comes back decoded from JSON: an object the workflow returns arrives as an array.
+
+**What to do:** if your code relies on `run()` executing in the calling process while a DSN is
+set (activities reading request state, a test without a cluster), keep the DSN out of that
+process's `env.php`, or start the workers before calling `run()`. To start a workflow from a web
+request without waiting, call `workflowClient()->startAsync()`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

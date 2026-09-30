@@ -420,11 +420,11 @@ Two more arguments of the same factory bound a run, and `di.xml` is the only pla
 ```
 
 - `maxActivityRetries` is the retry ceiling of the activities that `MagentoRuntime::run()` runs in
-  the calling process, the equivalent of the Symfony bundle's
+  the calling process when no DSN is set, the equivalent of the Symfony bundle's
   [`max_activity_retries`](../configuration/#max_activity_retries). The default, `0`, sets no cap.
   Temporal workers never read it: there, the cluster retries from the activity's own `RetryLimit`.
-- `budgetSeconds` bounds `MagentoRuntime::run()`, which runs a workflow to its end inside the
-  calling process. Past the budget, the call throws `WorkflowStuckException` instead of waiting
+- `budgetSeconds` bounds `MagentoRuntime::run()` when no DSN is set: the call then runs a workflow
+  to its end inside the calling process. Past the budget, the call throws `WorkflowStuckException` instead of waiting
   longer. The default is `10`. The budget exists because of the retry ceiling: with no ceiling, an
   activity that keeps failing would keep that process busy forever. Workers and `workflowClient()`
   read neither argument.
@@ -442,6 +442,12 @@ A DSN in `app/etc/env.php` selects the backend; no other setting does:
 
 Without the DSN, the journal lives in the process that writes it and is lost when that process
 ends. That is acceptable for a console command and unsuitable for anything else.
+
+`MagentoRuntime::run()` follows the same choice. Without a DSN, it runs the workflow in the calling
+process. With a DSN, it starts the workflow on the cluster and waits for its result, which the
+workers below produce; after about 60 seconds without a result, it throws a `\RuntimeException`.
+To start a workflow without waiting, from a web request for example, call
+`workflowClient()->startAsync()`.
 
 **Workers are `bin/magento` commands**, not queue consumers. Supervise them like any other
 long-running process:
