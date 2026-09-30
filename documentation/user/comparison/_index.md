@@ -304,17 +304,18 @@ differs.
 
 ## 5. Fibers or generators: the colouring problem
 
-The *function colouring* row above is the mechanism under
-[Testability](#2-testability): it is the second of the three properties listed there, and it is
-worth its own section. The name comes from Bob Nystrom's
-[What Color Is Your Function?](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/):
-in a language where suspension is a keyword, functions come in two colours, red suspends and blue
-does not, and a red one can only be called from another red one.
+The *function colouring* row above is the mechanism behind [Testability](#2-testability), the
+second of the three properties listed there. This section looks at it in detail. The name comes
+from Bob Nystrom's
+[What Color Is Your Function?](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/).
+If you have written JavaScript, you have met the idea: a function that uses `await` must be
+declared `async`. In a language where suspension is a keyword, functions come in two colours.
+A red function suspends and a blue one does not, and only another red function can call a red one.
 
-`yield` is that keyword. A method that yields is a **generator**: it no longer returns its value, it
-returns a `Generator` that somebody has to drive. Extract three lines of a workflow into a helper,
-the ordinary refactoring, and if those lines await, the helper turns red, and every caller up to
-the workflow method turns red with it.
+In PHP generators, `yield` is that keyword. A method that yields is a **generator**: it no longer
+returns its value, it returns a `Generator` that some other code has to drive. Suppose you extract
+three lines of a workflow into a helper, an ordinary refactoring. If those lines await, the helper
+turns red, and every caller up to the workflow method turns red with it.
 
 **Durable**, where the helper is an ordinary method:
 
@@ -361,16 +362,15 @@ private function chargeWithRetry(string $orderId)
 }
 ```
 
-A retry policy would normally do this for you; `ActivityOptions` carries one on both sides, and
-[Failures and retries](../failures/) is where it belongs. What the example is about is the
-**extraction**: three lines moved out of a workflow method into a helper. Two return types
-disappear, and the call site changes to `yield from`. Neither is a detail; they are what the
-colour costs.
+In practice, a retry policy does this job. `ActivityOptions` carries one on both sides, and
+[Failures and retries](../failures/) covers it. This example is about the **extraction**: three
+lines moved out of a workflow method into a helper. On the SDK side, two return types disappear
+and the call site changes to `yield from`. Both changes are the cost of the colour.
 
-Durable suspends with `\Fiber::suspend()`, and it does so **inside the runtime**, in
-`ExecutionRuntime::await()`, several frames below your code. A fiber suspends the whole call stack,
-not the frame that asked: the frames in between are suspended without participating, so they need
-no keyword, no return type change, and no rewrite.
+Durable suspends with `\Fiber::suspend()`, **inside the runtime**, in `ExecutionRuntime::await()`,
+several frames below your code. A fiber suspends the whole call stack, not only the frame that
+asked. The frames in between are suspended without taking part, so they need no keyword, no
+return type change and no rewrite.
 
 | | Durable (fibers) | Temporal PHP SDK (generators) |
 |---|---|---|
@@ -380,66 +380,67 @@ no keyword, no return type change, and no rewrite.
 | Declared return type | the method's own, `string` | none it can usefully declare |
 | Calling it from outside a workflow | an ordinary call | needs something to drive the generator |
 
-That last row is what [Testability](#2-testability) rests on: a blue workflow is an object PHPUnit
-builds and calls.
+[Testability](#2-testability) rests on that last row: PHPUnit can build and call a blue workflow
+like any object.
 
-### What the colour buys, and what it costs to give up
+### What the colour shows, and what fibers hide {#what-the-colour-buys-and-what-it-costs-to-give-up}
 
-Colouring is not only a tax. `yield` **marks the suspension point in the source**: reading the
-method, you know exactly where the workflow can stop for a week. Fibers take that marker away: an
-ordinary-looking call may suspend and nothing at the call site says so.
+Colouring also has a benefit. `yield` **marks the suspension point in the source**: when you read
+the method, you see exactly where the workflow can stop for a week. Fibers remove that marker. A
+call that looks ordinary may suspend, and nothing at the call site shows it.
 
-Durable narrows the loss rather than denying it. **Only `await()` waits**, and `sleep()`, which is
-`await()` on a timer written short; every stub call, `timer()`, `all()`, `any()` and `some()`
-assembles and returns immediately. Inside a given method, the waiting points are exactly those
-calls. What a reader cannot see is whether a helper waits *inside*, which is the price of the
-refactoring the SDK forbids.
+Durable limits that loss. **Only `await()` waits**, along with `sleep()`, which is a short way to
+write `await()` on a timer. Every stub call, `timer()`, `all()`, `any()` and `some()` builds its
+result and returns immediately. Inside a given method, the waiting points are exactly those calls.
+What you cannot see from the call site is whether a helper waits *inside*. That is the price of the
+refactoring that the SDK's model rules out.
 
-Two limits worth knowing:
+Two limits to know:
 
-- fibers are PHP **8.1+**; Durable requires 8.2 regardless;
+- fibers need PHP **8.1+**; Durable requires 8.2 regardless;
 - a fiber **cannot suspend in a destructor**: PHP throws `FiberError: Cannot switch fibers in
-  current execution context`. Awaiting from `__destruct()` is not workflow code, so this has not
-  come up in practice, but it is the one context where the stack is not free to suspend.
+  current execution context`. Awaiting from `__destruct()` is not workflow code, so the case has
+  not come up in practice, but it is the one context where the stack cannot suspend.
 
-Neither model affects determinism: both replay the same history, and both forbid the same
-non-deterministic calls inside a workflow. The difference is where the suspension keyword lives:
-in your code, or in the runtime.
+Neither model affects determinism. Both replay the same history, and both forbid the same
+non-deterministic calls inside a workflow. With Durable, the suspension keyword lives in the
+runtime; with the SDK, it lives in your code.
 
-### The SDK intends to close this
+### Fiber support in progress in the SDK {#the-sdk-intends-to-close-this}
 
-Fibers are not a permanent divide. The SDK has an open pull request adding a Fibers API
-([#798](https://github.com/temporalio/sdk-php/pull/798)), on top of the issue that proposed
-replacing yields with fiber suspension ([#702](https://github.com/temporalio/sdk-php/issues/702)),
-and its maintainers have said the change is prototyped and slated for an upcoming major. None of it
-is in a release as of v2.18, and this section describes v2.18.
+The SDK has an open pull request that adds a Fibers API
+([#798](https://github.com/temporalio/sdk-php/pull/798)). It follows the issue that proposed
+replacing yields with fiber suspension ([#702](https://github.com/temporalio/sdk-php/issues/702)).
+Its maintainers have said that the change is prototyped and planned for an upcoming major. None of
+it is in a release as of v2.18, and this section describes v2.18.
 
-That would settle the colouring, and only the colouring. The suspension mechanism is not
-what makes a workflow test need a server; [the worker runtime](#1-the-worker-runtime-no-roadrunner)
-is. A workflow still runs inside RoadRunner, driven by a task queue on a real cluster, whether it
-suspends on a `yield` or on a fiber. So the difference that would matter most once fibers land is
-the one above them, [Testability](#2-testability): running a workflow to completion in the test
-process, asserting on a returned value, with no server to start and no second runtime to supervise.
+That change would settle the colouring difference, and only that one. What makes a workflow test
+need a server is [the worker runtime](#1-the-worker-runtime-no-roadrunner), not the suspension
+mechanism. A workflow still runs inside RoadRunner, driven by a task queue on a real cluster,
+whether it suspends on a `yield` or on a fiber. Once fibers land in the SDK, the difference that
+matters most is therefore [Testability](#2-testability): running a workflow to completion in the
+test process and asserting on the value it returns, with no server to start and no second runtime
+to supervise.
 
 ---
 
 ## 6. Scheduling activities
 
 The SDK accepts both a typed stub and a call by activity name with a free-form payload. Durable
-removed the second form: **the typed stub is the only way a workflow schedules an activity**
-([DUR039](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR039-workflow-authoring-surface.md)),
-and the optional `gplanchat/durable-phpstan` extension resolves stub calls against the contract
-interface so a wrong argument is a static analysis error rather than a serialization failure at
-runtime.
+drops the second form: **the typed stub is the only way a workflow schedules an activity**
+([DUR039](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR039-workflow-authoring-surface.md)).
+The optional `gplanchat/durable-phpstan` extension resolves stub calls against the contract
+interface, so a wrong argument becomes a static analysis error instead of a serialization failure
+at runtime.
 
-Less freedom, one class of mistakes removed at analysis time. See
+You give up the free-form call, and static analysis catches one class of mistakes. See
 [Creating activities](../activities/).
 
 ---
 
 ## 7. Workflow versioning
 
-Both let one class carry two behaviours and let history decide which a run sees:
+Both let one class carry two behaviours and let history decide which one a run sees:
 
 ```php
 // Temporal PHP SDK
@@ -449,18 +450,18 @@ $v = yield Workflow::getVersion('add-discount', Workflow::DEFAULT_VERSION, 1);
 $v = $this->environment->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
-The wire format is the same one, and not by imitation: it was read off a history the Go SDK
-produced, then emitted from the bridge and accepted by the server. A versioned Durable execution and
-a versioned Go execution record the identical `Version` marker and the identical
-`TemporalChangeVersion` search attribute, so both come back from the same query when you ask who is
-still on an old branch.
+The wire format is the same, and it was checked against a real history. It was read off a history
+that the Go SDK produced, then emitted from the bridge, and the server accepted it. A versioned
+Durable execution and a versioned Go execution record the identical `Version` marker and the
+identical `TemporalChangeVersion` search attribute. When you ask which executions are still on an
+old branch, the same query returns both.
 
-Two differences, and neither is about the primitive:
+The two differences concern what surrounds the primitive:
 
 | | |
 |---|---|
-| **Worker versioning** | Build ids, deployment names, pinning a run to a worker version, the operational mechanism that lives in the worker and the task queue rather than in workflow code. The SDK has it; Durable does not. |
-| **Knowing when a branch is dead** | A query on the Temporal backend, for both. On Durable's journal backends there are no search attributes, so the question has no equivalent answer. |
+| **Worker versioning** | Build ids, deployment names, pinning a run to a worker version: the operational mechanism that lives in the worker and the task queue, outside workflow code. The SDK has it; Durable does not. |
+| **Knowing when a branch is dead** | A query on the Temporal backend, for both. Durable's journal backends have no search attributes, so they offer no equivalent answer. |
 
 See [Changing a running workflow](../deploying/).
 
