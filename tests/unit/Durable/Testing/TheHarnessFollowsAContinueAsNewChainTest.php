@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Durable\Testing;
 
+use Gplanchat\Durable\Event\ChildWorkflowCompleted;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
+use Gplanchat\Durable\WorkflowEnvironment;
 use PHPUnit\Framework\TestCase;
 use unit\Durable\Fixtures\CounterWorkflow;
 
@@ -42,6 +44,25 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
         }
 
         self::assertCount(3, $chain);
+    }
+
+    /**
+     * An inline child is run by the same runner: its parent gets the chain's last result, as on
+     * Temporal, where it used to fail with the child's ContinueAsNewRequested.
+     */
+    public function testAParentGetsTheLastRunsResultOfAChildThatContinuesAsNew(): void
+    {
+        $env = WorkflowTestEnvironment::inMemory();
+        $env->registerWorkflowClass(CounterWorkflow::class);
+
+        $result = $env->run(static fn(WorkflowEnvironment $wf): string
+            => 'parent-saw:' . $wf->await($wf->childWorkflowStub(CounterWorkflow::class)->run(0)), 'parent-0');
+
+        self::assertSame('parent-saw:done at 2', $result);
+        self::assertCount(1, array_filter(
+            $this->eventsOf($env, 'parent-0'),
+            static fn(Event $event): bool => $event instanceof ChildWorkflowCompleted,
+        ));
     }
 
     private function successorOf(WorkflowTestEnvironment $env, string $executionId): ?string
