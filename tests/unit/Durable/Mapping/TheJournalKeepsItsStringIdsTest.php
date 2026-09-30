@@ -6,12 +6,15 @@ namespace unit\Gplanchat\Durable\Mapping;
 
 use Gplanchat\Bridge\Temporal\Codec\TemporalActivityScheduleInput;
 use Gplanchat\Durable\Event\ActivityScheduled;
+use Gplanchat\Durable\Event\ChildWorkflowCompleted;
+use Gplanchat\Durable\Event\ChildWorkflowFailed;
 use Gplanchat\Durable\Event\ChildWorkflowScheduled;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\TimerCompleted;
 use Gplanchat\Durable\Event\WorkflowCancellationRequested;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
+use Gplanchat\Durable\Event\WorkflowExecutionCancelled;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Mapping\EventDataMapper;
@@ -68,6 +71,50 @@ final class TheJournalKeepsItsStringIdsTest extends TestCase
             self::assertFalse(\is_object($value), 'a payload value is an object, which json_encode() writes as {}');
         });
         self::assertStringNotContainsString('{}', json_encode($event->payload(), \JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * The other execution an event names is an `ExecutionId` too (#682, part c). Its payload
+     * field keeps the string, so the stored JSON is the one written before.
+     *
+     * @return iterable<string, array{Event, string, string}>
+     */
+    public static function secondaryIds(): iterable
+    {
+        $id = ExecutionId::fromString('exec-1');
+        $other = ExecutionId::fromString('exec-2');
+        yield 'ChildWorkflowScheduled' => [new ChildWorkflowScheduled($id, $other, 'App\\Child', []), 'childExecutionId', 'exec-2'];
+        yield 'ChildWorkflowCompleted' => [new ChildWorkflowCompleted($id, $other, null), 'childExecutionId', 'exec-2'];
+        yield 'ChildWorkflowFailed' => [new ChildWorkflowFailed($id, $other, 'boom'), 'childExecutionId', 'exec-2'];
+        yield 'WorkflowCancellationRequested' => [new WorkflowCancellationRequested($id, 'stop', $other), 'sourceParentExecutionId', 'exec-2'];
+        yield 'WorkflowExecutionCancelled' => [new WorkflowExecutionCancelled($id, 'stop', $other), 'sourceParentExecutionId', 'exec-2'];
+        yield 'WorkflowContinuedAsNew' => [new WorkflowContinuedAsNew($id, 'App\\Next', [], [], $other), 'newExecutionId', 'exec-2'];
+    }
+
+    #[DataProvider('secondaryIds')]
+    public function testTheOtherExecutionIsWrittenAsAString(Event $event, string $field, string $expected): void
+    {
+        $record = EventDataMapper::fromDomainEvent($event);
+
+        self::assertIsArray($record['payload']);
+        self::assertSame($expected, $record['payload'][$field]);
+        self::assertStringContainsString(\sprintf('"%s":"%s"', $field, $expected), json_encode($record, \JSON_THROW_ON_ERROR));
+        self::assertSame($expected, $this->readBack($event)[$field]);
+    }
+
+    public function testTheParentOfATerminatedChildIsWrittenAsAString(): void
+    {
+        $event = WorkflowExecutionFailed::terminatedByParent(ExecutionId::fromString('exec-1'), ExecutionId::fromString('parent-1'));
+
+        self::assertStringContainsString('"parentExecutionId":"parent-1"', json_encode(EventDataMapper::fromDomainEvent($event), \JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readBack(Event $event): array
+    {
+        return EventDataMapper::toDomainEvent(EventDataMapper::fromDomainEvent($event))->payload();
     }
 
     public function testTheInMemoryStoreFilesTheStreamUnderTheString(): void
