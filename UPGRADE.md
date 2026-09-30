@@ -444,6 +444,27 @@ classes, and `StatusColor`.
 If you used a class that is now `@internal`, open an issue describing the use: it tells us which
 part of it should become API.
 
+### DBAL and Illuminate stores: a whole-valued float reads back as a float (#759)
+
+The DBAL and Illuminate event stores and workflow metadata stores now encode payloads with
+`JSON_PRESERVE_ZERO_FRACTION`. A `30.0` written in an event payload, an activity result or a
+side effect used to read back as the int `30`. It now reads back as `30.0`, as the in-memory store
+returns it.
+
+**What to do:** nothing. Rows written before this change still read back as ints, and replaying
+them does not diverge: the replay guard compares `30` and `30.0` as equal. Code that received an
+int from those rows and branched on `is_int()` sees a float from new rows.
+
+### `JournalAssertions::assertWorkflowFailed()` takes a `class-string<\Throwable>` (#800)
+
+Its third parameter is now typed `class-string<\Throwable>|''`, as it already was on
+`DurableTestCase::assertWorkflowFailed()` and `DurableBundleTestTrait::assertWorkflowFailed()`.
+Nothing changes at runtime. PHPStan and Psalm now report a call with a class that does not exist
+or is not a `Throwable`.
+
+**What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
+analyser reports.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
