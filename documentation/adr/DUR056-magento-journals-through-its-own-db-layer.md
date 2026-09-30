@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed. An agent drafted this ADR for #709. `documentation/adr/` is supervised, so it takes
-effect only when the user approves it on its pull request.
+Proposed. `documentation/adr/` is supervised: this ADR takes effect when the user approves its
+text on its pull request.
 
 The user chose option B of spike #709 on 2026-09-30: Magento's own database layer, not Doctrine
 DBAL. The measurements below come from that spike, draft PR #723. The same day the user ruled on
@@ -146,5 +146,14 @@ journal follows it. Those results stay in PR #723. None of them was measured und
   Magento jobs exercise them.
 - What A proved for DBAL has to be proved again for B: the restart experiment, the conformance
   suites, the Nexus refusal.
+- The application API does not change with the backend. The user set the rule on 2026-09-30: an
+  application uses the same API whatever the backend and the host, and the only accepted exception
+  is a functional limit of Nexus. The Magento SQL backend exposes the same application API as the
+  other backends, and "no Nexus" (decision 5) is that one exception. The same day, the user also
+  accepted that Magento cannot resolve an attribute on a constructor parameter: that is a limit of
+  the host's object manager, not of this backend, and it changes nothing this ADR decides. The
+  parity audit of the same day found two gaps on Magento: no dispatcher, and no signal delivery on
+  the application side. This ADR does not close them. The OpenSpec change proposed in PR #782, one
+  client API on every backend and host through a repository per workflow, does.
 - The public promise changes: the picker, the backends and configuration pages (EN and FR), the
   module README, and an UPGRADE entry. That is done last, in #739, not in this ADR's pull request.
