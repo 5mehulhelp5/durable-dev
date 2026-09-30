@@ -127,9 +127,6 @@ final class TheDetailTemplateRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('durable-frieze', $page);
     }
 
-    /**
-     * @param list<NexusOperationSummary> $nexus
-     */
     public function testTheRunPageUsesTheVocabularyOfTheOtherSurfaces(): void
     {
         // #821: Execution, Outcome and History, and the outcome as a label, not the enum's value.
@@ -143,6 +140,9 @@ final class TheDetailTemplateRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('>Timeline<', $page);
     }
 
+    /**
+     * @param list<NexusOperationSummary> $nexus
+     */
     private function renderDetail(bool $known = true, bool $secrets = false, array $nexus = []): string
     {
         require_once __DIR__ . '/Fixture/magento-template-globals.php';
