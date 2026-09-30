@@ -28,7 +28,8 @@ change only where the execution is recorded, never the workflow code.
 A workflow is the PHP class that describes an execution's steps, and an activity is a unit of side
 effect that a workflow calls, such as an HTTP call or a database write.
 
-The three bridges are **alternatives** and do not stack: you install Temporal, DBAL or Illuminate, never two of them.
+The three bridges are **alternatives** and do not stack: you install Temporal, DBAL or
+Illuminate, never two of them.
 
 The last two packages are **development-time tools** and belong in `require-dev`:
 
@@ -240,10 +241,7 @@ Laravel-first engine, choose it.
 against a Temporal cluster (Temporal Cloud and Nexus included, with a history the Temporal UI
 reads) *or* against a SQL database, with no cluster to run. A mixed Symfony / Sylius / Laravel
 estate also shares a single engine: a workflow class written for `gplanchat/durable-bundle` runs
-here unmodified. These two points are the package's whole claim, and `durable-workflow/workflow`
-does not make it.
-
-This section exists because the two packages have neighbouring names on Packagist.
+here unmodified. `durable-workflow/workflow` offers neither.
 
 ### Starting a run
 
@@ -302,7 +300,7 @@ supervised worker outlives the window, picks the job up, and the execution compl
 
 ### Not in this package
 
-**Temporal support is present.** `backend: 'temporal'` puts the journal and the run catalogue in
+**Temporal is supported.** `backend: 'temporal'` puts the journal and the run catalogue in
 the cluster, and two workers drain what the application's own queue cannot carry:
 `php artisan durable:temporal-worker` drains the workflow tasks, and
 `php artisan durable:temporal-worker --role=activity` the activity tasks.
@@ -460,13 +458,12 @@ add a second queue for an operator to supervise.
 advances: executions start, their history fills, and no process answers their workflow tasks.
 Without `--role=activity`, the execution appears to work, which makes it harder to notice: it
 advances **up to its first activity** and stops there, with the order charged and the stock
-untouched, and you find out from the customer. Running without the activity worker puts back the
-failure this integration exists to remove.
+untouched, and you find out from the customer.
 
 The `--time-limit` and `--max-tasks` bounds serve the supervisor: they end the process so that the
 supervisor can restart it. Retries belong to the cluster, which schedules an activity's attempts
 whether or not a worker is listening. A run whose activity "failed after 3 attempts" within seconds
-points to a missing worker, not to code that failed three times.
+points to a missing worker.
 
 > [!WARNING]
 > **Magento's own queue settings do not apply to Durable.** `retry_inprogress_after`, the
@@ -525,8 +522,8 @@ composer config prefer-stable true
 Each line names only the integration: the bundle pulls in the library, and the plugin pulls in the
 bundle. Without a framework, you name the library yourself, and you also wire the workers yourself.
 
-The Laravel line names the library instead of an integration, and that is now a *choice*, no longer
-a gap. `gplanchat/durable-laravel` exists: a service provider that binds the four storage ports,
+The Laravel line names the library instead of an integration, and that is now a *choice*.
+`gplanchat/durable-laravel` exists: a service provider that binds the four storage ports,
 workflows declared in `config/durable.php`, and work on the queue the application already drains.
 Until it is tagged, the bridge installs on its own and you wire it yourself; the section above
 lists what the integration does for you.
@@ -540,8 +537,7 @@ you tested in memory behaves the same way against DBAL or Temporal, including re
 failure classification, cancellation and compensation.
 
 When a capability has no equivalent on a backend, that backend **fails with an explicit message**.
-[Backends](../backends/#capability-matrix) lists the
-differences.
+[Backends](../backends/#capability-matrix) lists the differences.
 
 ---
 
