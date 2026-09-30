@@ -42,7 +42,7 @@ return [
         'not_found' => 'No run with this id on this backend.',
         'workflow' => 'Workflow',
         'execution' => 'Execution',
-        'backend_run' => 'run :id on the backend',
+        'backend_run' => 'Backend run :id',
         'outcome' => 'Outcome',
         'history' => 'History',
         'no_history' => 'No recorded history for this run.',

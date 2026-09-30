@@ -34,6 +34,7 @@ final class TheRunPageTest extends PanelTestCase
             ->assertSee('App\\OrderWorkflow')
             ->assertSee('Running')
             ->assertSee('waiting on payment-received')
+            ->assertSee('Backend run run-1')
             ->assertSee('Workflow started')
             ->assertSee('chargeCard scheduled')
             ->assertSee('&quot;amount&quot;: 42', false);
