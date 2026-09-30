@@ -321,8 +321,8 @@ autre que celle de l'ORM, `doctrine:migrations:diff` ne voit pas les tables de D
 viennent de la première écriture, ou de `bin/console durable:setup`.
 
 Ajouter un `temporal.dsn` garde le journal en SQL et n'utilise le cluster que pour servir des
-opérations Nexus. Avec `backend: temporal`, c'est le cluster qui porte le journal. Dans aucun des
-deux cas il n'y a de seconde source de vérité.
+opérations Nexus. Avec `backend: temporal`, c'est le cluster qui porte le journal. Dans les deux
+cas, le journal vit à un seul endroit.
 
 ### Une seule reprise à la fois par exécution {#une-reprise-à-la-fois--la-chose-à-ne-pas-rater}
 

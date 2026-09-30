@@ -56,10 +56,9 @@ Nexus par leur triplet point d'entrée / service / opération, les workflows enf
 ### Revenir à la version précédente {#revenir-en-arrière-et-lexécution-se-termine}
 
 L'échec signifie que le déploiement ne convient pas aux exécutions sur lesquelles il est tombé.
-Remettez la version précédente, et le réessai suivant rejoue proprement : l'exécution repart
-exactement là où elle en était, et ne perd que le temps écoulé entre les deux déploiements.
-
-C'est pour cela que la tâche échoue et que l'exécution, elle, n'échoue pas.
+Remettez la version précédente, et le réessai suivant rejoue proprement, car seule la tâche a
+échoué : l'exécution repart exactement là où elle en était, et ne perd que le temps écoulé entre
+les deux déploiements.
 
 ### Ou déclarer un point de changement
 

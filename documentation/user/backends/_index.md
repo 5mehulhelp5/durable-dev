@@ -304,8 +304,8 @@ other than the ORM's, `doctrine:migrations:diff` does not see Durable's tables: 
 first write, or from `bin/console durable:setup`.
 
 Adding a `temporal.dsn` keeps the journal in SQL and uses the cluster only to serve Nexus operations.
-With `backend: temporal`, the cluster holds the journal instead. In neither case is there a second
-source of truth.
+With `backend: temporal`, the cluster holds the journal instead. The journal lives in exactly one place in
+both cases.
 
 ### One resume at a time per execution {#one-resume-at-a-time--the-thing-to-get-right}
 
