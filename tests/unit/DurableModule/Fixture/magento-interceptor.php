@@ -27,15 +27,11 @@ if (!interface_exists(InterceptorInterface::class)) {
 
 namespace unit\DurableModule\Fixture\NexusBillingHandler;
 
-use Magento\Framework\Interception\InterceptorInterface;
-
-class Interceptor extends \unit\DurableModule\Fixture\NexusBillingHandler implements InterceptorInterface
-{
-    public function ___callParent($method, array $arguments)
-    {
-        return null;
-    }
-}
+/*
+ * What Mage-OS generates instead: it ships creatuity/magento2-interceptors, whose compiled
+ * Interceptor extends the class but implements no InterceptorInterface. Only its name marks it.
+ */
+class Interceptor extends \unit\DurableModule\Fixture\NexusBillingHandler {}
 
 namespace unit\DurableModule\Fixture\NarrowedOrderActivities;
 
