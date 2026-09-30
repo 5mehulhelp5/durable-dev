@@ -465,6 +465,18 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Laravel: the clock and the Temporal client are bound by class (#879)
+
+`DurableServiceProvider` now binds the clock under `Psr\Clock\ClockInterface` and the Temporal
+workflow service client under `Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface`. The ids
+`durable.clock` and `durable.temporal.client` stay, as aliases of those bindings, and resolve to
+the same instances. `gplanchat/durable-filament` now resolves the clock by its interface.
+
+Nothing to migrate. A clock you bind under `durable.clock` before the provider registers stays the
+one both ids resolve. If you replace the clock after the provider registers, bind it under
+`ClockInterface` so that the runtime and the Filament dashboard both read it: a clock rebound
+under `durable.clock` at that point reaches the runtime only.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
