@@ -815,13 +815,13 @@
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent, #b4552f);">01</span>
             <h4 style="margin: 0; font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: calc(17px * var(--ts, 1)); line-height: 1.35; color: var(--fg, #1d1a16); text-wrap: balance;">Racing a human against a clock</h4>
             <span></span>
-            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;">In Messenger, “confirm within 48h or escalate” needs two things in flight, a delayed message and a webhook, plus a way to know which won and to cancel the loser. The trap is the edge: the supplier confirms at 47h59 and the deadline message fires anyway. Who decides? A deadline that is a typed failure rather than a value is what makes that expressible at all.</p>
+            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;">In Messenger, “confirm within 48h or escalate” needs two things in flight, a delayed message and a webhook, plus a way to know which won and to cancel the loser. The hard case is the edge. The supplier confirms at 47h59, the deadline message fires anyway, and something has to decide which one counts. Here the deadline is a typed failure rather than a value, and that makes the decision expressible in the method.</p>
           </div>
           <div data-reveal data-delay="0.10" style="display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; row-gap: 7px; align-items: baseline; align-content: start; transition: transform 0.28s cubic-bezier(.2,.7,.2,1);" style-hover="transform: translateX(5px);">
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent, #b4552f);">02</span>
             <h4 style="margin: 0; font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: calc(17px * var(--ts, 1)); line-height: 1.35; color: var(--fg, #1d1a16); text-wrap: balance;">Waiting costs nothing</h4>
             <span></span>
-            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;">Thirty days in a queue is a message parked in a broker that has its own TTLs and redeliveries. Thirty days in cron is a row scanned every tick for a month. Here the execution is simply not running, and the next line waits for it.</p>
+            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;">Thirty days in a queue is a message parked in a broker that has its own TTLs and redeliveries. Thirty days in cron is a row scanned every tick for a month. Here the execution does not run at all during the wait, and the next line runs when the wait ends.</p>
           </div>
           <div data-reveal data-delay="0.20" style="display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; row-gap: 7px; align-items: baseline; align-content: start; transition: transform 0.28s cubic-bezier(.2,.7,.2,1);" style-hover="transform: translateX(5px);">
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent, #b4552f);">03</span>
@@ -837,8 +837,8 @@
           </div>
         </div>
         <div data-reveal style="border-left: 3px solid var(--accent2, #2f6f6b); background: var(--bg, #f7f4ef); border-radius: 0 5px 5px 0; padding: 17px 22px; max-width: 900px;">
-          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2, #2f6f6b); margin-bottom: 7px;">Being fair about it</div>
-          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.68; color: var(--fg2, #6c6459); text-wrap: pretty;">Messenger and cron <em>can</em> do all of this. That is the point: you watch them do it, with status columns, locks and guards against double processing. The comparison is about what you have to write and keep, not about what is possible.</p>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2, #2f6f6b); margin-bottom: 7px;">What Messenger and cron can already do</div>
+          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.68; color: var(--fg2, #6c6459); text-wrap: pretty;">Messenger and cron <em>can</em> do all of this. You build it with status columns, locks and guards against double processing, and you watch over them. This comparison counts the code you write and keep.</p>
         </div>
       </div>
     </div>
@@ -849,7 +849,7 @@
       <div style="max-width: 860px; margin-bottom: 34px;">
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">in practice 02</div>
         <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 16px; text-wrap: balance;">Orchestrating an AI agent, with Symfony AI</h2>
-        <p style="font-size: calc(18px * var(--ts, 1)); line-height: 1.62; color: var(--fg2, #6c6459); margin: 0;">An agent is a loop of non-deterministic decisions that cause irreversible effects. That is exactly the pair replay makes dangerous, and the journal is what resolves it.</p>
+        <p style="font-size: calc(18px * var(--ts, 1)); line-height: 1.62; color: var(--fg2, #6c6459); margin: 0;">An agent is a loop of non-deterministic decisions that cause irreversible effects. Replay makes that combination dangerous, and the journal resolves it.</p>
       </div>
       <div style="min-width: 0;">
         <div style="border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--code-bg, #ffffff); overflow: hidden; margin: 0 0 40px; transition: transform 0.32s cubic-bezier(.2,.7,.2,1), box-shadow 0.32s;" style-hover="transform: translateY(-3px); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.45);">
@@ -875,13 +875,13 @@
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent, #b4552f);">01</span>
             <h4 style="margin: 0; font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: calc(17px * var(--ts, 1)); line-height: 1.35; color: var(--fg, #1d1a16); text-wrap: balance;">The model does not answer the same thing twice</h4>
             <span></span>
-            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;">Under replay the workflow must see the same answer, or it walks into a different branch and the history lies. So the model call is an activity, not inline code. This is not an implementation detail: it is the condition for an agent to be resumable at all.</p>
+            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;">Under replay the workflow must see the same answer. Otherwise it takes a different branch and no longer matches its history. That is why the model call is an activity and does not run inline. An agent can be resumed only under that condition.</p>
           </div>
           <div data-reveal data-delay="0.10" style="display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; row-gap: 7px; align-items: baseline; align-content: start; transition: transform 0.28s cubic-bezier(.2,.7,.2,1);" style-hover="transform: translateX(5px);">
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent, #b4552f);">02</span>
             <h4 style="margin: 0; font-family: 'Public Sans', system-ui, sans-serif; font-weight: 600; font-size: calc(17px * var(--ts, 1)); line-height: 1.35; color: var(--fg, #1d1a16); text-wrap: balance;">A tool call is a side effect</h4>
             <span></span>
-            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;"><code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">issue_refund</code> refunds for real. If the worker restarts mid-loop the tool must not run again; it returns its recorded result. The same guarantee as any activity, applied to something the model decided rather than the developer.</p>
+            <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); text-wrap: pretty;"><code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">issue_refund</code> refunds for real. If the worker restarts mid-loop the tool must not run again; it returns its recorded result. It is the same guarantee as for any activity; here the model chose the call instead of the developer.</p>
           </div>
           <div data-reveal data-delay="0.20" style="display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; row-gap: 7px; align-items: baseline; align-content: start; transition: transform 0.28s cubic-bezier(.2,.7,.2,1);" style-hover="transform: translateX(5px);">
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent, #b4552f);">03</span>
@@ -892,7 +892,7 @@
         </div>
         <div style="border-left: 3px solid var(--ck, #a1341f); background: var(--bg2, #efe9df); border-radius: 0 5px 5px 0; padding: 17px 22px; max-width: 900px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ck, #a1341f); margin-bottom: 7px;">Where Durable stops</div>
-          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.68; color: var(--fg2, #6c6459); text-wrap: pretty;">Durable does not orchestrate Symfony AI’s inner loop; <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">Agent::call()</code> runs its own tool round-trips. What Durable bounds is the turn: one decision, its effects, an optional approval, then again.</p>
+          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.68; color: var(--fg2, #6c6459); text-wrap: pretty;">Durable does not orchestrate Symfony AI’s inner loop; <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">Agent::call()</code> runs its own tool round-trips. Durable bounds each turn: one decision, its effects, an optional approval, then the next turn.</p>
         </div>
       </div>
     </div>
@@ -903,7 +903,7 @@
       <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2, #2f6f6b);">Nexus · works today</span>
       <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); line-height: 1.1; letter-spacing: -0.02em; margin: 14px 0 18px; max-width: 760px; text-wrap: balance;">Your PHP service can be on <em style="font-style: italic; color: var(--accent, #b4552f);">both ends</em> of a Nexus operation</h2>
       <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 12px; max-width: 720px;">Nexus routes a call from one workflow to an operation owned by another team, another namespace, another cluster, with neither side knowing the other's workflows. Durable <strong style="color: var(--fg, #2c2822); font-weight: 500;">calls</strong> those operations, and <strong style="color: var(--fg, #2c2822); font-weight: 500;">serves</strong> them.</p>
-      <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 40px; max-width: 720px;">Temporal documents Nexus for Go, Java, Python, TypeScript and .NET. It documents none for PHP. A PHP service can of course be called over HTTP, like any other service, but an HTTP call is not an operation: nothing records that it was made, nothing brings its failure back typed, and nothing cancels it when the caller gives up.</p>
+      <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 40px; max-width: 720px;">Temporal documents Nexus for Go, Java, Python, TypeScript and .NET. It documents none for PHP. A PHP service can be called over HTTP, like any other service, but an HTTP call is not an operation. No record says it was made, its failure does not come back typed, and it is not cancelled when the caller gives up.</p>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 0 0 40px;">
         <div style="border: 1px solid var(--line, #ddd6ca); border-left: 3px solid var(--ck, #a1341f); border-radius: 0 6px 6px 0; padding: 20px 24px 22px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ck, #a1341f); margin-bottom: 12px;">Without it, the boundary is an HTTP call</div>
@@ -911,7 +911,7 @@
         </div>
         <div style="border: 1px solid var(--line, #ddd6ca); border-left: 3px solid var(--accent2, #2f6f6b); border-radius: 0 6px 6px 0; padding: 20px 24px 22px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2, #2f6f6b); margin-bottom: 12px;">With it, the same call, made durable</div>
-          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459);">The caller waits without holding anything open, whether four minutes or six hours, it makes no difference. A failure comes back <strong style="color: var(--fg, #2c2822); font-weight: 500;">typed</strong>, so a compensation can decide what it means. Cancelling the caller cancels the work on the other side. And neither team ever sees the other's workflows.</p>
+          <p style="margin: 0; font-size: calc(15.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459);">The caller waits without holding anything open, for four minutes or for six hours alike. A failure comes back <strong style="color: var(--fg, #2c2822); font-weight: 500;">typed</strong>, so a compensation can decide what it means. Cancelling the caller cancels the work on the other side. And neither team ever sees the other's workflows.</p>
         </div>
       </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px;">
@@ -938,7 +938,7 @@ final class Billing implements BillingServed
 }</code></pre>
         </div>
       </div>
-      <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 34px 0 0; max-width: 720px;">One contract, written once, typed on both sides, with no operation name retyped as a string. Answer immediately, or let a workflow answer hours later: the caller waits the same way, and cancelling the call cancels the workflow that carries it.</p>
+      <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 34px 0 0; max-width: 720px;">Both sides use one contract, written once and typed, and no operation name is retyped as a string. The operation can answer immediately or let a workflow answer hours later. The caller waits the same way in both cases, and cancelling the call cancels the workflow that carries it.</p>
       <div style="padding: 26px 0 0;">
         <a href="/docs/nexus/" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;">Calling and serving Nexus operations, end to end →</a>
       </div>
@@ -946,8 +946,8 @@ final class Billing implements BillingServed
   </section>
   <section id="packages" style="border-top: 1px solid var(--line, #ddd6ca); border-bottom: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df);">
     <div style="max-width: 1140px; margin: 0 auto; padding: calc(76px * var(--sp, 1)) 40px;">
-      <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 10px;">Swap the backend, keep the workflow</h2>
-      <p style="margin: 0 0 40px; font-size: calc(16.5px * var(--ts, 1)); color: var(--fg2, #6c6459);">A core that needs only psr/cache, an optional framework integration, and interchangeable backends: in-memory for tests, Temporal or SQL for production. The command changes; the workflow code does not.</p>
+      <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 10px;">Change the backend without changing the workflow</h2>
+      <p style="margin: 0 0 40px; font-size: calc(16.5px * var(--ts, 1)); color: var(--fg2, #6c6459);">A core that needs only psr/cache, an optional framework integration, and interchangeable backends: in-memory for tests, Temporal or SQL for production. Switching backends changes the install command and leaves the workflow code as it is.</p>
       <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 3fr) minmax(0, 13ch); column-gap: 32px; align-items: baseline;">
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable</code>
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The library. Workflows, activities, timers, event journal. Exactly one runtime dependency: psr/cache. No framework.</p>
@@ -956,7 +956,7 @@ final class Billing implements BillingServed
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Symfony integration. Autoconfigures workflows and activities, wires Messenger transports and adds a profiler panel. Symfony 6.4, 7 or 8.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); text-wrap: balance; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">optional</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-plugin</code>
-        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Sylius admin dashboard for tracking durable workflows. Registers an entry in the Sylius admin menu. It observes rather than runs: it pulls the bundle in and leaves the backend choice to you.</p>
+        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Sylius admin dashboard for tracking durable workflows. Registers an entry in the Sylius admin menu. It displays workflows and does not run them. It pulls the bundle in and leaves the backend choice to you.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); text-wrap: balance; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">optional</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-bridge-temporal</code>
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Temporal driver. Speaks gRPC to a Temporal cluster directly; no official PHP SDK, no RoadRunner. Requires ext-grpc.</p>
@@ -965,13 +965,13 @@ final class Billing implements BillingServed
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The SQL backend. Durable execution on a single database, no orchestrator cluster. Doctrine DBAL 3 or 4.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); text-wrap: balance; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">one of three bridges</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-bridge-illuminate</code>
-        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The same SQL story through Laravel&#39;s own database layer, on a connection of its own. Illuminate 11, 12 or 13.</p>
+        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The SQL backend through Laravel&#39;s own database layer, on a connection of its own. Illuminate 11, 12 or 13.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">one of three bridges</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-laravel</code>
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Laravel integration. A service provider that binds the four storage ports from one published config file, workflows declared rather than scanned, and work riding the queue the application already drains.</p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">optional</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">gplanchat/durable-filament</code>
-        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Filament dashboard for tracking durable workflows. A panel plugin, registered with <code>-&gt;plugin(DurableFilamentPlugin::make())</code>, that adds a Durable runs entry to the navigation. It observes rather than runs: it pulls the Laravel integration in and leaves the backend choice to you. Filament 3 or 4. <a href="/docs/packages/#gplanchatdurable-filament--the-filament-dashboard" style="text-decoration: none; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca);">Install and register it →</a></p>
+        <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">The Filament dashboard for tracking durable workflows. A panel plugin, registered with <code>-&gt;plugin(DurableFilamentPlugin::make())</code>, that adds a Durable runs entry to the navigation. It displays workflows and does not run them. It pulls the Laravel integration in and leaves the backend choice to you. Filament 3 or 4. <a href="/docs/packages/#gplanchatdurable-filament--the-filament-dashboard" style="text-decoration: none; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca);">Install and register it →</a></p>
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">optional</span>
         <code style="font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--ts, 1)); color: var(--accent, #b4552f); white-space: nowrap; padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">API Platform integration</code>
         <p style="margin: 0; font-size: calc(16px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); padding: 26px 0; border-top: 1px solid var(--line, #ddd6ca);">A state processor that returns a workflow handle and a 202 + Location instead of holding the request open for the work; one class, running on Symfony and on Laravel alike.</p>
@@ -986,8 +986,8 @@ final class Billing implements BillingServed
   <section style="max-width: 1140px; margin: 0 auto; padding: calc(76px * var(--sp, 1)) 40px;">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 48px;">
       <div>
-        <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(34px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 16px;">Everything a long process needs</h2>
-        <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0;">Including the part nobody budgets for: tests. Workflows are unit-testable with no server at all, and the event journal can be replayed and inspected after the fact.</p>
+        <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(34px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 16px;">What a long-running process needs</h2>
+        <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0;">This includes tests. Workflows are unit-testable with no server at all, and the event journal can be replayed and inspected after the fact.</p>
       </div>
       <div style="display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start;">
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line, #ddd6ca); border-radius: 999px; padding: 8px 15px; rotate: -1.4deg; transition: rotate 0.3s cubic-bezier(.2,.7,.2,1), border-color 0.3s, color 0.3s;" style-hover="rotate: 0deg; border-color: var(--accent2, #2f6f6b); color: var(--accent2, #2f6f6b);">activities with retry limits</span>
@@ -1011,18 +1011,18 @@ final class Billing implements BillingServed
 
   <section id="install" style="border-top: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df);">
     <div style="max-width: 1140px; margin: 0 auto; padding: calc(88px * var(--sp, 1)) 40px; text-align: center;">
-      <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(48px * var(--ts, 1)); line-height: 1.08; letter-spacing: -0.025em; margin: 0 auto 20px; max-width: 700px; text-wrap: balance;">Stop maintaining the state machine.</h2>
+      <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(48px * var(--ts, 1)); line-height: 1.08; letter-spacing: -0.025em; margin: 0 auto 20px; max-width: 700px; text-wrap: balance;">Install Durable in your project</h2>
       <p style="font-size: calc(17px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); margin: 0 auto 32px; max-width: 520px;">Open source, PHP 8.2+, no server needed to write your first workflow.</p>
       <!-- default: Symfony + in-memory, because this page's readers are on Symfony, and in-memory is the only pair that needs no server and no extension, so the wizard opens on a command a reader can paste and run immediately. -->
       <div data-composer style="max-width: 980px; margin: 0 auto 26px; text-align: left; border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--bg, #f7f4ef); overflow: hidden;">
         <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; padding: 13px 18px; border-bottom: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df);">
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">Find your flavour: 2 questions, then the command</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">Your install command, in 2 questions</span>
           <span data-summary style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--accent, #b4552f);">Symfony · Temporal</span>
         </div>
         <div style="padding: 17px 18px; border-bottom: 1px solid var(--line, #ddd6ca);">
           <div style="display: flex; align-items: baseline; gap: 11px; margin-bottom: 11px;">
             <span style="flex: none; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: var(--accent-fg, #fff); background: var(--accent, #b4552f); border-radius: 999px; width: 19px; height: 19px; display: inline-flex; align-items: center; justify-content: center;">1</span>
-            <span style="font-size: 15px; color: var(--fg, #1d1a16);">What is this running in?</span>
+            <span style="font-size: 15px; color: var(--fg, #1d1a16);">What does your project run on?</span>
           </div>
           <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             <button type="button" data-axis="fw" data-val="none" data-state="ok" style="display: inline-flex; align-items: center; gap: 10px; background: transparent; border: 1px solid var(--line, #ddd6ca); border-radius: 999px; padding: 7px 18px 7px 12px; font-family: 'Public Sans', system-ui, sans-serif; font-size: 13px; color: var(--fg2, #6c6459); cursor: pointer;"><span data-mark style="flex: none; display: inline-flex; align-items: center; justify-content: center; height: 48px;"><span data-paint data-box="48" data-src="logo-php.svg" role="img" aria-label="PHP" style="display: none;"></span><svg data-glyph viewBox="0 0 20 20" height="48" width="48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><path d="M8 5 4 10l4 5"></path><path d="M12 5l4 5-4 5"></path></svg></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px;">any PHP project</span></button>
@@ -1061,12 +1061,12 @@ final class Billing implements BillingServed
             <button type="button" data-axis="be" data-val="illuminate" style="display: flex; align-items: flex-start; gap: 13px; text-align: left; background: transparent; border: 1px solid var(--line, #ddd6ca); border-radius: 5px; padding: 14px 16px; cursor: pointer; color: var(--fg2, #6c6459); font-family: 'Public Sans', system-ui, sans-serif;"><span data-mark style="flex: none; display: inline-flex; align-items: center; justify-content: center; height: 48px;"><span data-paint data-box="48" data-src="logo-laravel.svg" role="img" aria-label="Illuminate" style="display: none;"></span><svg data-glyph viewBox="0 0 20 20" height="48" width="48" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><ellipse cx="10" cy="5.6" rx="6" ry="2.6"></ellipse><path d="M4 5.6v8.8c0 1.4 2.7 2.6 6 2.6s6-1.2 6-2.6V5.6"></path><path d="M4 10c0 1.4 2.7 2.6 6 2.6s6-1.2 6-2.6"></path></svg></span><span style="display: block; min-width: 0;"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 4px;">Illuminate</span><span style="display: block; font-size: 12.5px; line-height: 1.5; color: var(--fg2, #6c6459); text-wrap: pretty; overflow-wrap: anywhere;">The same SQL story through Laravel's own database layer, on a Laravel stack.</span></span></button>
           </div>
           <p data-why style="display: none; margin: 12px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: var(--fg2, #6c6459); text-wrap: pretty;"></p>
-          <p data-pin style="display: none; margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">The dashboard observes; it does not run workflows, so any backend above works.</p>
+          <p data-pin style="display: none; margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">The dashboard displays workflows and does not run them, so any backend above works.</p>
         </div>
         
         <div style="display: flex; align-items: center; gap: 10px; padding: 18px 18px 0;">
           <span style="flex: none; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: var(--accent-fg, #fff); background: var(--accent, #b4552f); border-radius: 999px; width: 19px; height: 19px; display: inline-flex; align-items: center; justify-content: center;">3</span>
-          <span style="font-size: 15px; color: var(--fg, #1d1a16);">Copy, paste, installed.</span>
+          <span style="font-size: 15px; color: var(--fg, #1d1a16);">Copy the command</span>
         </div>
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 18px 16px;">
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 14.5px; color: var(--accent, #b4552f); flex: none;">$</span>
@@ -1074,7 +1074,7 @@ final class Billing implements BillingServed
           <button type="button" data-copy style="flex: none; display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--accent, #b4552f); border: 1px solid var(--accent, #b4552f); color: var(--accent-fg, #fdfbf7); border-radius: 999px; padding: 10px 18px; cursor: pointer; box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5); transition: transform 0.2s cubic-bezier(.2,.7,.2,1), box-shadow 0.2s;" style-hover="transform: translateY(-1px); box-shadow: 0 10px 24px -12px rgba(0,0,0,0.55);" style-active="transform: translateY(0);"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"></rect><path d="M10.5 3.5H3.5a1 1 0 0 0-1 1v7"></path></svg>Copy</button>
         </div>
         <div style="padding: 13px 18px; border-top: 1px solid var(--line, #ddd6ca);">
-          <p data-beta style="margin: 0 0 9px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: var(--fg2, #6c6459);">Durable is on its beta line. First run composer config minimum-stability beta and composer config prefer-stable true, or the default stable floor refuses it.</p>
+          <p data-beta style="margin: 0 0 9px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: var(--fg2, #6c6459);">Durable is on its beta line. First run composer config minimum-stability beta and composer config prefer-stable true. Otherwise the install fails, because Composer's default minimum stability is stable.</p>
           <p data-hint style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: var(--fg2, #6c6459);">Everything it depends on comes transitively, so the command names one package only.</p>
           <p data-caveat style="display: none; margin: 9px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: var(--ck, #a1341f);">No persistence between requests: this is the one option that does not go to production.</p>
           <a href="https://durable.rocks/docs/packages/" style="display: inline-block; margin-top: 12px; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 2px;" style-hover="border-color: var(--accent, #b4552f);">Every package, what each one brings, what it needs, and these same commands laid out by situation →</a>
@@ -1087,13 +1087,13 @@ final class Billing implements BillingServed
       <div id="install-skill" style="max-width: 980px; margin: 48px auto 0; text-align: left;">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 34px;">
           <span style="flex: 1; height: 1px; background: var(--line, #ddd6ca);"></span>
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">or don&#39;t type it yourself</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">or let an agent write it</span>
           <span style="flex: 1; height: 1px; background: var(--line, #ddd6ca);"></span>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 36px; align-items: start;">
           <div>
-            <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(27px * var(--ts, 1)); line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 12px; text-wrap: balance;">Install the skill instead, and let the agent write the workflow</h3>
-            <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); font-size: calc(16px * var(--ts, 1)); margin: 0 0 20px;">Two slash commands in Claude Code. It teaches the three shapes, the determinism rule, and a Rector migration for code that already exists, plus the four things those rules refuse to guess.</p>
+            <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(27px * var(--ts, 1)); line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 12px; text-wrap: balance;">Install the Claude Code skill and let the agent write the workflow</h3>
+            <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); font-size: calc(16px * var(--ts, 1)); margin: 0 0 20px;">The skill adds two slash commands to Claude Code. It teaches the three shapes, the determinism rule and a Rector migration for code that already exists, and four cases that those rules do not guess.</p>
             <div><a href="https://github.com/gplanchat/durable-skill" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" style-hover="border-bottom-color: var(--accent, #b4552f);">gplanchat/durable-skill →</a></div>
           </div>
           <div>
@@ -1103,12 +1103,12 @@ final class Billing implements BillingServed
           <button type="button" data-skill-copy style="justify-self: start; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; background: transparent; border: 1px solid var(--line, #ddd6ca); color: var(--fg2, #6c6459); border-radius: 999px; padding: 6px 14px; cursor: pointer;" style-hover="border-color: var(--accent, #b4552f); color: var(--accent, #b4552f);">Copy</button>
         </div>
             <div data-skill-traps style="margin: 22px 0 0;">
-              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">Four silent mistakes it refuses to make</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">Four mistakes that raise no error</span>
               <ul style="margin: 12px 0 0; padding: 0 0 0 18px; font-size: calc(14.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459);">
                 <li>an activity name written as a string, not read from its contract</li>
-                <li>a timer with no summary, unfindable among ten thousand executions</li>
-                <li>a Nexus parameter renamed on one side, and the other silently gets null</li>
-                <li>an execution started inline in a web request, which dies with it</li>
+                <li>a timer with no summary, which you cannot find among ten thousand executions</li>
+                <li>a Nexus parameter renamed on one side only, so the other side gets null with no error</li>
+                <li>an execution started inline in a web request, which ends when the request ends</li>
               </ul>
             </div>
           </div>
