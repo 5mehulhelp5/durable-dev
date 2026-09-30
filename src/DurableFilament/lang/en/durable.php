@@ -11,6 +11,12 @@ return [
     'kpi' => [
         'waiting_for_worker' => 'Waiting for a worker',
     ],
+    'workers' => [
+        'polling' => 'The :role worker is polling.',
+        'missing' => 'No :role worker has polled in :seconds seconds: executions stop at their first :role task. Start php artisan durable:temporal-worker --role=:role.',
+        'unknown' => 'Could not ask the backend whether a :role worker polls: :error',
+        'queue_unlisted' => 'Laravel\'s queue keeps no list of the processes that run php artisan queue:work.',
+    ],
     'status' => [
         'running' => 'Running',
         'completed' => 'Completed',

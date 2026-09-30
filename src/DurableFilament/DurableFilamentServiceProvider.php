@@ -25,6 +25,7 @@ final class DurableFilamentServiceProvider extends ServiceProvider
             // The application's own, as the profiler and diagnose use it (#507); the key pattern otherwise.
             $app->bound(PayloadRedactorInterface::class) ? $app->make(PayloadRedactorInterface::class) : null,
         ));
+        $this->app->singleton(WorkerPresence::class, fn($app): WorkerPresence => WorkerPresence::of($app));
     }
 
     public function boot(): void

@@ -7,6 +7,23 @@
 <x-filament-panels::page>
     @include('durable-filament::backend', ['backend' => $backend])
 
+    @if ([] !== $workers)
+        {{-- Named by the Laravel worker command's role, and blamed only when the backend answered. --}}
+        <x-filament::section>
+            <div style="display: flex; flex-direction: column; gap: .5rem; align-items: start">
+                @foreach ($workers as $worker)
+                    @if ($worker['polling'])
+                        <x-filament::badge color="success" role="status">{{ $t('workers.polling', ['role' => $worker['role']]) }}</x-filament::badge>
+                    @elseif (null !== $worker['error'])
+                        <x-filament::badge color="warning" role="status">{{ $t('workers.unknown', ['role' => $worker['role'], 'error' => $worker['error']]) }}</x-filament::badge>
+                    @else
+                        <x-filament::badge color="danger" role="alert">{{ $t('workers.missing', ['role' => $worker['role'], 'seconds' => $worker['seconds']]) }}</x-filament::badge>
+                    @endif
+                @endforeach
+            </div>
+        </x-filament::section>
+    @endif
+
     @if ($backend['available'])
         @if ($filters['workflowNameAvailable'] || $filters['executionIdPrefixAvailable'])
             <x-filament::section>
