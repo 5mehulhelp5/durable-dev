@@ -18,6 +18,7 @@ use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryChildWorkflowParentLinkStore;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
+use Gplanchat\Durable\Store\WorkflowMetadataStore;
 use Gplanchat\Durable\Transport\AwaitedFact;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
@@ -88,6 +89,36 @@ final class AnAsyncChildThatContinuesAsNewReportsToItsParentTest extends TestCas
     }
 
     /**
+     * The old run could not be marked completed: the redelivery replays it, and the run that
+     * actually starts is still linked to the parent.
+     */
+    public function testARetriedContinuationKeepsTheStartedRunLinked(): void
+    {
+        $metadata = new MarkCompletedFailsOnce(new InMemoryWorkflowMetadataStore());
+        [$journal, $links, $resumes, $handler] = $this->childOf('parent-1', failAtTheEnd: false, metadata: $metadata);
+
+        try {
+            $handler(new ResumeWorkflowMessage('child-1'));
+            self::fail('markCompleted() did not fail.');
+        } catch (\LogicException) {
+        }
+        $handler(new ResumeWorkflowMessage('child-1'));
+
+        $started = end($resumes->startedRuns);
+        self::assertIsString($started, 'the redelivery starts a run');
+        self::assertSame('parent-1', $links->getParentExecutionId(ExecutionId::fromString($started))?->toString(), 'the run that starts is linked');
+
+        $handler(new ResumeWorkflowMessage($started));
+        $handler(new ResumeWorkflowMessage($this->successorOf($journal, $started)));
+
+        $outcomes = $this->parentOutcomes($journal, 'parent-1');
+        self::assertCount(1, $outcomes);
+        self::assertInstanceOf(ChildWorkflowCompleted::class, $outcomes[0]);
+        self::assertSame('child-1', $outcomes[0]->childExecutionId());
+        self::assertSame('done at 2', $outcomes[0]->result());
+    }
+
+    /**
      * Resumes child-1, then the run it continues as, and checks the link moves with every step.
      *
      * @return string the id of the last run, not resumed yet
@@ -130,10 +161,10 @@ final class AnAsyncChildThatContinuesAsNewReportsToItsParentTest extends TestCas
     /**
      * @return array{InMemoryEventStore, InMemoryChildWorkflowParentLinkStore, ContinuingChildResumes, ResumeWorkflowHandler}
      */
-    private function childOf(string $parentId, bool $failAtTheEnd): array
+    private function childOf(string $parentId, bool $failAtTheEnd, ?WorkflowMetadataStore $metadata = null): array
     {
         $journal = new InMemoryEventStore();
-        $metadata = new InMemoryWorkflowMetadataStore();
+        $metadata ??= new InMemoryWorkflowMetadataStore();
         $links = new InMemoryChildWorkflowParentLinkStore();
         $registry = new WorkflowRegistry();
         $registry->registerClass(ContinuingChildWorkflow::class);
@@ -159,6 +190,9 @@ final class ContinuingChildResumes implements WorkflowResumeDispatcher
     /** @var list<string> */
     public array $sent = [];
 
+    /** @var list<string> */
+    public array $startedRuns = [];
+
     public function dispatchResume(ExecutionId $executionId, array $pendingUpdates = []): void
     {
         $this->sent[] = 'resume ' . $executionId->toString();
@@ -169,5 +203,45 @@ final class ContinuingChildResumes implements WorkflowResumeDispatcher
         $this->sent[] = 'awaiting ' . $fact->describe() . ' on ' . $executionId->toString();
     }
 
-    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void {}
+    public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
+    {
+        $this->startedRuns[] = $executionId->toString();
+    }
+}
+
+final class MarkCompletedFailsOnce implements WorkflowMetadataStore
+{
+    private bool $failed = false;
+
+    public function __construct(private readonly WorkflowMetadataStore $inner) {}
+
+    public function save(ExecutionId $executionId, string $workflowType, array $payload): void
+    {
+        $this->inner->save($executionId, $workflowType, $payload);
+    }
+
+    public function markCompleted(ExecutionId $executionId): void
+    {
+        if (!$this->failed) {
+            $this->failed = true;
+
+            throw new \LogicException('The database went away.');
+        }
+        $this->inner->markCompleted($executionId);
+    }
+
+    public function get(ExecutionId $executionId): ?array
+    {
+        return $this->inner->get($executionId);
+    }
+
+    public function hasActiveWorkflowMetadata(ExecutionId $executionId): bool
+    {
+        return $this->inner->hasActiveWorkflowMetadata($executionId);
+    }
+
+    public function delete(ExecutionId $executionId): void
+    {
+        $this->inner->delete($executionId);
+    }
 }
