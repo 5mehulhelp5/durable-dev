@@ -58,6 +58,27 @@ final class TheGridFiltersFollowTheOtherSurfacesTest extends TestCase
     }
 
     /**
+     * Magento's `Input` filter component turns a `like` condition into `%text%`, with `%` and `_`
+     * escaped, before it reaches the data provider. A provider that compares the typed text would
+     * then match nothing. An `eq` condition hands the text over as typed.
+     */
+    public function testTheTextColumnsAskMagentoForTheTypedTextAndNotForAPattern(): void
+    {
+        $listing = simplexml_load_file(\dirname(__DIR__, 3) . '/src/DurableModule/view/adminhtml/ui_component/durable_process_listing.xml');
+        self::assertInstanceOf(\SimpleXMLElement::class, $listing);
+
+        foreach (['workflow_name', 'execution_id', 'run_id'] as $column) {
+            $filter = [];
+            foreach ($listing->xpath("//columns/column[@name='$column']/argument[@name='data']/item[@name='config']/item[@name='filter']/item") ?: [] as $item) {
+                $filter[(string) $item['name']] = trim((string) $item);
+            }
+
+            self::assertSame(['filterType' => 'text', 'conditionType' => 'eq'], $filter, $column);
+            self::assertSame([], $listing->xpath("//columns/column[@name='$column']/settings/filter") ?: [], $column . ': the `text` shorthand means `like`');
+        }
+    }
+
+    /**
      * @return list<string> the execution ids the grid lists under the filter
      */
     private function matching(string $field, string $value): array
