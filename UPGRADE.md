@@ -465,6 +465,16 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Temporal: an update's completion lands on its own update (#803)
+
+`TemporalExecutionHistory` used to write every `WORKFLOW_EXECUTION_UPDATE_COMPLETED` onto the last
+accepted update, and ignored a failure outcome. It now matches the completion by the update id in
+its `meta`, or by `accepted_event_id` when `meta` is empty, and records a failure as a
+`DurableUpdateFailedException`. The new `TemporalExecutionHistory::updateOutcome(string $updateId)`
+returns the outcome as a `SlotOutcome`, or `null` while the update has not completed.
+
+**What to do:** nothing. The method is an addition.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
