@@ -5,14 +5,19 @@ weight: 25
 
 # Creating a workflow
 
-This page summarizes how you **author** a workflow in Durable. The normative rules live in contributor ADRs [**DUR022**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) and related decisions (**DUR003**, **DUR013**); this guide stays practical.
+This page describes how you **write** a workflow in Durable, and the API a workflow uses. A
+workflow is the PHP class that describes the steps of an execution (one durable run, from its start
+to its end); its side effects run in activities, and each step is recorded in the journal (the
+append-only history of an execution). The [glossary](../glossary/) defines each term.
+
+The normative rules are in the contributor ADRs [**DUR022**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) and related decisions (**DUR003**, **DUR013**). This page covers their practical use.
 
 ## Example: minimal workflow
 
-A **class** annotated with **`#[AsWorkflow]`**, registered with the runtime. Its workflow method takes
-the input, and Durable supplies the rest as arguments: the activity stubs and the environment (see
-[Arguments Durable supplies](#arguments-durable-supplies)). The **`#[AsWorkflow]`** attribute is placed
-on the **class** in today’s loader (see [DUR022](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) for the long-term interface-first model).
+A workflow is a **class** annotated with **`#[AsWorkflow]`** and registered with the runtime. Its
+workflow method takes the input, and Durable supplies the rest as arguments: the activity stubs and
+the environment (see [Arguments Durable supplies](#arguments-durable-supplies)). With the current
+loader, the **`#[AsWorkflow]`** attribute goes on the **class** (see [DUR022](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) for the long-term interface-first model).
 
 ```php
 <?php
@@ -42,13 +47,12 @@ final class OrderWorkflow
 }
 ```
 
-`WorkflowEnvironment` provides **`await`**, the assemblers **`all`** / **`any`** / **`some`**, **`async`**, timers, child workflows, signals, and more; see the class in the repository for the full API.
+`WorkflowEnvironment` provides **`await`**, the assemblers **`all`** / **`any`** / **`some`**, **`async`**, timers, child workflows, signals, and more. The class in the repository has the full API.
 
 ### Waiting versus assembling
 
-**`await()` is the only method that waits.** Everything else assembles: a stub call, `timer()`,
-Stub calls and the assemblers below all return an `Awaitable` and return
-immediately.
+**`await()` is the only method that waits.** Every other call assembles. A stub call, `timer()` and
+the assemblers below all return an `Awaitable` and return immediately.
 
 ```php
 $env->sleep(Duration::minutes(5));            // wait, and nothing else; awaits for you
@@ -59,7 +63,7 @@ $winner = $env->await($env->any(              // assemble, then wait
 ));
 ```
 
-Three assemblers, by how many members have to finish:
+The three assemblers differ by how many members have to finish:
 
 ```php
 $env->all($a, $b, $c)      // Awaitable of [$a, $b, $c]: every member, in declaration order
@@ -67,20 +71,20 @@ $env->any($a, $b, $c)      // Awaitable of the first member to settle, whatever 
 $env->some(2, $a, $b, $c)  // Awaitable of the first 2 members to succeed, keyed by position
 ```
 
-Because they return an `Awaitable` and not a value, they **compose**: an assembly nests in
-another, and, which matters most, an assembly can be bounded by a deadline.
+Because they return an `Awaitable` instead of a value, they **compose**. An assembly nests in
+another, and an assembly can be bounded by a deadline.
 
 ```php
 $quotes = $env->await($env->some(3, ...$providers), deadline: Duration::seconds(2));
 ```
 
-`some()` counts only members that **succeed**: a provider that fails does not bring the quorum
-closer, and once too few remain to reach it the wait fails rather than never settling. `all()` is
-the full quorum, so one failed member fails the whole assembly. `any()` is a race, so the first
-member to settle wins even by failing.
+`some()` counts only members that **succeed**. A provider that fails does not bring the quorum
+closer, and once too few members remain to reach it, the wait fails; it does not stay pending
+forever. `all()` is the full quorum, so one failed member fails the whole assembly. `any()` is a
+race, so the first member to settle wins, even when it settles by failing.
 
-Losing branches are cancelled: activities removed from the queue, timers stopped from waking the
-execution, branches nested inside an assembly included.
+Losing branches are cancelled. Their activities are removed from the queue and their timers no
+longer wake the execution, branches nested inside an assembly included.
 
 `timer()` returns an `Awaitable` exactly like a stub call, so both compose the same way. Both
 accept a `Duration`, a `DateInterval` (so a `CarbonInterval`), a `DateTimeInterface` deadline, or a
@@ -88,10 +92,10 @@ plain number of seconds.
 
 ### Bounding a wait in time
 
-To give up on a wait after a while, pass a **deadline** to `await()`, and do not race a timer by
-hand. `any()` resolves to the winning **value** and nothing else, so a provider that legitimately
-answers `null` is indistinguishable from an elapsed deadline; a saga that compensates on timeout
-would compensate on an empty answer too.
+To give up on a wait after a while, pass a **deadline** to `await()`. Do not race a timer by hand:
+`any()` resolves to the winning **value** and nothing else, so a provider that legitimately answers
+`null` is indistinguishable from an elapsed deadline, and a saga that compensates on timeout would
+compensate on an empty answer too.
 
 ```php
 use Gplanchat\Durable\Exception\DeadlineExceededException;
@@ -104,17 +108,19 @@ try {
 }
 ```
 
-The deadline defaults to `Duration::infinity()`, so an unbounded wait says so with a value rather
-than with a missing argument, so a caller that computes its own deadline has no "no bound" case to
-special-case.
+The deadline defaults to `Duration::infinity()`. An unbounded wait is therefore expressed by a
+value instead of a missing argument, and a caller that computes its own deadline has no "no bound"
+case to handle separately.
 
-A deadline is a failure, not a sentinel: `null`, `false` and `[]` come back untouched when the
-work settles in time.
+An elapsed deadline raises an exception and never returns a sentinel value. When the work settles
+in time, `null`, `false` and `[]` come back untouched.
 
 ### Waiting on a condition
 
 `await()` also takes a **condition**, a predicate over the workflow's own state, wherever it
-takes an awaitable, with the same optional deadline. That is what a signal handler wakes:
+takes an awaitable, with the same optional deadline. A signal handler (a method that receives a
+message sent to the execution from outside; see the [glossary](../glossary/)) changes that state and
+wakes the wait:
 
 ```php
 $env->onSignal(OrderSignal::Approve, fn(array $p) => $this->approvals[] = $p);
@@ -126,11 +132,11 @@ try {
 }
 ```
 
-That is the canonical saga shape: wait for approval, give up after an hour.
+This example waits for an approval and gives up after an hour, the canonical saga shape.
 
-A condition can also say **what it waits for**, in words. On the backends that record the wait
-(in-memory, DBAL, Illuminate, Temporal), the run list then shows the label instead of where the
-closure is written: `waiting on signal approve` rather than
+To describe **what a condition waits for** in words, pass a `label`. On the backends that record
+the wait (in-memory, DBAL, Illuminate, Temporal), the run list then shows the label instead of the
+place where the closure is written, `waiting on signal approve` instead of
 `waiting on condition at src/…/OrderWorkflow.php:42`. The Magento grid shows it on Temporal (see the
 [dashboard page](../dashboard/)).
 
@@ -139,14 +145,16 @@ $env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1),
 ```
 
 The label is display text. Nothing records it while the workflow waits. If the deadline expires and
-nothing catches the exception, it appears in the failure message the journal keeps, written once. Replay
-never compares it, so adding, changing or removing a label is safe. A timer or an activity already names itself, so `await()` refuses a label on one.
+nothing catches the exception, the label appears in the failure message the journal keeps, written
+once. Replay (running the workflow code again from its first line, with each recorded step returning
+its result) never compares it, so you can add, change or remove a label safely. A timer or an
+activity already names itself, so passing a label to `await()` with one is an error.
 
-#### The handler is a method, the wait is a method
+#### Declaring the handler and the wait as methods {#the-handler-is-a-method-the-wait-is-a-method}
 
-In a workflow written as a class, declare the handler with `#[AsSignalMethod]`, which the engine wires,
-and pair it with a small private method that waits and consumes. The body then reads as one
-line, and the buffer is a property rather than a captured reference:
+In a workflow written as a class, declare the handler with `#[AsSignalMethod]`, which the engine
+wires, and pair it with a small private method that waits and consumes. The body then reads as one
+line, and the buffer is a property instead of a captured reference:
 
 ```php
 #[AsWorkflow('Order')]
@@ -181,52 +189,53 @@ final class OrderWorkflow
 }
 ```
 
-Because the deliveries are **workflow state**, a workflow that waits for the same signal three
-times keeps three entries and consumes them at its own pace, and a signal that arrived while
-nothing was waiting is still there at the next wait. That is what the removed `waitSignal()` needed
-an engine-side counter to approximate; here it is `array_shift()`.
+The deliveries are **workflow state**. A workflow that waits for the same signal three times keeps
+three entries and consumes them at its own pace, and a signal that arrived while nothing was
+waiting is still there at the next wait. The removed `waitSignal()` needed an engine-side counter
+to approximate this; here `array_shift()` does it.
 
 > [!WARNING]
-> Two traps, both silent.
+> Two mistakes produce no error when you make them.
 >
 > The attribute is read from the **workflow class**, with `ReflectionClass::getMethods()`. PHP does
 > not surface an attribute declared on an interface method through the class implementing it, so
-> `#[AsSignalMethod]` on a contract interface registers **nothing**: the signal arrives, no handler
+> `#[AsSignalMethod]` on a contract interface registers **nothing**. The signal arrives, no handler
 > runs, and the condition never holds. Put the attribute on the class.
 >
-> And the handler is called with **one** argument: the payload array. A signature like
-> `approve(string $by)` fails when the signal is delivered, not when the worker boots.
+> The handler is called with **one** argument, the payload array. A signature like
+> `approve(string $by)` fails when the signal is delivered, and the worker boots without error.
 
 
 A condition must be a function of **workflow state and nothing else**. It is re-evaluated on every
-replay, so anything a replay cannot reproduce (a clock, a random draw, an environment variable)
-must be recorded once with `sideEffect()` and read back:
+replay, so record anything a replay cannot reproduce (a clock, a random draw, an environment
+variable) once with `sideEffect()`, and read it back:
 
 ```php
 $threshold = $env->sideEffect(fn(): int => random_int(1, 10));   // recorded once
 $env->await(fn(): bool => $this->received >= $threshold);        // replays identically
 ```
 
-The component does **not** detect a condition that breaks this rule; it detects no other
-non-determinism either, and `sideEffect()` is the mechanism it gives you instead.
+Durable does **not** detect a condition that breaks this rule, nor any other non-determinism.
+`sideEffect()` is the mechanism to use instead.
 
 > [!WARNING]
-> `fn()` captures **by value**. A condition over a local variable must use the long form:
-> `function () use (&$approvals): bool { … }`. Over `$this->property` the short form is fine:
-> `$this` is captured, not the value.
+> `fn()` captures **by value**. A condition over a local variable must use the long form,
+> `function () use (&$approvals): bool { … }`. Over `$this->property` the short form works, because
+> `$this` is captured and the property is read through it.
 
-A condition that can never hold, because nothing pending can change the state it reads, is reported as an
-execution that cannot advance, naming the condition by its file and line, rather than spinning.
+A condition that can never hold, because nothing pending can change the state it reads, is reported
+as an execution that cannot advance, with the condition named by its file and line. The execution
+does not spin.
 
-Whichever branch loses is cancelled: a deadline that elapses cancels the work it bounded, and
-work that settles cancels the deadline, so no dead timer wakes the execution later. Cancelling an
-in-flight activity is **best effort**: Temporal receives a cancellation *request*, and an attempt
-that does not honour it may keep running on its worker. What the deadline guarantees is that its
-completion no longer resumes your workflow.
+Whichever branch loses is cancelled. A deadline that elapses cancels the work it bounded, and work
+that settles cancels the deadline, so no dead timer wakes the execution later. Cancelling an
+in-flight activity is **best effort**. Temporal receives a cancellation *request*, and an attempt
+that does not honour it may keep running on its worker. Once the deadline has elapsed, that
+attempt's completion no longer resumes your workflow.
 
 The verdict is read from recorded history, so a replay reaches the verdict the original execution
 reached, **including** when the awaited signal is delivered after the deadline elapsed. A message
-recorded after the deadline fired is never applied to the wait that deadline settled; it stays
+recorded after the deadline fired is never applied to the wait that deadline settled. It stays
 available to the next wait, and its handler runs then. See **DUR032** and **DUR035**.
 
 ### Arguments Durable supplies
