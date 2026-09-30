@@ -52,6 +52,19 @@ final class TheRuntimeFactoryInstallsWithoutTheTemporalBridgeTest extends TestCa
         $factory->catalog();
     }
 
+    public function testACodecThatIsNotAPayloadCodecIsRefusedByName(): void
+    {
+        $factory = new RuntimeFactory(
+            temporalDsn: 'temporal+http://127.0.0.1:7243?namespace=default',
+            codec: new \stdClass(),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('codec must be a Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface, stdClass given');
+
+        $factory->catalog();
+    }
+
     /** @return list<string> */
     private static function names(?\ReflectionType $type): array
     {
