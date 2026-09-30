@@ -215,7 +215,7 @@ loads all of them into every process** to find five. There is no `durable:cache`
 reason: `config:cache` already caches the file it would duplicate.
 
 **Work rides the queue the application already drains**, with `php artisan queue:work` as the only
-worker. Activities and resumes are jobs; a timer is a deferred resume on the queue's own delay.
+worker. Activities and resumes are jobs; a timer is a deferred timer-firing job on the queue's own delay.
 
 ### It is not a durable engine for Laravel, and that square is taken
 
