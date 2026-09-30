@@ -1,4 +1,4 @@
-# DUR056 — Magento journals through its own DB layer on a dedicated connection, with no Nexus
+# DUR056: Magento journals through its own DB layer on a dedicated connection, with no Nexus
 
 ## Status
 
