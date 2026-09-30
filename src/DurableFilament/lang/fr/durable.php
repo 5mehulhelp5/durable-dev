@@ -12,6 +12,11 @@ return [
         'waiting_for_worker' => 'En attente d’un worker',
     ],
     'workers' => [
+        'state' => [
+            'polled' => 'À l’écoute',
+            'missing' => 'Aucun worker',
+            'unknown' => 'Impossible de demander',
+        ],
         'polling' => 'Le worker :role est à l’écoute.',
         'missing' => 'Aucun worker :role n’a interrogé le backend depuis :seconds secondes : les exécutions s’arrêtent à leur première tâche :role. Démarrez php artisan durable:temporal-worker --role=:role.',
         'unknown' => 'Impossible de demander au backend si un worker :role est à l’écoute : :error',

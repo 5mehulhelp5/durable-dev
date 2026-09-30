@@ -12,6 +12,11 @@ return [
         'waiting_for_worker' => 'Waiting for a worker',
     ],
     'workers' => [
+        'state' => [
+            'polled' => 'Polled',
+            'missing' => 'No poller',
+            'unknown' => 'Could not ask',
+        ],
         'polling' => 'The :role worker is polling.',
         'missing' => 'No :role worker has polled in :seconds seconds: executions stop at their first :role task. Start php artisan durable:temporal-worker --role=:role.',
         'unknown' => 'Could not ask the backend whether a :role worker polls: :error',

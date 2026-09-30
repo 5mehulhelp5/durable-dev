@@ -8,19 +8,22 @@
     @include('durable-filament::backend', ['backend' => $backend])
 
     @if ([] !== $workers)
-        {{-- Named by the Laravel worker command's role, and blamed only when the backend answered. --}}
+        {{-- Named by the Laravel worker command's role, and blamed only when the backend answered.
+             The sentence sits outside the badge, which truncates its text on both lines. --}}
         <x-filament::section>
-            <div style="display: flex; flex-direction: column; gap: .5rem; align-items: start">
-                @foreach ($workers as $worker)
-                    @if ($worker['polling'])
-                        <x-filament::badge color="success" role="status">{{ $t('workers.polling', ['role' => $worker['role']]) }}</x-filament::badge>
-                    @elseif (null !== $worker['error'])
-                        <x-filament::badge color="warning" role="status">{{ $t('workers.unknown', ['role' => $worker['role'], 'error' => $worker['error']]) }}</x-filament::badge>
-                    @else
-                        <x-filament::badge color="danger" role="alert">{{ $t('workers.missing', ['role' => $worker['role'], 'seconds' => $worker['seconds']]) }}</x-filament::badge>
-                    @endif
-                @endforeach
-            </div>
+            @foreach ($workers as $worker)
+                @php
+                    [$state, $color, $role, $sentence] = match (true) {
+                        $worker['polling'] => ['polled', 'success', 'status', $t('workers.polling', ['role' => $worker['role']])],
+                        null !== $worker['error'] => ['unknown', 'warning', 'status', $t('workers.unknown', ['role' => $worker['role'], 'error' => $worker['error']])],
+                        default => ['missing', 'danger', 'alert', $t('workers.missing', ['role' => $worker['role'], 'seconds' => $worker['seconds']])],
+                    };
+                @endphp
+                <p role="{{ $role }}" style="display: flex; gap: .5rem; align-items: baseline; margin-block: .25rem">
+                    <x-filament::badge :color="$color">{{ $t('workers.state.' . $state) }}</x-filament::badge>
+                    <span>{{ $sentence }}</span>
+                </p>
+            @endforeach
         </x-filament::section>
     @endif
 
