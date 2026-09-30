@@ -21,6 +21,7 @@ final class TheAdminSpeaksTheOperatorsLanguageTest extends TestCase
     /** PHP literals that look like words but never reach a screen, matched by their exact text. */
     private const NOT_ON_SCREEN = [
         'Y-m-d H:i:s' => 'a date format',
+        'Gplanchat_DurableModule::process_history' => 'an ACL resource id',
     ];
 
     public function testNoVisibleStringBypassesTheTranslator(): void
