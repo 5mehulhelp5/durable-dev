@@ -29,8 +29,8 @@ and `decode(Payload): Payload`. The contract is Temporal's:
 - `decode()` returns a payload without that mark unchanged, so history written before the codec was
   enabled stays readable;
 - `decode()` throws on a payload it recognises but cannot decode, an unknown key for instance.
-  The exception message reaches the Temporal server and its Web UI, so it never contains payload
-  or key bytes.
+  The exception message reaches the Temporal server and its Web UI, so it must never contain
+  payload or key bytes.
 
 Durable provides no implementation. The algorithm, the keys and their rotation are yours. The class
 below is an **example** to start from, not a class Durable ships or supports. It needs PHP's
