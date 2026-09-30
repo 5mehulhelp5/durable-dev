@@ -400,19 +400,19 @@ composer config prefer-stable true
 composer require gplanchat/durable-magento
 ```
 
-Un module Magento 2.4 / Mage-OS, `Gplanchat_DurableModule` dans `bin/magento module:status`. Il déclare
-les classes de workflow et d'activité au moteur, l'assemble pour un processus Magento, livre les
-workers en commandes `bin/magento`, et ajoute un écran d'administration en lecture seule sous
-**System > Durable processes > Process history**.
+Un module Magento 2.4 / Mage-OS, listé comme `Gplanchat_DurableModule` dans
+`bin/magento module:status`. Il déclare les classes de workflow et d'activité au moteur, assemble le
+moteur pour un processus Magento, livre les workers en commandes `bin/magento`, et ajoute un écran
+d'administration en lecture seule sous **System > Durable processes > Process history**.
 
-L'habillage est celui de Magento : une grille standard (pagination, signets, choix des colonnes,
-export, et un filtre d'état multi-select dont les options viennent de l'énumération elle-même) avec
-l'état du backend et les compteurs par issue au-dessus. Ce que l'écran *montre* n'appartient ni à
-Magento ni à ce paquet : voir [le tableau de bord](../dashboard/), que chaque hôte rend dans son
-propre habillage.
+L'écran utilise l'habillage de Magento : une grille standard (pagination, signets, choix des
+colonnes, export, et un filtre d'état multi-select dont les options viennent de l'énumération des
+états elle-même), avec l'état du backend et les compteurs par issue au-dessus. Le contenu de l'écran
+ne vient ni de Magento ni de ce paquet ; voir [le tableau de bord](../dashboard/), que chaque hôte
+affiche dans son propre habillage.
 
-Le conteneur de Magento n'a pas d'équivalent de l'autoconfiguration par tag de Symfony : la
-déclaration est explicite, deux tableaux dans `di.xml` :
+Le conteneur de Magento n'a pas d'équivalent de l'autoconfiguration par tag de Symfony : vous
+déclarez donc les classes explicitement, dans deux tableaux de `di.xml` :
 
 ```xml
 <type name="Gplanchat\DurableModule\Runtime\RuntimeFactory">
@@ -427,9 +427,9 @@ déclaration est explicite, deux tableaux dans `di.xml` :
 </type>
 ```
 
-Ce qui ne se déclare **pas**, c'est le contrat : la fabrique lit les interfaces de chaque
-gestionnaire et garde celles qui portent `#[AsActivityMethod]`. Une déclaration de moins à écrire de
-travers, et les noms d'activité restent ceux des attributs.
+Vous ne déclarez pas le *contrat*. La fabrique lit les interfaces de chaque gestionnaire et garde
+celles qui portent `#[AsActivityMethod]`, ce qui fait une déclaration de moins à écrire de travers
+et laisse les noms d'activité à ceux des attributs.
 
 Deux autres arguments de la même fabrique bornent une exécution, et `di.xml` est le seul endroit où
 les régler :
@@ -439,19 +439,21 @@ les régler :
 <argument name="budgetSeconds" xsi:type="number">30</argument>
 ```
 
-- `maxActivityRetries` est le plafond de tentatives des activités que `MagentoRuntime::run()` exécute
-  dans le processus appelant, le [`max_activity_retries`](../configuration/#max_activity_retries) du
-  bundle Symfony. `0`, la valeur par défaut, ne plafonne rien. Les workers Temporal ne le lisent
-  jamais : là, c'est la grappe qui relance, d'après la `RetryLimit` propre à l'activité.
+- `maxActivityRetries` est le plafond de tentatives des activités que `MagentoRuntime::run()`
+  exécute dans le processus appelant, l'équivalent du
+  [`max_activity_retries`](../configuration/#max_activity_retries) du bundle Symfony. La valeur par
+  défaut, `0`, ne fixe aucun plafond. Les workers Temporal ne le lisent jamais : là, le cluster
+  relance d'après la `RetryLimit` propre à l'activité.
 - `budgetSeconds` borne `MagentoRuntime::run()`, qui mène un workflow à son terme dans le processus
-  appelant : au-delà, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. Par défaut
-  `10`. Il existe à cause du premier : sans plafond, une activité qui échoue sans cesse occuperait
-  ce processus pour toujours. Les workers et `workflowClient()` ne lisent ni l'un ni l'autre.
+  appelant. Au-delà du budget, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. La
+  valeur par défaut est `10`. Le budget existe à cause du plafond de tentatives : sans plafond, une
+  activité qui échoue sans cesse occuperait ce processus pour toujours. Les workers et
+  `workflowClient()` ne lisent ni l'un ni l'autre.
 
-**Deux backends, et c'est Composer qui l'impose.** Magento atteint la mémoire et Temporal, et le
-module déclare un `conflict` sur les deux ponts SQL : `Magento\Framework\App\ResourceConnection`
-n'est ni une connexion Doctrine DBAL ni celle d'Illuminate. Lequel des deux vous obtenez se décide
-par un DSN dans `app/etc/env.php`, pas par un réglage :
+**Magento prend en charge deux backends, et Composer l'impose.** Magento atteint la mémoire et
+Temporal, et le module déclare un `conflict` sur les deux ponts SQL, car
+`Magento\Framework\App\ResourceConnection` n'est ni une connexion Doctrine DBAL ni celle
+d'Illuminate. Un DSN dans `app/etc/env.php` choisit le backend ; aucun autre réglage ne le fait :
 
 ```php
 'durable' => [
@@ -459,10 +461,10 @@ par un DSN dans `app/etc/env.php`, pas par un réglage :
 ],
 ```
 
-Sans lui, le journal vit dans le processus qui l'écrit et meurt avec lui, ce qui est acceptable pour une
-commande en ligne, ruineux pour le reste.
+Sans ce DSN, le journal vit dans le processus qui l'écrit et disparaît quand ce processus se
+termine. C'est acceptable pour une commande en ligne, inadapté à tout le reste.
 
-**Les workers sont des commandes, pas des consommateurs de file**, et un exploitant les supervise
+**Les workers sont des commandes `bin/magento`**, pas des consommateurs de file. Supervisez-les
 comme n'importe quel processus long :
 
 ```bash
@@ -470,34 +472,34 @@ bin/magento durable:worker --role=journal   --time-limit=3600
 bin/magento durable:worker --role=activity  --time-limit=3600
 ```
 
-Un processus, une file, un rôle : ce sont deux files Temporal distinctes, dont le parallélisme se
-règle séparément. Rien ne circule sur le `MessageQueue` de Magento : sur Temporal une activité est
-une commande Temporal et une reprise une tâche de workflow, donc un topic ici serait une seconde
-file à superviser, pour rien.
+Chaque processus sert un rôle sur une file. Les deux rôles utilisent deux files Temporal distinctes,
+et vous réglez leur parallélisme séparément. Rien ne passe par le `MessageQueue` de Magento : sur
+Temporal, une activité est une commande Temporal et une reprise une tâche de workflow, donc un topic
+Magento ne ferait qu'ajouter une seconde file à superviser.
 
-**Deux processus, et en oublier un ne coûte pas la même chose des deux côtés.** Sans
-`--role=journal`, rien n'avance : les exécutions démarrent, leur historique se remplit, et personne
-ne répond à leurs tâches de workflow. Sans `--role=activity`, c'est pire, parce que ça a l'air de
-marcher : une exécution avance **jusqu'à sa première activité** et s'y arrête, la commande débitée
-et le stock non, et c'est le client qui vous l'apprend. C'est la panne que cette intégration existe
-pour supprimer, remise en place à la main.
+**Un worker absent se manifeste différemment selon son rôle.** Sans `--role=journal`, rien
+n'avance : les exécutions démarrent, leur historique se remplit, et aucun processus ne répond à
+leurs tâches de workflow. Sans `--role=activity`, l'exécution semble fonctionner, ce qui rend le
+problème plus difficile à voir : elle avance **jusqu'à sa première activité** et s'y arrête, la
+commande débitée et le stock intact, et c'est le client qui vous l'apprend. Tourner sans le worker
+d'activité remet en place la panne que cette intégration existe pour supprimer.
 
-Les bornes `--time-limit` et `--max-tasks` sont pour le superviseur : elles font finir le processus
-pour que ce qui le relance puisse le relancer. Et les reprises sont l'affaire de la grappe ; les
-tentatives d'une activité sont ordonnancées que quelqu'un écoute ou non, donc une exécution dont
-l'activité « a échoué après 3 tentatives » en quelques secondes signale un worker absent, pas un
-code qui se trompe trois fois de suite.
+Les bornes `--time-limit` et `--max-tasks` servent au superviseur : elles terminent le processus
+pour que le superviseur puisse le relancer. Les reprises relèvent du cluster, qui planifie les
+tentatives d'une activité qu'un worker écoute ou non. Une exécution dont l'activité « a échoué après
+3 tentatives » en quelques secondes signale un worker absent, pas un code qui a échoué trois fois.
 
-⚠ **Les réglages de file de Magento n'entrent pas là-dedans.** `retry_inprogress_after`, les tâches
-cron `messagequeue_*`, `queue_lock` : aucun ne porte quoi que ce soit de Durable, puisque rien de
-Durable ne circule sur `MessageQueue`. Réglez-les pour vos propres consommateurs.
+> [!WARNING]
+> **Les réglages de file de Magento ne s'appliquent pas à Durable.** `retry_inprogress_after`, les
+> tâches cron `messagequeue_*` et `queue_lock` ne portent rien de Durable, puisque rien de Durable
+> ne passe par `MessageQueue`. Réglez-les pour vos propres consommateurs.
 
 > [!NOTE]
-> Démarrez les exécutions **sur la grappe**, pas dans la requête qui les déclenche. Un observateur
+> Démarrez les exécutions **sur le cluster**, hors de la requête qui les déclenche. Un observateur
 > sur `sales_order_place_after` qui appelle `RuntimeFactory::workflowClient()->startAsync()` confie
-> l'exécution à Temporal et rend la main (`workflowClient()` exige le cluster : `startAsync()` n'existe
-> que sur Temporal) ; la démarrer en ligne la tuerait avec la requête, ce qui
-> est précisément la panne que cette intégration existe pour retirer.
+> l'exécution à Temporal et rend la main. `workflowClient()` exige le cluster, car `startAsync()`
+> n'existe que sur Temporal. Une exécution démarrée dans la requête s'arrêterait avec elle, ce qui
+> est précisément la panne que cette intégration existe pour supprimer.
 
 ---
 
@@ -507,7 +509,7 @@ Chaque commande ci-dessous est celle que le sélecteur de la [page d'accueil](/f
 écrite en toutes lettres.
 
 Le sélecteur lit son état dans l'URL : un lien peut donc ouvrir la page avec une situation déjà
-choisie, ce qui est pratique dans un ticket, un README ou une réponse de support :
+choisie, par exemple dans un ticket, un README ou une réponse de support :
 
 ```
 https://durable.rocks/fr/?fw=magento&be=temporal#install
@@ -515,11 +517,11 @@ https://durable.rocks/fr/?fw=magento&be=temporal#install
 
 `fw` est le framework (`none`, `symfony`, `laravel`, `sylius`, `apiplatform`, `magento`), `be`
 l'endroit où vit l'état (`memory`, `temporal`, `dbal`, `illuminate`), et `dist` la base sous une
-distribution (`none`, `symfony`, `laravel`). Chaque axe est facultatif. Une valeur que le sélecteur
-refuse (un framework qui n'est pas publié, un backend que l'appariement interdit) est **ignorée
-plutôt que forcée** : un vieux lien retombe sur le choix par défaut au lieu d'afficher une
-combinaison qui n'existe pas. Et choisir dans la page réécrit la barre d'adresse, donc le lien à
-partager est celui qu'on a déjà sous les yeux.
+distribution (`none`, `symfony`, `laravel`). Chaque axe est facultatif. Le sélecteur ignore une
+valeur qu'il ne peut pas appliquer (un framework qui n'est pas publié, un backend que l'appariement
+interdit) au lieu de la forcer : un vieux lien retombe sur le choix par défaut au lieu d'afficher
+une combinaison qui n'existe pas. Choisir dans la page réécrit la barre d'adresse : le lien à
+partager est donc celui que vous avez déjà dans la barre d'adresse.
 
 Chaque commande du tableau suppose que le projet accepte d'abord la ligne bêta :
 
@@ -540,35 +542,34 @@ composer config prefer-stable true
 | Sylius, une base SQL | `composer require gplanchat/durable-plugin gplanchat/durable-bridge-dbal` |
 | Sylius, un cluster Temporal | `composer require gplanchat/durable-plugin gplanchat/durable-bridge-temporal` |
 | Laravel, une base SQL | `composer require gplanchat/durable gplanchat/durable-bridge-illuminate` |
-| Magento, grappe Temporal | `composer require gplanchat/durable-magento gplanchat/durable-bridge-temporal` |
+| Magento, un cluster Temporal | `composer require gplanchat/durable-magento gplanchat/durable-bridge-temporal` |
 
 Chaque ligne ne nomme que l'intégration : le bundle tire la bibliothèque, et le plugin tire le
 bundle. Sans framework, vous nommez la bibliothèque vous-même, et vous câblez aussi les workers
 vous-même.
 
-La ligne Laravel nomme la bibliothèque plutôt qu'une intégration, et c'est désormais un *choix* et
-non un manque. `gplanchat/durable-laravel` existe : un service provider qui lie les quatre ports de
-stockage, des workflows déclarés dans `config/durable.php`, le travail sur la file que l'application
-draine déjà. Tant qu'il n'est pas tagué, le pont s'installe seul et vous le câblez vous-même ; la
-section ci-dessus dit ce que l'intégration vous retire des mains.
+La ligne Laravel nomme la bibliothèque plutôt qu'une intégration, et c'est désormais un *choix*, non
+plus un manque. `gplanchat/durable-laravel` existe : un service provider qui lie les quatre ports
+de stockage, des workflows déclarés dans `config/durable.php`, et le travail sur la file que
+l'application draine déjà. Tant qu'il n'est pas tagué, le pont s'installe seul et vous le câblez
+vous-même ; la section ci-dessus décrit ce que l'intégration fait à votre place.
 
 ---
 
-## Un seul code, un seul comportement
+## Le même comportement sur tous les backends {#un-seul-code-un-seul-comportement}
 
 Tous les backends font tourner le **même pilote à fibres** et le **même chemin d'exécution des
 activités**. Un workflow que vous avez testé en mémoire se comporte de la même façon contre DBAL ou
-contre Temporal : décompte des réessais, classification des échecs, annulation et compensation
-compris.
+contre Temporal, y compris pour le décompte des réessais, la classification des échecs,
+l'annulation et la compensation.
 
-Là où une capacité n'a réellement pas d'équivalent, le backend **échoue avec un message explicite**
-plutôt que de faire semblant. Les différences sont listées dans
-[Backends](../backends/#capability-matrix).
+Quand une capacité n'a pas d'équivalent sur un backend, ce backend **échoue avec un message
+explicite**. [Backends](../backends/#capability-matrix) liste les différences.
 
 ---
 
 ## Monorepo et publications
 
-Le développement se fait dans un seul dépôt, `gplanchat/durable-dev`. Chaque paquet est publié dans
-son propre dépôt en lecture seule par une scission, si bien qu'un `composer require` tire un petit
-paquet plutôt que tout l'arbre.
+Durable se développe dans un seul dépôt, `gplanchat/durable-dev`. Une scission publie chaque paquet
+dans son propre dépôt en lecture seule, si bien qu'un `composer require` tire un petit paquet plutôt
+que tout l'arbre.
