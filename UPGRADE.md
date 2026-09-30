@@ -344,6 +344,25 @@ Code that converts a history itself should build the converter with
 a converter built with `new` only knows the markers it has already seen, and reads a
 workflow-cancelled operation that was cancelled before its marker as `race_superseded`.
 
+### Laravel: activity handlers are declared in `activity_handlers` (#713)
+
+`config/durable.php` gains an `activity_handlers` key beside `workflows`. Each class listed there
+serves the contract its `#[AsActivityHandler]` names, or else every interface it implements whose
+methods carry `#[AsActivityMethod]`, under the activity names the contract carries. A handler is
+resolved from the container each time one of its activities runs: bind it as a singleton to share
+one instance across a worker's tasks. A class that does not exist, that
+serves no activity, or that lacks a method of the contract it names is refused by name at boot.
+
+**What to do**: nothing, unless you registered activities by hand. Replace calls such as
+`$app->make(RegistryActivityExecutor::class)->register('greet.hello', ...)` with the handler class
+in the key:
+
+```php
+'activity_handlers' => [App\Activities\Greeter::class],
+```
+
+A direct `register()` still works and wins over a declared handler of the same name.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
