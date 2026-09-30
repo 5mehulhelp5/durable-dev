@@ -184,7 +184,8 @@ depuis un navigateur contournerait le verrou par exécution.
 
 Mettre des secondes à l'échelle d'une barre est une décision de présentation qui appartient à
 l'hôte, car il lui faut connaître la largeur de sa colonne, et une surface qui ne rend aucun balisage
-n'en a pas. Les mots sont les mêmes sur les quatre : Outcome, History, Execution et Backend run. Les autres différences sont des manques plutôt que des choix, et [Parité](parity/) les
+n'en a pas. Les mots sont les mêmes sur les quatre : Outcome, History et Execution, et Backend run sur les
+trois tableaux de bord. Les autres différences sont des manques plutôt que des choix, et [Parité](parity/) les
 liste.
 
 ## Voir aussi

@@ -17,8 +17,9 @@ cancelled or continued as new. Two cases need a second look.
 - **Continued as new** is a normal ending. The run handed over to a fresh execution and finished
   without error.
 - **Two ids.** On Temporal, the execution id is the one your application knows, and the run id
-  identifies one attempt on the backend. Every surface labels the run id **Backend run**. Sylius and Filament print it beside the
-  execution id, and Magento gives it its own line.
+  identifies one attempt on the backend. The three dashboards label the run id **Backend run**.
+  Sylius and Filament print it beside the execution id, and Magento gives it its own line.
+  The profiler does not show it.
 
 A running run adds one line saying what it waits on, as of its last suspension:
 `waiting on timer "grace period" due at 2026-09-24T10:00:00+00:00`,

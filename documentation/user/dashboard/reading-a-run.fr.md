@@ -18,9 +18,10 @@ lecture.
 - **Poursuivie à neuf** est une fin normale. L'exécution a passé la main à une exécution neuve et
   s'est terminée sans erreur.
 - **Deux identifiants.** Sur Temporal, l'identifiant d'exécution est celui que votre application
-  connaît, et l'identifiant de run désigne une tentative côté backend. Chaque surface intitule l'identifiant
-  de run **Backend run** (`Exécution côté backend` sous Sylius et Filament). Sylius et Filament
-  l'affichent à côté du premier, et Magento lui donne sa propre ligne.
+  connaît, et l'identifiant de run désigne une tentative côté backend. Les trois tableaux de bord intitulent
+  l'identifiant de run **Backend run** (`Exécution côté backend` sous Sylius et Filament).
+  Sylius et Filament l'affichent à côté du premier, et Magento lui donne sa propre ligne. Le
+  profileur ne l'affiche pas.
 
 Une exécution en cours ajoute une ligne qui dit ce qu'elle attend, à sa dernière suspension :
 `waiting on timer "grace period" due at 2026-09-24T10:00:00+00:00`,

@@ -39,7 +39,7 @@ français, Magento et le profileur web en anglais.
 | Intitulé de l'issue | `Outcome` | `Issue` |
 | Intitulé de l'historique enregistré | `History` | `Historique` |
 | Intitulé de l'identifiant | `Execution` | `Exécution` |
-| Intitulé de l'identifiant propre au backend | `Backend run` | `Exécution côté backend` |
+| Intitulé de l'identifiant propre au backend | `Backend run`, sur les trois tableaux de bord | `Exécution côté backend` |
 | Valeur de l'issue | `Running`, `Completed`, `Failed`, `Cancelled`, `Continued as new` | `En cours`, `Terminée`, `En échec`, `Annulée`, `Poursuivie à neuf` |
 
 Trois éléments restent propres à une surface :
@@ -50,6 +50,7 @@ Trois éléments restent propres à une surface :
   exécution sur la requête : `Queued (no journal yet)`, `Pending` et `Cancellation requested`.
 - La carte de l'exécution sous Sylius s'intitule `Run details` (`Détail de l'exécution`), et son
   intitulé `History` (`Historique`) se trouve au-dessus de la frise.
+- Le profileur n'affiche aucun identifiant de run côté backend.
 
 ## Les comportements à connaître
 
