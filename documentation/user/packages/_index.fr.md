@@ -5,10 +5,12 @@ weight: 5
 
 # Paquets
 
-Durable, c'est un cœur, une intégration de framework facultative, et un choix de backend. Vous
-prenez ce dont vous avez besoin : la bibliothèque seule suffit à écrire et à tester unitairement un
-workflow, et rien de ce qui se pose au-dessus ne change le code du workflow, seulement l'endroit où
-l'exécution est enregistrée.
+Durable se compose d'une bibliothèque centrale, d'une intégration de framework facultative et d'un
+backend à choisir. Le backend est l'endroit où vit le journal d'une exécution et ce qui planifie son
+travail ; le journal est la suite d'événements, en ajout seul, qui enregistre chaque étape d'une
+exécution (voir le [glossaire](../glossary/)). Installez ce dont vous avez besoin : la bibliothèque
+seule suffit pour écrire un workflow et le tester unitairement, et les paquets qui s'ajoutent
+au-dessus changent seulement l'endroit où l'exécution est enregistrée, jamais le code du workflow.
 
 | Paquet | Apporte | Exige |
 |---|---|---|
@@ -24,20 +26,23 @@ l'exécution est enregistrée.
 | `gplanchat/durable-phpstan` | l'analyse statique des appels de stub face à leur contrat | la bibliothèque, `phpstan/phpstan` |
 | `gplanchat/durable-rector` | la migration automatisée depuis le SDK PHP de Temporal | la bibliothèque, `rector/rector` |
 
-Les trois ponts sont des **alternatives**, pas des couches : vous prenez Temporal, DBAL ou
-Illuminate, jamais deux d'entre eux.
+Un workflow est la classe PHP qui décrit les étapes d'une exécution, et une activité est une unité
+d'effet de bord qu'un workflow appelle, comme un appel HTTP ou une écriture en base.
 
-Les deux derniers sont des **outils de développement**, en `require-dev` plutôt qu'en `require` :
+Les trois ponts sont des **alternatives** : vous installez Temporal, DBAL ou Illuminate, jamais deux
+d'entre eux.
+
+Les deux derniers paquets sont des **outils de développement** et se placent en `require-dev` :
 
 - **`gplanchat/durable-phpstan`** résout les appels d'`activityStub()` et de `childWorkflowStub()`
-  face à l'interface de contrat : une activité mal nommée ou un mauvais argument devient une erreur
-  d'analyse au lieu d'un échec de sérialisation à l'exécution. Il vérifie aussi qu'un
+  face à l'interface de contrat. Une activité mal nommée ou un mauvais argument apparaît alors comme
+  une erreur d'analyse, au lieu d'un échec de sérialisation à l'exécution. Il vérifie aussi qu'un
   [paramètre `#[Activities]`](../workflows/#arguments-durable-supplies) et son docblock
   `@param ActivityStub<Contrat>` nomment le même contrat.
-- **`gplanchat/durable-rector`** migre un projet depuis le SDK PHP officiel de Temporal : la
-  réécriture des attributs et le changement de modèle d'exécution, en gardant les noms de type de
-  workflow et d'activité qu'un serveur en cours d'exécution connaît déjà. Ce qu'il ne sait pas
-  convertir, il le commente, pour que vous le sachiez avant de commencer. Voir
+- **`gplanchat/durable-rector`** migre un projet depuis le SDK PHP officiel de Temporal. Il réécrit
+  les attributs et change le modèle d'exécution, en conservant les noms de type de workflow et
+  d'activité qu'un serveur en cours d'exécution a déjà enregistrés. Il pose un commentaire sur
+  chaque construction qu'il ne peut pas convertir, pour que vous les voyiez avant de commencer. Voir
   [la page de comparaison](../comparison/#choisir).
 
 ---
@@ -50,22 +55,22 @@ composer config prefer-stable true
 composer require gplanchat/durable
 ```
 
-Le moteur et tout le domaine : `WorkflowEnvironment`, activités, minuteurs, effets de bord, signaux,
-requêtes, mises à jour, workflows enfants, journal d'événements, et les objets valeur qui décrivent
-les options de planification.
+La bibliothèque contient le moteur et tout le domaine : `WorkflowEnvironment`, activités,
+minuteurs, effets de bord, signaux, requêtes, mises à jour, workflows enfants, journal
+d'événements, et les objets valeur qui décrivent les options de planification.
 
-Une seule dépendance d'exécution, `psr/cache`, et ce pool est lui-même facultatif : il mémorise la
-résolution des contrats d'activité, et `ActivityContractResolver` fonctionne sans. **Aucun
-framework.** Vous pouvez piloter la bibliothèque depuis un simple script PHP, une application
-Laminas, un outil en ligne de commande, ou un test.
+Elle a une seule dépendance d'exécution, `psr/cache`, et le pool de cache lui-même est facultatif :
+il mémorise la résolution des contrats d'activité, et `ActivityContractResolver` fonctionne sans.
+La bibliothèque n'exige **aucun framework**. Vous pouvez la piloter depuis un simple script PHP, une
+application Laminas, un outil en ligne de commande ou un test.
 
-Elle embarque un **backend en mémoire** qui fait tout tourner dans un seul processus. C'est ce
-qu'emploient vos tests unitaires, et cela ne demande rien à installer.
+Elle inclut un **backend en mémoire** qui fait tout tourner dans un seul processus. Vos tests
+unitaires l'utilisent, et il ne demande rien d'autre à installer.
 
 > [!NOTE]
-> Le backend en mémoire ne garde aucun état d'un processus à l'autre. Il est fait pour les tests et
-> l'exploration locale, pas pour un workflow qui doit survivre à un déploiement. Voir
-> [Backends](../backends/).
+> Le backend en mémoire ne garde aucun état d'un processus à l'autre. Utilisez-le pour les tests et
+> l'exploration locale ; un workflow qui doit survivre à un déploiement a besoin d'un autre backend.
+> Voir [Backends](../backends/).
 
 ---
 
@@ -77,23 +82,22 @@ composer config prefer-stable true
 composer require gplanchat/durable-bundle
 ```
 
-Ce qu'il fait, et que vous écririez autrement à la main :
+Le bundle prend en charge ce que vous écririez sinon à la main :
 
-- **L'autoconfiguration.** Les classes portant `#[AsWorkflow]` ou `#[AsActivityHandler]`
-  s'enregistrent seules ; vous ne les listez pas dans un fichier de conteneur, et vous ne les
-  balisez pas non plus. `#[AsActivity]` est un attribut de nommage posé sur le contrat, pas
-  d'enregistrement.
-- **Le câblage Messenger.** Reprises de workflow et envois d'activité sont routés vers les transports
-  que vous nommez dans `durable.yaml`, si bien qu'un workflow qui se suspend reprend par vos files
-  existantes.
+- **L'autoconfiguration.** Le bundle enregistre chaque classe qui porte `#[AsWorkflow]` ou
+  `#[AsActivityHandler]`. Vous ne listez ces classes dans aucun fichier de conteneur, et vous ne les
+  balisez pas. `#[AsActivity]` nomme le contrat et n'enregistre rien.
+- **Le câblage Messenger.** Les reprises de workflow et les envois d'activité partent vers les
+  transports que vous nommez dans `durable.yaml` : un workflow qui se suspend reprend donc par vos
+  files existantes.
 - **Une commande de console.** `durable:execution:diagnose <executionId>` affiche ce que le moteur
   détient d'une exécution : ses métadonnées de workflow, ses liens parent/enfant et son journal
-  d'événements. Il n'y a pas de commande de worker à ajouter : le worker, c'est le
-  `messenger:consume` de Messenger sur les transports ci-dessus.
-- **Le panneau du profileur.** Dans la barre d'outils Symfony : chaque exécution, son journal, et la
-  chronologie de ses activités, avec quelle tentative a échoué, et pourquoi.
+  d'événements. Le bundle n'ajoute aucune commande de worker ; le worker est le `messenger:consume`
+  de Messenger sur les transports ci-dessus.
+- **Le panneau du profileur.** Dans la barre d'outils Symfony, le panneau montre chaque exécution,
+  son journal et la chronologie de ses activités, avec la tentative qui a échoué et la raison.
 
-La configuration tient en un fichier, documenté clé par clé dans la
+Toute la configuration tient dans un fichier, documenté clé par clé dans la
 [référence de configuration](../configuration/).
 
 ---
@@ -106,11 +110,11 @@ composer config prefer-stable true
 composer require gplanchat/durable-bridge-temporal
 ```
 
-Parle à un cluster Temporal **directement en gRPC**. Il n'y a pas de SDK PHP officiel de Temporal
-dans l'arbre de dépendances, et pas de RoadRunner : les définitions protobuf sont embarquées et les
+Le pont parle à un cluster Temporal **directement en gRPC**. L'arbre de dépendances ne contient ni
+le SDK PHP officiel de Temporal ni RoadRunner : les définitions protobuf sont embarquées et les
 workers sont de simples processus PHP.
 
-Ce qu'il apporte par rapport au backend en mémoire :
+Par rapport au backend en mémoire, il apporte :
 
 - des exécutions qui survivent aux redémarrages de processus, aux déploiements et aux plantages ;
 - des politiques de réessai côté serveur : une activité en échec est réessayée même si le worker a
@@ -120,16 +124,17 @@ Ce qu'il apporte par rapport au backend en mémoire :
 - un stockage d'événements en lecture traversante, pour que le profileur montre l'historique d'une
   vraie exécution.
 
-Il exige `ext-grpc` et un cluster joignable. En local, une commande suffit :
+Il exige `ext-grpc` et un cluster joignable. En local, une commande démarre un serveur de
+développement :
 
 ```bash
 temporal server start-dev --namespace durable-test --port 7233
 ```
 
 > [!NOTE]
-> Planifications cron et attributs de recherche sont des capacités de Temporal. Ils n'ont pas
-> d'équivalent en processus, et le backend en mémoire les refuse explicitement plutôt que de les
-> ignorer en silence.
+> Les planifications cron et les attributs de recherche sont des capacités de Temporal sans
+> équivalent en processus. Le backend en mémoire les rejette avec une erreur explicite au lieu de
+> les ignorer en silence.
 
 ---
 
@@ -141,23 +146,26 @@ composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal
 ```
 
-L'exécution durable sur **une seule base SQL**, sans cluster d'orchestration et sans `ext-grpc`. La
-décision qui la porte est [**DUR030**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR030-dbal-backend-simplified-durable-execution.md).
+Le pont fournit l'exécution durable sur **une seule base SQL**, sans cluster d'orchestration et sans
+`ext-grpc`. [**DUR030**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR030-dbal-backend-simplified-durable-execution.md)
+consigne la décision qui le fonde.
 
-L'interpréteur de rejeu, les ports de workflow et le tampon de commandes sont intacts : ce pont ne
-fait que rendre persistants les trois stockages locaux au processus : le journal d'événements, les
+Le pont laisse intacts l'interpréteur de rejeu, les ports de workflow et le tampon de commandes. Le
+rejeu est la façon dont une exécution reprend : le code du workflow tourne à nouveau depuis sa
+première ligne, et chaque étape enregistrée renvoie son résultat depuis le journal. Le pont rend
+seulement persistants trois stockages locaux au processus : le journal d'événements, les
 métadonnées de workflow, et les liens parents des workflows enfants. Le code de workflows et
 d'activités est octet pour octet celui qui tourne sur Temporal ou en mémoire.
 
-| Conservé | Abandonné, face à Temporal |
+| Conservé | Abandonné par rapport à Temporal |
 |---|---|
 | Classes de workflow, activités, `WorkflowEnvironment` | Les files de tâches distribuées ; les reprises passent par Symfony Messenger |
 | Signaux, requêtes, mises à jour | La planification côté serveur ; les minuteurs passent par le `DelayStamp` de Messenger |
 | La sémantique d'annulation et de compensation | La sérialisation des tâches côté serveur, remplacée par un verrou applicatif |
 | Le déterminisme du rejeu et le journal d'événements | La rétention d'historique, l'API de visibilité, l'interface Temporal |
 
-À choisir quand la durabilité compte et qu'opérer un cluster ne compte pas : une base que vous
-sauvegardez déjà, une migration, et aucune extension à compiler.
+Choisissez-le quand vous avez besoin de durabilité sans opérer de cluster. Il demande une base que
+vous sauvegardez déjà, une migration, et aucune extension à compiler.
 
 ---
 
@@ -170,37 +178,36 @@ composer require gplanchat/durable gplanchat/durable-bridge-illuminate
 php artisan migrate
 ```
 
-Les mêmes quatre stockages que le pont DBAL, et le même échange face à Temporal ; le tableau
-ci-dessus s'applique mot pour mot. Ce qui change, c'est la connexion : ceux-ci sont écrits contre
-`Illuminate\Database\Connection`, le constructeur de requêtes plutôt qu'Eloquent.
+Ce pont fournit les mêmes quatre stockages que le pont DBAL, avec les mêmes compromis face à
+Temporal : le tableau ci-dessus s'applique mot pour mot. La connexion change. Ces stockages
+utilisent `Illuminate\Database\Connection` et son constructeur de requêtes, pas Eloquent.
 
-Donnez aux stockages une connexion à eux dans `config/database.php`, pas la connexion par défaut de
-l'application (DUR054). Sur une connexion partagée, les transactions propres à Durable s'imbriquent
-dans celles de l'application : un rollback métier efface des événements du journal, et une prise de
-main reste invisible aux autres workers tant que le code métier n'a pas validé. Une activité qui
-écrit puis meurt se traite en la rendant idempotente, jamais par une transaction partagée avec le
-code métier.
+Donnez aux stockages leur propre connexion dans `config/database.php`, distincte de la connexion par
+défaut de l'application (DUR054). Sur une connexion partagée, les transactions propres à Durable
+s'imbriquent dans celles de l'application : un rollback métier efface des événements du journal, et
+une prise de main reste invisible aux autres workers tant que le code métier n'a pas validé. Pour
+traiter une activité qui écrit puis meurt, rendez l'activité idempotente. Ne partagez jamais une
+transaction avec le code métier à cette fin.
 
-Les quatre tables sont livrées en migration, chargée depuis le paquet : `migrate` suffit.
-`vendor:publish --tag=durable-migrations` sert à les modifier, et à partir de là, elles sont à
-vous. **Gardez le nom du fichier publié** : Laravel indexe les migrations par
-leur nom de base et fait gagner `database/migrations` en cas d'égalité, et c'est ce qui fait que
-votre copie est celle qui tourne. Renommez-la et les deux tournent, la seconde échouant sur une
-table qui existe déjà.
+Les quatre tables sont livrées en migration, chargée directement depuis le paquet : `migrate`
+suffit. Pour les modifier, publiez-les avec `vendor:publish --tag=durable-migrations` ; à partir de
+là, vous maintenez la copie publiée. **Gardez le nom du fichier publié.** Laravel indexe les
+migrations par leur nom de base et donne la priorité à `database/migrations` quand deux noms
+coïncident, ce qui fait de votre copie celle qui s'exécute. Si vous la renommez, les deux migrations
+s'exécutent, et la seconde échoue sur une table qui existe déjà.
 
-`Queue\ResumeLock` est la seule chose qu'aucun choix de stockage ne fournit. Deux workers qui
-reprennent la **même** exécution la rejouent tous les deux, chacun croit découvrir les commandes
-qu'elle produit, et ces commandes partent en double ; le journal ne l'empêche pas, il enregistre
-fidèlement ce qu'on lui donne, deux fois comprises. Il prend une fermeture : un job en file, une
-commande artisan ou un worker écrit à la main peuvent tous s'en servir.
+`Queue\ResumeLock` couvre ce qu'aucun choix de stockage ne fournit. Quand deux workers reprennent la
+**même** exécution, tous deux la rejouent, tous deux traitent les commandes qu'elle produit comme
+nouvelles, et ces commandes partent en double. Le journal ne l'empêche pas, car il enregistre tout
+ce qu'il reçoit, doublons compris. `ResumeLock` prend une fermeture : un job en file, une commande
+artisan ou un worker écrit à la main peuvent tous s'en servir.
 
 > [!NOTE]
-> **Ce pont est la moitié stockage, pas un câblage.** Rien ici ne lie les ports, et il n'y a ni
-> commande de worker ni job : `DurableIlluminateServiceProvider` enregistre exactement une chose :
-> où sont ses migrations. Ce qui le lie, c'est
-> [`gplanchat/durable-laravel`](#gplanchatdurable-laravel--lintégration-laravel), la section
-> ci-dessous. Le pont seul, et vous câblez les stockages vous-même, comme le fait une application
-> sans framework.
+> **Ce pont fournit seulement le stockage.** Il ne lie aucun port et ne livre ni commande de worker
+> ni job ; `DurableIlluminateServiceProvider` enregistre seulement l'emplacement des migrations.
+> [`gplanchat/durable-laravel`](#gplanchatdurable-laravel--lintégration-laravel), décrit dans la
+> section suivante, lie les stockages. Si vous installez le pont seul, vous câblez les stockages
+> vous-même, comme le fait une application sans framework.
 
 ---
 
