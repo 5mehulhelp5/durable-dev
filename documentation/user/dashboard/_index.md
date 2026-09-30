@@ -174,8 +174,7 @@ order went through, not to restart it by hand. Resuming an execution from a brow
 per-execution lock.
 
 Scaling seconds into a bar width is one presentation decision a host owns, because it needs to know
-how wide its column is, and a surface that renders no markup has none. The other differences are
-gaps rather than choices, and [Parity](parity/) lists them.
+how wide its column is, and a surface that renders no markup has none. The words are the same on all four: Outcome, History, Execution and Backend run. The other differences are gaps rather than choices, and [Parity](parity/) lists them.
 
 ## See also
 

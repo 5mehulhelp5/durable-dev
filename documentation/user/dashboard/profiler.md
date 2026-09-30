@@ -18,7 +18,7 @@ filters.
 1. Load a page of your application that dispatches a workflow, with the debug toolbar enabled.
 2. Click the Durable item of the toolbar. It shows the number of dispatches and of journal events
    collected on the request.
-3. Read the **Summary** tab first: one row per execution, with its workflow id, type, status and
+3. Read the **Summary** tab first: one row per execution, with its execution id, type, outcome and
    number of events.
 
 The **Executions** tab opens each execution: its event history, its Nexus operations, its journal
@@ -47,8 +47,9 @@ queued: with an asynchronous transport, the handler has not run in this process.
 
 ## What differs from the dashboard
 
-- **Wording.** The status column reads Finished, Queued (no journal yet), Pending, Cancellation requested or
-  Continue as new, and the panel is in English only.
+- **Wording.** The outcome column uses the words of the other dashboards, and adds three states that
+  are not outcomes: Queued (no journal yet), Pending and Cancellation requested. The panel is in
+  English only.
 - **Timeline.** One row per event, in journal order. Queue time is not hatched and a failed event
   is not painted red.
 - **Payloads.** They are masked like the dashboard's, and always shown open.
