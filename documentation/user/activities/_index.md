@@ -10,7 +10,7 @@ This page summarizes how you **author** activities in Durable. Normative detail 
 ## Two pieces
 
 1. **Activity contract interface.** Methods the workflow may call, each marked with **`#[AsActivityMethod]`**. From the workflow you interact through **`ActivityStub`** (**ActivityInvoker** in ADRs).
-2. **Activity implementation class.** A concrete class carrying **`#[AsActivityHandler]`**, naming the contract it implements. That attribute is what registers the class: the bundle autoconfigures it, and without it the workflow finds no handler at run time.
+2. **Activity implementation class.** A concrete class carrying **`#[AsActivityHandler]`**, naming the contract it implements. On Symfony, that attribute is what registers the class: the bundle autoconfigures it, and without it the workflow finds no handler at run time. On Laravel, the class's entry in `activity_handlers` (`config/durable.php`) registers it; the attribute, if present, only names the contract it serves.
 
 ## Example: activity contract and implementation
 

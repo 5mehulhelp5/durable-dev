@@ -358,7 +358,7 @@ synchronous bus. With the Temporal backend the transport is a **gRPC-backed poll
 the same consumer interface, a different underlying protocol.
 
 **Laravel** uses the **queue the application already drains**. Activities and resumes are jobs, a timer
-is a deferred resume on the queue's own delay, and `php artisan queue:work` is the only worker.
+is a deferred timer-firing job on the queue's own delay, and `php artisan queue:work` is the only worker.
 
 **Magento** uses neither. Workers are `bin/magento durable:worker --role=journal|activity` commands
 that poll the backend directly; nothing rides Magento's own `MessageQueue`, because on Temporal an

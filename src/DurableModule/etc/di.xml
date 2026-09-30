@@ -52,6 +52,12 @@
             <argument name="logger" xsi:type="object">Psr\Log\LoggerInterface</argument>
             <argument name="activityHandlers" xsi:type="array">
             </argument>
+            <!-- Nexus handlers (#668): one object per handler, its contract named by
+                 #[AsNexusServiceHandler] on the class; the operations it has no method for come
+                 from a workflowClasses entry carrying #[FulfilsNexusOperation]. Served by
+                 the nexus role of bin/magento durable:worker. -->
+            <argument name="nexusHandlers" xsi:type="array">
+            </argument>
         </arguments>
     </type>
 

@@ -10,7 +10,7 @@ Cette page résume comment on **écrit** des activités en Durable. Le détail n
 ## Deux pièces
 
 1. **L'interface de contrat d'activité.** Les méthodes que le workflow a le droit d'appeler, chacune marquée d'un **`#[AsActivityMethod]`**. Depuis le workflow, on passe par un **`ActivityStub`** (**ActivityInvoker** dans les ADR).
-2. **La classe d'implémentation.** Une classe concrète portant **`#[AsActivityHandler]`**, qui nomme le contrat qu'elle implémente. C'est cet attribut qui l'enregistre : le bundle l'autoconfigure, et sans lui le workflow ne trouve aucun gestionnaire à l'exécution.
+2. **La classe d'implémentation.** Une classe concrète portant **`#[AsActivityHandler]`**, qui nomme le contrat qu'elle implémente. Sous Symfony, c'est cet attribut qui l'enregistre : le bundle l'autoconfigure, et sans lui le workflow ne trouve aucun gestionnaire à l'exécution. Sous Laravel, c'est l'entrée de la classe dans `activity_handlers` (`config/durable.php`) qui l'enregistre ; l'attribut, s'il est présent, nomme seulement le contrat qu'elle sert.
 
 ## Exemple : contrat et implémentation
 

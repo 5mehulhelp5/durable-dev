@@ -90,7 +90,7 @@ final class IlluminateWorkflowRunCatalogConformanceTest extends WorkflowRunCatal
     protected function pickUp(string $executionId): void
     {
         // What the resume handler does when a worker takes the run.
-        $this->catalog()->recordPickup($executionId);
+        $this->catalog()->recordPickup(ExecutionId::fromString($executionId));
     }
 
     protected function canTellAWait(): bool
@@ -100,7 +100,7 @@ final class IlluminateWorkflowRunCatalogConformanceTest extends WorkflowRunCatal
 
     protected function recordWait(string $executionId, ?string $waitingOn): void
     {
-        $this->catalog()->recordWait($executionId, $waitingOn);
+        $this->catalog()->recordWait(ExecutionId::fromString($executionId), $waitingOn);
     }
 
     private function journal(): ProjectingEventStore
