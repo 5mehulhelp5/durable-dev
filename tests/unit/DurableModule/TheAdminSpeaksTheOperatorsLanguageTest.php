@@ -26,7 +26,7 @@ final class TheAdminSpeaksTheOperatorsLanguageTest extends TestCase
     public function testNoVisibleStringBypassesTheTranslator(): void
     {
         $found = [];
-        foreach ($this->files(['Block', 'Ui'], 'php') as $file) {
+        foreach ($this->files(['Block', 'Controller', 'Ui'], 'php') as $file) {
             $found = [...$found, ...$this->untranslatedPhp($file)];
         }
         foreach ($this->files(['view/adminhtml/templates'], 'phtml') as $file) {
