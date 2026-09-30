@@ -108,12 +108,12 @@ table est écrite à la main ; Durable ne la fournit pas.
 
 **La couche anticorruption n'est pas fournie.** Vous l'écrivez vous-même, et la boutique en a désormais une.
 `OrderWorkflow` invoque un cas d'usage `PlaceOrder` à travers un port `Payments`, et
-`NexusPayments` est la seule classe de `sylius/` qui sache qu'une charge a un champ nommé
-`accepted`. Les trois bancs qui appellent sans cette couche montrent ce que coûte de s'en passer : `OrderNexusWorkflow`
+`NexusPayments` est la seule classe de `sylius/` qui lise le champ `accepted`
+d'une charge. Les trois bancs qui appellent sans cette couche montrent ce que coûte de s'en passer : `OrderNexusWorkflow`
 lit cinq charges par clé, dans le code qui décide. Les contrats portent des scalaires et des
 tableaux parce que le fil est du JSON nu, et il faut que quelque chose en fasse un modèle.
 
-**Rien ne maintient le noyau partagé petit.** `src/DurableDemoContracts/` est un petit noyau partagé, et ce qui le rend tenable est
+**Aucun mécanisme ne limite la taille du noyau partagé.** `src/DurableDemoContracts/` est un petit noyau partagé, et ce qui le rend tenable est
 une règle plutôt qu'un mécanisme : il porte des noms d'opération et des formes de charge, et aucun
 type de domaine de l'un ou l'autre côté.
 

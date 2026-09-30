@@ -102,12 +102,12 @@ not provide it.
 
 **No anti-corruption layer is provided.** You write it yourself, and the shop now has one. `OrderWorkflow`
 invokes a `PlaceOrder` use case through a `Payments` port, and `NexusPayments` is the only class in
-`sylius/` that knows a payload has a field called `accepted`. The three benches that call without
+`sylius/` that reads a payload's `accepted` field. The three benches that call without
 that layer show the cost of skipping it: `OrderNexusWorkflow` reads five payloads by key, in the code
 that decides. The contracts carry scalars and arrays because the wire is plain JSON, and something
 has to turn them into a model.
 
-**Nothing keeps the shared kernel small.** `src/DurableDemoContracts/` is a small shared kernel, and what keeps it defensible is a
+**No mechanism limits the size of the shared kernel.** `src/DurableDemoContracts/` is a small shared kernel, and what keeps it defensible is a
 rule rather than a mechanism: it carries operation names and payload shapes, and no domain type
 from either side.
 
