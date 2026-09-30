@@ -465,6 +465,17 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Dashboards: every event of the run carries the workflow's name (#850)
+
+On the house journal, the events of the run's own line (its end, its failure, its cancellation)
+now carry the workflow's name, as the follow-ups of an activity carry the activity's name. The
+phase says what happened. They used to carry the event class, such as `WorkflowExecutionFailed`.
+On Temporal, the memo the worker writes at each suspension (`WORKFLOW PROPERTIES MODIFIED`) joins
+the run's line instead of drawing a line of its own.
+
+**What to do:** nothing, unless a check of your own reads `WorkflowRunEvent::$label` and expects
+an event class there. Read `$phase` instead.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
