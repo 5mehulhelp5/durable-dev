@@ -123,7 +123,7 @@ $this->assertSame('world', $run->getResult('string'));
 
 The workflow never executes in the PHPUnit process. Activity mocks go through an out-of-process
 channel: the test writes the expectation on one side, and the worker reads it on the other. The
-setup is faithful, since it runs a real Temporal server, and it has no cheaper tier below it. To
+setup is faithful, since it runs a real Temporal server, but it has no cheaper tier below it. To
 assert that a `match` in your workflow picks the right branch, you pay for two binaries and a gRPC
 round trip.
 
@@ -492,8 +492,8 @@ and none for PHP.
 **Nexus support in the SDK is in progress.** An integration is open in a pull request
 ([#768](https://github.com/temporalio/sdk-php/pull/768)), following the issue that opened the
 subject ([#580](https://github.com/temporalio/sdk-php/issues/580)), and its maintainers have said
-that it is planned for an upcoming major. The lead described in this section is therefore measured
-in releases, and the SDK work may close it.
+that it is planned for an upcoming major. Read the lead described in this section as one measured
+in releases: the gap will not stay open.
 
 On the Durable side, integration tests against a real Temporal server exercise the caller path:
 round trips, cancellation and failure, operation bounds, and the naming rules for the endpoint,

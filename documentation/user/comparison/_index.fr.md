@@ -127,7 +127,7 @@ $this->assertSame('world', $run->getResult('string'));
 
 Le workflow ne s'exécute jamais dans le processus PHPUnit. Les doublures d'activité passent par un
 canal hors processus : le test écrit l'attente d'un côté, et le worker la lit de l'autre. Le
-dispositif est fidèle, puisqu'il fait tourner un vrai serveur Temporal, et il n'a aucun palier
+dispositif est fidèle, puisqu'il fait tourner un vrai serveur Temporal, mais il n'a aucun palier
 moins coûteux en dessous. Pour vérifier qu'un `match` de votre workflow prend la bonne branche,
 vous payez deux binaires et un aller-retour gRPC.
 
@@ -510,8 +510,8 @@ section Nexus pour Go, Java, Python, TypeScript et .NET, et aucune pour PHP.
 **Le support de Nexus est en cours dans le SDK.** Une intégration est ouverte en *pull request*
 ([#768](https://github.com/temporalio/sdk-php/pull/768)), après le ticket qui a ouvert le sujet
 ([#580](https://github.com/temporalio/sdk-php/issues/580)), et ses mainteneurs l'ont annoncée pour
-un prochain majeur. L'avance décrite dans cette section se mesure donc en versions, et le travail
-du SDK peut la refermer.
+un prochain majeur. Lisez l'avance décrite dans cette section comme une avance qui se mesure en
+versions : l'écart ne restera pas ouvert.
 
 Côté Durable, des tests d'intégration contre un vrai serveur Temporal éprouvent le chemin
 appelant : aller-retours, annulation et échec, bornes d'opération, et règles de nommage du point
