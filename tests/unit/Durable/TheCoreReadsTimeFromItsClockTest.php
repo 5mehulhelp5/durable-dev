@@ -45,7 +45,7 @@ final class TheCoreReadsTimeFromItsClockTest extends TestCase
     public function testTheInMemoryJournalStampsTheClocksInstant(): void
     {
         $store = new InMemoryEventStore(new FrozenClock(1_700_000_000.5));
-        $store->append(new WorkflowSignalReceived('exec-1', 'go', []));
+        $store->append(new WorkflowSignalReceived(ExecutionId::fromString('exec-1'), 'go', []));
 
         foreach ($store->readStreamWithRecordedAt(ExecutionId::fromString('exec-1')) as $row) {
             self::assertSame('1700000000.500000', $row['recordedAt']->format('U.u'));

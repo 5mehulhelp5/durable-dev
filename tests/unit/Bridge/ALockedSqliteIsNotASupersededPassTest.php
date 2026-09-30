@@ -66,7 +66,7 @@ final class ALockedSqliteIsNotASupersededPassTest extends TestCase
         $other->exec('BEGIN ' . $lock); // an unrelated writer holds the database
 
         try {
-            $store->appendFenced(new TimerCompleted('exec-1', 'timer-1'), $fence);
+            $store->appendFenced(new TimerCompleted(ExecutionId::fromString('exec-1'), 'timer-1'), $fence);
             self::fail('the database is locked');
         } catch (SupersededPassException) {
             self::fail('a lock is not a newer pass: the fence is still current');
@@ -90,7 +90,7 @@ final class ALockedSqliteIsNotASupersededPassTest extends TestCase
 
         try {
             $this->expectException(SupersededPassException::class);
-            $store->appendFenced(new TimerCompleted('exec-1', 'timer-1'), $older);
+            $store->appendFenced(new TimerCompleted(ExecutionId::fromString('exec-1'), 'timer-1'), $older);
         } finally {
             $other->exec('ROLLBACK');
         }

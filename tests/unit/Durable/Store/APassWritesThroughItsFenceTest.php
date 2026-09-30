@@ -31,7 +31,7 @@ final class APassWritesThroughItsFenceTest extends TestCase
 
         $this->expectException(SupersededPassException::class);
 
-        $older->append(new TimerCompleted('exec-1', 'timer-1'));
+        $older->append(new TimerCompleted(ExecutionId::fromString('exec-1'), 'timer-1'));
     }
 
     public function testAStoreThatCannotFenceIsHandedOverAsItIs(): void
@@ -59,7 +59,7 @@ final class APassWritesThroughItsFenceTest extends TestCase
         $store->claimPass(ExecutionId::fromString('exec-1'));
 
         try {
-            $store->appendFenced(new ExecutionCompleted('exec-1', null), $older);
+            $store->appendFenced(new ExecutionCompleted(ExecutionId::fromString('exec-1'), null), $older);
             self::fail('the older pass must be refused');
         } catch (SupersededPassException) {
         }
@@ -97,7 +97,7 @@ final class APassWritesThroughItsFenceTest extends TestCase
         self::assertInstanceOf(FencedEventStoreInterface::class, $store);
 
         $fence = $store->claimPass(ExecutionId::fromString('exec-1'));
-        $store->appendFenced(new TimerCompleted('exec-1', 'timer-1'), $fence);
+        $store->appendFenced(new TimerCompleted(ExecutionId::fromString('exec-1'), 'timer-1'), $fence);
 
         self::assertFalse($fence->fences());
         self::assertSame(1, $inner->appended);
