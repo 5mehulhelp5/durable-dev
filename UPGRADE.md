@@ -319,6 +319,7 @@ connection of its own, as the configuration examples show (**DUR054**).
 migrate: once `queue:work` restarts on the new code, a run stuck on a due timer wakes on its next
 resume, since the pass that suspends on the timer now queues the firing.
 
+
 ### New: a Magento module serves Nexus operations (#668)
 
 **Who is affected**: nobody has to change anything. A Magento module can now serve a Nexus contract:
