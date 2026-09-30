@@ -476,8 +476,9 @@ class RuntimeFactory
     private static function attributeOf(object $handler, string $attribute): ?\ReflectionAttribute
     {
         $class = new \ReflectionClass($handler);
-        if ($handler instanceof InterceptorInterface && false !== $class->getParentClass()) {
-            $class = $class->getParentClass();
+        $parent = $class->getParentClass();
+        if ($handler instanceof InterceptorInterface && false !== $parent) {
+            $class = $parent;
         }
 
         return $class->getAttributes($attribute)[0] ?? null;
