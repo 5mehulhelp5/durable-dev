@@ -169,6 +169,15 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringContainsString('Exécution côté backend run-1', $page);
     }
 
+    public function testTheGridBadgeOfARunIsSingularInFrench(): void
+    {
+        // The grid field is what a real Sylius install renders for each row.
+        $badge = $this->twig('fr')->render('@DurablePlugin/admin/grid/field/status.html.twig', ['data' => 'completed']);
+
+        self::assertStringContainsString('>TERMINÉE<', $badge);
+        self::assertStringNotContainsString('TERMINÉES', $badge);
+    }
+
     public function testAnOutcomeBadgeIsSingularInFrench(): void
     {
         // The plural label of a counter is wrong on the badge of a single run.

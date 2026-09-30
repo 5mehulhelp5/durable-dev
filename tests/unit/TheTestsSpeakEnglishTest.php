@@ -59,6 +59,8 @@ final class TheTestsSpeakEnglishTest extends TestCase
             'demandé' => 'same',
             'Opérations Nexus' => 'same',
             "'Exécution :'" => 'same',
+            "'>TERMINÉE<'" => 'same',
+            "'TERMINÉES'" => 'same',
             "'Exécution côté backend run-1'" => 'same',
             "'En cours', 'Terminée', 'En échec', 'Annulée', 'Poursuivie à neuf'" => 'same',
         ],
