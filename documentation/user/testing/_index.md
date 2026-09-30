@@ -5,7 +5,7 @@ weight: 40
 
 # Testing workflows
 
-Durable ships a **testing toolkit** for testing your workflows and activities with standard PHPUnit.
+Durable ships a **testing toolkit** for your workflows and activities, built on standard PHPUnit.
 A workflow describes the steps of an execution, and an activity is one of those steps that has a
 side effect, such as an HTTP call; see the [glossary](../glossary/). Pick the entry point that
 matches your tests, framework-agnostic or Symfony bundle integration:
@@ -254,7 +254,7 @@ when@test:
 
 ### Customising the transport list or drain timeout
 
-To change them, override the static properties before each test:
+To change the transport list or the drain timeout, override the static properties before each test:
 
 ```php
 protected function setUp(): void
@@ -350,15 +350,11 @@ The clock only moves when **nothing else can progress**. Advancing it earlier wo
 win every `any(activity, timer)` race that the activity was about to win. Because the clock waits,
 a race has the same outcome here as in production.
 
-Retry backoff uses real time, because a retry is queued on the transport instead of being recorded
-as a timer. Pass `initialInterval: Duration::zero()` to keep those tests fast.
-
 ---
 
 ## Stuck executions and endless retries in the in-memory runner {#two-traps-of-the-in-memory-runner}
 
-**An execution that cannot progress fails instead of hanging.** A workflow waiting on a signal that
-the test never delivers raises `WorkflowStuckException` instead of spinning.
+**A stuck execution fails.** A workflow waiting on a signal that the test never delivers raises `WorkflowStuckException`.
 
 **Attempts are unlimited by default.** An activity that always fails retries forever, so the runner
 enforces an overall budget. When the budget runs out, the runner reports which of the two situations
@@ -377,8 +373,9 @@ $env = WorkflowTestEnvironment::inMemory(
 );
 ```
 
-Retry backoff takes real time, so an activity configured with the default one-second interval makes
-the test wait. Pass `initialInterval: Duration::zero()` to keep tests fast.
+Retry backoff takes real time, because a retry is queued on the transport instead of being recorded
+as a timer, so an activity configured with the default one-second interval makes the test wait.
+Pass `initialInterval: Duration::zero()` to keep tests fast.
 
 ---
 
