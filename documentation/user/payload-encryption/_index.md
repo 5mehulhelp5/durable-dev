@@ -143,3 +143,112 @@ Every process that talks to the namespace needs the same codec in the same deplo
 workers, whatever starts or signals workflows, and the dashboard. A worker that cannot decode a
 task's history fails that task, and Temporal retries it; a dashboard shows a read failure. Neither
 shows ciphertext as if it were data.
+
+---
+
+## What stays in clear
+
+The codec transforms payloads. Some values Temporal needs are not payloads, and the server still
+sees them:
+
+- **workflow ids, and the `DurableExecutionId` search attribute**, which carry your execution id;
+- **workflow, activity, signal and update names**;
+- **failure messages and stack traces**, as in Temporal's own default;
+- **search attributes**, by design: the server must be able to index them.
+
+So **keep personal data out of execution ids**. `order-8f3c2a`, or a UUID, rather than
+`order-jane.doe@example.com`. The same goes for exception messages and search attributes.
+
+---
+
+## Wiring it
+
+The codec is a service of your application; Durable reads no key itself.
+
+**Symfony.** Name the service in `durable.temporal.payload_codec`. The keyring is an array, so
+declare its arguments; the key comes from Symfony secrets (`bin/console secrets:set
+DURABLE_CODEC_KEY_2026_09`) or the environment:
+
+```yaml
+services:
+    App\Temporal\SodiumPayloadCodec:
+        arguments:
+            $keys: { '2026-09': '%env(base64:DURABLE_CODEC_KEY_2026_09)%' }
+            $activeKeyId: '2026-09'
+
+durable:
+    temporal:
+        payload_codec: App\Temporal\SodiumPayloadCodec
+```
+
+**Laravel.** Bind the codec in a service provider and name the binding in `temporal.payload_codec`
+of `config/durable.php`. Read the key through `config()`, with `env()` in a config file only:
+
+```php
+// config/services.php: 'durable_codec' => ['keys' => ['2026-09' => env('DURABLE_CODEC_KEY_2026_09')], 'active' => '2026-09'],
+$this->app->singleton(SodiumPayloadCodec::class, fn () => new SodiumPayloadCodec(
+    array_map(base64_decode(...), config('services.durable_codec.keys')),
+    config('services.durable_codec.active'),
+));
+// config/durable.php, under 'temporal': 'payload_codec' => SodiumPayloadCodec::class,
+```
+
+**Magento.** Name the codec in the `codec` argument of `RuntimeFactory`, in your module's
+`di.xml`; the module declares it `null`, and Magento does not autowire it:
+
+```xml
+<type name="Gplanchat\DurableModule\Runtime\RuntimeFactory">
+    <arguments>
+        <argument name="codec" xsi:type="object">Vendor\Module\Temporal\PayloadCodec</argument>
+    </arguments>
+</type>
+```
+
+The keys live in `env.php`, under `'durable' => ['codec' => ['active' => '2026-09', 'keys' =>
+['2026-09' => '<base64>']]]`. A small class reads them through `DeploymentConfig`, on first use
+rather than in its constructor:
+
+```php
+final class PayloadCodec implements PayloadCodecInterface
+{
+    private ?SodiumPayloadCodec $codec = null;
+
+    public function __construct(private readonly DeploymentConfig $config) {}
+
+    public function encode(Payload $payload): Payload { return $this->codec()->encode($payload); }
+
+    public function decode(Payload $payload): Payload { return $this->codec()->decode($payload); }
+
+    private function codec(): SodiumPayloadCodec
+    {
+        return $this->codec ??= new SodiumPayloadCodec(
+            array_map(base64_decode(...), (array) $this->config->get('durable/codec/keys')),
+            (string) $this->config->get('durable/codec/active'),
+        );
+    }
+}
+```
+
+---
+
+## Nexus peers share the codec
+
+Nexus payloads are encoded like the rest. An application that calls an operation served by another
+application must use the same codec, with the same keys, as that application; so must the
+application that serves it. A peer written with another SDK implements the wire format above as
+its own codec. See [Nexus operations](../nexus/).
+
+## The Temporal Web UI shows ciphertext
+
+The Web UI and `temporal workflow show` read history from the server, so they show
+`binary/encrypted` payloads. Temporal's answer is a *codec server* the UI calls to decode;
+Durable does not provide one. Durable's own dashboards go through the codec and show decoded
+values, masked by the payload redactor as before.
+
+---
+
+## See also
+
+- [Backends](../backends/) sets up the Temporal backend the codec applies to.
+- [Configuration](../configuration/) lists every key of `durable.temporal`.
+- [DUR055](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR055-a-payload-codec-at-the-client-boundary.md) records the decision and what it leaves in clear.
