@@ -19,10 +19,10 @@ processes > Process history** on the role's resources.
 - **The backend state**, dated, and one line per worker role (journal and activity) when Temporal
   holds the [journal](../../glossary/) (the recorded steps of an execution and their results).
 - **Counters** per outcome, over the 200 most recent runs, whatever the grid filters say.
-- **The standard admin grid**: paging (20 by default), column controls, and filters on status,
+- **The standard admin grid**: paging (20 by default), column controls, and filters on outcome,
   workflow name, execution id and backend run id. The text filters look for the text anywhere in the value, among the runs of the window. The workflow name filter ignores case; the two id filters match the text as typed. A notice states the window when it is full.
-- **A run page**, opened from a row: the run, its backend run, status, start and end dates,
-  what it waits on, its Nexus operations, a timeline and a **Journal** table with one line per
+- **A run page**, opened from a row: the execution, its backend run, outcome, start and end dates,
+  what it waits on, its Nexus operations, a **History** timeline and a **Journal** table with one line per
   event (kind, phase, action, what happened). See [Read a run](../reading-a-run/).
 
 ## What it does not show

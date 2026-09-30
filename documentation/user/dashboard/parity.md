@@ -31,12 +31,23 @@ when a gap closes.
 
 ## Words on screen
 
-| | Sylius | Magento | Filament | Web profiler |
-| --- | --- | --- | --- | --- |
-| Heading for the outcome | Outcome | Status | Outcome | Status |
-| Heading for the recorded history | Run details | Timeline, Journal | History | Event history |
-| Heading for the run id | Execution | Execution, Run | Execution | Workflow ID |
-| Outcome value | Translated, upper case | Enum value on the run page, first letter capitalised in the grid | Translated | Own vocabulary: Finished, Queued (no journal yet), Pending, Cancellation requested, Continue as new |
+The four surfaces use the same words.
+
+| | Word on every surface |
+| --- | --- |
+| Heading for the outcome | Outcome |
+| Heading for the recorded history | History |
+| Heading for the run id | Execution |
+| Heading for the backend's own run id | Backend run, on the three dashboards |
+| Outcome value | Running, Completed, Failed, Cancelled, Continued as new |
+
+Three things stay specific to a surface:
+
+- The Magento run page keeps a **Journal** table under History, one line per event.
+- The profiler adds three states that are not outcomes, since they say where a run stands on the
+  request: Queued (no journal yet), Pending and Cancellation requested.
+- The Sylius run card is titled **Run details**, and its History heading sits above the timeline.
+- The profiler shows no backend run id.
 
 ## Behaviours worth knowing
 

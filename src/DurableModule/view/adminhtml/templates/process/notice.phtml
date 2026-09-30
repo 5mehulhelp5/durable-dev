@@ -77,7 +77,8 @@ $health = $block->getHealth();
         <table class="admin__table-secondary">
             <tr>
                 <?php foreach ($counters as $outcome => $count): ?>
-                    <th><?= $escaper->escapeHtml(ucfirst(str_replace('_', ' ', (string) $outcome))) ?></th>
+                    <?php $status = \Gplanchat\Durable\Observation\WorkflowRunStatus::tryFrom((string) $outcome); ?>
+                    <th><?= $escaper->escapeHtml($status !== null ? \Gplanchat\DurableModule\Ui\OutcomeLabel::of($status) : __('Total')) ?></th>
                 <?php endforeach; ?>
             </tr>
             <tr>

@@ -42,7 +42,7 @@ return [
         'not_found' => 'Aucune exécution de cet identifiant sur ce backend.',
         'workflow' => 'Workflow',
         'execution' => 'Exécution',
-        'backend_run' => 'exécution :id côté serveur',
+        'backend_run' => 'Exécution côté backend :id',
         'outcome' => 'Issue',
         'history' => 'Historique',
         'no_history' => 'Aucun historique enregistré pour cette exécution.',

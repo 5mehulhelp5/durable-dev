@@ -31,15 +31,26 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 
 ## Les mots à l'écran
 
-Sylius et Filament affichent leurs libellés en anglais ou en français ; la traduction française
-suit le libellé anglais dans chaque case.
+Les quatre surfaces emploient les mêmes mots. Sylius et Filament les affichent en anglais ou en
+français, Magento et le profileur web en anglais.
 
-| | Sylius | Magento | Filament | Profileur web |
-| --- | --- | --- | --- | --- |
-| Intitulé de l'issue | `Outcome` (`Issue`) | `Status` | `Outcome` (`Issue`) | `Status` |
-| Intitulé de l'historique enregistré | `Run details` (`Détail de l'exécution`) | `Timeline`, `Journal` | `History` (`Historique`) | `Event history` |
-| Intitulé de l'identifiant | `Execution` (`Exécution`) | `Execution`, `Run` | `Execution` (`Exécution`) | `Workflow ID` |
-| Valeur de l'issue | Traduite, en capitales | Valeur de l'énumération sur la page de l'exécution, première lettre en capitale dans la grille | Traduite | Vocabulaire propre : `Finished`, `Queued (no journal yet)`, `Pending`, `Cancellation requested`, `Continue as new` |
+| | Mot commun | Français, sous Sylius et Filament |
+| --- | --- | --- |
+| Intitulé de l'issue | `Outcome` | `Issue` |
+| Intitulé de l'historique enregistré | `History` | `Historique` |
+| Intitulé de l'identifiant | `Execution` | `Exécution` |
+| Intitulé de l'identifiant propre au backend | `Backend run`, sur les trois tableaux de bord | `Exécution côté backend` |
+| Valeur de l'issue | `Running`, `Completed`, `Failed`, `Cancelled`, `Continued as new` | `En cours`, `Terminée`, `En échec`, `Annulée`, `Poursuivie à neuf` |
+
+Trois éléments restent propres à une surface :
+
+- La page d'une exécution sous Magento garde un tableau **Journal** sous `History`, une ligne par
+  événement.
+- Le profileur ajoute trois états qui ne sont pas des issues, puisqu'ils disent où en est une
+  exécution sur la requête : `Queued (no journal yet)`, `Pending` et `Cancellation requested`.
+- La carte de l'exécution sous Sylius s'intitule `Run details` (`Détail de l'exécution`), et son
+  intitulé `History` (`Historique`) se trouve au-dessus de la frise.
+- Le profileur n'affiche aucun identifiant de run côté backend.
 
 ## Les comportements à connaître
 
@@ -51,7 +62,7 @@ suit le libellé anglais dans chaque case.
 - **Cases vides.** La grille Sylius laisse la date de début vide quand une exécution n'en a pas, et
   la colonne Notes de Filament laisse vide une note vide. Magento et le profileur affichent un
   tiret.
-- **Poursuivie sous un nouveau nom.** Gris sous Sylius et Filament, violet dans le profileur, sans
+- **Poursuivie à neuf.** Gris sous Sylius et Filament, violet dans le profileur, sans
   couleur sous Magento.
 - **Profileur.** Seules apparaissent les exécutions envoyées pendant la requête, plus celles que
   nomme le paramètre de requête `durable_execution`. Voir [la page du profileur](../profiler/).

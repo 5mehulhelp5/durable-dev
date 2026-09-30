@@ -19,8 +19,8 @@ bandeau d'état du backend, ni compteurs, ni filtres.
 1. Chargez une page de votre application qui envoie un workflow, avec la barre de débogage activée.
 2. Cliquez sur l'élément Durable de la barre d'outils. Il affiche le nombre d'envois et
    d'événements de journal collectés sur la requête.
-3. Lisez d'abord l'onglet **Summary** : une ligne par exécution, avec son identifiant de workflow,
-   son type, son statut et son nombre d'événements.
+3. Lisez d'abord l'onglet **Summary** : une ligne par exécution, avec son identifiant d'exécution,
+   son type, son issue et son nombre d'événements.
 
 L'onglet **Executions** ouvre chaque exécution : son historique d'événements, ses opérations Nexus,
 la frise de son journal et sa trace de processus. L'onglet **Overview** dessine tous les processus
@@ -51,8 +51,7 @@ dans ce processus. Le panneau affiche **Journal still empty**. Lancez un worker,
 
 ## Ce qui diffère du tableau de bord
 
-- **Vocabulaire.** La colonne de statut affiche Finished, Queued (no journal yet), Pending, Cancellation requested
-  ou Continue as new, et le panneau est en anglais seulement.
+- **Vocabulaire.** La colonne d'issue emploie les mots des autres tableaux de bord et ajoute trois états qui ne sont pas des issues : Queued (no journal yet), Pending et Cancellation requested. Le panneau est en anglais seulement.
 - **Frise.** Une ligne par événement, dans l'ordre du journal, et non une ligne par action. Le
   temps de file n'est pas hachuré et un événement en échec n'est pas peint en rouge.
 - **Charges utiles.** Elles sont masquées comme celles du tableau de bord, et toujours affichées

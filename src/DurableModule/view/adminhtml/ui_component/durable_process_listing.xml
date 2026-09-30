@@ -75,7 +75,7 @@
         <column name="run_id">
             <settings>
                 <filter>text</filter>
-                <label translate="true">Run</label>
+                <label translate="true">Backend run</label>
                 <sortable>false</sortable>
             </settings>
         </column>
@@ -91,7 +91,7 @@
                 <options class="Gplanchat\DurableModule\Ui\Component\Listing\Column\StatusOptions"/>
                 <filter>select</filter>
                 <dataType>select</dataType>
-                <label translate="true">Status</label>
+                <label translate="true">Outcome</label>
                 <sortable>false</sortable>
             </settings>
         </column>

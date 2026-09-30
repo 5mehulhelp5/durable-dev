@@ -18,6 +18,11 @@
             <trans-unit id="status.failed"><source>status.failed</source><target>En échec</target></trans-unit>
             <trans-unit id="status.cancelled"><source>status.cancelled</source><target>Annulées</target></trans-unit>
             <trans-unit id="status.continued_as_new"><source>status.continued_as_new</source><target>Poursuivies à neuf</target></trans-unit>
+            <trans-unit id="outcome.running"><source>outcome.running</source><target>En cours</target></trans-unit>
+            <trans-unit id="outcome.completed"><source>outcome.completed</source><target>Terminée</target></trans-unit>
+            <trans-unit id="outcome.failed"><source>outcome.failed</source><target>En échec</target></trans-unit>
+            <trans-unit id="outcome.cancelled"><source>outcome.cancelled</source><target>Annulée</target></trans-unit>
+            <trans-unit id="outcome.continued_as_new"><source>outcome.continued_as_new</source><target>Poursuivie à neuf</target></trans-unit>
             <trans-unit id="filter.outcome"><source>filter.outcome</source><target>Issue</target></trans-unit>
             <trans-unit id="filter.workflow_name"><source>filter.workflow_name</source><target>Nom du workflow</target></trans-unit>
             <trans-unit id="filter.execution_id_prefix"><source>filter.execution_id_prefix</source><target>L’identifiant d’exécution commence par</target></trans-unit>
@@ -28,12 +33,13 @@
             <trans-unit id="pagination.first"><source>pagination.first</source><target>Première page</target></trans-unit>
             <trans-unit id="pagination.next"><source>pagination.next</source><target>Page suivante</target></trans-unit>
             <trans-unit id="details.title"><source>details.title</source><target>Détail de l'exécution</target></trans-unit>
+            <trans-unit id="details.history"><source>details.history</source><target>Historique</target></trans-unit>
             <trans-unit id="details.workflow"><source>details.workflow</source><target>Workflow :</target></trans-unit>
             <trans-unit id="details.run"><source>details.run</source><target>Exécution :</target></trans-unit>
             <trans-unit id="details.outcome"><source>details.outcome</source><target>Issue :</target></trans-unit>
             <trans-unit id="details.no_history"><source>details.no_history</source><target>Aucun historique enregistré pour cette exécution.</target></trans-unit>
             <trans-unit id="details.back_to_list"><source>details.back_to_list</source><target>Retour aux exécutions</target></trans-unit>
-            <trans-unit id="details.backend_run"><source>details.backend_run</source><target>exécution %id% côté serveur</target></trans-unit>
+            <trans-unit id="details.backend_run"><source>details.backend_run</source><target>Exécution côté backend %id%</target></trans-unit>
             <trans-unit id="details.select"><source>details.select</source><target>Choisissez une exécution dans la liste pour lire son historique enregistré.</target></trans-unit>
             <trans-unit id="frieze.key_waiting"><source>frieze.key_waiting</source><target>Hachuré : en attente d'être pris en charge. Le travail avait été demandé, mais personne ne l'avait encore commencé.</target></trans-unit>
             <trans-unit id="frieze.key_failed"><source>frieze.key_failed</source><target>Rouge : ce qui a échoué. Une annulation n'est pas peinte en rouge : c'est une issue, pas une panne.</target></trans-unit>

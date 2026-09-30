@@ -127,6 +127,19 @@ final class TheDetailTemplateRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('durable-frieze', $page);
     }
 
+    public function testTheRunPageUsesTheVocabularyOfTheOtherSurfaces(): void
+    {
+        // #821: Execution, Outcome and History, and the outcome as a label, not the enum's value.
+        $page = $this->renderDetail();
+
+        self::assertStringContainsString('<th>Execution</th>', $page);
+        self::assertStringContainsString('<th>Outcome</th><td>Running</td>', $page);
+        self::assertStringContainsString('>History<', $page);
+        self::assertStringNotContainsString('<th>Run</th>', $page);
+        self::assertStringNotContainsString('<th>Status</th>', $page);
+        self::assertStringNotContainsString('>Timeline<', $page);
+    }
+
     /**
      * @param list<NexusOperationSummary> $nexus
      */
