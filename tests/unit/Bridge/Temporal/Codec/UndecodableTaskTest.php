@@ -8,11 +8,14 @@ use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecWorkflowServiceClient;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
 use Gplanchat\Bridge\Temporal\Grpc\WorkflowServiceActivityRpc;
+use Gplanchat\Bridge\Temporal\Grpc\WorkflowServiceNexusRpc;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
+use Gplanchat\Bridge\Temporal\Worker\TemporalNexusWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\Nexus\Serving\NexusOperationRegistry;
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
 use Gplanchat\Durable\Port\NullWorkflowResumeDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
@@ -25,18 +28,24 @@ use Temporal\Api\Common\V1\Payload;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Enums\V1\ActivityTaskFailedCause;
+use Temporal\Api\Enums\V1\NexusHandlerErrorRetryBehavior;
 use Temporal\Api\Enums\V1\WorkflowTaskFailedCause;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\WorkflowExecutionSignaledEventAttributes;
 use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
+use Temporal\Api\Nexus\V1\Request as NexusRequest;
+use Temporal\Api\Nexus\V1\StartOperationRequest;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryRequest;
 use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
 use Temporal\Api\Workflowservice\V1\PollActivityTaskQueueRequest;
 use Temporal\Api\Workflowservice\V1\PollActivityTaskQueueResponse;
+use Temporal\Api\Workflowservice\V1\PollNexusTaskQueueResponse;
 use Temporal\Api\Workflowservice\V1\PollWorkflowTaskQueueResponse;
 use Temporal\Api\Workflowservice\V1\RespondActivityTaskFailedRequest;
 use Temporal\Api\Workflowservice\V1\RespondActivityTaskFailedResponse;
+use Temporal\Api\Workflowservice\V1\RespondNexusTaskFailedRequest;
+use Temporal\Api\Workflowservice\V1\RespondNexusTaskFailedResponse;
 use Temporal\Api\Workflowservice\V1\RespondWorkflowTaskFailedRequest;
 use Temporal\Api\Workflowservice\V1\RespondWorkflowTaskFailedResponse;
 
@@ -151,6 +160,41 @@ final class UndecodableTaskTest extends TestCase
         self::assertStringContainsString('unknown key k2', (string) $failed->getFailure()?->getMessage());
         self::assertSame('', $failed->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
         self::assertSame(ActivityTaskFailedCause::ACTIVITY_TASK_FAILED_CAUSE_ACTIVITY_WORKER_UNHANDLED_FAILURE, $failed->getCause());
+    }
+
+    /**
+     * #824: a Nexus task gets a retryable INTERNAL handler error. The server delivers it again, and
+     * a worker redeployed with the right codec or key serves it.
+     */
+    public function testAnUndecodableNexusTaskIsAnsweredAsARetryableInternalErrorAndTheWorkerPollsAgain(): void
+    {
+        $start = new StartOperationRequest(['service' => 'billing', 'operation' => 'charge', 'payload' => self::undecodable()->getPayloads()[0]]);
+        $task = new PollNexusTaskQueueResponse(['task_token' => 'nexus-token', 'request' => new NexusRequest(['start_operation' => $start])]);
+        $failed = null;
+        $inner = $this->createMock(WorkflowServiceClientInterface::class);
+        $inner->expects(self::exactly(2))->method('PollNexusTaskQueue')
+            ->willReturnOnConsecutiveCalls($task, new PollNexusTaskQueueResponse());
+        $inner->expects(self::once())->method('RespondNexusTaskFailed')->willReturnCallback(static function (RespondNexusTaskFailedRequest $request) use (&$failed): RespondNexusTaskFailedResponse {
+            $failed = $request;
+
+            return new RespondNexusTaskFailedResponse();
+        });
+        $worker = new TemporalNexusWorker(
+            new WorkflowServiceNexusRpc(new PayloadCodecWorkflowServiceClient($inner, new FailingCodec())),
+            new TemporalConnection('localhost:7233', 'test-namespace'),
+            NexusOperationRegistry::routedBy('temporal'),
+        );
+
+        $worker->pollOnce();
+        $worker->pollOnce();
+
+        self::assertInstanceOf(RespondNexusTaskFailedRequest::class, $failed);
+        self::assertSame('nexus-token', $failed->getTaskToken());
+        self::assertSame('test-namespace', $failed->getNamespace());
+        self::assertSame('INTERNAL', $failed->getError()?->getErrorType());
+        self::assertSame(NexusHandlerErrorRetryBehavior::NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE, $failed->getError()->getRetryBehavior());
+        self::assertStringContainsString('unknown key k2', (string) $failed->getError()->getFailure()?->getMessage());
+        self::assertSame('', (string) $failed->getError()->getFailure()?->getStackTrace(), 'a stack trace may quote key material or plaintext');
     }
 
     /**
