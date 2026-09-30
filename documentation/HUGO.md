@@ -62,7 +62,7 @@ queue for a few seconds (the hatched stretch), and one dispatched with no worker
 - **Filament**: a copy of `laravel/` with `filament/filament`, the plugin and the Illuminate backend
   on SQLite, a panel with a login.
 - **Magento** (`magento/`): the bench over MySQL 8.4, OpenSearch and a Temporal dev server, the
-  probes of the bench as seeds. The grid is shot at a CSS zoom of 0.75 so that the rows fit.
+  probes of the bench as seeds. The grid is shot at a CSS zoom of 0.9 so that the rows fit, within 120 seconds of stopping the workers so that the banner reports them.
 - **Web profiler** (`symfony/`): a request that dispatches a workflow, then `/_profiler/<token>?panel=durable`.
 
 Shoot with Chromium through puppeteer-core. Chromium is a snap here and cannot write under a hidden

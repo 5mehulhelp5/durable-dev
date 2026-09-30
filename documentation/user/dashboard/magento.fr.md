@@ -9,6 +9,16 @@ Pour suivre les workflows d'une boutique depuis l'administration Magento, instal
 `gplanchat/durable-magento` ([Paquets](../../packages/)) et ouvrez **System > Durable processes >
 Process history**. La page est en lecture seule et en anglais.
 
+## Captures d'écran
+
+![La grille de l'historique des processus Magento : état du backend, présence des workers, compteurs par issue et liste des exécutions](/images/dashboard/magento-history.png)
+
+*System > Durable processes > Process history, sur huit exécutions du banc : quatre terminées, deux en échec et deux en cours, dont une suspendue sur un minuteur.*
+
+![La page d'une exécution terminée sous Magento, avec sa frise History](/images/dashboard/magento-run.png)
+
+*La page d'order/4244 : l'exécution, l'exécution côté backend et l'issue, puis une frise History où `durable.demo.charge` est hachuré pendant les 30 secondes d'attente d'un worker.*
+
 ## Donner l'accès à un rôle
 
 L'écran a sa propre ressource ACL. Dans **System > Permissions > User Roles**, cochez **Durable
