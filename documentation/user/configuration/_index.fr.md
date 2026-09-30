@@ -5,7 +5,14 @@ weight: 35
 
 # Référence de configuration
 
-Cette page documente chaque clé acceptée par `DurableBundle` dans `config/packages/durable.yaml`.
+Cette page documente chaque clé que `DurableBundle` accepte dans `config/packages/durable.yaml`.
+
+Termes employés plus bas : une exécution est un déroulement durable d'un workflow ; le journal est
+l'enregistrement, en ajout seul, de tout ce qu'une exécution a décidé et reçu ; une activité est une
+unité d'effet de bord, comme un appel HTTP ou une écriture en base ; un worker est le processus qui
+rejoue les workflows et exécute les activités ; le rejeu est la façon dont une exécution reprend, en
+réexécutant le code du workflow depuis sa première ligne face au journal. Le
+[glossaire](../glossary/) définit chacun de ces termes.
 
 ---
 
@@ -110,18 +117,18 @@ durable:
 <!-- end generated -->
 
 > [!IMPORTANT]
-> **`activity_transport.type` vaut `in_memory` par défaut, pas `messenger`.** Omettez la clé et les
-> activités s'exécutent **de façon synchrone dans la tâche de workflow**, quel que soit le transport
-> défini dans `messenger.yaml`. C'est pour cette raison que tous les exemples de ce site la posent
+> **La valeur par défaut de `activity_transport.type` est `in_memory`.** Si vous omettez la clé,
+> les activités s'exécutent **de façon synchrone dans la tâche de workflow**, quel que soit le
+> transport défini dans `messenger.yaml`. C'est pourquoi tous les exemples de ce site posent la clé
 > explicitement. Voir [`activity_transport`](#activity_transport).
 
 ---
 
 ## `backend`
 
-Où vit le journal. Une seule clé, parce que le journal, les métadonnées de workflow et les liens
-parents doivent s'accorder : deux sources de vérité pour une même exécution est l'échec que cette
-clé exclut.
+Où vit le journal. Une seule clé fixe le stockage du journal, des métadonnées de workflow et des
+liens parents, pour que les trois concordent et qu'une même exécution n'ait jamais deux sources de
+vérité.
 
 | Valeur | Journal, métadonnées, liens parents | Requiert |
 |--------|--------------------------------------|----------|
@@ -130,54 +137,55 @@ clé exclut.
 | `temporal` | le cluster à [`temporal.dsn`](#temporal) ; le processus ne garde que la copie des métadonnées et des liens parents que lisent le profileur et `durable:execution:diagnose` | `temporal.dsn` |
 
 `dbal` avec un `temporal.dsn` garde le journal en SQL et n'utilise le cluster que pour servir les
-opérations Nexus ; voir [Opérations Nexus](../nexus/).
+opérations Nexus (des opérations servies par un autre service, qu'un workflow appelle comme une
+activité) ; voir [Opérations Nexus](../nexus/).
 
-Une configuration qui se contredit est refusée à la construction du conteneur, avec le chemin
-`durable` dans le message : `backend: temporal` sans DSN, ou une clé dépréciée ci-dessous qui dit
-autre chose que `backend`.
+Quand la configuration se contredit, la construction du conteneur échoue, avec le chemin `durable`
+dans le message. Deux cas la déclenchent : `backend: temporal` sans DSN, et une clé dépréciée
+ci-dessous qui dit autre chose que `backend`.
 
 > [!NOTE]
 > `event_store.type`, `workflow_metadata.type`, `child_workflow.parent_link_store.type` et
 > `temporal.journal` sont dépréciées depuis 0.1.0-beta1 et seront retirées dans la prochaine version.
-> Quand `backend` n'est pas défini, il est déduit d'elles, si bien qu'une configuration existante
-> continue de fonctionner et signale une dépréciation. [UPGRADE.md](https://github.com/gplanchat/durable-dev/blob/main/UPGRADE.md)
+> Quand `backend` n'est pas défini, le bundle le déduit d'elles : une configuration existante
+> continue donc de fonctionner et signale une dépréciation. [UPGRADE.md](https://github.com/gplanchat/durable-dev/blob/main/UPGRADE.md)
 > en donne la traduction.
 
 ---
 
 ## `dbal`
 
-Où le backend SQL prend sa connexion et son verrou. Lu seulement quand `backend` vaut `dbal` ;
-ignoré sinon, le laisser à ses défauts ne coûte donc rien.
+La connexion et le verrou du backend SQL. Le bundle ne lit cette section que quand `backend` vaut
+`dbal` et l'ignore sinon : ses valeurs par défaut n'ont aucun effet sur les autres backends.
 
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `connection` | identifiant de service | `doctrine.dbal.default_connection` | La `Doctrine\DBAL\Connection` dans laquelle les magasins écrivent. Donnez-leur une connexion à eux : partager celle de l'application est fortement déconseillé (DUR054), car les transactions de Durable s'imbriquent alors dans les transactions métier. |
-| `auto_setup` | booléen | `true` | Crée les tables manquantes à la première écriture, jamais dans une transaction ouverte. Passez-la à `false` dès que Doctrine Migrations tient le schéma, pour que les deux ne l'écrivent pas l'un derrière l'autre. `bin/console durable:setup` crée les tables dans tous les cas. |
-| `lock_factory` | identifiant de service | `lock.factory` | La `LockFactory` qui sérialise les reprises d'une même exécution. **Elle ne vaut que ce que vaut votre magasin de verrous** : une fabrique en mémoire ou locale au processus, avec plusieurs workers, vous redonne la panne que le verrou existe pour empêcher. |
-| `allow_local_lock` | booléen | `false` | Le conteneur refuse un magasin local au processus (`flock`, `semaphore`, `in-memory`, `null`) derrière `lock_factory` : à la compilation pour un DSN littéral, à la première construction du verrou pour un DSN lu dans une variable d'environnement. `true` l'accepte, pour un seul worker. `framework.lock` attend une URL DBAL (`pgsql://…`, `mysql://…`), pas un nom de connexion Doctrine. |
-| `lock_ttl` | flottant, secondes | `300` | Combien de temps un verrou de reprise survit à un worker mort en le tenant. La passe qui le tient lui redonne un TTL entier à chaque frontière d'étape, c'est-à-dire à chaque message qu'elle fait passer par le bus, donc **il doit dépasser la plus longue étape** : au-delà, un second worker rejoue la même exécution en parallèle, et le premier s'arrête à sa frontière suivante. Une étape est en général le rejeu du journal jusqu'à la commande suivante, bien moins d'une seconde. Les activités tournent en dehors de la passe, sauf sur un transport d'activités `sync://`, où chacune est une étape de la passe et où sa durée compte. Une passe qui ne fait que rejouer, sans aucun message entre-temps, n'est pas rafraîchie. |
+| `connection` | identifiant de service | `doctrine.dbal.default_connection` | La `Doctrine\DBAL\Connection` dans laquelle les magasins écrivent. Donnez-leur une connexion à eux. Partager celle de l'application est fortement déconseillé (DUR054), car les transactions de Durable s'imbriquent alors dans les transactions métier. |
+| `auto_setup` | booléen | `true` | Crée les tables manquantes à la première écriture, jamais dans une transaction ouverte. Passez-la à `false` dès que Doctrine Migrations tient le schéma, pour qu'un seul des deux l'écrive. `bin/console durable:setup` crée les tables dans tous les cas. |
+| `lock_factory` | identifiant de service | `lock.factory` | La `LockFactory` qui sérialise les reprises d'une même exécution. **Le verrou ne protège les reprises que si tous les workers partagent le magasin de verrous.** Avec plusieurs workers, une fabrique en mémoire ou locale au processus laisse deux workers rejouer la même exécution en même temps, la panne que le verrou empêche. |
+| `allow_local_lock` | booléen | `false` | À `false`, un magasin local au processus (`flock`, `semaphore`, `in-memory`, `null`) derrière `lock_factory` lève une erreur : à la compilation pour un DSN littéral, à la première construction du verrou pour un DSN lu dans une variable d'environnement. `true` accepte un tel magasin, pour un seul worker. `framework.lock` attend une URL DBAL (`pgsql://…`, `mysql://…`) ; un nom de connexion Doctrine n'y est pas accepté. |
+| `lock_ttl` | flottant, secondes | `300` | Combien de temps un verrou de reprise survit à un worker mort en le tenant. La passe qui le tient lui redonne un TTL entier à chaque frontière d'étape, c'est-à-dire à chaque message qu'elle fait passer par le bus, donc **le TTL doit dépasser la plus longue étape**. Quand une étape le dépasse, un second worker rejoue la même exécution en parallèle, et le premier s'arrête à sa frontière suivante. Une étape est en général le rejeu du journal jusqu'à la commande suivante, bien moins d'une seconde. Les activités tournent en dehors de la passe, sauf sur un transport d'activités `sync://`, où chacune est une étape de la passe et où sa durée compte. Une passe qui ne fait que rejouer, sans aucun message entre-temps, n'est pas rafraîchie. |
 
-Le compromis que fait ce backend, et pourquoi le verrou est porteur, sont sur la page
-[Backends](../backends/#le-backend-dbal).
+La page [Backends](../backends/#le-backend-dbal) décrit le compromis que fait ce backend et
+pourquoi il dépend du verrou.
 
 ---
 
 ## `event_store`
 
-Détermine où l'historique d'événements du workflow est stocké.
+Où l'historique d'événements du workflow est stocké.
 
 | Clé | Valeurs | Défaut | Description |
 |-----|---------|--------|-------------|
 | `type` | `in_memory`, `dbal` | déduit de `backend` | **Dépréciée** : posez [`backend`](#backend). |
 | `table_name` | chaîne | `durable_events` | Table dans laquelle le magasin `dbal` écrit. Créée à la première écriture. |
 
-### Avec Temporal
+### Stockage d'événements local sur le backend Temporal {#avec-temporal}
 
-Avec `backend: temporal`, le stockage d'événements local est en mémoire, et c'est correct.
-`TemporalReadThroughEventStore` l'enveloppe : les événements absents localement sont récupérés à la
-demande depuis le gRPC de Temporal (`GetWorkflowExecutionHistory`), de sorte que le DataCollector du
-profileur Symfony fonctionne d'un processus à l'autre.
+Avec `backend: temporal`, le stockage d'événements local est en mémoire, ce qui est la configuration
+attendue. `TemporalReadThroughEventStore` l'enveloppe et récupère à la demande, par le gRPC de
+Temporal (`GetWorkflowExecutionHistory`), les événements absents localement : le DataCollector du
+profileur Symfony fonctionne ainsi d'un processus à l'autre.
 
 ---
 
@@ -185,13 +193,13 @@ profileur Symfony fonctionne d'un processus à l'autre.
 
 | Clé | Valeurs | Défaut | Description |
 |-----|---------|--------|-------------|
-| `dsn` | `temporal://hôte:port?…` ou `null` | `null` | Le cluster. Requis par `backend: temporal` ; avec `backend: dbal`, le cluster sert les opérations Nexus et le journal reste en SQL. Toute valeur qui n'est ni une chaîne non vide ni `null` est refusée. Le gRPC passe par `ext-grpc` quand l'extension est chargée, par curl (HTTP/2) sinon ; le schéma choisit le fil, voir plus bas. |
+| `dsn` | `temporal://hôte:port?…` ou `null` | `null` | Le cluster. Requis par `backend: temporal` ; avec `backend: dbal`, le cluster sert les opérations Nexus et le journal reste en SQL. Toute valeur qui n'est ni une chaîne non vide ni `null` lève une erreur de configuration. Le gRPC passe par `ext-grpc` quand l'extension est chargée, par curl (HTTP/2) sinon ; le schéma choisit le fil, voir plus bas. |
 | `journal` | `true` / `false` | déduit de `backend` | **Dépréciée** : `true` équivaut à `backend: temporal`, `false` avec un DSN équivaut à `backend: dbal`. |
 | `search_attributes` | `true` / `false` | `false` | Écrit `DurableWorkflowName` et `DurableExecutionId` à chaque démarrage, pour que la liste des exécutions puisse filtrer par nom de workflow et par identifiant d'exécution. [Enregistrez-les sur l'espace de noms](../backends/#register-durables-search-attributes) **avant** de l'activer. Sous Laravel, la même clé de `config/durable.php` ; sous Magento, `durable/temporal/search_attributes` dans `env.php`. |
 | `guzzle_client` | un id de service ou `null` | `null` | Le `GuzzleHttp\ClientInterface` de l'application, utilisé par `transport=guzzle` dans le DSN : son proxy, ses options TLS et ses middlewares s'appliquent au gRPC. Ignoré par tout autre transport ; `null` construit un client par défaut. Sous Laravel, la même clé de `config/durable.php` nomme une liaison du conteneur ; sous Magento, c'est l'argument `guzzle` de `RuntimeFactory` dans `di.xml`. |
 | `psr18_client` | un id de service ou `null` | `null` | Le client PSR-18 de l'application, utilisé par `transport=http` (la passerelle JSON) à la place de curl. Ignoré par tout autre transport. |
-| `psr17_factory` | un id de service ou `null` | `psr18_client` | Un service qui implémente à la fois les factories PSR-17 de requêtes et de flux — le `HttpFactory` de Guzzle, le `Psr17Factory` de nyholm. Le `Psr18Client` de Symfony est à la fois client et factory, d'où la valeur par défaut. Sous Laravel, les deux clés de `config/durable.php` nomment des liaisons du conteneur ; sous Magento, un `Psr18Http` est l'argument `jsonGateway` de `RuntimeFactory` dans `di.xml`. |
-| `payload_codec` | un id de service ou `null` | `null` | Le `PayloadCodecInterface` de l'application : chaque payload envoyé à Temporal est encodé, chaque payload lu décodé ([DUR055](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR055-a-payload-codec-at-the-client-boundary.md)). Le codec lit sa propre clé, dans les secrets Symfony ou l'environnement ; Durable n'en lit aucune. |
+| `psr17_factory` | un id de service ou `null` | `psr18_client` | Un service qui implémente à la fois les factories PSR-17 de requêtes et de flux, comme le `HttpFactory` de Guzzle ou le `Psr17Factory` de nyholm. Le `Psr18Client` de Symfony est à la fois client et factory, d'où la valeur par défaut. Sous Laravel, les deux clés de `config/durable.php` nomment des liaisons du conteneur ; sous Magento, un `Psr18Http` est l'argument `jsonGateway` de `RuntimeFactory` dans `di.xml`. |
+| `payload_codec` | un id de service ou `null` | `null` | Le `PayloadCodecInterface` de l'application, qui encode chaque payload envoyé à Temporal et décode chaque payload lu ([DUR055](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR055-a-payload-codec-at-the-client-boundary.md)). Le codec lit sa propre clé, dans les secrets Symfony ou l'environnement ; Durable n'en lit aucune. |
 
 ### Format du DSN
 
@@ -199,13 +207,13 @@ profileur Symfony fonctionne d'un processus à l'autre.
 temporal://HÔTE:PORT?namespace=ESPACE&journal_task_queue=FILE&activity_task_queue=FILE
 ```
 
-Le schéma nomme le fil et le chiffrement :
+Le schéma fixe le protocole de transport et le chiffrement :
 
 | Schéma | Fil | TLS | Port par défaut | Demande |
 |--------|-----|-----|-----------------|---------|
-| `temporal://` | gRPC | non | 7233 | `ext-grpc`, ou `ext-curl` (gRPC sur HTTP/2, choisi de lui-même quand l'extension n'est pas chargée ; le repli est journalisé une fois) |
+| `temporal://` | gRPC | non | 7233 | `ext-grpc`, ou `ext-curl` (gRPC sur HTTP/2, choisi automatiquement quand l'extension n'est pas chargée ; le repli est journalisé une fois) |
 | `temporal+tls://` | gRPC | oui | 7233 | idem |
-| `temporal+http://` | la passerelle JSON du serveur | non | 7243 | `ext-curl` — ou un client PSR-18 remis à la factory — et le port HTTP activé sur le serveur. Appels client seulement : aucun worker ne peut y interroger sa file |
+| `temporal+http://` | la passerelle JSON du serveur | non | 7243 | `ext-curl` (ou un client PSR-18 remis à la factory) et le port HTTP activé sur le serveur. Appels client seulement ; aucun worker ne peut y interroger sa file |
 | `temporal+https://` | la passerelle JSON du serveur | oui | 7243 | idem |
 
 | Paramètre | Requis | Description |
@@ -224,17 +232,17 @@ Le schéma nomme le fil et le chiffrement :
 | `api_key` | non, TLS seulement | Envoyée à chaque appel en `authorization: Bearer …`, avec un en-tête `temporal-namespace` (clés d'API de Temporal Cloud). À encoder pour l'URL. |
 | `transport` | non (défaut `auto`) | Surcharge ce que le schéma implique : `grpc` exige `ext-grpc` et échoue sans elle, `grpc-curl` force curl même quand l'extension est chargée, `guzzle` fait passer le gRPC par Guzzle 7.14 ou plus (son handler cURL lit les trailers), `http` est ce que `temporal+http://` pose. `auto` prend `grpc` si l'extension est chargée, `grpc-curl` sinon. |
 
-Toute autre clé est refusée, et nommée : une coquille comme `namesapce=` ne retombe plus en silence
-sur l'espace de noms `default`. De même pour `ca`, `cert`, `key` ou `api_key` sans TLS. Avec un
-client PSR-18 remis à la passerelle JSON, le TLS relève de la configuration de ce client : `ca`,
-`cert` et `key` y sont refusés.
+Tout autre paramètre lève une erreur qui le nomme : une coquille comme `namesapce=` ne retombe donc
+pas en silence sur l'espace de noms `default`. `ca`, `cert`, `key` ou `api_key` sans TLS lèvent aussi
+une erreur. Avec un client PSR-18 remis à la passerelle JSON, le TLS relève de la configuration de ce
+client, et `ca`, `cert` et `key` lèvent une erreur.
 
 **Exemple :**
 ```
 temporal://127.0.0.1:7233?namespace=default&journal_task_queue=durable-journal&activity_task_queue=durable-activities
 ```
 
-Par variable d'environnement :
+Pour lire le DSN dans une variable d'environnement :
 ```yaml
 durable:
     temporal:
@@ -245,8 +253,8 @@ durable:
 
 ## `workflow_metadata`
 
-Stocke le type de workflow et sa charge utile initiale, retrouvés par `executionId` au moment de la
-reprise.
+Où sont stockés le type de workflow et sa charge utile initiale. Le bundle les retrouve par
+`executionId` quand il reprend une exécution.
 
 | Clé | Valeurs | Défaut | Description |
 |-----|---------|--------|-------------|
@@ -265,10 +273,10 @@ d'activité.
 | `type` | `in_memory`, `messenger` | **`in_memory`** | `in_memory` exécute les activités **de façon synchrone dans le gestionnaire de tâche de workflow**, c'est ce que vous obtenez quand la clé est absente. `messenger` route les messages d'activité par Symfony Messenger vers le transport configuré. |
 | `transport_name` | chaîne | `durable_activities` | Nom du transport Messenger employé quand `type: messenger`. Doit correspondre à un transport défini dans `messenger.yaml`. |
 
-**Le défaut est celui que vous ne voulez probablement pas en production.** Définir `durable_activities`
-dans `messenger.yaml` ne le sélectionne pas : sans `type: messenger`, le transport reste vide et
-l'activité a déjà tourné en ligne, prenant le temps de la tâche de workflow avec elle et perdant la
-sémantique de réessai que le transport apporte.
+**En production, vous ne voulez probablement pas la valeur par défaut.** Définir
+`durable_activities` dans `messenger.yaml` ne le sélectionne pas. Sans `type: messenger`, le
+transport reste vide et l'activité s'exécute en ligne, sur le temps de la tâche de workflow et sans
+la sémantique de réessai que le transport apporte.
 
 ---
 
@@ -285,18 +293,18 @@ durable:
 |-----|------|--------|-------------|
 | `buses` | liste d'identifiants de service de bus | `[]` | Les bus sur lesquels vont les middlewares du bundle ; `[]` signifie tous les bus. Voir ci-dessous. |
 
-Les bus Messenger sur lesquels le bundle installe ses middlewares — le verrou de reprise DBAL, et
+Les bus Messenger sur lesquels le bundle installe ses middlewares : le verrou de reprise DBAL, et
 le middleware de profil en debug.
 
-**Le défaut est tous les bus**, ce que les versions précédentes faisaient sans condition. Ce défaut
-ne peut pas être plus fin : le bundle ne sait pas vers quel bus votre application route
-`ResumeWorkflowMessage`, et deviner retirerait le verrou de reprise du bus qui porte réellement le
-travail — une perte silencieuse de la garantie pour laquelle ce verrou existe.
+**Le défaut est tous les bus**, ce que les versions précédentes faisaient sans condition. Un défaut
+plus fin n'est pas possible, car rien n'indique au bundle vers quel bus votre application
+route `ResumeWorkflowMessage`. Un mauvais choix retirerait le verrou de reprise du bus qui porte le
+travail, et les reprises perdraient la protection du verrou sans aucune erreur.
 
-Nommer les bus vaut la peine dès que vous en avez plusieurs. Un bus de commandes métier ne
-transporte aucun message durable, et y prendre un verrou par exécution est une contention que
-personne n'a demandée. Un identifiant qui ne nomme aucun bus déclaré est refusé à la compilation,
-plutôt que de ne rien faire en silence.
+Quand votre application a plusieurs bus, les nommer évite un coût. Un bus de commandes métier ne
+transporte aucun message durable, et un verrou par exécution sur ce bus ajoute une contention
+inutile. Un identifiant qui ne nomme aucun bus déclaré lève une erreur à la compilation au lieu de
+ne rien faire.
 
 ---
 
@@ -320,7 +328,7 @@ durable:
 ```
 
 Plafond sur les réessais automatiques, appliqué à chaque activité sur les backends `in_memory` et `dbal` : la `RetryLimit` propre à une
-activité ne peut qu'être plus stricte. Une valeur négative est refusée. `0` signifie **aucun plafond**, et comme une activité sans
+activité ne peut qu'être plus stricte. Une valeur négative lève une erreur de configuration. `0` signifie **aucun plafond**, et comme une activité sans
 `RetryLimit` réessaie indéfiniment (le défaut de Temporal), laisser les deux non définis revient à
 ce qu'une activité en échec ne fasse jamais échouer le workflow. Posez une borne par activité avec
 `RetryLimit::ofAttempts()` ou `RetryLimit::once()` ; voir [Options et objets valeur](../options/#retrylimit). Sur le backend `temporal`, aucun hôte ne le lit : la grappe relance d'après la
@@ -334,13 +342,13 @@ de `RuntimeFactory` dans `di.xml`, que seul `MagentoRuntime::run()`, dans le pro
 
 ## `activity_contracts`
 
-Les métadonnées de contrat d'activité déjà résolues (noms de méthodes, attributs) peuvent être mises
-en cache au préchauffage du conteneur, pour éviter le coût de la réflexion à l'exécution.
+Le bundle peut mettre en cache, au préchauffage du conteneur, les métadonnées de contrat d'activité
+déjà résolues (noms de méthodes, attributs), ce qui évite le coût de la réflexion à l'exécution.
 
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
 | `cache` | chaîne (identifiant de service) ou `null` | `null` | Pool de cache PSR-6 à employer. `cache.app` est le pool Symfony par défaut. `null` désactive le cache (utile en environnement `test`). |
-| `contracts` | liste de noms de classes pleinement qualifiés | `[]` | Les interfaces de contrat d'activité à préchauffer. Un nom que l'autoloader ne trouve pas comme interface est refusé à la construction du conteneur. |
+| `contracts` | liste de noms de classes pleinement qualifiés | `[]` | Les interfaces de contrat d'activité à préchauffer. Un nom que l'autoloader ne trouve pas comme interface fait échouer la construction du conteneur. |
 
 ```yaml
 durable:
@@ -355,7 +363,7 @@ durable:
 
 ## `child_workflow`
 
-Contrôle la façon dont les workflows enfants sont lancés.
+La façon dont les workflows enfants, des exécutions démarrées par une autre exécution, sont lancés.
 
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
@@ -367,7 +375,7 @@ Contrôle la façon dont les workflows enfants sont lancés.
 
 ## Configuration par environnement (`when@`)
 
-Employez la syntaxe `when@` de Symfony pour changer de backend selon l'environnement :
+Pour changer de backend selon l'environnement, employez la syntaxe `when@` de Symfony :
 
 ```yaml
 # En mémoire pour chaque environnement non redéfini plus bas
@@ -406,26 +414,26 @@ SQL ne s'y appliquent pas.
 | Symfony (`durable.yaml`) | Laravel (`config/durable.php`) | Magento (`env.php`, `di.xml`) | Proposition |
 |---|---|---|---|
 | `backend` | `backend` (`illuminate`, `temporal`, `memory`) | un DSN veut dire Temporal, aucun veut dire en mémoire : l'argument `temporalDsn` dans `di.xml`, sinon `durable/temporal/dsn` dans `env.php` | identique ; la valeur SQL porte le nom de la connexion de chaque hôte |
-| `dbal.connection` | `connection` | — | identique |
-| `dbal.auto_setup` | — (le pont livre des migrations) | — | propre à l'hôte : Laravel crée les tables par `php artisan migrate` |
-| `dbal.lock_factory`, `dbal.allow_local_lock` | `lock.store` | — | propre à l'hôte : Symfony Lock et les verrous de cache de Laravel sont deux services différents |
-| `dbal.lock_ttl` | `lock.ttl` | — | identique |
-| — | `lock.backoff`, `lock.max_deferrals`, `lock.wait` | — | propre à l'hôte : Laravel rend à la file une reprise dont le tour est pris ; le worker Symfony attend que le verrou se libère |
-| `event_store.table_name`, `workflow_metadata.table_name`, `child_workflow.parent_link_store.table_name` | `tables.events`, `tables.metadata`, `tables.parent_links`, `tables.runs` | — | à ajouter : le nom de la table des exécutions sous Symfony |
+| `dbal.connection` | `connection` | aucun | identique |
+| `dbal.auto_setup` | aucun (le pont livre des migrations) | aucun | propre à l'hôte : Laravel crée les tables par `php artisan migrate` |
+| `dbal.lock_factory`, `dbal.allow_local_lock` | `lock.store` | aucun | propre à l'hôte : Symfony Lock et les verrous de cache de Laravel sont deux services différents |
+| `dbal.lock_ttl` | `lock.ttl` | aucun | identique |
+| aucun | `lock.backoff`, `lock.max_deferrals`, `lock.wait` | aucun | propre à l'hôte : Laravel rend à la file une reprise dont le tour est pris ; le worker Symfony attend que le verrou se libère |
+| `event_store.table_name`, `workflow_metadata.table_name`, `child_workflow.parent_link_store.table_name` | `tables.events`, `tables.metadata`, `tables.parent_links`, `tables.runs` | aucun | à ajouter : le nom de la table des exécutions sous Symfony |
 | `temporal.dsn` | `temporal.dsn` | argument `temporalDsn`, qui l'emporte sur `durable/temporal/dsn` | identique |
 | `temporal.search_attributes` | `temporal.search_attributes` | `durable/temporal/search_attributes` | identique |
 | `temporal.guzzle_client`, `temporal.psr18_client`, `temporal.psr17_factory` | les trois mêmes clés | arguments `guzzle`, `jsonGateway` | identique |
 | `temporal.payload_codec` | `temporal.payload_codec`, une liaison du conteneur ; le codec lit sa clé dans `.env` | argument `codec` de `RuntimeFactory`, dans le `di.xml` de la boutique ; le codec lit sa clé dans `env.php` | identique (DUR055) |
-| `backend: dbal` avec un `temporal.dsn` (servir Nexus depuis un journal SQL) | — (`nexus.handlers` exige `backend: temporal`) | — | à ajouter sous Laravel |
-| `activity_transport.type`, `activity_transport.transport_name` | `queue.connection`, `queue.name` | — (les activités tournent dans le processus, ou sur la file de tâches de Temporal) | propre à l'hôte : la file de chaque hôte |
-| `messenger.buses` | — | — | propre à l'hôte : Messenger seulement |
-| `profiler.enabled` | — | — | propre à l'hôte : le profileur web de Symfony |
+| `backend: dbal` avec un `temporal.dsn` (servir Nexus depuis un journal SQL) | aucun (`nexus.handlers` exige `backend: temporal`) | aucun | à ajouter sous Laravel |
+| `activity_transport.type`, `activity_transport.transport_name` | `queue.connection`, `queue.name` | aucun (les activités tournent dans le processus, ou sur la file de tâches de Temporal) | propre à l'hôte : la file de chaque hôte |
+| `messenger.buses` | aucun | aucun | propre à l'hôte : Messenger seulement |
+| `profiler.enabled` | aucun | aucun | propre à l'hôte : le profileur web de Symfony |
 | `max_activity_retries` | `max_activity_retries` | argument `maxActivityRetries`, lu par `MagentoRuntime::run()` seulement ; les workers Temporal l'ignorent | identique sous Symfony et Laravel ; propre à l'hôte sous Magento, dont les workers laissent les tentatives à la grappe. Sous Temporal, aucun hôte ne le lit |
-| — | — | argument `budgetSeconds` | propre à l'hôte : borne `MagentoRuntime::run()`, le seul appel de l'hôte qui mène un workflow à son terme dans le processus appelant |
-| `activity_contracts.cache`, `activity_contracts.contracts` | — | — | à ajouter sous Laravel et Magento |
-| `child_workflow.async_messenger` | — | — | propre à l'hôte : Messenger seulement |
+| aucun | aucun | argument `budgetSeconds` | propre à l'hôte : borne `MagentoRuntime::run()`, le seul appel de l'hôte qui mène un workflow à son terme dans le processus appelant |
+| `activity_contracts.cache`, `activity_contracts.contracts` | aucun | aucun | à ajouter sous Laravel et Magento |
+| `child_workflow.async_messenger` | aucun | aucun | propre à l'hôte : Messenger seulement |
 | workflows : `#[AsWorkflow]` sur un service | `workflows` | argument `workflowClasses` | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut |
-| gestionnaires d'activités : `#[AsActivityHandler]` sur un service | `activity_handlers` : les classes des gestionnaires, chacune servant le contrat que nomme son `#[AsActivityHandler]`, ou à défaut ses interfaces aux méthodes `#[AsActivityMethod]` | argument `activityHandlers` | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut ; Laravel refuse au démarrage un gestionnaire qui ne sert aucune activité |
+| gestionnaires d'activités : `#[AsActivityHandler]` sur un service | `activity_handlers` : les classes des gestionnaires, chacune servant le contrat que nomme son `#[AsActivityHandler]`, ou à défaut ses interfaces aux méthodes `#[AsActivityMethod]` | argument `activityHandlers` | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut ; Laravel échoue au démarrage sur un gestionnaire qui ne sert aucune activité |
 | gestionnaires Nexus : `#[AsNexusServiceHandler]` sur un service | `nexus.handlers` : `gestionnaire => contrat`, ou la classe du gestionnaire seule quand son `#[AsNexusServiceHandler]` nomme le contrat | argument `nexusHandlers` ; le `#[AsNexusServiceHandler]` du gestionnaire nomme le contrat | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut |
 
 ---

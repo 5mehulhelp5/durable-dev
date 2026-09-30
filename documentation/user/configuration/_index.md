@@ -294,7 +294,7 @@ The Messenger buses the bundle installs its middlewares on: the DBAL resume lock
 middleware in debug.
 
 **The default is every bus**, which earlier versions did unconditionally. A narrower default is not
-possible, because the bundle has no way to tell which bus your application routes
+possible, because nothing tells the bundle which bus your application routes
 `ResumeWorkflowMessage` to. A wrong choice would take the resume lock off the bus that carries the
 work, and resumes would lose the lock's protection without any error.
 
