@@ -806,6 +806,7 @@ jobs:
               run: |
                   php tests/integration/Temporal/nexus-demo-harness.php 127.0.0.1:7233 default --transport=grpc-curl > /tmp/harness.log 2>&1 &
                   harness=$!
+                  echo "$harness" > /tmp/harness.pid
                   # Fails at once if the harness dies before it is ready, rather than after the minute.
                   timeout 60 bash -c "until grep -qx ready /tmp/harness.log; do kill -0 $harness 2>/dev/null || exit 1; sleep 1; done" || { cat /tmp/harness.log; exit 1; }
 
@@ -825,6 +826,52 @@ jobs:
                   echo "calls: $calls"
                   test "$calls" = 'billing/verify delivery/schedule stock/reserve billing/charge delivery/ship' \
                     || { tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness.log; exit 1; }
+                  echo "$order" > /tmp/nexus-order
+
+            # #672: the admin shows a run's Nexus operations. The harness stops (SIGTERM deletes its
+            # endpoints), billing's endpoint comes back toward a queue nobody polls, and a new order's
+            # verify stays in flight while the admin opens its page, then the shipped order's.
+            - name: The admin shows a Nexus operation in flight, then settled ones
+              working-directory: magento
+              timeout-minutes: 3
+              run: |
+                  kill -TERM "$(cat /tmp/harness.pid)" || { echo "The #667 harness is already gone." >&2; cat /tmp/harness.log; exit 1; }
+                  timeout 30 bash -c 'while temporal operator nexus endpoint get --name demo-business-billing >/dev/null 2>&1; do sleep 1; done'
+                  temporal operator nexus endpoint create --name demo-business-billing --target-namespace default --target-task-queue nobody-polls
+                  held="MAG-INFLIGHT-${GITHUB_RUN_ID}"
+                  timeout 20 bin/magento durable:demo:nexus "$held" 1200 MUG_BLUE=1 --timeout=5 || true
+                  jar=/tmp/admin.cookies
+                  curl -s --max-time 60 -c $jar -b $jar -o /tmp/held.html "http://127.0.0.1:8080/admin/durable/process/view/?run_id=${held}"
+                  for shown in '<code>demo-business-billing</code>' '<td>billing</td>' '<td>verify</td>' 'in_flight">in flight<'; do
+                    grep -qF "$shown" /tmp/held.html || { echo "The run page lacks: $shown" >&2; cat /tmp/held.html; tail -n 50 /tmp/magento-worker.log; exit 1; }
+                  done
+                  curl -s --max-time 60 -c $jar -b $jar -o /tmp/shipped.html "http://127.0.0.1:8080/admin/durable/process/view/?run_id=$(cat /tmp/nexus-order)"
+                  test "$(grep -oF 'completed">completed<' /tmp/shipped.html | wc -l)" -eq 5 \
+                    || { echo 'The shipped order does not show its five operations completed.' >&2; cat /tmp/shipped.html; exit 1; }
+
+            # #669: now Magento serves. The probe module lists a billing handler in its di.xml and a
+            # workflow fulfilling charge; a second, prefixed harness routes billing to the bench's
+            # Nexus queue (the DSN names none, so durable-workflows) and calls it. The journal
+            # worker of the step above runs the fulfilling workflow.
+            - name: Magento serves billing to the demo harness
+              working-directory: magento
+              timeout-minutes: 5
+              run: |
+                  harness="php ../tests/integration/Temporal/nexus-demo-harness.php 127.0.0.1:7233 default --prefix=mg- --transport=grpc-curl"
+                  $harness --bench=billing@durable-workflows > /tmp/harness-mg.log 2>&1 &
+                  pid=$!
+                  timeout 60 bash -c "until grep -qx ready /tmp/harness-mg.log; do kill -0 $pid 2>/dev/null || exit 1; sleep 1; done" || { cat /tmp/harness-mg.log; exit 1; }
+                  bin/magento durable:worker --role=nexus > /tmp/magento-nexus.log 2>&1 &
+                  logs() { tail -n 50 /tmp/magento-nexus.log; tail -n 50 /tmp/magento-worker.log; tail -n 50 /tmp/harness-mg.log; }
+                  # Answers only the probe's handler and workflow give, not the harness's own.
+                  verify=$(timeout 120 $harness --call=billing/verify --input='{"order":"MAG-SV-1","amount":1200,"currency":"USD"}') || { logs; exit 1; }
+                  verify=$(tail -n 1 <<< "$verify")
+                  echo "verify: $verify"
+                  test "$(jq -c . <<< "$verify")" = '{"accepted":false,"reason":"the Magento bench bills in EUR, not USD"}' || { logs; exit 1; }
+                  charge=$(timeout 120 $harness --call=billing/charge --input='{"order":"MAG-SV-2","amount":1200,"currency":"EUR"}') || { logs; exit 1; }
+                  charge=$(tail -n 1 <<< "$charge")
+                  echo "charge: $charge"
+                  test "$(jq -c . <<< "$charge")" = '{"receipt":"MAGENTO-BENCH-EUR-MAG-SV-2","charged":1200}' || { logs; exit 1; }
 
     static-analysis:
         # Was the required status check on `main` until 2026-09-16; `ci-ok` below is now. Its steps

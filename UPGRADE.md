@@ -311,6 +311,58 @@ starts; Laravel logs one at boot, in the console only.
 **What to do**: nothing is required, and nothing is refused. To act on it, give the journal a
 connection of its own, as the configuration examples show (**DUR054**).
 
+### Laravel `illuminate` backend: a due timer fires (#726)
+
+`LaravelWorkflowTimerDispatcher` now queues a `FireWorkflowTimersJob`, which runs
+`FireWorkflowTimersHandler`, instead of a plain `ResumeWorkflowJob`. A plain resume never journalled
+`TimerCompleted`, so a run that slept suspended again on every pass and never woke up. Nothing to
+migrate: once `queue:work` restarts on the new code, a run stuck on a due timer wakes on its next
+resume, since the pass that suspends on the timer now queues the firing.
+
+
+### New: a Magento module serves Nexus operations (#668)
+
+**Who is affected**: nobody has to change anything. A Magento module can now serve a Nexus contract:
+list the handler in `di.xml` under `nexusHandlers` on `RuntimeFactory`, name its contract with
+`#[AsNexusServiceHandler(contract: …)]` as on Symfony, declare the workflows that fulfil the rest in
+`workflowClasses` with `#[FulfilsNexusOperation]`, and run `bin/magento durable:worker --role=nexus`.
+The module's README shows it. Laravel's `DeclaredNexusOperations` now delegates to the core's
+`NexusHandlerDeclarations`, which both hosts share, so a module gets the refusals of #714 above:
+an operation nobody serves, a workflow class that does not exist, or a contract the attribute
+contradicts stops the Nexus worker when it starts.
+
+### Temporal read model: a cancelled activity or timer says why (#701)
+
+Read through `TemporalReadThroughEventStore` (the bundle's event store on Temporal, the profiler,
+the dashboards), `ActivityCancelled` and `TimerCancelled` used to carry the reason
+`Cancelled by Temporal`. They now carry the reason the event-store backends record:
+`workflow_cancelled` when the workflow's own cancellation withdrew the operation, `race_superseded`
+otherwise. A replay through that store now reads a race loser as unsettled, as the worker does.
+Code that matched on `Cancelled by Temporal` should match on `ActivityCancellationReason` instead.
+Code that converts a history itself should build the converter with
+`TemporalEventConverter::forHistory($executionId, $events)` rather than `new TemporalEventConverter()`:
+a converter built with `new` only knows the markers it has already seen, and reads a
+workflow-cancelled operation that was cancelled before its marker as `race_superseded`.
+
+### Laravel: activity handlers are declared in `activity_handlers` (#713)
+
+`config/durable.php` gains an `activity_handlers` key beside `workflows`. Each class listed there
+serves the contract its `#[AsActivityHandler]` names, or else every interface it implements whose
+methods carry `#[AsActivityMethod]`, under the activity names the contract carries. A handler is
+resolved from the container each time one of its activities runs: bind it as a singleton to share
+one instance across a worker's tasks. A class that does not exist, that
+serves no activity, or that lacks a method of the contract it names is refused by name at boot.
+
+**What to do**: nothing, unless you registered activities by hand. Replace calls such as
+`$app->make(RegistryActivityExecutor::class)->register('greet.hello', ...)` with the handler class
+in the key:
+
+```php
+'activity_handlers' => [App\Activities\Greeter::class],
+```
+
+A direct `register()` still works and wins over a declared handler of the same name.
+
 ### Journal events are built from an `ExecutionId`, and `Event::executionId()` returns one (#682)
 
 **Who is affected**: code that builds a journal event, such as a custom command buffer, a test or a
