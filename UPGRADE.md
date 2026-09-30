@@ -470,8 +470,9 @@ analyser reports.
 `ChildWorkflowOptions::$memo`, `$staticSummary` and `$staticDetails` now reach the
 `StartChildWorkflowExecution` command: the memo as the child's memo, the summary and details as the
 command's user metadata, which the Temporal UI shows. Before, the SQL and in-memory journals
-recorded them and the Temporal bridge dropped them. Server 1.20 predates user metadata on commands
-(1.25 has it) and ignores the summary and details; the memo reaches every supported server.
+recorded them and the Temporal bridge dropped them. The summary and details need Temporal Server
+1.25 or later: an older server drops them without an error. The memo reaches every supported
+server.
 
 A child memo key `durableExecutionId` or `durableWaitingOn` now throws
 `UnsupportedByBackendException` on Temporal: Durable writes both keys itself.
