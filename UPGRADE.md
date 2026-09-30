@@ -465,6 +465,15 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### `JournalRunHistoryReader::fromEntries()` (#819)
+
+`JournalRunHistoryReader` gains a static `fromEntries(iterable $entries, string $workflowName = '')`.
+It builds the same history as `read()` from journal entries you already read with
+`readStreamWithRecordedAt()`. The profiler panel uses it to draw `RunTimeline` without a second
+journal read. `read()` returns the same history as before.
+
+**What to do:** nothing.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
