@@ -7,11 +7,13 @@ weight: 35
 
 This page documents every key that `DurableBundle` accepts in `config/packages/durable.yaml`.
 
-Terms used below: an execution is one durable run of a workflow; the journal is the append-only
-record of everything an execution decided and received; an activity is a unit of side effect, such
-as an HTTP call or a database write; a worker is the process that replays workflows and runs
-activities; replay is how an execution resumes, by running the workflow code again from its first
-line against the journal. The [glossary](../glossary/) defines each of them.
+Terms used below (the [glossary](../glossary/) defines each of them):
+
+- An execution is one durable run of a workflow.
+- The journal is the append-only record of everything an execution decided and received.
+- An activity is a unit of side effect, such as an HTTP call or a database write.
+- A worker is the process that replays workflows and runs activities.
+- Replay is how an execution resumes, by running the workflow code again from its first line against the journal.
 
 ---
 
@@ -161,7 +163,7 @@ The connection and the lock of the SQL backend. The bundle reads this section on
 | `connection` | service ID | `doctrine.dbal.default_connection` | The `Doctrine\DBAL\Connection` the stores write to. Give them a connection of their own. Sharing the application's connection is strongly discouraged (DUR054), because Durable's transactions then nest inside business ones. |
 | `auto_setup` | bool | `true` | Creates the missing tables on the first write, never inside an open transaction. Set it to `false` once Doctrine Migrations owns the schema, so that only one of the two writes it. `bin/console durable:setup` creates the tables either way. |
 | `lock_factory` | service ID | `lock.factory` | The `LockFactory` that serialises resumes of one execution. **The lock protects resumes only if the lock store is shared by every worker.** With several workers, an in-memory or per-process factory lets two workers replay the same execution at once, which is the failure the lock prevents. |
-| `allow_local_lock` | bool | `false` | With `false`, a per-process store (`flock`, `semaphore`, `in-memory`, `null`) behind `lock_factory` raises an error: at compile time for a literal DSN, and when the lock is first built for a DSN read from an environment variable. `true` accepts such a store, for exactly one worker. `framework.lock` takes a DBAL URL (`pgsql://…`, `mysql://…`); it does not accept a Doctrine connection name. |
+| `allow_local_lock` | bool | `false` | With `false`, the bundle raises an error for a per-process store (`flock`, `semaphore`, `in-memory`, `null`) behind `lock_factory`: at compile time for a literal DSN, and when the lock is first built for a DSN read from an environment variable. `true` accepts such a store, for exactly one worker. `framework.lock` takes a DBAL URL (`pgsql://…`, `mysql://…`); it does not accept a Doctrine connection name. |
 | `lock_ttl` | float, seconds | `300` | How long a resume lock outlives a worker that died holding it. The pass that holds the lock gives it a fresh TTL at every step boundary, that is at every message it sends through the bus, so **the TTL must exceed the longest step**. When a step outlasts it, a second worker replays the same execution in parallel, and the first one stops at its next boundary. A step is usually the replay of the journal up to the next command, well under a second. Activities run outside the pass, except on a `sync://` activity transport, where each one is a step of the pass and its duration counts. A pass that only replays, with no message in between, is not refreshed. |
 
 The [Backends](../backends/#dbal-backend) page describes the trade-off this backend makes and why
@@ -191,7 +193,7 @@ processes.
 
 | Key | Values | Default | Description |
 |-----|--------|---------|-------------|
-| `dsn` | `temporal://host:port?…` or `null` | `null` | The cluster. Required by `backend: temporal`; with `backend: dbal`, the cluster serves Nexus operations and the journal stays in SQL. Any value other than a non-empty string or `null` raises a configuration error. gRPC goes through `ext-grpc` when the extension is loaded and through curl (HTTP/2) otherwise; the scheme picks the wire, see below. |
+| `dsn` | `temporal://host:port?…` or `null` | `null` | The cluster. Required by `backend: temporal`; with `backend: dbal`, the cluster serves Nexus operations and the journal stays in SQL. Any value other than a non-empty string or `null` is a configuration error. gRPC goes through `ext-grpc` when the extension is loaded and through curl (HTTP/2) otherwise; the scheme sets the wire protocol, see below. |
 | `journal` | `true` / `false` | from `backend` | **Deprecated**: `true` is `backend: temporal`, `false` with a DSN is `backend: dbal`. |
 | `search_attributes` | `true` / `false` | `false` | Writes `DurableWorkflowName` and `DurableExecutionId` on every start, so the run list can filter by workflow name and execution id. [Register them on the namespace](../backends/#register-durables-search-attributes) **before** turning this on. On Laravel, the same key in `config/durable.php`; on Magento, `durable/temporal/search_attributes` in `env.php`. |
 | `guzzle_client` | a service id or `null` | `null` | The application's `GuzzleHttp\ClientInterface`, used by `transport=guzzle` in the DSN: its proxy, TLS options and middleware apply to gRPC. Ignored by any other transport; `null` builds a default client. On Laravel, the same key in `config/durable.php` names a container binding; on Magento, it is the `guzzle` argument of `RuntimeFactory` in `di.xml`. |
@@ -230,10 +232,10 @@ The scheme sets the wire protocol and the encryption:
 | `api_key` | no, TLS only | Sent with every call as `authorization: Bearer …`, beside a `temporal-namespace` header (Temporal Cloud API keys). URL-encode it. |
 | `transport` | no (default `auto`) | Overrides what the scheme implies: `grpc` demands `ext-grpc` and fails without it, `grpc-curl` forces curl even when the extension is loaded, `guzzle` sends gRPC through Guzzle 7.14 or newer (its cURL handler reads the trailers), `http` is what `temporal+http://` sets. `auto` picks `grpc` when the extension is loaded and `grpc-curl` otherwise. |
 
-Any other parameter raises an error that names it, so a typo such as `namesapce=` no longer falls
-back to the `default` namespace in silence. `ca`, `cert`, `key` or `api_key` without TLS raise an
-error too. With a PSR-18 client handed to the JSON gateway, TLS is that client's own configuration,
-and `ca`, `cert` and `key` raise an error.
+Any other parameter is an error, and the message names it, so a typo such as `namesapce=` no longer
+falls back to the `default` namespace in silence. So are `ca`, `cert`, `key` or `api_key` without
+TLS. With a PSR-18 client handed to the JSON gateway, TLS is that client's own configuration, and
+`ca`, `cert` and `key` are errors.
 
 **Example:**
 ```
@@ -270,7 +272,7 @@ How the bundle dispatches activity messages from workflow tasks to activity hand
 | `type` | `in_memory`, `messenger` | **`in_memory`** | `in_memory` executes activities **synchronously within the workflow task handler**, which is what you get when the key is absent. `messenger` routes activity messages through Symfony Messenger to the configured transport. |
 | `transport_name` | string | `durable_activities` | Name of the Messenger transport used when `type: messenger`. Must match a transport defined in `messenger.yaml`. |
 
-**In production, you probably do not want the default.** Defining `durable_activities` in
+**The default runs activities inline, in the workflow task.** Defining `durable_activities` in
 `messenger.yaml` does not select it. Without `type: messenger`, the transport stays empty and the
 activity runs inline, within the workflow task's time and without the retry semantics the transport
 provides.
@@ -323,7 +325,7 @@ durable:
     max_activity_retries: 3
 ```
 
-Ceiling on automatic retries, applied to every activity on the `in_memory` and `dbal` backends: an activity's own `RetryLimit` can only be stricter. A negative value raises a configuration error. `0` means **no ceiling**, and since an activity with no `RetryLimit` retries indefinitely (Temporal's default), leaving both unset means a failing activity never fails the workflow. Set a bound per activity with `RetryLimit::ofAttempts()` or `RetryLimit::once()`; see [Options and value objects](../options/#retrylimit). On the `temporal` backend no host reads it: the cluster retries from each activity's own `RetryLimit`.
+Ceiling on automatic retries, applied to every activity on the `in_memory` and `dbal` backends: an activity's own `RetryLimit` can only be stricter. A negative value is a configuration error. `0` means **no ceiling**, and since an activity with no `RetryLimit` retries indefinitely (Temporal's default), leaving both unset means a failing activity never fails the workflow. Set a bound per activity with `RetryLimit::ofAttempts()` or `RetryLimit::once()`; see [Options and value objects](../options/#retrylimit). On the `temporal` backend no host reads it: the cluster retries from each activity's own `RetryLimit`.
 
 On Laravel, the same key in `config/durable.php`; on Magento, the `maxActivityRetries` argument of
 `RuntimeFactory` in `di.xml`, which only the in-process `MagentoRuntime::run()` reads (see
@@ -354,7 +356,7 @@ durable:
 
 ## `child_workflow`
 
-How child workflows, executions started by another execution, are dispatched.
+How child workflows (executions started by another execution) are dispatched.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
