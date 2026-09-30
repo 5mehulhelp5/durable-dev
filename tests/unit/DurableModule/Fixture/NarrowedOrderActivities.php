@@ -6,9 +6,12 @@ namespace unit\DurableModule\Fixture;
 
 use Gplanchat\Durable\Attribute\AsActivityHandler;
 
-/** Implements two activity contracts but names one: only the named one is served. */
+/**
+ * Implements two activity contracts but names one: only the named one is served. Not `final`: a
+ * plugin on it makes Magento generate an Interceptor extending it (#766).
+ */
 #[AsActivityHandler(contract: OrderActivities::class)]
-final class NarrowedOrderActivities implements OrderActivities, AuditActivities
+class NarrowedOrderActivities implements OrderActivities, AuditActivities
 {
     public function charge(string $orderId): string
     {
