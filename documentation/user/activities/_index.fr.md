@@ -5,7 +5,7 @@ weight: 30
 
 # Écrire des activités
 
-Cette page montre comment **écrire** une activité, c'est-à-dire une unité d'effet de bord comme un appel HTTP, une écriture en base ou un e-mail (voir le [glossaire](../glossary/)), et comment l'appeler depuis un workflow. Le détail normatif est dans [**DUR023**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR023-activity-authoring-and-asynchronous-activity-proxy.md) et [**DUR004**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR004-activity-stub-and-activities.md) ; cette page en couvre le versant pratique.
+Cette page montre comment **écrire** une activité, c'est-à-dire une unité d'effet de bord comme un appel HTTP, une écriture en base ou un e-mail (voir le [glossaire](../glossary/)), et comment l'appeler depuis un workflow. Le détail normatif est dans [**DUR023**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR023-activity-authoring-and-asynchronous-activity-proxy.md) et [**DUR004**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR004-activity-stub-and-activities.md) ; cette page s'en tient à la pratique.
 
 ## L'interface de contrat et la classe d'implémentation {#deux-pièces}
 
@@ -183,7 +183,7 @@ de bord et l'enregistrement de son résultat. Par exemple, le prestataire de pai
 carte, puis la tentative expire ou le worker meurt. Cette tentative compte comme un échec, et elle
 est réessayée. Une activité s'exécute **au moins une fois**.
 
-Chaque appel qu'une activité adresse au monde extérieur a donc besoin d'une clé identique d'une
+Tout ce qu'une activité fait au monde extérieur a donc besoin d'une clé identique d'une
 tentative à l'autre. Le workflow passe les mêmes arguments à chaque tentative. Construisez la clé à
 partir de ces arguments et d'un préfixe fixe qui nomme l'opération (`charge-`, `refund-`), jamais
 d'une valeur aléatoire ni de l'heure courante :
@@ -202,12 +202,12 @@ ajoutez la valeur qui distingue les débits, comme le numéro d'échéance. Vér
 temps votre prestataire conserve une clé.
 
 Un `RetryLimit` limite le nombre de tentatives qui atteignent le prestataire. Il ne rend pas une
-deuxième tentative sûre. Avec `RetryLimit::once()`, une tentative interrompue en cours de route
-n'est pas réessayée. L'appel a pu avoir lieu ou non, et le workflow reçoit un échec.
+deuxième tentative sûre. Avec `RetryLimit::once()`, une tentative interrompue n'est pas
+réessayée. L'appel a pu avoir lieu ou non, et le workflow reçoit un échec.
 
 ## Injection de dépendances
 
-Contrairement à un workflow, une **implémentation d'activité** **peut** avoir un constructeur ordinaire avec **injection de dépendances**. Elle reçoit des clients HTTP, des connexions aux bases de données, des loggers et d'autres services de l'hôte du **worker d'activités**, par exemple du conteneur Symfony dans le processus du worker.
+Contrairement à un workflow, une **implémentation d'activité** **peut** avoir un constructeur ordinaire avec **injection de dépendances**. Elle reçoit des clients HTTP, des bases de données, des loggers et d'autres services de l'hôte du **worker d'activités**, par exemple du conteneur Symfony dans le processus du worker.
 
 ### Battements de cœur d'une activité longue {#battements-de-cœur--une-activité-longue-dit-quelle-est-vivante}
 
@@ -247,7 +247,7 @@ donc sur tous les backends.
 
 ## Côté workflow : `ActivityInvoker`
 
-Sur **`WorkflowEnvironment`** (voir [Écrire un workflow](../workflows/)), appelez **`activityStub(VotreInterfaceDActivité::class)`** pour obtenir un **`ActivityStub`**, la notion que les ADR nomment **`ActivityInvoker`**.
+Depuis **`WorkflowEnvironment`** (voir [Écrire un workflow](../workflows/)), appelez **`activityStub(VotreInterfaceDActivité::class)`** pour obtenir un **`ActivityStub`**, la notion que les ADR nomment **`ActivityInvoker`**.
 
 Un stub qui n'a pas besoin d'**`ActivityOptions`** peut aussi se déclarer en argument de la méthode de workflow : un paramètre typé **`ActivityStub`** et marqué **`#[Activities(VotreInterfaceDActivité::class)]`** reçoit le même stub. Voir [Les arguments que fournit Durable](../workflows/#arguments-durable-supplies).
 

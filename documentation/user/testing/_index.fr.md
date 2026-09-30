@@ -193,7 +193,7 @@ assert($result === 'HELLO');
 ## Tests d'intégration Symfony avec `DurableBundleTestTrait` {#tests-dintégration-symfony--durablebundletesttrait}
 
 Pour les tests qui démarrent le noyau de votre application Symfony, employez `DurableBundleTestTrait`
-dans n'importe quelle classe héritant de `KernelTestCase`. Le trait fonctionne avec des
+dans n'importe quelle classe héritant de `KernelTestCase`. Le trait repose sur des
 **transports Messenger** configurés **en mémoire** dans l'environnement `test` (voir
 [Premiers pas](../getting-started/)).
 
@@ -318,7 +318,7 @@ temporal server start-dev --namespace durable-test --port 7233
 DURABLE_TEMPORAL_ADDRESS=127.0.0.1:7233 vendor/bin/phpunit --testsuite integration
 ```
 
-Sans `DURABLE_TEMPORAL_ADDRESS`, la suite est ignorée : elle ne fait donc rien échouer dans une
+Sans `DURABLE_TEMPORAL_ADDRESS`, la suite est ignorée : elle reste donc inoffensive dans une
 chaîne qui n'a pas de serveur.
 
 La suite fait tourner deux workers dans des **processus séparés**, comme en production. Les deux

@@ -189,7 +189,7 @@ assert($result === 'HELLO');
 
 ## Symfony integration tests with `DurableBundleTestTrait` {#symfony-integration-tests--durablebundletesttrait}
 
-For tests that boot your Symfony application kernel, use `DurableBundleTestTrait` in any class that extends `KernelTestCase`. The trait works with **Messenger transports** configured as **in-memory** in the `test` environment (see [Getting started](../getting-started/)).
+For tests that boot your Symfony application kernel, use `DurableBundleTestTrait` in any class that extends `KernelTestCase`. The trait relies on **Messenger transports** configured as **in-memory** in the `test` environment (see [Getting started](../getting-started/)).
 
 ```php
 <?php
@@ -310,8 +310,8 @@ temporal server start-dev --namespace durable-test --port 7233
 DURABLE_TEMPORAL_ADDRESS=127.0.0.1:7233 vendor/bin/phpunit --testsuite integration
 ```
 
-Without `DURABLE_TEMPORAL_ADDRESS`, the suite is skipped, so it causes no failure in a pipeline that
-has no server.
+Without `DURABLE_TEMPORAL_ADDRESS`, the suite is skipped, so it stays harmless in a pipeline that has
+no server.
 
 The suite runs two workers in **separate processes**, as in production. Both roles long-poll for
 tens of seconds, and alternating them in one process starves whichever role is not polling.

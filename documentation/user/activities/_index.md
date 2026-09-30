@@ -180,7 +180,7 @@ the recording of its result. For example, the payment provider charges the card,
 times out or the worker dies. That attempt counts as failed, and it is retried. An activity runs
 **at least once**.
 
-Each call an activity makes to the outside world therefore needs a key that stays the same on every
+Anything an activity does to the outside world therefore needs a key that stays the same on every
 attempt. The workflow passes the same arguments to each attempt. Build the key from those arguments
 and a fixed prefix that names the operation (`charge-`, `refund-`), never from a random value or the
 current time:
@@ -198,12 +198,12 @@ charged again (a second instalment, a new execution for the same order), add the
 the charges apart, such as the instalment number. Also check how long your provider keeps a key.
 
 A `RetryLimit` bounds how many attempts reach the provider. It does not make a second attempt safe.
-With `RetryLimit::once()`, an attempt cut off midway is not retried. The call may or may not have
+With `RetryLimit::once()`, a cut-off attempt is not retried. The call may or may not have
 happened, and the workflow receives a failure.
 
 ## Dependency injection
 
-Unlike a workflow, an **activity implementation** **can** have an ordinary constructor with **dependency injection**. It receives HTTP clients, database connections, loggers and other services from the host of the **activity worker**, for example the Symfony container in the worker process.
+Unlike a workflow, an **activity implementation** **can** have an ordinary constructor with **dependency injection**. It receives HTTP clients, databases, loggers and other services from the host of the **activity worker**, for example the Symfony container in the worker process.
 
 ### Heartbeats from a long-running activity {#heartbeats-a-long-activity-says-it-is-alive}
 
