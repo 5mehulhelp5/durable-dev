@@ -144,7 +144,42 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         $run = (new RunDashboard(new RenderingCatalog(executionId: 'order/42')))->run('order/42');
         $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', ['backend' => $run['backend'], 'selectedRun' => $run['run']]);
 
-        self::assertStringContainsString('<code>order/42</code> <small class="text-secondary">run run-1 on the backend</small>', $page);
+        self::assertStringContainsString('<code>order/42</code> <small class="text-secondary">Backend run run-1</small>', $page);
+    }
+
+    public function testTheRunPageUsesTheVocabularyOfTheOtherSurfaces(): void
+    {
+        // #821: Execution, History and Outcome, as on Filament, Magento and the profiler.
+        $run = (new RunDashboard(new RenderingCatalog(executionId: 'order/42')))->run('order/42');
+        $page = $this->twig()->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', ['backend' => $run['backend'], 'selectedRun' => $run['run']]);
+
+        self::assertStringContainsString('Execution:', $page);
+        self::assertStringNotContainsString('Run:', $page);
+        self::assertStringContainsString('>History<', $page);
+        self::assertStringContainsString('Outcome:', $page);
+    }
+
+    public function testAFrenchRunPageUsesTheSameWords(): void
+    {
+        $run = (new RunDashboard(new RenderingCatalog(executionId: 'order/42')))->run('order/42');
+        $page = $this->twig('fr')->render('@DurablePlugin/admin/dashboard/_dashboard.html.twig', ['backend' => $run['backend'], 'selectedRun' => $run['run']]);
+
+        self::assertStringContainsString('Exécution :', $page);
+        self::assertStringContainsString('>Historique<', $page);
+        self::assertStringContainsString('Exécution côté backend run-1', $page);
+    }
+
+    public function testAnOutcomeBadgeIsSingularInFrench(): void
+    {
+        // "Terminées" is right over a count and wrong on the badge of a single run.
+        $translator = new Translator('fr');
+        $translator->addLoader('xlf', new XliffFileLoader());
+        $translator->addResource('xlf', \dirname(__DIR__, 2) . '/translations/durable.fr.xlf', 'fr', 'durable');
+
+        self::assertSame(
+            ['En cours', 'Terminée', 'En échec', 'Annulée', 'Poursuivie à neuf'],
+            array_map(static fn(string $outcome): string => $translator->trans('outcome.' . $outcome, [], 'durable'), ['running', 'completed', 'failed', 'cancelled', 'continued_as_new']),
+        );
     }
 
     public function testTheRunPageSaysWhereANexusOperationWaitsAndThatItIsInFlight(): void

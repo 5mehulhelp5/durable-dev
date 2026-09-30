@@ -167,7 +167,7 @@
                                                href="{{ path('gplanchat_durable_plugin_admin_run_show', { runId: run.executionId, status: status, cursor: pagination.cursor }) }}">
                                                 <div class="d-flex justify-content-between align-items-center gap-2">
                                                     <strong>{{ run.workflowName }}</strong>
-                                                    <span class="badge durable-status {% if run.status == 'running' %}bg-blue-lt text-blue{% elseif run.status == 'completed' %}bg-green-lt text-green{% elseif run.status == 'failed' %}bg-red-lt text-red{% else %}bg-secondary-lt text-secondary{% endif %}">{{ ('status.' ~ run.status)|trans({}, 'durable')|upper }}</span>
+                                                    <span class="badge durable-status {% if run.status == 'running' %}bg-blue-lt text-blue{% elseif run.status == 'completed' %}bg-green-lt text-green{% elseif run.status == 'failed' %}bg-red-lt text-red{% else %}bg-secondary-lt text-secondary{% endif %}">{{ ('outcome.' ~ run.status)|trans({}, 'durable')|upper }}</span>
                                                 </div>
                                                 <div class="durable-meta mt-1">
                                                     {# The id the application started the run with, the one a log line names (#514). #}
@@ -212,7 +212,7 @@
                                     {% if selectedRun %}
                                         <p><strong>{{ 'details.workflow'|trans({}, 'durable') }}</strong> {{ selectedRun.workflowName }}</p>
                                         <p><strong>{{ 'details.run'|trans({}, 'durable') }}</strong> <code>{{ selectedRun.executionId }}</code>{% if selectedRun.runId != selectedRun.executionId %} <small class="text-secondary">{{ 'details.backend_run'|trans({'%id%': selectedRun.runId}, 'durable') }}</small>{% endif %}</p>
-                                        <p><strong>{{ 'details.outcome'|trans({}, 'durable') }}</strong> {{ ('status.' ~ selectedRun.status)|trans({}, 'durable')|upper }}</p>
+                                        <p><strong>{{ 'details.outcome'|trans({}, 'durable') }}</strong> {{ ('outcome.' ~ selectedRun.status)|trans({}, 'durable')|upper }}</p>
 
                                         {# The waits served by someone else (#671): where each one is, and whether it is
                                            over. In flight is not a failure, and it must not read like one. #}
@@ -243,6 +243,7 @@
                                         {% if selectedRun.timeline.actions is empty %}
                                             <p class="text-secondary mb-0">{{ 'details.no_history'|trans({}, 'durable') }}</p>
                                         {% else %}
+                                            <h4 class="h5">{{ 'details.history'|trans({}, 'durable') }}</h4>
                                             {# The frieze: one row per action, **placed in time**. Stacking blocks
                                                answers "in what order", never "for how long" — and the second is the
                                                question an operator in front of a slow run comes to ask. The seconds
