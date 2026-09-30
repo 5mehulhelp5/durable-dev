@@ -154,7 +154,7 @@ says otherwise than `backend`.
 ## `dbal`
 
 The connection and the lock of the SQL backend. The bundle reads this section only when `backend` is
-`dbal` and ignores it otherwise, so its defaults have no effect on the other backends.
+`dbal` and ignores it otherwise, so leaving it at its defaults costs nothing.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
@@ -230,7 +230,7 @@ The scheme sets the wire protocol and the encryption:
 | `api_key` | no, TLS only | Sent with every call as `authorization: Bearer …`, beside a `temporal-namespace` header (Temporal Cloud API keys). URL-encode it. |
 | `transport` | no (default `auto`) | Overrides what the scheme implies: `grpc` demands `ext-grpc` and fails without it, `grpc-curl` forces curl even when the extension is loaded, `guzzle` sends gRPC through Guzzle 7.14 or newer (its cURL handler reads the trailers), `http` is what `temporal+http://` sets. `auto` picks `grpc` when the extension is loaded and `grpc-curl` otherwise. |
 
-Any other parameter raises an error that names it, so a typo such as `namesapce=` does not fall
+Any other parameter raises an error that names it, so a typo such as `namesapce=` no longer falls
 back to the `default` namespace in silence. `ca`, `cert`, `key` or `api_key` without TLS raise an
 error too. With a PSR-18 client handed to the JSON gateway, TLS is that client's own configuration,
 and `ca`, `cert` and `key` raise an error.
@@ -298,9 +298,9 @@ possible, because nothing tells the bundle which bus your application routes
 `ResumeWorkflowMessage` to. A wrong choice would take the resume lock off the bus that carries the
 work, and resumes would lose the lock's protection without any error.
 
-When your application has more than one bus, naming them avoids a cost. A business command bus
+Naming the buses is worth doing once your application has more than one. A business command bus
 carries no durable message, and a per-execution lock on it adds contention for nothing. An id that
-names no declared bus raises an error at compile time instead of doing nothing.
+names no declared bus raises an error at compile time instead of silently doing nothing.
 
 ---
 

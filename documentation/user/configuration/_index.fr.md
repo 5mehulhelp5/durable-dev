@@ -156,7 +156,7 @@ ci-dessous qui dit autre chose que `backend`.
 ## `dbal`
 
 La connexion et le verrou du backend SQL. Le bundle ne lit cette section que quand `backend` vaut
-`dbal` et l'ignore sinon : ses valeurs par défaut n'ont aucun effet sur les autres backends.
+`dbal` et l'ignore sinon : la laisser à ses valeurs par défaut ne coûte donc rien.
 
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|
@@ -233,7 +233,7 @@ Le schéma fixe le protocole de transport et le chiffrement :
 | `transport` | non (défaut `auto`) | Surcharge ce que le schéma implique : `grpc` exige `ext-grpc` et échoue sans elle, `grpc-curl` force curl même quand l'extension est chargée, `guzzle` fait passer le gRPC par Guzzle 7.14 ou plus (son handler cURL lit les trailers), `http` est ce que `temporal+http://` pose. `auto` prend `grpc` si l'extension est chargée, `grpc-curl` sinon. |
 
 Tout autre paramètre lève une erreur qui le nomme : une coquille comme `namesapce=` ne retombe donc
-pas en silence sur l'espace de noms `default`. `ca`, `cert`, `key` ou `api_key` sans TLS lèvent aussi
+plus en silence sur l'espace de noms `default`. `ca`, `cert`, `key` ou `api_key` sans TLS lèvent aussi
 une erreur. Avec un client PSR-18 remis à la passerelle JSON, le TLS relève de la configuration de ce
 client, et `ca`, `cert` et `key` lèvent une erreur.
 
@@ -301,10 +301,10 @@ plus fin n'est pas possible, car rien n'indique au bundle vers quel bus votre ap
 route `ResumeWorkflowMessage`. Un mauvais choix retirerait le verrou de reprise du bus qui porte le
 travail, et les reprises perdraient la protection du verrou sans aucune erreur.
 
-Quand votre application a plusieurs bus, les nommer évite un coût. Un bus de commandes métier ne
+Nommer les bus vaut la peine dès que votre application en a plusieurs. Un bus de commandes métier ne
 transporte aucun message durable, et un verrou par exécution sur ce bus ajoute une contention
 inutile. Un identifiant qui ne nomme aucun bus déclaré lève une erreur à la compilation au lieu de
-ne rien faire.
+ne rien faire en silence.
 
 ---
 
