@@ -62,6 +62,9 @@ durable:
         # A service id implementing both PSR-17 RequestFactoryInterface and StreamFactoryInterface (Guzzle's HttpFactory, nyholm's Psr17Factory). Defaults to psr18_client, which Symfony's Psr18Client satisfies on its own.
         psr17_factory:        null
 
+        # A service id: the application's PayloadCodecInterface, which encodes every payload sent to Temporal and decodes every payload read (DUR055). The codec holds its own key, from the application's secrets or environment; Durable reads none. null sends payloads as they are.
+        payload_codec:        null
+
         # false: the cluster is reachable, but the journal stays the one in event_store. An application serving a Nexus operation from a DBAL journal needs both — and there are not two sources of truth, since event_store says which one it is.
         journal:              null # Deprecated (Since gplanchat/durable-bundle 0.1.0-beta1: The "durable.temporal.journal" option is deprecated: set durable.backend instead.)
     activity_transport:
@@ -188,6 +191,7 @@ profileur Symfony fonctionne d'un processus à l'autre.
 | `guzzle_client` | un id de service ou `null` | `null` | Le `GuzzleHttp\ClientInterface` de l'application, utilisé par `transport=guzzle` dans le DSN : son proxy, ses options TLS et ses middlewares s'appliquent au gRPC. Ignoré par tout autre transport ; `null` construit un client par défaut. Sous Laravel, la même clé de `config/durable.php` nomme une liaison du conteneur ; sous Magento, c'est l'argument `guzzle` de `RuntimeFactory` dans `di.xml`. |
 | `psr18_client` | un id de service ou `null` | `null` | Le client PSR-18 de l'application, utilisé par `transport=http` (la passerelle JSON) à la place de curl. Ignoré par tout autre transport. |
 | `psr17_factory` | un id de service ou `null` | `psr18_client` | Un service qui implémente à la fois les factories PSR-17 de requêtes et de flux — le `HttpFactory` de Guzzle, le `Psr17Factory` de nyholm. Le `Psr18Client` de Symfony est à la fois client et factory, d'où la valeur par défaut. Sous Laravel, les deux clés de `config/durable.php` nomment des liaisons du conteneur ; sous Magento, un `Psr18Http` est l'argument `jsonGateway` de `RuntimeFactory` dans `di.xml`. |
+| `payload_codec` | un id de service ou `null` | `null` | Le `PayloadCodecInterface` de l'application : chaque payload envoyé à Temporal est encodé, chaque payload lu décodé ([DUR055](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR055-a-payload-codec-at-the-client-boundary.md)). Le codec lit sa propre clé, dans les secrets Symfony ou l'environnement ; Durable n'en lit aucune. |
 
 ### Format du DSN
 
