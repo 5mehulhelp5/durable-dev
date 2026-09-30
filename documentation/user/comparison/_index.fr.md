@@ -5,33 +5,37 @@ weight: 18
 
 # Durable et le SDK PHP de Temporal
 
-Temporal publie un [SDK PHP officiel](https://github.com/temporalio/sdk-php). Durable n'en est pas
-un fork, n'est pas une surcouche, et n'en dépend pas : `composer.lock` ne contient ni `temporal/sdk`
-ni aucun paquet RoadRunner. Les deux résolvent le même problème, l'exécution durable d'une logique
+Temporal publie un [SDK PHP officiel](https://github.com/temporalio/sdk-php). Durable n'en dépend
+pas, et n'en est ni un fork ni une surcouche : `composer.lock` ne contient ni `temporal/sdk` ni
+aucun paquet RoadRunner. Les deux résolvent le même problème, l'exécution durable d'une logique
 métier au long cours, et font des arbitrages différents à chaque couche en dessous.
 
-Cette page énonce ces différences, y compris celles où le SDK est devant.
+Cette page décrit ces différences, y compris celles où le SDK est devant. Elle emploie quelques
+termes de Durable : un workflow est la classe PHP qui décrit les étapes d'une exécution, une
+activité est une unité d'effet de bord qu'il planifie, le journal est l'enregistrement, en ajout
+seul, de tout ce qu'une exécution a décidé et reçu, un backend est l'endroit où vit ce journal, et
+un worker est le processus qui prend le travail. Le [glossaire](../glossary/) définit chacun d'eux.
 
 **Quelle version du SDK.** Chaque affirmation ci-dessous a été vérifiée contre `temporal/sdk`
-**v2.18**, publiée le 2026-08-17. Le SDK avance, et deux des différences énoncées ici sont de celles
-que ses mainteneurs ont dit à voix haute vouloir refermer ; les sections
+**v2.18**, publiée le 2026-08-17. Le SDK continue d'avancer, et ses mainteneurs ont dit
+publiquement vouloir refermer deux des différences décrites ici ; les sections
 [5](#5-fibers-or-generators-the-colouring-problem) et [8](#8-nexus-the-one-place-durable-is-ahead)
-nomment le travail public en cours. Lisez une différence comme vraie à cette version, non comme une
-propriété permanente.
+renvoient à ce travail public. Chaque différence vaut pour cette version et peut changer dans une
+version ultérieure.
 
 ---
 
 ## 1. Le moteur du worker : pas de RoadRunner {#1-the-worker-runtime-no-roadrunner}
 
-Le SDK se scinde en un **client** et un **worker**. Le client exige `ext-grpc` ; le worker exige
-**RoadRunner**, un serveur applicatif Go que l'on télécharge dans le projet par
-`./vendor/bin/rr get` et que l'on configure par son propre `.rr.yaml`. Le code des workflows et des
-activités tourne dans des processus PHP supervisés par RoadRunner.
+Le SDK se scinde en un **client** et un **worker**. Le client exige `ext-grpc`. Le worker exige
+**RoadRunner**, un serveur applicatif Go que vous téléchargez dans le projet par
+`./vendor/bin/rr get` et que vous configurez par son propre `.rr.yaml`. Le code des workflows et
+des activités tourne dans des processus PHP que RoadRunner supervise.
 
-Durable n'a pas de second moteur. Un worker est un processus PHP en ligne de commande, ordinaire,
-lancé par la console que l'hôte fournit déjà. Ce qui achemine le travail, c'est le transport de
-l'hôte lui-même : Symfony Messenger, la file de Laravel, ou, sur Magento, la file du backend que la
-commande interroge elle-même :
+Durable n'a pas de second moteur. Un worker est un processus PHP en ligne de commande ordinaire,
+lancé par la console que votre framework hôte fournit déjà. Le transport de l'hôte achemine le
+travail : Symfony Messenger, la file de Laravel ou, sur Magento, la file du backend que la commande
+interroge elle-même :
 
 ```bash
 bin/console messenger:consume durable_workflows durable_activities  # Symfony
@@ -47,11 +51,11 @@ bin/magento durable:worker --role=activity                          #   (deux r�
 | Configuration du worker | `messenger.yaml`, `config/durable.php` ou `di.xml` | `.rr.yaml` |
 | Modèle de déploiement | celui que votre application emploie déjà | un second modèle de processus à apprendre et à opérer |
 
-### Ce que cela ne prétend *pas*
+### Quand Durable a encore besoin de gRPC {#ce-que-cela-ne-prétend-pas}
 
-Durable ne supprime pas gRPC. Quand le backend est Temporal, le pont parle gRPC au cluster et
-**`ext-grpc` est requis**, déclaré par `gplanchat/durable-bridge-temporal` et non par le paquet
-cœur :
+Durable ne supprime pas gRPC. Quand le backend est Temporal, le pont (le paquet qui relie Durable à
+ce backend) parle gRPC au cluster, et **`ext-grpc` est requis**. C'est
+`gplanchat/durable-bridge-temporal` qui déclare cette exigence, pas le paquet cœur :
 
 | Paquet | Exige |
 |---|---|
@@ -61,17 +65,19 @@ cœur :
 | `gplanchat/durable-bridge-illuminate` | `illuminate/database`, `illuminate/contracts` |
 | `gplanchat/durable-laravel` | `illuminate/support`, `illuminate/container`, aucun composant Symfony |
 
-Donc : **jamais de RoadRunner ; `ext-grpc` seulement quand vous parlez à un cluster Temporal.** Sur
-les backends en mémoire, DBAL et Illuminate, aucune extension PHP au-delà d'une installation
-standard n'entre en jeu. La règle est consignée dans
-[DUR006](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR006-no-official-temporal-php-sdk-and-no-roadrunner.md).
+Durable n'a jamais besoin de RoadRunner, et n'a besoin d'`ext-grpc` que si vous parlez à un
+cluster Temporal. Les backends en mémoire, DBAL et Illuminate ne demandent aucune extension PHP
+au-delà d'une installation standard.
+[DUR006](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR006-no-official-temporal-php-sdk-and-no-roadrunner.md)
+consigne la règle qui fonde ce choix.
 
 ---
 
 ## 2. La testabilité {#2-testability}
 
-C'est là que les deux bibliothèques divergent le plus, et la divergence est structurelle plutôt
-qu'une affaire d'outillage : elle découle de la façon dont un workflow atteint le moteur.
+C'est sur les tests que les deux bibliothèques diffèrent le plus. La différence découle de la façon
+dont un workflow atteint le moteur : elle est structurelle, et l'outillage de test ne la supprime
+pas.
 
 ### Avec Durable, le workflow tourne dans le processus de test
 
@@ -95,8 +101,8 @@ final class GreetWorkflowTest extends DurableTestCase
 }
 ```
 
-Pas de serveur, pas de binaire, pas d'extension, pas de Docker. Voir
-[Tester des workflows](../testing/) pour la boîte à outils complète.
+Ce test n'a besoin ni de serveur, ni de binaire, ni d'extension, ni de Docker.
+[Tester des workflows](../testing/) présente la boîte à outils complète.
 
 ### Avec le SDK, tout test de workflow est un test d'intégration
 
@@ -120,28 +126,28 @@ $this->assertSame('world', $run->getResult('string'));
 ```
 
 Le workflow ne s'exécute jamais dans le processus PHPUnit. Les doublures d'activité passent par un
-canal hors processus : l'attente est écrite d'un côté et lue par le worker de l'autre. C'est
-fidèle, c'est *un vrai* serveur Temporal, mais il n'existe aucun palier moins cher en dessous.
-Vérifier qu'un `match` de votre workflow prend la bonne branche coûte deux binaires et un
-aller-retour gRPC.
+canal hors processus : le test écrit l'attente d'un côté, et le worker la lit de l'autre. Le
+dispositif est fidèle, puisqu'il fait tourner un vrai serveur Temporal, et il n'a aucun palier
+moins coûteux en dessous. Pour vérifier qu'un `match` de votre workflow prend la bonne branche,
+vous payez deux binaires et un aller-retour gRPC.
 
-### Pourquoi Durable peut faire cela
+### Pourquoi un workflow Durable peut tourner dans le processus de test {#pourquoi-durable-peut-faire-cela}
 
-Trois propriétés de la surface d'écriture, et non trois utilitaires de test :
+Trois propriétés de la surface d'écriture le permettent. Aucune n'est un utilitaire de test.
 
-- **L'environnement est injecté, pas statique.** `Workflow::newActivityStub()` lit un contexte
+- **L'environnement est injecté.** Dans le SDK, `Workflow::newActivityStub()` lit un contexte
   statique lié au worker en marche, et lève `OutOfContextException` en dehors. Un workflow Durable
-  reçoit son `WorkflowEnvironment` par son **constructeur** : c'est donc un objet PHP ordinaire
-  qu'un test peut construire. Il n'y a aucun état global à réinitialiser entre les tests.
-- **Des fibres au lieu de générateurs.** Une méthode de workflow rend son type déclaré. PHPUnit
-  compare une valeur ; il ne pilote pas de générateur et ne résout pas de promesse.
+  reçoit son `WorkflowEnvironment` par son **constructeur** : un test le construit donc comme
+  n'importe quel objet PHP. Aucun état global n'est à réinitialiser entre les tests.
+- **Les fibres remplacent les générateurs.** Une méthode de workflow renvoie son type déclaré.
+  PHPUnit compare une valeur ; il ne pilote pas de générateur et ne résout pas de promesse.
 - **Le test fait tourner la classe de production.** `runWorkflowClass()` passe par le même
-  constructeur, les mêmes attributs, la même `#[AsWorkflowMethod]` ; voir
+  constructeur, les mêmes attributs et la même `#[AsWorkflowMethod]` ; voir
   [DUR039](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR039-workflow-authoring-surface.md).
 
 ### Ce que vous pouvez vérifier
 
-Durable expose le **journal d'événements** au test, et pas seulement la valeur de retour :
+Durable expose au test le **journal d'événements**, en plus de la valeur de retour :
 
 | `DurableTestCase` | `ActivitySpy` |
 |---|---|
@@ -151,30 +157,31 @@ Durable expose le **journal d'événements** au test, et pas seulement la valeur
 | `assertEventStoreContains($eventClass)` | `calls()` / `callCount()` |
 | `countActivityExecutions()` | |
 
-`countActivityExecutions()` est celle à garder en tête : elle prouve qu'une activité **n'a pas** été
-rejouée après un réessai. Une assertion en boîte noire sur le résultat ne peut pas le voir.
+`countActivityExecutions()` prouve qu'une activité **n'a pas** été rejouée après un réessai. Une
+assertion en boîte noire sur le résultat ne peut pas le voir.
 
 Pour les tests d'intégration Symfony, `DurableBundleTestTrait` fait la même chose dans un
-`KernelTestCase`, en vidant les transports Messenger jusqu'à ce que l'exécution se stabilise.
+`KernelTestCase`, et vide les transports Messenger jusqu'à ce que l'exécution se stabilise.
 
 ### Le palier qui, lui, a besoin d'un serveur
 
-La suite d'intégration de Durable tourne contre un **vrai serveur Temporal** : `ext-grpc`, un
-`temporal server start-dev` en marche, et des processus worker PHP lancés par le cas de test :
+La suite d'intégration de Durable tourne contre un **vrai serveur Temporal**. Elle demande
+`ext-grpc`, un `temporal server start-dev` en marche, et des processus worker PHP que le cas de
+test lance :
 
 ```bash
 temporal server start-dev --namespace durable-test --port 7233
 DURABLE_TEMPORAL_ADDRESS=127.0.0.1:7233 vendor/bin/phpunit --testsuite integration
 ```
 
-La suite est ignorée quand `DURABLE_TEMPORAL_ADDRESS` n'est pas défini.
+PHPUnit ignore la suite quand `DURABLE_TEMPORAL_ADDRESS` n'est pas défini.
 
-La différence avec le SDK n'est pas « pas de serveur » : c'est **quels tests en ont besoin**. Ce
-palier existe pour prouver que les commandes du pont sont acceptées par un vrai serveur :
+Les deux bibliothèques ont un palier adossé à un serveur. Elles diffèrent sur **les tests qui en
+ont besoin**. Dans Durable, ce palier prouve qu'un vrai serveur accepte les commandes du pont :
 aller-retours, chemins d'échec, échéances, mises à jour, planifications cron, attributs de
-recherche, Nexus. Il est délibérément étroit, et il porte sur le *pont*, pas sur votre logique
-métier. Vos workflows sont couverts par le palier unitaire, qui n'a besoin de rien. Avec le SDK, le
-palier adossé à un serveur est le seul qui existe.
+recherche, Nexus. Il est délibérément étroit et teste le *pont*. Le palier unitaire, qui n'a besoin
+d'aucune infrastructure, couvre la logique métier de vos workflows. Avec le SDK, le palier adossé
+à un serveur est le seul palier.
 
 | | Durable | SDK PHP de Temporal |
 |---|---|---|
@@ -183,23 +190,22 @@ palier adossé à un serveur est le seul qui existe.
 | Ce qu'il exige | un serveur Temporal de dev + `ext-grpc` | serveur de test + RoadRunner |
 | Tourne en intégration continue sans Docker | le palier unitaire, oui | non |
 
-### Le coût, honnêtement
+### Ce qu'un test en mémoire qui passe ne prouve pas {#le-coût-honnêtement}
 
-Un test en mémoire qui passe ne prouve pas que Temporal se comporte pareil. Ce risque est réel, et il
-est encadré plutôt que nié :
+Un test en mémoire qui passe ne prouve pas que Temporal se comporte de la même façon. Le risque est
+réel, et trois mesures l'encadrent :
 
 - [DUR018](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR018-temporal-event-parity-replay-and-slots.md)
   exige la parité d'événements et d'emplacements entre l'en-mémoire et Temporal ;
 - [DUR016](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR016-in-memory-backend-exception-rules.md)
-  borne ce qu'une implémentation en mémoire a le droit de simplifier, et exige que chaque raccourci
-  se justifie dans un docblock ;
+  borne ce qu'une implémentation en mémoire a le droit de simplifier, et exige un docblock qui
+  justifie chaque raccourci ;
 - le palier d'intégration ci-dessus est ce qui le vérifie réellement.
 
-Le saut de temps ne fait **pas** partie de ce que vous abandonnez. Le moteur en mémoire tient une
-horloge virtuelle et l'avance jusqu'à l'échéance du prochain minuteur : `sleep(3600)` se résout en
-une milliseconde de temps réel. Il ne saute que lorsque rien d'autre ne peut progresser, car sauter
-alors qu'une activité pourrait encore aboutir ferait gagner le minuteur à chaque course
-`any(activité, minuteur)`. Voir
+Vous gardez le saut de temps. Le moteur en mémoire tient une horloge virtuelle et l'avance jusqu'à
+l'échéance du prochain minuteur, si bien que `sleep(3600)` se résout en une milliseconde de temps
+réel. Il ne saute que lorsque rien d'autre ne peut progresser : sauter alors qu'une activité
+pourrait encore aboutir ferait gagner le minuteur à chaque course `any(activité, minuteur)`. Voir
 [Tester des workflows](../testing/#time-is-skipped-not-waited-for).
 
 ---
@@ -208,29 +214,31 @@ alors qu'une activité pourrait encore aboutir ferait gagner le minuteur à chaq
 
 | | Durable | SDK PHP de Temporal |
 |---|---|---|
-| Backends d'exécution | **quatre**, faisant tourner le même code de workflow | un cluster Temporal |
+| Backends d'exécution | **quatre**, qui font tourner le même code de workflow | un cluster Temporal |
 | Tests | en mémoire, sans serveur | serveur de test |
 | Production sans cluster | **DBAL** ou **Illuminate**, l'exécution durable sur une base SQL | impossible |
 
-Le backend en mémoire, plus les trois ponts entre lesquels on choisit : Temporal, DBAL ou Illuminate.
+Les quatre sont le backend en mémoire et trois ponts entre lesquels vous choisissez : Temporal,
+DBAL et Illuminate.
 
 Les deux backends SQL ([DUR030](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR030-dbal-backend-simplified-durable-execution.md)
 sur la connexion de Doctrine, [DUR047](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR047-laravel-the-host-that-measured-before-it-wired.md)
-sur celle de Laravel) n'ont pas d'équivalent dans le SDK : un journal, des métadonnées de workflow et
-des verrous sur une seule base relationnelle, sans cluster et sans `ext-grpc`. Pour une application
-qui a besoin d'exécution durable mais pas de la surface opérationnelle d'un déploiement Temporal,
-c'est souvent la différence qui tranche, davantage que le moteur du worker.
+sur celle de Laravel) n'ont pas d'équivalent dans le SDK. Ils gardent le journal, les métadonnées
+de workflow et les verrous sur une seule base relationnelle, sans cluster et sans `ext-grpc`. Pour
+une application qui a besoin d'exécution durable sans la surface opérationnelle d'un déploiement
+Temporal, c'est souvent la différence qui tranche, davantage que le moteur du worker.
 
-En changer est un changement de configuration, et le réglage dépend de l'hôte : sur Symfony,
-`durable.backend` en prend trois sur quatre (`in_memory`, `dbal`, `temporal`), et Illuminate
-est câblé par `gplanchat/durable-laravel` à travers son propre `config/durable.php`. Dans les deux
-cas, le code du workflow ne bouge pas. Voir [Backends](../backends/).
+Changer de backend est un changement de configuration, et le réglage dépend de l'hôte. Sur
+Symfony, `durable.backend` en accepte trois sur quatre (`in_memory`, `dbal`, `temporal`).
+Illuminate est câblé par `gplanchat/durable-laravel` à travers son propre `config/durable.php`.
+Dans les deux cas, le code du workflow reste le même. Voir [Backends](../backends/).
 
 ---
 
 ## 4. La surface d'écriture {#4-the-authoring-surface}
 
-Le même workflow, encaisser une commande puis attendre une heure puis envoyer le reçu, écrit deux fois.
+Voici le même workflow écrit deux fois. Il encaisse une commande, attend une heure, puis envoie le
+reçu.
 
 **Durable**, avec un environnement injecté, des fibres et des types de retour ordinaires :
 
@@ -280,7 +288,7 @@ final class OrderWorkflow implements OrderWorkflowContract
 }
 ```
 
-Mêmes étapes, mêmes noms, même ordre. Ce qui diffère, c'est tout ce qui les entoure :
+Les étapes, leurs noms et leur ordre sont les mêmes. Le code qui les entoure diffère :
 
 | | Durable | SDK PHP de Temporal |
 |---|---|---|
@@ -291,12 +299,13 @@ Mêmes étapes, mêmes noms, même ordre. Ce qui diffère, c'est tout ce qui les
 | Attributs de méthode | `#[AsWorkflowMethod]`, `#[AsSignalMethod]`, `#[AsQueryMethod]`, `#[AsUpdateMethod]` | les mêmes quatre, mises à jour comprises |
 | Compensations | `new Saga()` ; chaque compensation appelle `await()` elle-même, `compensate()` les exécute dans l'ordre inverse | `new Workflow\Saga()` ; `yield $saga->compensate()` |
 
-Le type de retour en est la conséquence visible : `run()` déclare `string` d'un côté ; de l'autre, le
-seul type qu'elle pourrait déclarer est `\Generator`, qui ne dit rien de ce que le workflow rend.
-C'est ce qui fait de la classe Durable un objet ordinaire, qu'un test PHPUnit peut construire et
-appeler ; voir [La testabilité](#2-testability).
+Le type de retour montre la différence. Dans Durable, `run()` déclare `string`. Dans le SDK, le
+seul type qu'elle pourrait déclarer est `\Generator`, qui ne dit rien de ce que le workflow
+renvoie. Le type de retour déclaré est ce qui permet à un test PHPUnit de construire la classe
+Durable et de l'appeler comme n'importe quel objet ; voir [La testabilité](#2-testability).
 
-Le vocabulaire des attributs est délibérément proche ; le modèle d'exécution en dessous ne l'est pas.
+J'ai gardé à dessein un vocabulaire d'attributs proche de celui du SDK. Le modèle d'exécution en
+dessous diffère.
 
 ---
 
