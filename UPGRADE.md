@@ -331,6 +331,19 @@ The module's README shows it. Laravel's `DeclaredNexusOperations` now delegates 
 an operation nobody serves, a workflow class that does not exist, or a contract the attribute
 contradicts stops the Nexus worker when it starts.
 
+### Temporal read model: a cancelled activity or timer says why (#701)
+
+Read through `TemporalReadThroughEventStore` (the bundle's event store on Temporal, the profiler,
+the dashboards), `ActivityCancelled` and `TimerCancelled` used to carry the reason
+`Cancelled by Temporal`. They now carry the reason the event-store backends record:
+`workflow_cancelled` when the workflow's own cancellation withdrew the operation, `race_superseded`
+otherwise. A replay through that store now reads a race loser as unsettled, as the worker does.
+Code that matched on `Cancelled by Temporal` should match on `ActivityCancellationReason` instead.
+Code that converts a history itself should build the converter with
+`TemporalEventConverter::forHistory($executionId, $events)` rather than `new TemporalEventConverter()`:
+a converter built with `new` only knows the markers it has already seen, and reads a
+workflow-cancelled operation that was cancelled before its marker as `race_superseded`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
