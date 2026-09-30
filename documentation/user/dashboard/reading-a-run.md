@@ -50,7 +50,7 @@ line is the run itself.
 
 *Order/4243 on Sylius. The event that failed is red, and the run ends as failed.*
 
-The web profiler does not draw this timeline: it lists one row per event.
+The web profiler draws the same timeline for each run of the request it profiles.
 
 ## The events
 

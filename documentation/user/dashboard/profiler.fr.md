@@ -37,8 +37,9 @@ L'onglet **Executions** ouvre chaque exécution : son historique d'événements,
 sa frise et sa trace de processus. La frise est celle des pages d'exécution, avec une ligne par
 action, l'attente d'un worker hachurée et l'intervalle en échec en rouge (voir
 [Lire une exécution](../reading-a-run/)). La trace de processus montre le temps que ce processus a
-passé sur l'exécution pendant la requête, que le journal n'enregistre pas. L'onglet **Overview** dessine tous les processus
-sur une même échelle de temps et liste les envois Messenger de la requête.
+passé sur l'exécution pendant la requête, que le journal n'enregistre pas. L'onglet **Overview**
+dessine tous les processus sur une même échelle de temps et liste les envois Messenger de la
+requête.
 
 ## Charger un journal que la requête n'a pas envoyé
 
