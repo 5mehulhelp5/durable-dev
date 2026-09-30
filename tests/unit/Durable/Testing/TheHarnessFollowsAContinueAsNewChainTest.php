@@ -40,6 +40,8 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
             $started = $this->eventsOf($env, $next)[0] ?? null;
             self::assertInstanceOf(ExecutionStarted::class, $started);
             self::assertSame($chain[\count($chain) - 1], $started->payload()['continuedFromExecutionId'] ?? null);
+            // The alias, as ResumeWorkflowHandler journals it on the journal backends.
+            self::assertSame('counter', $started->payload()['workflowType'] ?? null);
             $chain[] = $next;
         }
 
