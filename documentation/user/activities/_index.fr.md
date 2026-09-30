@@ -5,16 +5,18 @@ weight: 30
 
 # Écrire des activités
 
-Cette page résume comment on **écrit** des activités en Durable. Le détail normatif est dans [**DUR023**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR023-activity-authoring-and-asynchronous-activity-proxy.md) et [**DUR004**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR004-activity-stub-and-activities.md) ; ce guide reste pratique.
+Cette page montre comment **écrire** une activité, c'est-à-dire une unité d'effet de bord comme un appel HTTP, une écriture en base ou un e-mail (voir le [glossaire](../glossary/)), et comment l'appeler depuis un workflow. Le détail normatif est dans [**DUR023**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR023-activity-authoring-and-asynchronous-activity-proxy.md) et [**DUR004**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR004-activity-stub-and-activities.md) ; cette page en couvre le versant pratique.
 
-## Deux pièces
+## L'interface de contrat et la classe d'implémentation {#deux-pièces}
 
-1. **L'interface de contrat d'activité.** Les méthodes que le workflow a le droit d'appeler, chacune marquée d'un **`#[AsActivityMethod]`**. Depuis le workflow, on passe par un **`ActivityStub`** (**ActivityInvoker** dans les ADR).
-2. **La classe d'implémentation.** Une classe concrète portant **`#[AsActivityHandler]`**, qui nomme le contrat qu'elle implémente. Sous Symfony, c'est cet attribut qui l'enregistre : le bundle l'autoconfigure, et sans lui le workflow ne trouve aucun gestionnaire à l'exécution. Laravel liste la classe dans `activity_handlers` de `config/durable.php`, où l'attribut, s'il est présent, nomme le contrat qu'elle sert ; sans lui, la classe sert ses interfaces dont les méthodes portent `#[AsActivityMethod]`. Magento la liste dans l'argument `activityHandlers` de `RuntimeFactory` dans `di.xml`. Aucun des deux ne scanne les attributs : une classe non listée ne sert rien. Voir [qui enregistre quoi, par hôte](../getting-started/#déclarer-workflows-et-activités).
+Une activité se compose de deux éléments.
+
+1. **L'interface de contrat d'activité.** Elle énumère les méthodes que le workflow peut appeler, chacune marquée d'un **`#[AsActivityMethod]`**. Le workflow les appelle par un **`ActivityStub`**, un objet qui expose au workflow les méthodes du contrat (**ActivityInvoker** dans les ADR).
+2. **La classe d'implémentation.** Une classe concrète portant **`#[AsActivityHandler]`**, qui nomme le contrat qu'elle implémente. Sous Symfony, c'est cet attribut qui l'enregistre : le bundle l'autoconfigure, et sans lui le workflow ne trouve aucun gestionnaire à l'exécution. Laravel liste la classe dans `activity_handlers` de `config/durable.php`, où l'attribut, s'il est présent, nomme le contrat qu'elle sert ; sans lui, la classe sert ses interfaces dont les méthodes portent `#[AsActivityMethod]`. Magento la liste dans l'argument `activityHandlers` de `RuntimeFactory` dans `di.xml`. Aucun de ces deux hôtes ne scanne les attributs : une classe absente de la liste ne sert donc rien. Voir [qui enregistre quoi, par hôte](../getting-started/#déclarer-workflows-et-activités).
 
 ## Exemple : contrat et implémentation
 
-L'**interface** énumère les méthodes que le workflow peut planifier. Chaque méthode exposée porte **`#[AsActivityMethod]`** avec un **nom d'activité stable** pour l'orchestrateur. La classe d'**implémentation** fait les E/S et peut recourir à l'**injection par constructeur**.
+L'**interface** énumère les méthodes que le workflow peut planifier. Chaque méthode exposée porte **`#[AsActivityMethod]`** avec un **nom d'activité stable** pour l'orchestrateur. La classe d'**implémentation** effectue les E/S et peut recevoir ses dépendances par **injection dans le constructeur**.
 
 ```php
 <?php
@@ -49,7 +51,7 @@ final class OrderActivitiesHandler implements OrderActivities
 }
 ```
 
-Déclarez **`OrderActivitiesHandler`** auprès de votre worker d'activités ou de votre conteneur, pour que le worker puisse exécuter **`charge-order`** quand le workflow la planifie.
+Déclarez **`OrderActivitiesHandler`** auprès de votre worker d'activités ou de votre conteneur, pour que le worker, le processus qui exécute les activités, puisse exécuter **`charge-order`** quand le workflow la planifie.
 
 ## Exemple : appeler une activité depuis un workflow
 
@@ -83,7 +85,7 @@ public function run(
 Certains workflows construisent le stub eux-mêmes avec `$env->activityStub(OrderActivities::class)` :
 voyez [Quand construire le stub soi-même](../workflows/#when-to-build-the-stub-yourself).
 
-Le type **`ActivityStub`** (voir [Écrire un workflow](../workflows/) pour la note de nommage sur **ActivityInvoker**) résout les noms de méthode par réflexion sur **`OrderActivities`** et construit les charges utiles **`#[AsActivityMethod]`**.
+Le type **`ActivityStub`** résout les noms de méthode par réflexion sur **`OrderActivities`** et construit les charges utiles **`#[AsActivityMethod]`**. [Écrire un workflow](../workflows/) explique le nom **ActivityInvoker**.
 
 ## `ActivityOptions` : délais, réessais, file de tâches {#activityoptions-timeouts-retries-task-queue}
 
@@ -127,18 +129,18 @@ et durées sont alors des **objets valeur**, pas des nombres ; voyez
 [Options et objets valeur](../options/).
 
 > [!WARNING]
-> Sans `RetryLimit`, les tentatives sont **illimitées**, c'est le défaut de Temporal. Une activité
-> qui échoue systématiquement réessaiera indéfiniment au lieu de faire échouer le workflow. Passez
+> Sans `RetryLimit`, les tentatives sont **illimitées**, comme par défaut dans Temporal. Une
+> activité qui échoue systématiquement réessaie indéfiniment, et le workflow n'échoue pas. Passez
 > `RetryLimit::once()` quand un échec doit être définitif.
 
 > [!NOTE]
-> **Deux délais, deux propriétaires.** `ActivityTimeouts` borne une **tentative** d'activité et est
-> appliqué par le **backend** : il survit au plantage d'un worker, et il ne concerne que cette
-> activité-là. Une **échéance** passée à `await()`, sur un awaitable ou sur une condition, est
-> appliquée **côté workflow** : elle borne *cette* attente dans *cette* exécution, et elle couvre
-> ce que les bornes d'activité ne savent pas couvrir : un workflow enfant, un signal, un groupe
-> composé. Prenez `ActivityTimeouts` pour borner une tentative, et une échéance pour borner tout le
-> reste. Voir [Borner une attente dans le temps](../workflows/#bounding-a-wait-in-time).
+> **Délais d'activité et échéances.** `ActivityTimeouts` borne une **tentative** d'activité, et
+> c'est le **backend** qui l'applique. Il survit au plantage d'un worker et ne concerne que cette
+> activité-là. Une **échéance** passée à `await()`, sur un awaitable ou sur une condition,
+> s'applique **côté workflow**. Elle borne *cette* attente dans *cette* exécution, et couvre aussi
+> des attentes que les délais d'activité ne couvrent pas, comme un workflow enfant, un signal ou un
+> groupe composé. Employez `ActivityTimeouts` pour borner une tentative, et une échéance pour borner
+> toute autre attente. Voir [Borner une attente dans le temps](../workflows/#bounding-a-wait-in-time).
 
 Déclarez des **stubs distincts** quand deux appels ont besoin de politiques différentes : l'un avec
 des réessais agressifs pour un appel HTTP capricieux, l'autre avec des délais plus stricts pour un
@@ -175,15 +177,16 @@ public function run(
 
 ## Idempotence
 
-Le journal empêche une activité **terminée** de s'exécuter à nouveau. Il ne peut rien pour une
-tentative qui s'arrête entre son effet de bord et l'enregistrement de son résultat : le prestataire
-de paiement a débité la carte, puis la tentative a expiré ou le worker est mort. Cette tentative a
-échoué et elle est réessayée. Une activité s'exécute **au moins une fois**.
+Le journal, qui enregistre les étapes d'une exécution et leurs résultats, empêche une activité
+**terminée** de s'exécuter à nouveau. Il ne couvre pas une tentative qui s'arrête entre son effet
+de bord et l'enregistrement de son résultat. Par exemple, le prestataire de paiement débite la
+carte, puis la tentative expire ou le worker meurt. Cette tentative compte comme un échec, et elle
+est réessayée. Une activité s'exécute **au moins une fois**.
 
-Tout ce qu'une activité fait au monde extérieur a donc besoin d'une clé identique d'une tentative à
-l'autre. Le workflow passe les mêmes arguments à chaque tentative : construisez la clé à partir
-d'eux et d'un préfixe fixe qui nomme l'opération (`charge-`, `refund-`), jamais d'une valeur
-aléatoire ni de l'heure :
+Chaque appel qu'une activité adresse au monde extérieur a donc besoin d'une clé identique d'une
+tentative à l'autre. Le workflow passe les mêmes arguments à chaque tentative. Construisez la clé à
+partir de ces arguments et d'un préfixe fixe qui nomme l'opération (`charge-`, `refund-`), jamais
+d'une valeur aléatoire ni de l'heure courante :
 
 ```php
 public function charge(string $orderId): string
@@ -195,22 +198,22 @@ public function charge(string $orderId): string
 La clé est la même pour toutes les tentatives d'une même opération, et différente pour deux
 opérations distinctes. `charge-<orderId>` ne convient que si une commande n'est débitée qu'une fois.
 Si elle peut l'être de nouveau (une seconde échéance, une nouvelle exécution pour la même commande),
-ajoutez ce qui distingue les débits, comme le numéro d'échéance. Vérifiez aussi combien de temps
-votre prestataire retient une clé.
+ajoutez la valeur qui distingue les débits, comme le numéro d'échéance. Vérifiez aussi combien de
+temps votre prestataire conserve une clé.
 
-Un `RetryLimit` limite le nombre de tentatives qui atteignent le prestataire ; il ne rend pas la
-deuxième sûre. Avec `RetryLimit::once()`, une tentative interrompue n'est pas réessayée : l'appel a
-pu avoir lieu ou non, et le workflow voit un échec.
+Un `RetryLimit` limite le nombre de tentatives qui atteignent le prestataire. Il ne rend pas une
+deuxième tentative sûre. Avec `RetryLimit::once()`, une tentative interrompue en cours de route
+n'est pas réessayée. L'appel a pu avoir lieu ou non, et le workflow reçoit un échec.
 
 ## Injection de dépendances
 
-Contrairement aux workflows, l'**implémentation d'activité** **peut** avoir un constructeur ordinaire avec **injection de dépendances** : clients HTTP, bases de données, journaux, etc., tels que les fournit l'hôte du **worker d'activités** (par exemple le conteneur Symfony dans le processus du worker).
+Contrairement à un workflow, une **implémentation d'activité** **peut** avoir un constructeur ordinaire avec **injection de dépendances**. Elle reçoit des clients HTTP, des connexions aux bases de données, des loggers et d'autres services de l'hôte du **worker d'activités**, par exemple du conteneur Symfony dans le processus du worker.
 
-### Battements de cœur : une activité longue dit qu'elle est vivante
+### Battements de cœur d'une activité longue {#battements-de-cœur--une-activité-longue-dit-quelle-est-vivante}
 
-Une activité longue injecte `ActivityHeartbeatSenderInterface` et appelle `sendHeartbeat()` entre
-deux étapes. L'appel rend `true` dès qu'une annulation a été demandée : arrêtez-vous là et
-nettoyez.
+Pour signaler qu'une activité longue est toujours en vie, injectez `ActivityHeartbeatSenderInterface`
+et appelez `sendHeartbeat()` entre deux étapes. L'appel renvoie `true` dès qu'une annulation a été
+demandée. Dans ce cas, arrêtez-vous à cet endroit et nettoyez.
 
 ```php
 use Gplanchat\Durable\Port\ActivityHeartbeatSenderInterface;
@@ -239,23 +242,23 @@ final class ImportCatalog implements CatalogActivities
 
 Sur Temporal, quel que soit l'hôte, le battement réarme le délai `heartbeat` de l'activité (voir
 [ActivityTimeouts](../options/#activitytimeouts)) et transporte le détail de progression. Sur les
-autres backends, c'est un appel sans effet qui ne signale jamais d'annulation : le même code tourne
-partout.
+autres backends, l'appel n'a aucun effet et ne signale jamais d'annulation : le même code tourne
+donc sur tous les backends.
 
 ## Côté workflow : `ActivityInvoker`
 
-Depuis **`WorkflowEnvironment`** (voir [Écrire un workflow](../workflows/)), vous appelez **`activityStub(VotreInterfaceDActivité::class)`** et vous obtenez un **`ActivityStub`** (même notion que l'**`ActivityInvoker`** des ADR).
+Sur **`WorkflowEnvironment`** (voir [Écrire un workflow](../workflows/)), appelez **`activityStub(VotreInterfaceDActivité::class)`** pour obtenir un **`ActivityStub`**, la notion que les ADR nomment **`ActivityInvoker`**.
 
 Un stub qui n'a pas besoin d'**`ActivityOptions`** peut aussi se déclarer en argument de la méthode de workflow : un paramètre typé **`ActivityStub`** et marqué **`#[Activities(VotreInterfaceDActivité::class)]`** reçoit le même stub. Voir [Les arguments que fournit Durable](../workflows/#arguments-durable-supplies).
 
 - Pour chaque **`#[AsActivityMethod]`** de l'interface, le stub expose **le même nom de méthode et les mêmes paramètres** ; chaque appel renvoie un **`Awaitable`** que vous passez à **`$environment->await(...)`** (le type de retour synchrone **`T`** de l'interface est ce que vous obtenez après l'**`await`**).
-- L'invocateur **n'exécute pas** d'E/S dans le processus du workflow : il **planifie** une étape durable et rattache le résultat à l'historique et au rejeu.
+- L'invocateur **n'exécute pas** d'E/S dans le processus du workflow. Il **planifie** une étape durable et rattache son résultat à l'historique et au rejeu.
 
-C'est cette séparation qui garde le code de workflow déterministe pendant que les activités font le travail non déterministe.
+Cette séparation garde le code du workflow déterministe, pendant que les activités font le travail non déterministe.
 
 ## Sérialisation
 
-Arguments et valeurs de retour doivent être **sérialisables** au passage de la frontière de l'orchestrateur (**DUR007**). Évitez les ressources brutes, les fermetures non prises en charge, ou les types que votre sérialiseur configuré ne sait pas traiter.
+Les arguments et les valeurs de retour franchissent la frontière de l'orchestrateur : ils doivent donc être **sérialisables** (**DUR007**). Ne passez ni ressource brute, ni fermeture non prise en charge, ni type que votre sérialiseur configuré ne traite pas.
 
 ## Aide-mémoire
 
