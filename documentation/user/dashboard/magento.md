@@ -9,6 +9,16 @@ To follow the workflows of a store from the Magento admin, install `gplanchat/du
 ([Packages](../../packages/)) and open **System > Durable processes > Process history**. The page is
 read-only and in English.
 
+## Screenshots
+
+![The Magento process history grid: backend state, worker presence, counters per outcome and the list of runs](/images/dashboard/magento-history.png)
+
+*System > Durable processes > Process history, over eight runs of the bench: four completed, two failed, and two running, one of them suspended on a timer.*
+
+![The Magento run page of a completed execution, with its History timeline](/images/dashboard/magento-run.png)
+
+*The run page of order/4244: the execution, the backend run and the outcome, then a History timeline where `durable.demo.charge` is hatched for the 30 seconds it waited for a worker.*
+
 ## Give access to a role
 
 The screen has its own ACL resource. In **System > Permissions > User Roles**, tick **Durable
