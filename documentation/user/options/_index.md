@@ -32,7 +32,7 @@ Duration::zero();                       // no wait
 Duration::infinity();                   // no bound at all: the default deadline of await()
 ```
 
-`infinity()` is a **value** in its own right. It compares (`shortest()`, `isLongerThan()`), travels
+`infinity()` is an ordinary **value**. It compares (`shortest()`, `isLongerThan()`), travels
 through configuration, and spares code that computes a deadline a special case for "no bound".
 It cannot be sent over the wire: `timer()` rejects it, because a timer that never fires is a
 command in history for a wake-up that never happens.

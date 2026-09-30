@@ -32,7 +32,7 @@ Duration::zero();                       // aucune attente
 Duration::infinity();                   // aucune borne : l'échéance par défaut d'await()
 ```
 
-`infinity()` est une **valeur** à part entière. Elle se compare (`shortest()`, `isLongerThan()`),
+`infinity()` est une **valeur** ordinaire. Elle se compare (`shortest()`, `isLongerThan()`),
 elle voyage dans la configuration, et elle évite au code qui calcule une échéance un cas
 particulier pour « pas de borne ». Elle ne peut pas être transmise au serveur : `timer()` la
 rejette, car un minuteur qui ne se déclenche jamais est une commande inscrite à l'historique pour
