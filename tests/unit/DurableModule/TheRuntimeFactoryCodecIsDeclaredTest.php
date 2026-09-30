@@ -8,19 +8,19 @@ use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
- * An optional argument is not autowired (DUR055): the codec is declared, `null` in the published
- * package, so a shop sees the line it overrides in its own `di.xml`. Magento is not in the root
- * graph, so this reads the declaration.
+ * The module declares no `codec` argument (DUR055): a declaration of its own, `null` included,
+ * would beat the one a shop sets whenever the shop's module loads first, and the codec would be
+ * lost without a word. The shop's `di.xml` is the only place that names it. Magento is not in the
+ * root graph, so this reads the declaration.
  */
 final class TheRuntimeFactoryCodecIsDeclaredTest extends TestCase
 {
-    public function testDiXmlDeclaresTheCodecArgumentAsNull(): void
+    public function testDiXmlLeavesTheCodecArgumentToTheShop(): void
     {
         $di = simplexml_load_file(__DIR__ . '/../../../src/DurableModule/etc/di.xml');
         self::assertNotFalse($di);
 
         $codec = $di->xpath(\sprintf('//type[@name="%s"]/arguments/argument[@name="codec"]', RuntimeFactory::class));
-        self::assertCount(1, $codec);
-        self::assertSame('null', (string) $codec[0]->attributes('http://www.w3.org/2001/XMLSchema-instance')['type']);
+        self::assertSame([], $codec);
     }
 }
