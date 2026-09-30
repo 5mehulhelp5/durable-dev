@@ -21,9 +21,9 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Filtre par identifiant d'exécution | Préfixe, là où le backend sait l'appliquer | Contient, dans la fenêtre | Préfixe, là où le backend sait l'appliquer | Non |
 | `waiting for a worker` | Ligne et compteur | Non | Ligne et compteur | Non |
 | `waiting on` | Liste | Liste et page de l'exécution | Liste et page de l'exécution | Section de l'exécution |
-| Une ligne par action | Oui | Oui, plus une table du journal | Oui | Non, une ligne par événement |
-| Temps de file hachuré | Oui | Oui | Sur la frise | Non |
-| Rouge sur l'événement en échec | Oui | Oui | Sur la frise | Non |
+| Une ligne par action | Oui | Oui, plus une table du journal | Oui | Oui |
+| Temps de file hachuré | Oui | Oui | Sur la frise | Oui |
+| Rouge sur l'événement en échec | Oui | Oui | Sur la frise | Oui |
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
 | Présence des workers | Oui | Oui, journal et activity | Non | Non |
 | Masquage des charges utiles | Replié | Replié | Replié | Replié |
