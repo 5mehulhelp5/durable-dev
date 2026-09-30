@@ -81,17 +81,40 @@ makes it pass. Each commit stays under 200 changed lines.
 ## 3. PHPStan
 
 - [ ] 3.1 The parameter rule covers `#[NexusOperations]` and `#[ChildWorkflow]`: a `@param`
-      docblock naming another class than the attribute is an error, a missing one is reported under
-      the same ignorable identifier family as for `#[Activities]`.
+      docblock naming another class than the attribute is an error, a missing one is reported.
+      The identifiers follow the existing `durable.activities.missingGeneric` and
+      `durable.activities.contractMismatch`: `durable.nexusOperations.missingGeneric`,
+      `durable.nexusOperations.contractMismatch`, `durable.childWorkflow.missingGeneric`,
+      `durable.childWorkflow.contractMismatch`. Tests: one fixture per identifier.
+- [ ] 3.2 `withWorkflowId()` is declared `@return static`, so PHPStan keeps
+      `ChildWorkflowStub<T>` after the call and checks the entry method called on the result
+      against `T`. `StubMethodsExtension` does not resolve `withWorkflowId` as an entry method, even
+      for a child class that declares one under that name (registration fails on that class, 1.6).
+      Tests: an `assertType` fixture for `$ship->withWorkflowId('x')`; a wrong argument to the
+      entry method called after it is reported.
 
 ## 4. Documentation, EN and FR
 
 - [ ] 4.1 Nexus: the calling example takes its stub as an argument, with the endpoint in
       configuration; the attribute form of the endpoint is shown second, with why the endpoint is a
       deployment fact.
-- [ ] 4.2 Workflows: the child workflow examples take their stub as an argument, with
-      `withWorkflowId()` for an id computed from the input. "When to build the stub yourself" loses
-      its Nexus and child case and keeps the per-call memo and search attributes case.
+- [ ] 4.2 Workflows, EN and FR: the child workflow examples take their stub as an argument, with
+      `withWorkflowId()` for an id computed from the input. The section "When to build the stub
+      yourself" (`documentation/user/workflows/_index.md` and `_index.fr.md`) keeps its anchor
+      `{#when-to-build-the-stub-yourself}`, which `activities/_index.md` links to, and changes as
+      follows:
+      - its introduction names the three builders, `$env->activityStub()`, `$env->nexusStub()` and
+        `$env->childWorkflowStub()`, instead of `activityStub()` alone;
+      - the sixth case, "The stub is a Nexus stub or a child workflow stub", is removed;
+      - the first, third, fourth and fifth cases (a class implementing a workflow contract
+        interface, a signal or update method, a private helper method, a closure run by the test
+        harness) speak of the three stubs, not of the activity stub only;
+      - the second case, options that depend on the input, stays about `activityStub()` and
+        `ActivityOptions`;
+      - a new case covers child options set per call other than the workflow id, memo and search
+        attributes, built with `$env->childWorkflowStub($class, $options)`. It does not say that a
+        child's memo reaches Temporal: the start-child command carries none on `main` (design.md,
+        the child options table).
 - [ ] 4.3 Configuration: the three endpoint keys, one per host.
 - [ ] 4.4 A second model reviews the pages before the PR (CLAUDE.md, dispatch rule 3).
 

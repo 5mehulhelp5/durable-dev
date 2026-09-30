@@ -233,8 +233,16 @@ type and attributes, never the endpoint. A parameter typed `NexusStub` or
 
 `StubMethodsExtension` already resolves `NexusStub<Contract>` and `ChildWorkflowStub<Workflow>`.
 `ActivitiesParameterRule` is generalised to the three attributes: the `@param` docblock must name
-the class the attribute names, and a missing one is reported under the same ignorable identifier
-family.
+the class the attribute names, and a missing one is reported. Its identifiers on `main` are
+`durable.activities.missingGeneric` and `durable.activities.contractMismatch`; the two new
+attributes get `durable.nexusOperations.*` and `durable.childWorkflow.*` with the same two
+suffixes, so a project ignores them the same way.
+
+`withWorkflowId()` is a real method of `ChildWorkflowStub`, declared `@return static`, so the
+generic survives the call. The extension resolves a method of the child class marked
+`#[AsWorkflowMethod]`, so a child whose entry method is named `withWorkflowId` would reach it;
+that child fails registration (task 1.6), and task 3.2 makes the extension leave the name to the
+native method in every case.
 
 ## Probed and assumed
 
