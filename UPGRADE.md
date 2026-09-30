@@ -462,6 +462,7 @@ buffer's tests pin the memo.
 | `WorkflowExecutionFailed::terminatedByParent()`                         | the parent id is an `ExecutionId`    |
 | The constructors of `ExecutionContext`, `EventStoreCommandBuffer`, `TemporalWorkflowCommandBuffer` and `TemporalEventConverter`, and `TemporalEventConverter::forHistory()` | take `ExecutionId` |
 | `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
+| `AwaitedFact::isJournalledIn()`                                         | the journal's id is an `ExecutionId`; the fact itself keeps its string ids, since it travels in the resume message |
 
 `WorkflowRunDescription::$runId` stays a string (decision on #682). So do `PendingTimers`,
 `WaitReason`, `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the
@@ -479,7 +480,8 @@ event whose workflow id is empty.
 - `ExecutionIdEventArgumentRector` now wraps **every** positional string argument whose parameter
   accepts an `ExecutionId`, not only the first one. It reaches the constructors and the factory
   in the table.
-- `ExecutionIdArgumentRector` wraps the argument of `TemporalExecutionHistory::waitJournal()`.
+- `ExecutionIdArgumentRector` wraps the id passed to `TemporalExecutionHistory::waitJournal()` and
+  `AwaitedFact::isJournalledIn()`.
 - `ExecutionIdReturnValueRector` is new. It appends `->toString()` to `executionId()`,
   `childExecutionId()`, `sourceParentExecutionId()` and `newExecutionId()`, using `?->toString()`
   on the nullable ones, so code that read a string keeps the same string. It skips a call that is
