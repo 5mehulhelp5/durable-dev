@@ -415,10 +415,10 @@ Its maintainers have said that the change is prototyped and planned for an upcom
 it is in a release as of v2.18, and this section describes v2.18.
 
 That change would settle the colouring difference, and only that one. What makes a workflow test
-need a server is [the worker runtime](#1-the-worker-runtime-no-roadrunner), not the suspension
-mechanism. A workflow still runs inside RoadRunner, driven by a task queue on a real cluster,
-whether it suspends on a `yield` or on a fiber. Once fibers land in the SDK, the difference that
-matters most is therefore [Testability](#2-testability): running a workflow to completion in the
+need a server is [the worker runtime](#1-the-worker-runtime-no-roadrunner), whichever way the
+workflow suspends. A workflow still runs inside RoadRunner, driven by a task queue on a real cluster,
+whether it suspends on a `yield` or on a fiber. After that change, [testability](#2-testability)
+remains the larger difference: running a workflow to completion in the
 test process and asserting on the value it returns, with no server to start and no second runtime
 to supervise.
 
@@ -450,8 +450,8 @@ $v = yield Workflow::getVersion('add-discount', Workflow::DEFAULT_VERSION, 1);
 $v = $this->environment->version('add-discount', minSupported: ChangePoint::DEFAULT_VERSION, maxSupported: 1);
 ```
 
-The wire format is the same, and it was checked against a real history. It was read off a history
-that the Go SDK produced, then emitted from the bridge, and the server accepted it. A versioned
+The wire format is the same. I read it off a history the Go SDK produced, emitted it from the
+bridge, and the server accepted it. A versioned
 Durable execution and a versioned Go execution record the identical `Version` marker and the
 identical `TemporalChangeVersion` search attribute. When you ask which executions are still on an
 old branch, the same query returns both.
@@ -467,7 +467,7 @@ See [Changing a running workflow](../deploying/).
 
 ---
 
-## 8. Nexus: the one place Durable is ahead
+## 8. Nexus: calling and serving operations from PHP {#8-nexus-the-one-place-durable-is-ahead}
 
 [Nexus](https://docs.temporal.io/nexus) routes a call from a workflow to an operation served in
 another namespace or another cluster. **A Durable workflow can call a Nexus operation and can serve
@@ -525,7 +525,8 @@ final class Billing implements BillingServed
 final class Charge { /* … */ }
 ```
 
-The nine seconds come from the task's own `request-timeout`, not from Durable, and were measured.
+The nine seconds are the task's own `request-timeout`, which I measured; Durable adds no limit of
+its own.
 When a handler is still working as the timeout expires, its task is redelivered and starts over.
 That budget is the reason for the deferred form, and the reason I built it before the immediate
 one.
@@ -545,7 +546,8 @@ boundary.
 One limit is deliberate:
 
 - **Temporal backend only.** Nexus routes to an endpoint served elsewhere. A backend that keeps its
-  journal in one database has no such route and no honest fallback. The DBAL backend therefore
+  journal in one database has no such route and no fallback that keeps the call's meaning. The DBAL backend
+  therefore
   **fails immediately** with `NexusUnsupportedByBackendException`, which names the backend and
   what to do instead, so the workflow does not wait for a result nobody will produce. On the
   handler side, the same check fails **when the container is built**, not at request time, because
@@ -589,8 +591,8 @@ open to you at all.
 **Use Durable** when you want durable execution without adding a second runtime to your
 application, when a single SQL database is the right operational footprint, when you want workflow
 logic covered by unit tests that need no infrastructure, or when you need to **call** Nexus
-operations from PHP at all. In each case, a pre-release with possible breaking changes between
-releases must be a trade you can make.
+operations from PHP at all. In each case, you need to be able to accept a pre-release, with possible
+breaking changes between releases.
 
 ---
 
