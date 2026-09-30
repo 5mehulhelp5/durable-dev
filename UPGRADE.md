@@ -470,7 +470,9 @@ analyser reports.
 A payload that fails to decode on a later history page now fails the workflow task
 (`RespondWorkflowTaskFailed`), as it already did on the first page. Outside a task poll, the codec
 client throws `Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, a `\RuntimeException` whose
-previous exception is the codec's own error.
+previous exception is the codec's own error. A Nexus task whose payload fails to decode is
+answered with a retryable `INTERNAL` handler error: the server delivers it again, and a worker
+redeployed with the right codec or key serves it.
 
 A `RespondWorkflowTaskCompleted` rejected with `INVALID_ARGUMENT` is logged as a warning and the
 worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain an optional last
