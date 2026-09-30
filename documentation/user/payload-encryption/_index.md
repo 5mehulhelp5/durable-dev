@@ -31,7 +31,8 @@ and `decode(Payload): Payload`. The contract is Temporal's:
 - `decode()` throws on a payload it recognises but cannot decode, an unknown key for instance.
 
 Durable provides no implementation. The algorithm, the keys and their rotation are yours. The class
-below is an **example** to start from, not a class Durable ships or supports.
+below is an **example** to start from, not a class Durable ships or supports. It needs PHP's
+`sodium` extension (`ext-sodium`).
 
 ## An example codec: libsodium XChaCha20-Poly1305
 
@@ -137,7 +138,9 @@ What it does, byte for byte, so a peer written in another language can read the 
 - **Outer metadata**: `encoding` = `binary/encrypted`, `encryption-key-id` = the key id.
 - **Data**: a random 24-byte nonce, then the ciphertext and its 16-byte tag.
 - **Associated data**: `binary/encrypted`, a NUL byte, then the key id. A payload whose key id is
-  rewritten no longer authenticates.
+  rewritten no longer authenticates. The associated data binds the key id and the encoding, not the
+  workflow or the field: someone with access to the server could swap two payloads sealed with the
+  same key, and each would still decode.
 
 A random nonce makes two encodings of the same value differ. Replay is not affected: Durable compares
 plain values, before encoding and after decoding.
@@ -150,16 +153,29 @@ Generate a key and keep it as base64 in your secrets:
 php -r 'echo base64_encode(sodium_crypto_aead_xchacha20poly1305_ietf_keygen()), PHP_EOL;'
 ```
 
-The keyring maps key ids to keys. To rotate, add a new key, make it the active one and deploy:
-new payloads are sealed with it, older history still decodes with the old one. **Never drop a key
-while a run sealed with it is still within the namespace's retention**: that run can no longer be
-read, by a worker or by a dashboard. Removing the codec altogether is worse: nothing decodes that
+The keyring maps key ids to keys: every key decrypts, only the active one seals. Rotate in two
+deployments:
+
+1. Add the new key to the keyring of every process, and keep the old key active. Deploy everywhere.
+2. Only then, in a later deployment, make the new key the active one.
+
+During a rolling deployment, old and new processes run side by side: a payload sealed with the new
+key must meet no process that lacks it. And rolling back the second deployment keeps the new key in
+the keyring, so what it sealed stays readable. **Never drop a key while a run whose payloads were
+sealed with it is still within the namespace's retention**: that run can no longer be read, by a
+worker or by a dashboard. Removing the codec altogether is worse: nothing decodes that
 history any more, and its ciphertext fails wherever a JSON value is expected.
 
 Every process that talks to the namespace needs the same codec in the same deployment: the workers,
-whatever starts or signals workflows, and the dashboard. With the codec in place, a worker that
-cannot decode a task's history fails that task, and Temporal retries it; a dashboard shows a read
-failure. Neither shows ciphertext as if it were data.
+whatever starts or signals workflows, and the dashboard.
+
+A payload that cannot be decoded, under an unknown key for instance, throws from the call that read
+it. A dashboard shows a read failure. A worker is hit harder: the decode runs on the poll response,
+before any task handling, and nothing catches it there. The worker process stops without reporting
+the task as failed, and Temporal hands the task out again only once its timeout expires, to a
+worker that stops the same way. Run workers under a supervisor that restarts them (systemd,
+Supervisor, Kubernetes), and alert on repeated exits. [#775](https://github.com/gplanchat/durable-dev/issues/775) tracks failing the task
+instead. Neither a worker nor a dashboard shows ciphertext as if it were data.
 
 ---
 
@@ -205,8 +221,9 @@ of `config/durable.php`. Read the key through `config()`, with `env()` in a conf
 ```php
 // config/services.php: 'durable_codec' => ['keys' => ['2026-09' => env('DURABLE_CODEC_KEY_2026_09')], 'active' => '2026-09'],
 $this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fromBase64(
-    config('services.durable_codec.keys'),
-    config('services.durable_codec.active'),
+    // An unset variable is left out, so the codec itself reports the missing key.
+    array_filter((array) config('services.durable_codec.keys'), \is_string(...)),
+    (string) config('services.durable_codec.active'),
 ));
 // config/durable.php, under 'temporal': 'payload_codec' => SodiumPayloadCodec::class,
 ```
@@ -237,10 +254,11 @@ replaced, and payloads leave in clear:
 
 The keys live in `env.php`, under `'durable' => ['codec' => ['active' => '2026-09', 'keys' =>
 ['2026-09' => '<base64>']]]`. A small class reads them through `DeploymentConfig`, on first use
-rather than in its constructor:
+rather than in its constructor. Copy the example codec into the same namespace, beside it:
 
 ```php
-use App\Temporal\SodiumPayloadCodec;
+namespace Vendor\Module\Temporal;
+
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Magento\Framework\App\DeploymentConfig;
 use Temporal\Api\Common\V1\Payload;

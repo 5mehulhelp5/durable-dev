@@ -33,8 +33,8 @@ et `decode(Payload): Payload`. Le contrat est celui de Temporal :
   à cause d'une clé inconnue.
 
 Durable ne fournit aucune implémentation. L'algorithme, les clés et leur rotation vous
-appartiennent. La classe ci-dessous est un **exemple** dont partir, pas une classe que Durable
-livre ou maintient.
+appartiennent. La classe ci-dessous est un **exemple** sur lequel vous appuyer, pas une classe que
+Durable livre ou maintient. Elle demande l'extension `sodium` de PHP (`ext-sodium`).
 
 ## Un exemple de codec : XChaCha20-Poly1305 avec libsodium
 
@@ -143,7 +143,9 @@ même historique :
   clé.
 - **Données** : un nonce aléatoire de 24 octets, puis le chiffré et son tag de 16 octets.
 - **Données associées** : `binary/encrypted`, un octet NUL, puis l'id de la clé. Un payload dont on
-  réécrit l'id de clé ne s'authentifie plus.
+  réécrit l'id de clé ne s'authentifie plus. Les données associées lient l'id de clé et l'encodage,
+  pas le workflow ni le champ : quelqu'un qui a accès au serveur pourrait échanger deux payloads
+  scellés avec la même clé, et chacun se décoderait encore.
 
 Avec un nonce aléatoire, deux encodages d'une même valeur diffèrent. Le rejeu n'en souffre pas :
 Durable compare des valeurs en clair, avant l'encodage et après le décodage.
@@ -156,19 +158,34 @@ Générez une clé et conservez-la en base64 dans vos secrets :
 php -r 'echo base64_encode(sodium_crypto_aead_xchacha20poly1305_ietf_keygen()), PHP_EOL;'
 ```
 
-Le trousseau associe des ids de clé à des clés. Pour faire tourner les clés, ajoutez-en une
-nouvelle, faites-en la clé active et déployez : les nouveaux payloads sont scellés avec elle,
-l'historique plus ancien se décode toujours avec l'ancienne. **Ne retirez jamais une clé tant
-qu'une exécution scellée avec elle reste dans la durée de rétention du namespace** : cette
-exécution ne serait plus lisible, ni par un worker ni par un tableau de bord. Retirer le codec
+Le trousseau associe des ids de clé à des clés : toutes les clés déchiffrent, seule la clé active
+chiffre. Faites tourner les clés en deux déploiements :
+
+1. Ajoutez la nouvelle clé au trousseau de chaque processus, en gardant l'ancienne active. Déployez
+   partout.
+2. Ensuite seulement, dans un déploiement ultérieur, faites de la nouvelle clé la clé active.
+
+Pendant un déploiement progressif, anciens et nouveaux processus tournent côte à côte : un payload
+chiffré avec la nouvelle clé ne doit tomber sur aucun processus qui l'ignore. Et revenir sur le
+second déploiement laisse la nouvelle clé dans le trousseau, si bien que ce qu'elle a chiffré reste
+lisible. **Ne retirez jamais une clé tant qu'une exécution dont les payloads ont été chiffrés avec
+elle reste dans la durée de rétention du namespace** : cette exécution ne serait plus lisible, ni
+par un worker ni par un tableau de bord. Retirer le codec
 lui-même est pire : plus rien ne décode cet historique, et son chiffré échoue partout où une valeur
 JSON est attendue.
 
 Chaque processus qui parle au namespace a besoin du même codec, dans le même déploiement : les
-workers, ce qui démarre ou signale des workflows, et le tableau de bord. Avec le codec en place, un
-worker qui ne sait pas décoder l'historique d'une tâche fait échouer cette tâche, et Temporal la
-relance ; un tableau de bord affiche une erreur de lecture. Ni l'un ni l'autre ne présente du
-chiffré comme s'il s'agissait de données.
+workers, ce qui démarre ou signale des workflows, et le tableau de bord.
+
+Un payload indéchiffrable, sous une clé inconnue par exemple, lève une exception dans l'appel qui
+l'a lu. Un tableau de bord affiche une erreur de lecture. Un worker est plus durement touché : le
+décodage a lieu sur la réponse du poll, avant tout traitement de la tâche, et rien ne l'y
+intercepte. Le processus du worker s'arrête sans signaler l'échec de la tâche, et Temporal ne la
+redistribue qu'à l'expiration de son délai, à un worker qui s'arrête de la même façon. Faites
+tourner vos workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes), et
+alertez sur les arrêts répétés. Le ticket [#775](https://github.com/gplanchat/durable-dev/issues/775) prévoit de faire échouer la tâche à
+la place. Ni un worker ni un tableau de bord ne présente du chiffré comme s'il s'agissait de
+données.
 
 ---
 
@@ -218,8 +235,9 @@ aux fichiers de configuration :
 ```php
 // config/services.php: 'durable_codec' => ['keys' => ['2026-09' => env('DURABLE_CODEC_KEY_2026_09')], 'active' => '2026-09'],
 $this->app->singleton(SodiumPayloadCodec::class, fn () => SodiumPayloadCodec::fromBase64(
-    config('services.durable_codec.keys'),
-    config('services.durable_codec.active'),
+    // An unset variable is left out, so the codec itself reports the missing key.
+    array_filter((array) config('services.durable_codec.keys'), \is_string(...)),
+    (string) config('services.durable_codec.active'),
 ));
 // config/durable.php, under 'temporal': 'payload_codec' => SodiumPayloadCodec::class,
 ```
@@ -236,7 +254,8 @@ automatiquement un argument facultatif ; cette ligne est donc indispensable :
 </type>
 ```
 
-Faites charger votre module après celui de Durable, dans son `etc/module.xml`. Sans cette
+Faites charger votre module après celui de Durable, dans le `etc/module.xml` du module de la
+boutique. Sans cette
 `<sequence>`, Magento peut fusionner le `di.xml` de Durable après le vôtre : vos arguments de
 `RuntimeFactory` peuvent alors être remplacés sans bruit, et les payloads partent en clair.
 
@@ -250,10 +269,11 @@ Faites charger votre module après celui de Durable, dans son `etc/module.xml`. 
 
 Les clés vivent dans `env.php`, sous `'durable' => ['codec' => ['active' => '2026-09', 'keys' =>
 ['2026-09' => '<base64>']]]`. Une petite classe les lit par `DeploymentConfig`, au premier usage
-plutôt que dans son constructeur :
+plutôt que dans son constructeur. Copiez le codec d'exemple dans le même namespace, à côté d'elle :
 
 ```php
-use App\Temporal\SodiumPayloadCodec;
+namespace Vendor\Module\Temporal;
+
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Magento\Framework\App\DeploymentConfig;
 use Temporal\Api\Common\V1\Payload;
@@ -292,7 +312,8 @@ codec, conforme au format décrit plus haut. Voir [Opérations Nexus](../nexus/)
 L'interface web et `temporal workflow show` lisent l'historique sur le serveur : ils affichent donc
 des payloads `binary/encrypted`. La réponse de Temporal est un *serveur de codec* que l'interface
 appelle pour décoder ; Durable n'en fournit pas. Les tableaux de bord de Durable passent, eux, par
-le codec et affichent les valeurs décodées, masquées comme avant par le masqueur de payloads.
+le codec et affichent les valeurs décodées, auxquelles le masquage des payloads s'applique comme
+avant.
 
 ---
 
