@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalPolicyMapper;
 use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\SearchAttributes;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Memo;
@@ -66,7 +67,7 @@ final class ContinueAsNewKeepsTheExecutionIdTest extends TestCase
             'task_queue' => $queue,
             'identity' => $this->connection->identity,
         ]), [], ['timeout' => 10_000_000]);
-        $buffer = new TemporalWorkflowCommandBuffer($this->connection, 'order/42');
+        $buffer = new TemporalWorkflowCommandBuffer($this->connection, ExecutionId::fromString('order/42'));
         $buffer->continueAsNew('App\\OrderWorkflow', []);
         $this->client->RespondWorkflowTaskCompleted(new RespondWorkflowTaskCompletedRequest([
             'namespace' => $namespace,
