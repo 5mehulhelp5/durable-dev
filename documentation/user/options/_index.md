@@ -329,7 +329,7 @@ Child workflows accept the same schedule through `ChildWorkflowOptions`.
 
 ## A child's memo, summary and details {#child-memo-summary-and-details}
 
-`ChildWorkflowOptions` takes a memo, a one-line summary and longer details for the child it starts.
+`ChildWorkflowOptions` takes a memo, a one-line summary and longer details for the child.
 
 ```php
 use Gplanchat\Durable\ChildWorkflowOptions;
@@ -341,9 +341,9 @@ $shipment = $env->childWorkflowStub(ShipmentWorkflow::class, new ChildWorkflowOp
 ));
 ```
 
-The SQL and in-memory backends record all three in the child's journal. On Temporal, the memo
-becomes the child's memo, and the summary and details become the user metadata of the start
-command, which the Temporal UI shows on the child.
+The SQL and in-memory backends record all three in the parent's journal, on the event that
+schedules the child. On Temporal, the memo becomes the child's memo, and the summary and details
+become the user metadata of the start command, which the Temporal UI shows on the child.
 
 > [!NOTE]
 > The summary and details need Temporal Server 1.25 or later. An older server drops them without

@@ -338,8 +338,7 @@ Les workflows enfants acceptent la même planification par `ChildWorkflowOptions
 
 ## Mémo, résumé et détails d'un enfant {#child-memo-summary-and-details}
 
-`ChildWorkflowOptions` prend un mémo, un résumé d'une ligne et des détails plus longs pour l'enfant
-qu'il démarre.
+`ChildWorkflowOptions` prend un mémo, un résumé d'une ligne et des détails plus longs pour l'enfant.
 
 ```php
 use Gplanchat\Durable\ChildWorkflowOptions;
@@ -351,9 +350,10 @@ $shipment = $env->childWorkflowStub(ShipmentWorkflow::class, new ChildWorkflowOp
 ));
 ```
 
-Les backends SQL et en mémoire enregistrent les trois dans le journal de l'enfant. Sur Temporal, le
-mémo devient celui de l'enfant, et le résumé et les détails deviennent les métadonnées utilisateur
-de la commande de démarrage, que l'interface de Temporal affiche sur l'enfant.
+Les backends SQL et en mémoire enregistrent les trois dans le journal du parent, sur l'événement qui
+planifie l'enfant. Sur Temporal, le mémo devient celui de l'enfant, et le résumé et les détails
+deviennent les métadonnées utilisateur de la commande de démarrage, que l'interface de Temporal
+affiche sur l'enfant.
 
 > [!NOTE]
 > Le résumé et les détails demandent Temporal Server 1.25 ou plus récent. Un serveur plus ancien
