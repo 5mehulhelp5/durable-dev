@@ -56,11 +56,11 @@ final class TheJournalKeepsItsStringIdsTest extends TestCase
     public static function eventsThatNameAnotherExecution(): iterable
     {
         $id = ExecutionId::fromString('exec-1');
-        yield 'ChildWorkflowScheduled' => [new ChildWorkflowScheduled($id, 'child-1', 'App\\Child', [])];
-        yield 'WorkflowCancellationRequested' => [new WorkflowCancellationRequested($id, 'stop', 'parent-1')];
-        yield 'WorkflowContinuedAsNew' => [new WorkflowContinuedAsNew($id, 'App\\Next', [], [], 'exec-2')];
+        yield 'ChildWorkflowScheduled' => [new ChildWorkflowScheduled($id, ExecutionId::fromString('child-1'), 'App\\Child', [])];
+        yield 'WorkflowCancellationRequested' => [new WorkflowCancellationRequested($id, 'stop', ExecutionId::fromString('parent-1'))];
+        yield 'WorkflowContinuedAsNew' => [new WorkflowContinuedAsNew($id, 'App\\Next', [], [], ExecutionId::fromString('exec-2'))];
         yield 'ExecutionStarted' => [new ExecutionStarted($id, ['continuedFromExecutionId' => 'exec-0'])];
-        yield 'terminatedByParent' => [WorkflowExecutionFailed::terminatedByParent($id, 'parent-1')];
+        yield 'terminatedByParent' => [WorkflowExecutionFailed::terminatedByParent($id, ExecutionId::fromString('parent-1'))];
     }
 
     #[DataProvider('eventsThatNameAnotherExecution')]

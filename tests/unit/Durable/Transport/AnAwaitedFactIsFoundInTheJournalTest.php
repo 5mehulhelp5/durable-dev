@@ -31,7 +31,7 @@ final class AnAwaitedFactIsFoundInTheJournalTest extends TestCase
     public function testAChildFactIsThatChildsOutcomeInTheParentsJournal(): void
     {
         $journal = new InMemoryEventStore();
-        $journal->append(new ChildWorkflowCompleted(ExecutionId::fromString('parent-1'), 'child-2', 'done'));
+        $journal->append(new ChildWorkflowCompleted(ExecutionId::fromString('parent-1'), ExecutionId::fromString('child-2'), 'done'));
 
         self::assertFalse(AwaitedFact::child('child-1')->isJournalledIn($journal, 'parent-1'));
         self::assertTrue(AwaitedFact::child('child-2')->isJournalledIn($journal, 'parent-1'));
