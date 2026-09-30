@@ -331,7 +331,8 @@ class RuntimeFactory
     /**
      * What `MagentoRuntime::run()` does with a DSN (#765): start on the cluster, then wait for the
      * close event, the pair the Symfony bench's runner uses. `startSync()` is not it: it reads the
-     * history once and returns null while the execution still runs.
+     * history once and returns null while the execution still runs. The wait polls every 500 ms
+     * for `budgetSeconds`, and ends with `WorkflowStuckException` as in memory.
      *
      * @param array<string, mixed> $input
      */
@@ -340,7 +341,7 @@ class RuntimeFactory
         $client = $this->workflowClient();
         $client->startAsync($workflowClass, $input, ExecutionId::fromString($executionId));
 
-        return $client->pollForCompletion($executionId);
+        return $client->pollForCompletion($executionId, 500, max(1, (int) ceil($this->budgetSeconds * 2)));
     }
 
     private function client(TemporalConnection $settings): WorkflowServiceClientInterface
