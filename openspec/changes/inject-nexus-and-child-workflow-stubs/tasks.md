@@ -46,6 +46,10 @@ makes it pass. Each commit stays under 200 changed lines.
       `nexusHandlers`. Test through `RuntimeFactory::create()`.
 - [ ] 2.4 One workflow using the three injected stubs replays to the same commands as the same
       workflow with hand-built stubs, on the Temporal backend (integration suite, real server).
+- [ ] 2.5 Probe, on a real server: an execution waits on a Nexus operation; the configuration is
+      changed to map its contract to another endpoint; the worker restarts and the execution
+      replays. Record whether the replay diverges, and document the rule that follows (design.md,
+      Risks).
 
 ## 3. PHPStan
 

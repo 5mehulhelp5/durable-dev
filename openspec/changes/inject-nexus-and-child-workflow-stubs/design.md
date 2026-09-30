@@ -117,8 +117,10 @@ The id is computed by workflow code from the input, so a replay computes the sam
 in the command exactly as an id set in `ChildWorkflowOptions` does today; nothing new is journaled.
 
 The stub dispatches the child's entry method through `__call`. A real method named
-`withWorkflowId` shadows an entry method of the same name, so the loader refuses, at registration, a
-child workflow class whose entry method is named `withWorkflowId`, and says why.
+`withWorkflowId` shadows an entry method of the same name. When a workflow declares a
+`#[ChildWorkflow]` parameter for a class whose entry method has that name, registering that
+workflow fails, naming the parameter, the child class and the method. The child class itself stays
+valid: it can still be started by hand, or run as a top-level workflow.
 
 Rejected for now: `withOptions(ChildWorkflowOptions)`. It would cover memo and search attributes
 computed at run time, and it would also let a call override the policy the attribute declared,
@@ -156,6 +158,18 @@ on.
   regression check, not a new server rule.
 
 ## Risks
+
+- **An endpoint that changes under an execution in flight.** An operation scheduled before a
+  deploy is recorded with its endpoint. If the configuration maps the contract to another endpoint
+  after the deploy, a replay of that execution resolves the new one. Whether that is harmless
+  depends on how replay matches a recorded Nexus schedule against the command it rebuilds: if the
+  endpoint takes part, the replay diverges. Changing a hard-coded endpoint in a deploy has the same
+  effect today; configuration makes the change easier to make. The tasks probe it (2.5). If the
+  endpoint takes part in the match, the rule to document is the one that already applies to any
+  deploy that changes workflow code: an endpoint in use by executions in flight is not changed in
+  place; a new endpoint is added and the old one kept until they finish.
+- **Several stubs for one contract** are allowed: two parameters may name the same contract with
+  two endpoints, and each keeps its own. Nothing is shared between them.
 
 - **A configuration key on three hosts** is three places to document and test. The tasks require
   one test per host that resolves an endpoint from configuration.

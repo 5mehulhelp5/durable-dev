@@ -60,8 +60,8 @@ Two things keep this from being a copy of `#[Activities]`:
   starts the child under that id. The stub it is called on is unchanged.
 - **Errors at registration.** An endpoint that neither the attribute nor the configuration names,
   an attribute on a parameter of another type, a class that is not a workflow, or a child whose
-  entry method is named `withWorkflowId` fails when the workflow is registered, naming the
-  parameter.
+  entry method is named `withWorkflowId` fails when the workflow that declares the parameter is
+  registered, naming the parameter.
 - **PHPStan.** The rule that checks `#[Activities]` against its `@param` docblock covers the two
   new attributes. The extension already resolves the generics of both stubs.
 - **Documentation**, EN and FR: the Nexus and child pages show the argument form first; "When to
