@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\Bridge\Illuminate\Queue;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Port\ActivityAttemptClaimInterface;
 use Illuminate\Contracts\Cache\LockProvider;
 
@@ -28,9 +29,9 @@ final class ActivityAttemptLock implements ActivityAttemptClaimInterface
         private readonly int $ttlSeconds = 300,
     ) {}
 
-    public function claim(string $executionId, string $activityId, int $attempt): ?\Closure
+    public function claim(ExecutionId $executionId, string $activityId, int $attempt): ?\Closure
     {
-        $lock = $this->locks->lock(\sprintf('durable-activity-%s-%s-%d', $executionId, $activityId, $attempt), $this->ttlSeconds);
+        $lock = $this->locks->lock(\sprintf('durable-activity-%s-%s-%d', $executionId->toString(), $activityId, $attempt), $this->ttlSeconds);
 
         return $lock->get() ? static function () use ($lock): void {
             $lock->release();

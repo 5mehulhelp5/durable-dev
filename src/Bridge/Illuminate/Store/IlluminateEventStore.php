@@ -51,22 +51,23 @@ final class IlluminateEventStore implements FencedEventStoreInterface
         $this->connection->table($this->table)->insert($this->row($event));
     }
 
-    public function claimPass(string $executionId): PassFence
+    public function claimPass(ExecutionId $executionId): PassFence
     {
         $this->schema->ensure();
+        $id = $executionId->toString();
         $heads = $this->connection->table($this->schema->headsTable());
 
         // The first claim creates the row; two first claims racing each other leave one row.
-        $heads->clone()->insertOrIgnore(['execution_id' => $executionId, 'epoch' => 0]);
+        $heads->clone()->insertOrIgnore(['execution_id' => $id, 'epoch' => 0]);
 
         // The update locks the row until the claim commits: a fenced append waits for it (DUR053).
-        $epoch = $this->connection->transaction(static function () use ($heads, $executionId): int {
-            $heads->clone()->where('execution_id', $executionId)->increment('epoch');
+        $epoch = $this->connection->transaction(static function () use ($heads, $id): int {
+            $heads->clone()->where('execution_id', $id)->increment('epoch');
 
-            return (int) $heads->clone()->where('execution_id', $executionId)->value('epoch');
+            return (int) $heads->clone()->where('execution_id', $id)->value('epoch');
         });
 
-        return new PassFence($executionId, $epoch);
+        return new PassFence($id, $epoch);
     }
 
     public function appendFenced(Event $event, PassFence $fence): void

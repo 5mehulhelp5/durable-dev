@@ -19,6 +19,7 @@ the workflow code, only where the execution is recorded.
 | `gplanchat/durable-laravel` | the Laravel wiring: ports bound from config, work on the application's queue | the library, the Illuminate bridge, `illuminate/support` |
 | `gplanchat/durable-magento` | a Magento 2.4 / Mage-OS module: declaration, workers, admin screen | the library; Temporal for anything that must outlive a process |
 | `gplanchat/durable-plugin` | a Sylius admin dashboard for workflow runs | the bundle, `knplabs/knp-menu`; Sylius 2.x to appear in its menu |
+| `gplanchat/durable-filament` | a Filament panel dashboard for workflow runs | the Laravel integration, Filament 3 or 4 |
 | `gplanchat/durable-phpstan` | static analysis of stub calls against their contract | the library, `phpstan/phpstan` |
 | `gplanchat/durable-rector` | automated migration off the Temporal PHP SDK | the library, `rector/rector` |
 
@@ -215,7 +216,7 @@ loads all of them into every process** to find five. There is no `durable:cache`
 reason: `config:cache` already caches the file it would duplicate.
 
 **Work rides the queue the application already drains**, with `php artisan queue:work` as the only
-worker. Activities and resumes are jobs; a timer is a deferred resume on the queue's own delay.
+worker. Activities and resumes are jobs; a timer is a deferred timer-firing job on the queue's own delay.
 
 ### It is not a durable engine for Laravel, and that square is taken
 
@@ -301,8 +302,8 @@ that does not select the backend never pays for it, and one that does is told by
 install. Splitting the bridge, whose Symfony-coupled part is eight files out of 774, would remove
 the weight, and that is its own change.
 
-**A dashboard.** `gplanchat/durable-filament` will require this package, and this package will never
-require, suggest or detect Filament.
+**A dashboard.** [`gplanchat/durable-filament`](#gplanchatdurable-filament--the-filament-dashboard)
+requires this package, and this package never requires, suggests or detects Filament.
 
 ---
 
@@ -330,6 +331,37 @@ catalog it reads, so the command above is the whole install.
 > backend is suggested by `gplanchat/durable`, once, for every integration. Without one the plugin
 > still installs, the route and the menu entry still work, and the dashboard renders its degraded
 > state instead of live runs.
+
+## `gplanchat/durable-filament`, the Filament dashboard {#gplanchatdurable-filament--the-filament-dashboard}
+
+```bash
+composer config minimum-stability beta
+composer config prefer-stable true
+composer require gplanchat/durable-filament
+```
+
+```php
+// app/Providers/Filament/AdminPanelProvider.php
+use Gplanchat\Durable\Filament\DurableFilamentPlugin;
+
+return $panel
+    // ...
+    ->plugin(DurableFilamentPlugin::make());
+```
+
+The Filament chrome for [The dashboard](../dashboard/), on Filament 3 or 4: a **Durable runs** entry
+in the panel's navigation, the run list with cursor paging and the name and execution-id filters
+the backend can apply, and a page per run with its status, what it waits on, its Nexus operations
+and its history. English and French.
+
+It **observes**; it does not execute. It requires `gplanchat/durable-laravel` and reads the run
+catalog that package binds for its backend: in-memory, Illuminate or Temporal. Nothing in it names a
+backend, and nothing in `gplanchat/durable-laravel` names Filament.
+
+> [!NOTE]
+> The run page lists a run's Nexus operations when the catalog reports them, which only the Temporal
+> one can: a journal cannot hold a Nexus operation, so on in-memory and Illuminate the section never
+> shows.
 
 ## `gplanchat/durable-magento`, the Magento integration {#gplanchatdurable-magento--the-magento-integration}
 

@@ -47,6 +47,12 @@ return [
     'workflows' => [],
 
     /*
+     * The activity handler classes. Each serves the contract its #[AsActivityHandler] names, or
+     * else its interfaces with #[AsActivityMethod] methods; a wrong one is refused at boot.
+     */
+    'activity_handlers' => [],
+
+    /*
      * The Temporal cluster, when `backend` is "temporal".
      *
      * The DSN carries the address, the namespace and the two task queues:
@@ -76,6 +82,10 @@ return [
         // stream factories — defaulting to the client's binding. null keeps curl.
         'psr18_client' => null,
         'psr17_factory' => null,
+        // A container binding: the application's PayloadCodecInterface, which encodes every
+        // payload sent to Temporal and decodes every payload read (DUR055). The codec reads its
+        // own key, from the application's .env; Durable reads none. null sends payloads as they are.
+        'payload_codec' => null,
     ],
 
     /*
@@ -112,6 +122,13 @@ return [
      * The key is the handler class, the value the contract it serves:
      *
      *     'handlers' => [App\Nexus\BillingHandler::class => App\Contracts\BillingService::class],
+     *
+     * or the handler class alone, when it names its contract with #[AsNexusServiceHandler]:
+     *
+     *     'handlers' => [App\Nexus\BillingHandler::class],
+     *
+     * If both are given and disagree, the registry refuses. So it does for an operation nobody
+     * serves, and for a class in `workflows` that does not exist.
      *
      * What a handler does not serve, a workflow fulfils — it then carries
      * `#[FulfilsNexusOperation]`, and it is enough for it to be in the `workflows` list above.

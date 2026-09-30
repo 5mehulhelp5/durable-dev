@@ -11,13 +11,18 @@ use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\TemporalRuntimeAssembly;
 use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
+use Gplanchat\Bridge\Temporal\Worker\TemporalNexusWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Activity\ActivityContractResolver;
 use Gplanchat\Durable\Activity\PayloadToContractMethodInvoker;
+use Gplanchat\Durable\Attribute\AsActivityHandler;
+use Gplanchat\Durable\Attribute\AsNexusServiceHandler;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
+use Gplanchat\Durable\Nexus\Serving\NexusHandlerDeclarations;
+use Gplanchat\Durable\Nexus\Serving\NexusOperationRegistry;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -113,8 +118,12 @@ class RuntimeFactory
          * The application's PSR-18 client and its PSR-17 factory, for `transport=http` (the JSON
          * gateway) instead of curl; any other transport ignores it. Set in `di.xml` with an
          * `<argument name="jsonGateway" xsi:type="object">`.
+         *
+         * Typed `?object` and narrowed in `client()`, because Magento reflects every constructor
+         * type, optional ones included: a `Psr18Http` here kills `setup:install` on a host
+         * without the Temporal bridge (#725). No other bridge type may appear in this signature.
          */
-        private readonly ?Psr18Http $jsonGateway = null,
+        private readonly ?object $jsonGateway = null,
         /**
          * The sender the activities inject, from `di.xml`'s preference. On Temporal it is pointed
          * at the worker's sender, so their heartbeats carry the task's token (#510).
@@ -130,6 +139,15 @@ class RuntimeFactory
          * no PSR-20 clock of its own: null is the core's system clock.
          */
         private readonly ?ClockInterface $clock = null,
+        /**
+         * The module's Nexus handlers (#668), from di.xml like `activityHandlers`: each names the
+         * contract it serves with `#[AsNexusServiceHandler]`, as on Symfony. The operations it has
+         * no method for are fulfilled by a workflow of `workflowClasses` that carries
+         * `#[FulfilsNexusOperation]`.
+         *
+         * @var array<array-key, object>
+         */
+        private readonly array $nexusHandlers = [],
     ) {}
 
     /** One per factory, and the ObjectManager shares the factory: one gRPC client per request (#356). */
@@ -300,6 +318,10 @@ class RuntimeFactory
 
     private function client(TemporalConnection $settings): WorkflowServiceClientInterface
     {
+        if (null !== $this->jsonGateway && !$this->jsonGateway instanceof Psr18Http) {
+            throw new \InvalidArgumentException(\sprintf('RuntimeFactory\'s jsonGateway must be a %s, %s given.', Psr18Http::class, get_debug_type($this->jsonGateway)));
+        }
+
         return $this->client ??= WorkflowServiceClientFactory::create($settings, $this->logger, $this->guzzle, $this->jsonGateway);
     }
 
@@ -314,6 +336,50 @@ class RuntimeFactory
         }
 
         return $this->assembly;
+    }
+
+    /**
+     * The Nexus operations the module serves, built when the Nexus worker starts. Routed by the
+     * cluster when a DSN is set; without one, a listed handler is refused here, since memory cannot
+     * route (DUR036). The worker asks for a cluster first, so its own refusal is the one users see.
+     */
+    public function nexusRegistry(): NexusOperationRegistry
+    {
+        $registry = null === $this->temporalSettings() ? NexusOperationRegistry::unavailableOn('memory') : NexusOperationRegistry::routedBy('temporal');
+        $handlers = [];
+        $contracts = [];
+        foreach ($this->nexusHandlers as $handler) {
+            $attribute = (new \ReflectionClass($handler))->getAttributes(AsNexusServiceHandler::class)[0] ?? null;
+            if (null === $attribute) {
+                throw new \InvalidArgumentException(\sprintf(
+                    'Durable: %s is listed in the nexusHandlers argument of RuntimeFactory (di.xml), but carries no #[AsNexusServiceHandler(contract: ...)] naming the contract it serves.',
+                    $handler::class,
+                ));
+            }
+            $handlers[$handler::class] = $handler;
+            $contracts[$handler::class] = $attribute->newInstance()->contract;
+        }
+
+        (new NexusHandlerDeclarations(
+            $contracts,
+            array_values($this->workflowClasses),
+            static fn(string $handlerClass): object => $handlers[$handlerClass],
+            'the nexusHandlers argument of RuntimeFactory (di.xml)',
+            "It is the contract the handler's #[AsNexusServiceHandler] attribute names.",
+            'the workflowClasses argument of RuntimeFactory (di.xml)',
+        ))->registerInto($registry);
+
+        return $registry;
+    }
+
+    /**
+     * Serves the declared Nexus operations: `bin/magento durable:worker --role=nexus` (#668).
+     */
+    public function nexusWorker(): TemporalNexusWorker
+    {
+        $settings = $this->requireCluster('A Nexus worker');
+
+        return new TemporalNexusWorker($this->assembly($settings)->nexusRpc(), $settings, $this->nexusRegistry());
     }
 
     private function requireCluster(string $what): TemporalConnection
@@ -393,8 +459,17 @@ class RuntimeFactory
         $bindings = [];
 
         foreach ($this->activityHandlers as $handler) {
-            foreach (\class_implements($handler) ?: [] as $contract) {
+            // `#[AsActivityHandler(contract)]` narrows the handler to that one contract, as
+            // Symfony's ActivityHandlerPass does; without it, every activity interface it implements.
+            $named = (new \ReflectionClass($handler))->getAttributes(AsActivityHandler::class)[0] ?? null;
+            $contracts = null !== $named ? [$named->newInstance()->contract] : (\class_implements($handler) ?: []);
+
+            foreach ($contracts as $contract) {
                 foreach ($resolver->resolveActivityMethods($contract) as $method => $activityName) {
+                    if (null !== $named && !\method_exists($handler, $method)) {
+                        throw new \LogicException(\sprintf('Handler "%s" must implement %s::%s() for #[AsActivityHandler] (contract %s).', $handler::class, $contract, $method, $contract));
+                    }
+
                     $bindings[$activityName] = new PayloadToContractMethodInvoker($handler, $contract, $method);
                 }
             }
