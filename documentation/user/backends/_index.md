@@ -129,7 +129,7 @@ for the `COPY --from` recipes, including php-fpm, mod_php and FrankenPHP.
 
 With `search_attributes` turned on, Durable writes two search attributes on every run it starts,
 so the run list can filter by workflow name and by execution id. The option is off by default. A
-start that sets an attribute the namespace does not know fails on the server, so register both
+start that sets an attribute not registered in the namespace fails on the server, so register both
 **once per namespace, before turning the option on**:
 
 ```bash
