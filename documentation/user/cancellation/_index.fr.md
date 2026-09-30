@@ -5,13 +5,18 @@ weight: 27
 
 # Annulation
 
-Annuler une exécution ne la tue pas. L'annulation est **levée à l'intérieur du workflow, à l'endroit
+Une exécution est un déroulement durable d'un workflow, et son journal est l'historique, en ajout
+seul, de ce qu'elle a décidé et reçu (voir le [glossaire](../glossary/)). Quand vous annulez une
+exécution, Durable ne la tue pas. L'annulation est **levée à l'intérieur du workflow, à l'endroit
 où il attend**, pour qu'il puisse compenser avant de se terminer. C'est l'équivalent du
 `CanceledFailure` de Temporal.
 
 ---
 
 ## Compenser
+
+Pour défaire les étapes terminées avant un échec ou une annulation, enregistrez une compensation
+par étape avec `Saga`, et exécutez-les depuis un `catch` :
 
 ```php
 use Gplanchat\Durable\Activity\ActivityStub;
@@ -55,12 +60,13 @@ final class CheckoutWorkflow
 
 `Saga` enregistre une compensation par étape terminée et, à l'appel de `compensate()`, les exécute
 dans l'ordre inverse. Chaque compensation fait son propre `await()`, si bien qu'elle se termine avant
-que la suivante ne commence ; une compensation qui rend un `Awaitable` à la place est refusée par une
-`LogicException`. Une étape qui ne s'est jamais terminée n'a
-rien à défaire : sa compensation n'a jamais été ajoutée. La première compensation qui lève une
-exception arrête la série, et son exception remplace celle qu'on était en train de compenser.
+que la suivante ne commence. Une compensation qui renvoie un `Awaitable` à la place fait lever une
+`LogicException` à `compensate()`. Une étape qui ne s'est jamais terminée n'a rien à défaire,
+puisque sa compensation n'a jamais été ajoutée. La première compensation qui lève une exception
+arrête la série, et son exception remplace celle en cours de compensation.
 
-Trois dénouements, tous légitimes :
+La fin de l'exécution dépend de ce que le workflow fait de l'exception. Chacun de ces dénouements
+est légitime :
 
 | Le workflow… | Dénouement |
 |---|---|
@@ -68,29 +74,31 @@ Trois dénouements, tous légitimes :
 | l'avale et rend une valeur | l'exécution **se termine** normalement ; un workflow a le droit d'ignorer l'annulation |
 | n'attend jamais rien | l'annulation n'est jamais observée et le workflow se termine |
 
-L'opération en cours d'attente est annulée en même temps. Dans une course, toutes les branches en
-attente le sont.
+L'opération attendue est annulée en même temps. Dans une course, toutes les branches en attente
+sont annulées.
 
 ---
 
 ## Livrée exactement une fois
 
-L'annulation est levée **une fois par exécution**. Sans cette borne, les attentes servant justement
-à compenser seraient annulées à leur tour et la compensation n'aurait jamais lieu.
+L'annulation est levée **une fois par exécution**. Si elle était levée de nouveau, les attentes
+dont se sert la compensation seraient annulées à leur tour, et la compensation n'aurait jamais lieu.
 
-Le déterminisme vient du journal plutôt que d'un marqueur : l'opération en attente est annulée avec
-la raison `workflow_cancelled`, et au rejeu ce dénouement enregistré rejette le même awaitable au
-même endroit. Le workflow prend donc la même branche à chaque rejeu.
+Le rejeu (la réexécution du code du workflow depuis sa première ligne, où chaque étape enregistrée
+renvoie son résultat) lit ce fait dans le journal, et Durable n'écrit aucun marqueur à part.
+L'opération en attente est annulée avec la raison `workflow_cancelled`, et au rejeu ce dénouement
+enregistré rejette le même awaitable au même endroit. Le workflow prend donc la même branche à
+chaque rejeu.
 
 ---
 
 ## Demander une annulation
 
-- **Depuis un parent.** Un enfant planifié avec `ParentClosePolicy::RequestCancel` se voit demander
-  de s'annuler quand le parent se ferme.
-- **De l'extérieur, sur Temporal.** `temporal workflow cancel`, ou tout client appelant
-  `RequestCancelWorkflowExecution`. Le serveur enregistre la demande et replanifie une tâche de
-  workflow ; le worker y répond.
+- **Depuis un parent.** Quand le parent se ferme, un enfant planifié avec
+  `ParentClosePolicy::RequestCancel` reçoit une demande d'annulation.
+- **De l'extérieur, sur Temporal.** Lancez `temporal workflow cancel`, ou appelez
+  `RequestCancelWorkflowExecution` depuis n'importe quel client. Le serveur enregistre la demande et
+  replanifie une tâche de workflow, que le worker traite ensuite.
 
 ---
 
@@ -98,12 +106,12 @@ même endroit. Le workflow prend donc la même branche à chaque rejeu.
 
 | Événement | Sens |
 |---|---|
-| `WorkflowCancellationRequested` | quelqu'un a demandé |
+| `WorkflowCancellationRequested` | une annulation a été demandée |
 | `WorkflowExecutionCancelled` | l'exécution s'est terminée annulée |
 | `ActivityCancelled` / `TimerCancelled` avec la raison `workflow_cancelled` | l'opération attendue a été retirée |
 
 Un perdant de course est annulé avec la raison `race_superseded` à la place, et remonte en
-`ActivitySupersededException`, une autre situation, qui reste distinguable.
+`ActivitySupersededException`. Les deux situations restent distinguables.
 
 ---
 
@@ -119,20 +127,20 @@ $winner = $this->environment->await(
 );
 ```
 
-Quand une branche gagne, les autres sont annulées : les activités en attente sont retirées de la
-file et les minuteurs en attente cessent de pouvoir réveiller l'exécution. Une échéance écoulée les
-annule de la même façon, et lève `DeadlineExceededException`.
+Quand une branche gagne, les autres sont annulées. Leurs activités en attente sont retirées de la
+file, et leurs minuteurs en attente ne réveillent plus l'exécution. Une échéance écoulée les annule
+de la même façon, et lève `DeadlineExceededException`.
 
 **La borne de temps est l'échéance passée à `await()`, pas une troisième branche.** Un minuteur mis
-en course avec les fournisseurs aurait l'air d'un gagnant : `any()` se résout à la *valeur*
-gagnante et à rien d'autre, si bien qu'un fournisseur répondant légitimement `null` devient
-indistinguable de trente secondes de silence, et le chemin de compensation prévu pour le
-dépassement s'exécuterait aussi sur la réponse vide.
+en course avec les fournisseurs aurait l'air d'un gagnant. `any()` se résout à la *valeur*
+gagnante et à rien d'autre, si bien qu'un fournisseur qui répond légitimement `null` devient
+indiscernable de trente secondes de silence, et le chemin de compensation prévu pour le
+dépassement s'exécute aussi sur la réponse vide.
 
 `timer()` renvoie bien un `Awaitable`, exactement comme un appel de stub : il *peut* donc être une
-branche. Mettez-l'y quand le minuteur est un vrai dénouement (envoyer une relance, prendre le
-chemin de repli), jamais quand c'est une échéance déguisée. Quand vous voulez seulement attendre,
-`sleep()` le dit dans son nom et fait l'attente pour vous.
+branche. Employez-le comme branche quand le minuteur est un vrai dénouement, par exemple envoyer
+une relance ou prendre le chemin de repli. Ne l'employez pas comme échéance. Quand vous voulez
+seulement attendre, appelez `sleep()`, qui fait l'attente pour vous.
 
-Voir [Écrire un workflow](../workflows/#bounding-a-wait-in-time), où l'échéance est détaillée avec
-ce que porte l'exception : `deadline()` et `awaited()`.
+[Écrire un workflow](../workflows/#bounding-a-wait-in-time) détaille l'échéance, avec ce que porte
+l'exception, `deadline()` et `awaited()`.
