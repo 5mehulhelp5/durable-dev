@@ -171,7 +171,7 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
 
     public function testAnOutcomeBadgeIsSingularInFrench(): void
     {
-        // "Terminées" is right over a count and wrong on the badge of a single run.
+        // The plural label of a counter is wrong on the badge of a single run.
         $translator = new Translator('fr');
         $translator->addLoader('xlf', new XliffFileLoader());
         $translator->addResource('xlf', \dirname(__DIR__, 2) . '/translations/durable.fr.xlf', 'fr', 'durable');

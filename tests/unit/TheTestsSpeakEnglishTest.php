@@ -58,6 +58,9 @@ final class TheTestsSpeakEnglishTest extends TestCase
             'Tableau de bord des workflows Durable' => 'asserts the French catalogue renders, the one product exception WA006 makes',
             'demandé' => 'same',
             'Opérations Nexus' => 'same',
+            "'Exécution :'" => 'same',
+            "'Exécution côté backend run-1'" => 'same',
+            "'En cours', 'Terminée', 'En échec', 'Annulée', 'Poursuivie à neuf'" => 'same',
         ],
         'src/DurableFilament/tests/TheRunListTest.php' => [
             'Issues des 2 exécutions de cette page' => 'asserts the French catalogue renders, the one product exception WA006 makes',
