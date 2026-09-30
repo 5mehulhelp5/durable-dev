@@ -133,7 +133,16 @@ final class TemporalWorkflowCommandBufferSchedulingTest extends TestCase
                 self::fail(\sprintf('the memo key "%s" must be refused', $key));
             } catch (UnsupportedByBackendException $refusal) {
                 self::assertStringContainsString($key, $refusal->getMessage());
+                self::assertStringContainsString('ChildWorkflowOptions::$memo', $refusal->getMessage());
             }
         }
+    }
+
+    public function testAnEmptySummaryAndDetailsCountAsNone(): void
+    {
+        $buffer = $this->buffer();
+        $buffer->scheduleChildWorkflow(ExecutionId::fromString('child-5'), 'ChildType', [], new ChildWorkflowOptions(staticSummary: '', staticDetails: ''));
+
+        self::assertNull($buffer->peek()[0]->getUserMetadata());
     }
 }
