@@ -5,14 +5,20 @@ weight: 25
 
 # Écrire un workflow
 
-Cette page résume comment on **écrit** un workflow en Durable. Les règles normatives vivent dans les ADR de contribution [**DUR022**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) et les décisions voisines (**DUR003**, **DUR013**) ; ce guide reste pratique.
+Cette page décrit comment vous **écrivez** un workflow avec Durable, et l'API dont se sert un
+workflow. Un workflow est la classe PHP qui décrit les étapes d'une exécution (un déroulement
+durable, de son démarrage à sa fin) ; ses effets de bord s'exécutent dans des activités, et chaque
+étape est enregistrée dans le journal (l'historique, en ajout seul, d'une exécution). Le
+[glossaire](../glossary/) définit chacun de ces termes.
+
+Les règles normatives figurent dans les ADR de contribution [**DUR022**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) et les décisions voisines (**DUR003**, **DUR013**). Cette page en couvre l'usage pratique.
 
 ## Exemple : un workflow minimal
 
-Une **classe** portant **`#[AsWorkflow]`**, déclarée au moteur. Sa méthode de workflow prend l'entrée,
-et Durable fournit le reste en arguments : les stubs d'activités et l'environnement (voir
-[Les arguments que fournit Durable](#arguments-durable-supplies)). L'attribut **`#[AsWorkflow]`** se
-pose sur la **classe** avec le chargeur actuel (voir [DUR022](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) pour le modèle « interface d'abord » visé à terme).
+Un workflow est une **classe** portant **`#[AsWorkflow]`** et déclarée au moteur. Sa méthode de
+workflow prend l'entrée, et Durable fournit le reste en arguments : les stubs d'activités et
+l'environnement (voir [Les arguments que fournit Durable](#arguments-durable-supplies)). Avec le
+chargeur actuel, l'attribut **`#[AsWorkflow]`** se pose sur la **classe** (voir [DUR022](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR022-workflow-class-interface-and-workflow-environment.md) pour le modèle « interface d'abord » visé à terme).
 
 ```php
 <?php
@@ -42,13 +48,13 @@ final class OrderWorkflow
 }
 ```
 
-`WorkflowEnvironment` fournit **`await`**, les assembleurs **`all`** / **`any`** / **`some`**, **`async`**, les minuteurs, les workflows enfants, les signaux, et le reste ; voir la classe dans le dépôt pour l'API complète.
+`WorkflowEnvironment` fournit **`await`**, les assembleurs **`all`** / **`any`** / **`some`**, **`async`**, les minuteurs, les workflows enfants, les signaux, et le reste. La classe, dans le dépôt, porte l'API complète.
 
 ### Attendre ou assembler {#waiting-versus-assembling}
 
-**`await()` est la seule méthode qui attend.** Tout le reste assemble : un appel de stub, `timer()`.
-Les appels de stub comme les assembleurs ci-dessous renvoient tous un `Awaitable`, et rendent la
-main immédiatement.
+**`await()` est la seule méthode qui attend.** Tous les autres appels assemblent. Un appel de
+stub, `timer()` et les assembleurs ci-dessous renvoient tous un `Awaitable` et rendent la main
+immédiatement.
 
 ```php
 $env->sleep(Duration::minutes(5));            // attendre, et rien d'autre ; l'attente est faite pour vous
@@ -59,7 +65,7 @@ $winner = $env->await($env->any(              // assembler, puis attendre
 ));
 ```
 
-Trois assembleurs, selon le nombre de membres qui doivent aboutir :
+Les trois assembleurs se distinguent par le nombre de membres qui doivent aboutir :
 
 ```php
 $env->all($a, $b, $c)      // Awaitable de [$a, $b, $c] : tous les membres, dans l'ordre de déclaration
@@ -67,21 +73,21 @@ $env->any($a, $b, $c)      // Awaitable du premier membre à se résoudre, quel 
 $env->some(2, $a, $b, $c)  // Awaitable des 2 premiers membres à réussir, indexés par position
 ```
 
-Parce qu'ils renvoient un `Awaitable` et non une valeur, ils **se composent** : un assemblage
-s'imbrique dans un autre et, c'est ce qui compte le plus, un assemblage peut être borné par une
-échéance.
+Comme ils renvoient un `Awaitable` au lieu d'une valeur, ils **se composent**. Un assemblage
+s'imbrique dans un autre, et un assemblage peut être borné par une échéance.
 
 ```php
 $quotes = $env->await($env->some(3, ...$providers), deadline: Duration::seconds(2));
 ```
 
-`some()` ne compte que les membres qui **réussissent** : un fournisseur qui échoue ne rapproche pas
-du quorum, et dès qu'il n'en reste plus assez pour l'atteindre, l'attente échoue au lieu de ne
-jamais se résoudre. `all()` est le quorum complet : un seul membre en échec fait échouer tout
-l'assemblage. `any()` est une course : le premier membre à se résoudre gagne, même en échouant.
+`some()` ne compte que les membres qui **réussissent**. Un fournisseur qui échoue ne rapproche pas
+du quorum, et dès qu'il ne reste plus assez de membres pour l'atteindre, l'attente échoue ; elle ne
+reste pas en suspens indéfiniment. `all()` est le quorum complet : un seul membre en échec fait
+échouer tout l'assemblage. `any()` est une course : le premier membre à se résoudre gagne, même
+s'il se résout en échouant.
 
-Les branches perdantes sont annulées : activités retirées de la file, minuteurs empêchés de
-réveiller l'exécution, y compris les branches imbriquées dans un assemblage.
+Les branches perdantes sont annulées. Leurs activités sont retirées de la file et leurs minuteurs
+ne réveillent plus l'exécution, y compris dans les branches imbriquées dans un assemblage.
 
 `timer()` renvoie un `Awaitable` exactement comme un appel de stub : les deux se composent de la
 même façon. Les deux acceptent une `Duration`, un `DateInterval` (donc un `CarbonInterval`), une
@@ -89,10 +95,10 @@ même façon. Les deux acceptent une `Duration`, un `DateInterval` (donc un `Car
 
 ### Borner une attente dans le temps {#bounding-a-wait-in-time}
 
-Pour renoncer à une attente au bout d'un moment, passez une **échéance** à `await()` ; ne courez
-pas un minuteur à la main. `any()` se résout à la **valeur** gagnante et à rien d'autre : un
-fournisseur qui répond légitimement `null` devient indistinguable d'une échéance écoulée, et une
-saga qui compense au dépassement compenserait aussi sur une réponse vide.
+Pour renoncer à une attente au bout d'un moment, passez une **échéance** à `await()`. Ne mettez
+pas un minuteur en course à la main : `any()` se résout à la **valeur** gagnante et à rien d'autre,
+si bien qu'un fournisseur qui répond légitimement `null` devient indiscernable d'une échéance
+écoulée, et qu'une saga qui compense au dépassement compenserait aussi sur une réponse vide.
 
 ```php
 use Gplanchat\Durable\Exception\DeadlineExceededException;
@@ -105,18 +111,19 @@ try {
 }
 ```
 
-L'échéance vaut `Duration::infinity()` par défaut, si bien qu'une attente non bornée le dit par une valeur
-plutôt que par un argument manquant, si bien qu'un appelant qui calcule sa propre échéance n'a pas
-de cas « pas de borne » à traiter à part.
+L'échéance vaut `Duration::infinity()` par défaut. Une attente non bornée s'exprime donc par une
+valeur et non par un argument manquant, et un appelant qui calcule sa propre échéance n'a pas de
+cas « pas de borne » à traiter à part.
 
-Une échéance est un échec, pas une valeur sentinelle : `null`, `false` et `[]` reviennent intacts
-quand le travail se résout à temps.
+Une échéance écoulée lève une exception et ne renvoie jamais de valeur sentinelle. Quand le travail
+se résout à temps, `null`, `false` et `[]` reviennent intacts.
 
 ### Attendre sur une condition
 
 `await()` prend aussi une **condition**, un prédicat sur l'état du workflow lui-même, partout où
-elle prend un awaitable, avec la même échéance facultative. C'est ce qu'un gestionnaire de signal
-réveille :
+elle prend un awaitable, avec la même échéance facultative. Un gestionnaire de signal (une méthode
+qui reçoit un message envoyé à l'exécution depuis l'extérieur ; voir le [glossaire](../glossary/))
+modifie cet état et réveille l'attente :
 
 ```php
 $env->onSignal(OrderSignal::Approve, fn(array $p) => $this->approvals[] = $p);
@@ -128,29 +135,30 @@ try {
 }
 ```
 
-C'est la forme canonique de la saga : attendre l'approbation, renoncer au bout d'une heure.
+Cet exemple attend une approbation et renonce au bout d'une heure, la forme canonique de la saga.
 
-Une condition peut aussi dire **ce qu'elle attend**, en mots. Sur les backends qui enregistrent
-l'attente (en mémoire, DBAL, Illuminate, Temporal), la liste des exécutions affiche alors ce libellé
-plutôt que l'endroit où la closure est écrite : `waiting on signal approve` au lieu de
-`waiting on condition at src/…/OrderWorkflow.php:42`. La grille Magento l'affiche sur Temporal (voir
+Pour décrire en mots **ce qu'une condition attend**, passez un `label`. Sur les backends qui
+enregistrent l'attente (en mémoire, DBAL, Illuminate, Temporal), la liste des exécutions affiche
+alors ce libellé au lieu de l'endroit où la closure est écrite, `waiting on signal approve` au lieu
+de `waiting on condition at src/…/OrderWorkflow.php:42`. La grille Magento l'affiche sur Temporal (voir
 la [page du tableau de bord](../dashboard/)).
 
 ```php
 $env->await(fn(): bool => [] !== $this->approvals, deadline: Duration::hours(1), label: 'signal approve');
 ```
 
-Le libellé est un texte d'affichage. Rien ne l'enregistre pendant que le workflow attend. Si l'échéance
-expire et que rien n'attrape l'exception, il figure dans le message d'échec que garde le journal, écrit
-une seule fois. Le rejeu ne le compare jamais : ajouter, changer ou retirer un libellé est sans risque.
-Un timer ou une activité se nomment déjà eux-mêmes : `await()`
-refuse un libellé sur l'un d'eux.
+Le libellé est un texte d'affichage. Rien ne l'enregistre pendant que le workflow attend. Si
+l'échéance expire et que rien n'attrape l'exception, le libellé figure dans le message d'échec que
+garde le journal, écrit une seule fois. Le rejeu (la réexécution du code du workflow depuis sa
+première ligne, où chaque étape enregistrée renvoie son résultat) ne le compare jamais : vous pouvez
+ajouter, changer ou retirer un libellé sans risque. Un minuteur ou une activité se nomment déjà
+eux-mêmes : passer un libellé à `await()` avec l'un d'eux est une erreur.
 
-#### Le gestionnaire est une méthode, l'attente aussi
+#### Déclarer le gestionnaire et l'attente comme des méthodes {#le-gestionnaire-est-une-méthode-lattente-aussi}
 
 Dans un workflow écrit en classe, déclarez le gestionnaire avec `#[AsSignalMethod]`, que le moteur
-câble, et adjoignez-lui une petite méthode privée qui attend et consomme. Le corps se lit alors en
-une ligne, et le tampon est une propriété plutôt qu'une référence capturée :
+câble, et associez-lui une petite méthode privée qui attend et consomme. Le corps se lit alors en
+une ligne, et le tampon est une propriété au lieu d'une référence capturée :
 
 ```php
 #[AsWorkflow('Order')]
@@ -185,56 +193,56 @@ final class OrderWorkflow
 }
 ```
 
-Parce que les livraisons sont **l'état du workflow**, un workflow qui attend trois fois le même
-signal garde trois entrées et les consomme à son rythme, et un signal arrivé alors que personne
-n'attendait est encore là à l'attente suivante. C'est ce que le `waitSignal()` supprimé approchait
-avec un compteur côté moteur ; ici c'est `array_shift()`.
+Les livraisons font partie de **l'état du workflow**. Un workflow qui attend trois fois le même
+signal garde trois entrées et les consomme à son rythme, et un signal arrivé alors que rien
+n'attendait est encore là à l'attente suivante. Le `waitSignal()` supprimé avait besoin d'un
+compteur côté moteur pour s'en approcher ; ici, `array_shift()` suffit.
 
 > [!WARNING]
-> Deux pièges, silencieux tous les deux.
+> Deux erreurs ne produisent aucun message au moment où vous les commettez.
 >
 > L'attribut est lu sur la **classe du workflow**, avec `ReflectionClass::getMethods()`. PHP
 > n'expose pas, à travers la classe qui l'implémente, un attribut déclaré sur une méthode
-> d'interface : `#[AsSignalMethod]` posé sur une interface de contrat n'enregistre donc **rien** :
-> le signal arrive, aucun gestionnaire ne tourne, et la condition ne se réalise jamais. L'attribut
-> va sur la classe.
+> d'interface : `#[AsSignalMethod]` posé sur une interface de contrat n'enregistre donc **rien**.
+> Le signal arrive, aucun gestionnaire ne s'exécute, et la condition ne se réalise jamais. Posez
+> l'attribut sur la classe.
 >
-> Et le gestionnaire est appelé avec **un** argument : le tableau de charge. Une signature comme
-> `approve(string $by)` échoue à la livraison du signal, pas au démarrage du worker.
+> Le gestionnaire est appelé avec **un** argument, le tableau de charge utile. Une signature comme
+> `approve(string $by)` échoue à la livraison du signal, et le worker démarre sans erreur.
 
 
 Une condition doit être fonction de **l'état du workflow et de rien d'autre**. Elle est réévaluée à
-chaque rejeu : tout ce qu'un rejeu ne peut pas reproduire (une horloge, un tirage aléatoire, une
-variable d'environnement) doit être enregistré une fois avec `sideEffect()` puis relu :
+chaque rejeu : enregistrez une fois avec `sideEffect()` tout ce qu'un rejeu ne peut pas reproduire
+(une horloge, un tirage aléatoire, une variable d'environnement), puis relisez-le :
 
 ```php
 $threshold = $env->sideEffect(fn(): int => random_int(1, 10));   // enregistré une fois
 $env->await(fn(): bool => $this->received >= $threshold);        // se rejoue à l'identique
 ```
 
-Le composant ne **détecte pas** une condition qui enfreint cette règle ; il ne détecte aucun autre
-non-déterminisme non plus, et `sideEffect()` est le mécanisme qu'il vous donne à la place.
+Durable ne **détecte pas** une condition qui enfreint cette règle, ni aucun autre
+non-déterminisme. Servez-vous de `sideEffect()` à la place.
 
 > [!WARNING]
 > `fn()` capture **par valeur**. Une condition portant sur une variable locale doit passer par la
-> forme longue : `function () use (&$approvals): bool { … }`. Sur `$this->propriété`, la forme
-> courte convient : c'est `$this` qui est capturé, pas la valeur.
+> forme longue, `function () use (&$approvals): bool { … }`. Sur `$this->propriété`, la forme
+> courte convient, car c'est `$this` qui est capturé, et la propriété est lue à travers lui.
 
 Une condition qui ne peut jamais tenir, parce que rien de ce qui est en attente ne peut changer
-l'état qu'elle lit, est signalée comme une exécution qui ne peut plus avancer, en nommant la condition
-par son fichier et sa ligne, plutôt que de tourner à vide.
+l'état qu'elle lit, est signalée comme une exécution qui ne peut plus avancer, avec la condition
+nommée par son fichier et sa ligne. L'exécution ne tourne pas à vide.
 
-La branche perdante, quelle qu'elle soit, est annulée : une échéance qui s'écoule annule le travail
+La branche perdante, quelle qu'elle soit, est annulée. Une échéance qui s'écoule annule le travail
 qu'elle bornait, et un travail qui se résout annule l'échéance, si bien qu'aucun minuteur mort ne
-vient réveiller l'exécution plus tard. Annuler une activité en vol est un **effort au mieux** :
-Temporal reçoit une *demande* d'annulation, et une tentative qui ne l'honore pas peut continuer de
-tourner sur son worker. Ce que l'échéance garantit, c'est que sa complétion ne reprendra plus votre
-workflow.
+réveille l'exécution plus tard. Annuler une activité en cours est un **effort au mieux**. Temporal
+reçoit une *demande* d'annulation, et une tentative qui ne l'honore pas peut continuer de
+s'exécuter sur son worker. Une fois l'échéance écoulée, la fin de cette tentative ne reprend plus
+votre workflow.
 
-Le verdict est lu depuis l'historique enregistré : un rejeu atteint donc le verdict qu'a atteint
+Le verdict est lu dans l'historique enregistré : un rejeu atteint donc le verdict qu'a atteint
 l'exécution d'origine, **y compris** quand le signal attendu est livré après l'échéance écoulée.
 Un message enregistré après le déclenchement de l'échéance n'est jamais appliqué à l'attente que
-cette échéance a tranchée ; il reste disponible pour l'attente suivante, et son gestionnaire
+cette échéance a tranchée. Il reste disponible pour l'attente suivante, et son gestionnaire
 s'exécute à ce moment-là. Voir **DUR032** et **DUR035**.
 
 ### Les arguments que fournit Durable {#arguments-durable-supplies}
