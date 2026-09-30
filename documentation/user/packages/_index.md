@@ -5,9 +5,11 @@ weight: 5
 
 # Packages
 
-Durable is a core, an optional framework integration, and a choice of backend. You take what you
-need: the library alone is enough to write and unit-test a workflow, and nothing above it changes
-the workflow code, only where the execution is recorded.
+Durable consists of a core library, an optional framework integration, and a choice of backend.
+The backend is where an execution's journal lives and what schedules its work; the journal is the
+append-only record of every step an execution took (see the [glossary](../glossary/)). Install what
+you need: the library alone is enough to write and unit-test a workflow, and the packages above it
+change only where the execution is recorded, never the workflow code.
 
 | Package | Brings | Needs |
 |---|---|---|
@@ -23,20 +25,22 @@ the workflow code, only where the execution is recorded.
 | `gplanchat/durable-phpstan` | static analysis of stub calls against their contract | the library, `phpstan/phpstan` |
 | `gplanchat/durable-rector` | automated migration off the Temporal PHP SDK | the library, `rector/rector` |
 
-The three bridges are **alternatives**, not layers: you pick Temporal, DBAL or Illuminate, never
-two of them.
+A workflow is the PHP class that describes an execution's steps, and an activity is a unit of side
+effect that a workflow calls, such as an HTTP call or a database write.
 
-The last two are **development-time tools**, `require-dev` rather than `require`:
+The three bridges are **alternatives**: you install Temporal, DBAL or Illuminate, never two of them.
+
+The last two packages are **development-time tools** and belong in `require-dev`:
 
 - **`gplanchat/durable-phpstan`** resolves `activityStub()` and `childWorkflowStub()` calls against
-  the contract interface, so a mistyped activity or a wrong argument is an analysis error instead of
-  a serialization failure at runtime. It also checks that an
+  the contract interface. A mistyped activity or a wrong argument then shows up as an analysis
+  error instead of a serialization failure at runtime. It also checks that an
   [`#[Activities]` parameter](../workflows/#arguments-durable-supplies) and its
   `@param ActivityStub<Contract>` docblock name the same contract.
-- **`gplanchat/durable-rector`** migrates a project off the official Temporal PHP SDK: the attribute
-  rewrites and the execution-model change, keeping the workflow and activity type names a running
-  server already knows. What it cannot convert it comments, so you know before you start. See
-  [the comparison page](../comparison/#choosing).
+- **`gplanchat/durable-rector`** migrates a project off the official Temporal PHP SDK. It rewrites
+  the attributes and changes the execution model, and it keeps the workflow and activity type names
+  that a running server already has on record. It leaves a comment on each construct it cannot
+  convert, so you see them before you start. See [the comparison page](../comparison/#choosing).
 
 ---
 
@@ -48,20 +52,21 @@ composer config prefer-stable true
 composer require gplanchat/durable
 ```
 
-The engine and the whole domain: `WorkflowEnvironment`, activities, timers, side effects, signals,
-queries, updates, child workflows, the event journal, and the value objects that describe
-scheduling options.
+The library contains the engine and the whole domain: `WorkflowEnvironment`, activities, timers,
+side effects, signals, queries, updates, child workflows, the event journal, and the value objects
+that describe scheduling options.
 
-One runtime dependency, `psr/cache`, and even that pool is optional: it memoises activity
-contract resolution, and `ActivityContractResolver` works without one. **No framework.** You can
-drive the library from a plain PHP script, a Laminas application, a console tool, or a test.
+It has one runtime dependency, `psr/cache`, and the cache pool itself is optional: it memoises
+activity contract resolution, and `ActivityContractResolver` works without one. The library needs
+**no framework**. You can drive it from a plain PHP script, a Laminas application, a console tool,
+or a test.
 
-It ships an **in-memory backend** that runs everything in one process. That is what your unit
-tests use, and it needs nothing installed.
+It includes an **in-memory backend** that runs everything in one process. Your unit tests use it,
+and it needs nothing else installed.
 
 > [!NOTE]
-> The in-memory backend keeps no state between processes. It is for tests and local exploration,
-> not for a workflow that has to survive a deploy. See [Backends](../backends/).
+> The in-memory backend keeps no state between processes. Use it for tests and local exploration;
+> a workflow that has to survive a deploy needs another backend. See [Backends](../backends/).
 
 ---
 
@@ -73,21 +78,20 @@ composer config prefer-stable true
 composer require gplanchat/durable-bundle
 ```
 
-What it does that you would otherwise write by hand:
+The bundle does the following, which you would otherwise write by hand:
 
-- **Autoconfiguration.** Classes carrying `#[AsWorkflow]` or `#[AsActivityHandler]` register
-  themselves; you do not list them in a container file, and you do not tag them either.
-  `#[AsActivity]` is a naming attribute on the contract, not a registration one.
-- **Messenger wiring.** Workflow resumes and activity dispatches are routed to the transports you
-  name in `durable.yaml`, so a workflow that suspends resumes through your existing queues.
+- **Autoconfiguration.** The bundle registers every class carrying `#[AsWorkflow]` or
+  `#[AsActivityHandler]`. You neither list these classes in a container file nor tag them.
+  `#[AsActivity]` names the contract and registers nothing.
+- **Messenger wiring.** Workflow resumes and activity dispatches go to the transports you name in
+  `durable.yaml`, so a workflow that suspends resumes through your existing queues.
 - **One console command.** `durable:execution:diagnose <executionId>` prints what the engine holds
-  for one run: its workflow metadata, its parent/child links and its event journal. There is no
-  worker command to add: the worker is Messenger's own `messenger:consume` on the transports
-  above.
-- **Profiler panel.** In the Symfony toolbar: each execution, its journal, and the timeline of
-  activities, including which attempt failed and why.
+  for one run: its workflow metadata, its parent/child links and its event journal. The bundle adds
+  no worker command; the worker is Messenger's own `messenger:consume` on the transports above.
+- **Profiler panel.** In the Symfony toolbar, the panel shows each execution, its journal, and the
+  timeline of its activities, including which attempt failed and why.
 
-Configuration is one file, documented key by key in the
+All configuration lives in one file, documented key by key in the
 [configuration reference](../configuration/).
 
 ---
@@ -100,26 +104,27 @@ composer config prefer-stable true
 composer require gplanchat/durable-bridge-temporal
 ```
 
-Talks to a Temporal cluster **directly over gRPC**. There is no official Temporal PHP SDK in the
-dependency tree, and no RoadRunner: the protobuf definitions are vendored and the workers are
-plain PHP processes.
+The bridge talks to a Temporal cluster **directly over gRPC**. The dependency tree contains neither
+the official Temporal PHP SDK nor RoadRunner: the protobuf definitions are vendored and the workers
+are plain PHP processes.
 
-What it adds over the in-memory backend:
+Compared with the in-memory backend, it adds:
 
 - executions that survive process restarts, deploys and crashes;
 - server-side retry policies, so a failing activity is retried even if the worker is gone;
 - cron schedules, search attributes, and cross-process visibility in the Temporal UI;
 - a read-through event store, so the profiler shows a real execution's history.
 
-It needs `ext-grpc` and a reachable cluster. For local work, one command is enough:
+It requires `ext-grpc` and a reachable cluster. For local work, one command starts a development
+server:
 
 ```bash
 temporal server start-dev --namespace durable-test --port 7233
 ```
 
 > [!NOTE]
-> Cron schedules and search attributes are Temporal capabilities. They have no in-process
-> equivalent and the in-memory backend refuses them explicitly rather than ignoring them silently.
+> Cron schedules and search attributes are Temporal capabilities with no in-process equivalent. The
+> in-memory backend rejects them with an explicit error instead of ignoring them silently.
 
 ---
 
@@ -131,23 +136,25 @@ composer config prefer-stable true
 composer require gplanchat/durable-bridge-dbal
 ```
 
-Durable execution on **one SQL database**, with no orchestration cluster and no `ext-grpc`. The
-decision behind it is [**DUR030**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR030-dbal-backend-simplified-durable-execution.md).
+The bridge provides durable execution on **one SQL database**, without an orchestration cluster or
+`ext-grpc`. [**DUR030**](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR030-dbal-backend-simplified-durable-execution.md)
+records the decision behind it.
 
-The replay interpreter, the workflow ports and the command buffer are untouched: this bridge only
-makes the three process-local stores persistent: the event journal, the workflow metadata, and
-the parent links between child workflows. Workflow and activity code is byte-for-byte what runs on
-Temporal or in memory.
+The bridge leaves the replay interpreter, the workflow ports and the command buffer unchanged.
+Replay is how an execution resumes: the workflow code runs again from its first line, and each
+recorded step returns its result from the journal. The bridge only makes three process-local stores
+persistent: the event journal, the workflow metadata, and the parent links between child workflows.
+Workflow and activity code is byte-for-byte what runs on Temporal or in memory.
 
-| Kept | Given up, against Temporal |
+| Kept | Given up, compared with Temporal |
 |---|---|
-| Workflow classes, activities, `WorkflowEnvironment` | Distributed task queues; resumes ride Symfony Messenger |
-| Signals, queries, updates | Server-side scheduling; timers ride Messenger `DelayStamp` |
+| Workflow classes, activities, `WorkflowEnvironment` | Distributed task queues; resumes go through Symfony Messenger |
+| Signals, queries, updates | Server-side scheduling; timers use Messenger's `DelayStamp` |
 | Cancellation and compensation semantics | Server-side task serialisation, replaced by an application lock |
 | Replay determinism and the event journal | History retention, visibility API, the Temporal UI |
 
-Choose it when durability matters and running a cluster does not: one database you already back
-up, one migration, and no extension to compile.
+Choose it when you need durability without running a cluster. It takes one database you already
+back up, one migration, and no extension to compile.
 
 ---
 
@@ -160,35 +167,34 @@ composer require gplanchat/durable gplanchat/durable-bridge-illuminate
 php artisan migrate
 ```
 
-The same four stores as the DBAL bridge, and the same trade against Temporal; read that table
-above, it applies here word for word. What changes is the connection: these are written against
-`Illuminate\Database\Connection`, the query builder rather than Eloquent.
+This bridge provides the same four stores as the DBAL bridge, with the same trade-offs against
+Temporal: the table above applies here word for word. The connection differs. These stores use
+`Illuminate\Database\Connection` and its query builder, not Eloquent.
 
-Give the stores a connection of their own in `config/database.php`, not the application's default
-one (DUR054). On a shared connection, Durable's own transactions nest inside the application's: a
-business rollback erases journal events, and a claim stays invisible to the other workers until the
-business code commits. An activity that writes and then dies is answered by making it idempotent,
-never by a transaction shared with business code.
+Give the stores their own connection in `config/database.php`, separate from the application's
+default one (DUR054). On a shared connection, Durable's own transactions nest inside the
+application's: a business rollback erases journal events, and a claim stays invisible to the other
+workers until the business code commits. To handle an activity that writes and then dies, make the
+activity idempotent. Never share a transaction with business code for that purpose.
 
-The four tables ship as a migration loaded straight from the package, so `migrate` is enough.
-`vendor:publish --tag=durable-migrations` is for when you want to edit them, and from that point
-they are yours. **Keep the published file's name**: Laravel keys migrations by basename
-and lets `database/migrations` win the tie, which is what makes your copy the one that runs. Rename
-it and both run, the second failing on a table that already exists.
+The four tables ship as a migration loaded straight from the package, so `migrate` is enough. To
+edit them, publish them with `vendor:publish --tag=durable-migrations`; from then on, you maintain
+the published copy. **Keep the published file's name.** Laravel keys migrations by basename and
+gives precedence to `database/migrations` when two names match, which makes your copy the one that
+runs. If you rename it, both migrations run, and the second fails on a table that already exists.
 
-`Queue\ResumeLock` is the one thing no choice of storage supplies. Two workers resuming the **same**
-execution both replay it, both believe they are discovering the commands it produces, and those
-commands go out twice; the journal does not prevent it, since it faithfully records whatever it is
-handed, twice included. It takes a closure, so a queued job, an artisan command or a hand-written
-worker can all use it.
+`Queue\ResumeLock` covers what no choice of storage supplies. When two workers resume the **same**
+execution, both replay it, both treat the commands it produces as new, and those commands go out
+twice. The journal does not prevent this, because it records whatever it receives, duplicates
+included. `ResumeLock` takes a closure, so a queued job, an artisan command or a hand-written worker
+can all use it.
 
 > [!NOTE]
-> **This bridge is the storage half, not a wiring.** Nothing here binds the ports, and there is no
-> worker command and no job: `DurableIlluminateServiceProvider` registers exactly one thing: where
-> the migrations live. What binds it is
-> [`gplanchat/durable-laravel`](#gplanchatdurable-laravel--the-laravel-integration), the section
-> below. Take the bridge alone and you wire the stores yourself, the way a framework-less
-> application does.
+> **This bridge provides the storage only.** It binds no ports and ships no worker command and no
+> job; `DurableIlluminateServiceProvider` registers only the location of the migrations.
+> [`gplanchat/durable-laravel`](#gplanchatdurable-laravel--the-laravel-integration), described in
+> the next section, binds them. If you install the bridge alone, you wire the stores yourself, as a
+> framework-less application does.
 
 ---
 
