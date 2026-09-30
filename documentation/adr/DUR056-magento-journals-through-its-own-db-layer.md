@@ -168,7 +168,7 @@ follows that layer. The results above remain in PR #723, and none of them was me
   accepted that Magento cannot resolve an attribute on a constructor parameter. That is a limit of
   the host's object manager, not of this backend, and it changes none of the decisions above.
 - The parity audit of the same day found two gaps on Magento: no dispatcher
-  (`WorkflowResumeDispatcher`, the only way an application starts a run), and no signal delivery
+  (`WorkflowResumeDispatcher`, the port that starts a run on every backend), and no signal delivery
   on the application side. They stay open under this ADR. PR #782 proposes an OpenSpec change that
   closes them with one client API on every backend and host, through a repository per workflow.
 - The public documentation changes: the picker, the backends and configuration pages (EN and FR),
