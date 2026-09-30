@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gplanchat\DurableModule\Ui\Component\Listing\Column;
 
 use Gplanchat\Durable\Observation\WorkflowRunStatus;
+use Gplanchat\DurableModule\Ui\OutcomeLabel;
 use Magento\Framework\Data\OptionSourceInterface;
 
 /**
@@ -24,7 +25,7 @@ final readonly class StatusOptions implements OptionSourceInterface
         return array_map(
             static fn(WorkflowRunStatus $status): array => [
                 'value' => $status->value,
-                'label' => ucfirst(str_replace('_', ' ', $status->value)),
+                'label' => OutcomeLabel::of($status),
             ],
             WorkflowRunStatus::cases(),
         );

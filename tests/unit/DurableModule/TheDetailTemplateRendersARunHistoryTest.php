@@ -130,6 +130,19 @@ final class TheDetailTemplateRendersARunHistoryTest extends TestCase
     /**
      * @param list<NexusOperationSummary> $nexus
      */
+    public function testTheRunPageUsesTheVocabularyOfTheOtherSurfaces(): void
+    {
+        // #821: Execution, Outcome and History, and the outcome as a label, not the enum's value.
+        $page = $this->renderDetail();
+
+        self::assertStringContainsString('<th>Execution</th>', $page);
+        self::assertStringContainsString('<th>Outcome</th><td>Running</td>', $page);
+        self::assertStringContainsString('>History<', $page);
+        self::assertStringNotContainsString('<th>Run</th>', $page);
+        self::assertStringNotContainsString('<th>Status</th>', $page);
+        self::assertStringNotContainsString('>Timeline<', $page);
+    }
+
     private function renderDetail(bool $known = true, bool $secrets = false, array $nexus = []): string
     {
         require_once __DIR__ . '/Fixture/magento-template-globals.php';
