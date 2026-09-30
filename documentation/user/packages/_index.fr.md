@@ -20,6 +20,7 @@ l'exécution est enregistrée.
 | `gplanchat/durable-laravel` | le câblage Laravel : les ports liés depuis la configuration, le travail sur la file de l'application | la bibliothèque, le pont Illuminate, `illuminate/support` |
 | `gplanchat/durable-magento` | un module Magento 2.4 / Mage-OS : déclaration, workers, écran d'administration | la bibliothèque ; Temporal pour tout ce qui doit survivre à un processus |
 | `gplanchat/durable-plugin` | un tableau de bord Sylius pour les exécutions | le bundle, `knplabs/knp-menu` ; Sylius 2.x pour apparaître dans son menu |
+| `gplanchat/durable-filament` | un tableau de bord des exécutions dans un panneau Filament | l'intégration Laravel, Filament 3 ou 4 |
 | `gplanchat/durable-phpstan` | l'analyse statique des appels de stub face à leur contrat | la bibliothèque, `phpstan/phpstan` |
 | `gplanchat/durable-rector` | la migration automatisée depuis le SDK PHP de Temporal | la bibliothèque, `rector/rector` |
 
@@ -319,8 +320,8 @@ qui ne choisit pas ce backend ne le paie jamais, et celle qui le choisit s'enten
 installer. Scinder le pont, dont la partie couplée à Symfony fait huit fichiers sur 774, retirerait le
 poids, et c'est un change à part.
 
-**Un tableau de bord.** `gplanchat/durable-filament` exigera ce paquet, et ce paquet n'exigera, ne
-suggérera ni ne détectera jamais Filament.
+**Un tableau de bord.** [`gplanchat/durable-filament`](#gplanchatdurable-filament--le-tableau-de-bord-filament)
+exige ce paquet, et ce paquet n'exige, ne suggère ni ne détecte jamais Filament.
 
 ---
 
@@ -348,6 +349,38 @@ d'exécutions qu'il lit : la commande ci-dessus est donc toute l'installation.
 > `require` ici : le backend est suggéré par `gplanchat/durable`, une fois, pour toutes les
 > intégrations. Sans backend, le plugin s'installe quand même, la route et l'entrée de menu
 > fonctionnent, et le tableau de bord affiche son état dégradé au lieu d'exécutions vivantes.
+
+## `gplanchat/durable-filament`, le tableau de bord Filament {#gplanchatdurable-filament--le-tableau-de-bord-filament}
+
+```bash
+composer config minimum-stability beta
+composer config prefer-stable true
+composer require gplanchat/durable-filament
+```
+
+```php
+// app/Providers/Filament/AdminPanelProvider.php
+use Gplanchat\Durable\Filament\DurableFilamentPlugin;
+
+return $panel
+    // ...
+    ->plugin(DurableFilamentPlugin::make());
+```
+
+L'habillage Filament du [tableau de bord](../dashboard/), sur Filament 3 ou 4 : une entrée
+**Exécutions Durable** dans la navigation du panneau, la liste des exécutions avec pagination par
+curseur et les filtres par nom et par identifiant d'exécution que le backend sait appliquer, et une
+page par exécution avec son état, ce qu'elle attend, ses opérations Nexus et son historique. En
+anglais et en français.
+
+Il **observe** ; il n'exécute pas. Il exige `gplanchat/durable-laravel` et lit le catalogue
+d'exécutions que ce paquet lie pour son backend : en mémoire, Illuminate ou Temporal. Rien en lui ne
+nomme un backend, et rien dans `gplanchat/durable-laravel` ne nomme Filament.
+
+> [!NOTE]
+> La page d'une exécution liste ses opérations Nexus quand le catalogue les rapporte, ce que seul
+> celui de Temporal sait faire : un journal ne peut pas tenir d'opération Nexus, donc en mémoire et
+> sur Illuminate la section n'apparaît jamais.
 
 ## `gplanchat/durable-magento`, l'intégration Magento {#gplanchatdurable-magento--lintégration-magento}
 
