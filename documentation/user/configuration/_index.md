@@ -395,6 +395,7 @@ reaches two journals only, in memory and Temporal, so the SQL rows do not apply 
 | — | `lock.backoff`, `lock.max_deferrals`, `lock.wait` | — | host-specific: Laravel hands a resume whose turn is taken back to the queue; the Symfony worker blocks until the lock frees |
 | `event_store.table_name`, `workflow_metadata.table_name`, `child_workflow.parent_link_store.table_name` | `tables.events`, `tables.metadata`, `tables.parent_links`, `tables.runs` | — | to add: the runs table name on Symfony |
 | `temporal.dsn` | `temporal.dsn` | `temporalDsn` argument, which wins over `durable/temporal/dsn` | same |
+| `temporal.payload_codec` | — | `codec` argument of `RuntimeFactory` in `di.xml`, declared `null`; the codec reads its key from `env.php` | same (DUR055) |
 | `temporal.search_attributes` | `temporal.search_attributes` | `durable/temporal/search_attributes` | same |
 | `temporal.guzzle_client`, `temporal.psr18_client`, `temporal.psr17_factory` | the same three keys | `guzzle`, `jsonGateway` arguments | same |
 | `backend: dbal` with a `temporal.dsn` (serve Nexus from a SQL journal) | — (`nexus.handlers` requires `backend: temporal`) | — | to add on Laravel |
