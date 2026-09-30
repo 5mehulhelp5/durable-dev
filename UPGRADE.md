@@ -485,16 +485,35 @@ buffer's tests pin the memo.
 | `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
 | `AwaitedFact::isJournalledIn()`                                         | the journal's id is an `ExecutionId`; the fact itself keeps its string ids, since it travels in the resume message |
 
-`WorkflowRunDescription::$runId` stays a string (decision on #682). So do `PendingTimers`,
-`WaitReason`, `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the
-`EventStoreHistorySource` constructor, `ExecutionEngine::start()` and `resume()`, and
-`InMemoryWorkflowRunner::run()`.
+These keep a string for now, and a later part of #682 moves most of them:
+
+- `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the `EventStoreHistorySource`
+  constructor, `ExecutionEngine::start()` and `resume()`, `InMemoryWorkflowRunner::run()`;
+- the public and testing helpers, among them `PendingTimers`, `WaitReason`,
+  `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
+  `JournalAssertions`, `DurableTestCase` and `DurableBundleTestTrait`;
+- `WorkflowRunDescription::$executionId`, `ContinueAsNewRequested::nextExecutionId`,
+  `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
+- the wire messages, and the ids an `AwaitedFact` carries.
+
+`WorkflowRunDescription::$runId` stays a string for good (decision on #682).
 
 **Reading back is stricter.** `EventDataMapper::toDomainEvent()` converts the stored child id and
 the next id with `ExecutionId::fromString()`, so an empty one now throws `InvalidArgumentException`.
 An empty `sourceParentExecutionId` reads back as `null` on both cancellation events;
 `WorkflowExecutionCancelled` used to keep the empty string. `TemporalEventConverter` refuses a child
 event whose workflow id is empty.
+
+A journal written by 0.1.0-beta1 can hold an empty child id in one case: a workflow started a child
+with `ChildWorkflowOptions(workflowId: '')` on the local backend (in memory, DBAL or Illuminate).
+Nothing checked that option, and `ChildWorkflowScheduled` is appended before the child runs, so the
+parent's journal records `"childExecutionId":""`. Temporal refuses an empty workflow id, so its
+histories cannot hold one. After the upgrade, every read of that parent's stream throws: the
+replay, the dashboards, `durable:execution:diagnose` and the parent and child coordinator.
+
+To find such a parent, look for the empty field in the stored payloads, for instance on DBAL:
+`SELECT DISTINCT execution_id FROM durable_events WHERE payload LIKE '%"childExecutionId":""%'`.
+Finish or cancel those runs before you upgrade, or remove their rows once they no longer matter.
 
 **Rector does the building side.** In the `durable-upgrade` set:
 
@@ -515,7 +534,9 @@ where an `ExecutionId` belongs.
 2. Look for these four getters in your code, workflow code first. Call `->toString()` wherever
    the value lands in an activity payload, a log context, an array key or a comparison with a
    string: `json_encode()` turns the object into `{}`, and `===` against a string is always false.
-   Compare two ids with `->equals()`, and pass the object as it is to a port.
+   Under `declare(strict_types=1)`, passing the object to a `string` parameter is a `TypeError`,
+   even though `ExecutionId` is `Stringable`. Compare two ids with `->equals()`, and pass the
+   object as it is to a port.
 
 ## 0.1.0-beta1
 
