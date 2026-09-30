@@ -440,7 +440,7 @@ You give up the free-form call, and static analysis catches one class of mistake
 
 ## 7. Workflow versioning
 
-Both let one class carry two behaviours and let history decide which one a run sees:
+Both let one class carry two behaviours and the run's history determines which one it sees:
 
 ```php
 // Temporal PHP SDK
@@ -579,7 +579,7 @@ to a worker version) or a Nexus **handler**, and RoadRunner is acceptable in you
 
 **Coming from the SDK?** `gplanchat/durable-rector` does the mechanical part of the migration. It
 converts the attributes and the failure classes, and keeps the workflow and activity **type
-names** that a running server already knows, the part a hand migration silently gets wrong. It
+names** already recorded on a running server, the part a hand migration silently gets wrong. It
 also converts the execution model: the static `Workflow::` facade becomes an injected environment,
 and `yield` goes, along with the `\Generator` return type it leaves behind. It does not invent the
 return type that replaces `\Generator`, and it does not convert what has no counterpart in Durable.

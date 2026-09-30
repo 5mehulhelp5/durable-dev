@@ -456,8 +456,8 @@ Vous renoncez à l'appel libre, et l'analyse statique détecte une classe d'erre
 
 ## 7. Le versionnage de workflow
 
-Les deux permettent à une même classe de porter deux comportements, et laissent l'historique
-décider lequel une exécution voit :
+Les deux permettent à une même classe de porter deux comportements, et l'historique de l'exécution
+détermine lequel elle voit :
 
 ```php
 // SDK PHP Temporal
@@ -599,7 +599,7 @@ client officiellement maintenu et sa parité entre langages, que vous avez besoi
 
 **Vous venez du SDK ?** `gplanchat/durable-rector` fait la partie mécanique de la migration. Il
 convertit les attributs et les classes d'échec, et conserve les **noms de type** de workflow et
-d'activité qu'un serveur en marche connaît déjà, la partie qu'une migration à la main rate
+d'activité déjà enregistrés sur un serveur en marche, la partie qu'une migration à la main rate
 silencieusement. Il convertit aussi le modèle d'exécution : la façade statique `Workflow::` devient
 un environnement injecté, et `yield` disparaît, avec le type de retour `\Generator` qu'il laisse
 derrière lui. Il n'invente pas le type de retour qui remplace `\Generator`, et ne convertit pas ce
