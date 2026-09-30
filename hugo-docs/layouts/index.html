@@ -162,7 +162,7 @@
     <div style="max-width: 900px;">
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 30px;">Durable execution for PHP</div>
       <h1 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(84px * var(--ts, 1)); line-height: 1.0; letter-spacing: -0.03em; margin: 0 0 28px; text-wrap: balance;">Long jobs that survive<br /><em style="font-style: italic; color: var(--accent, #b4552f);">crashes, deploys and restarts.</em></h1>
-      <p style="font-size: calc(21px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); margin: 0 0 36px; max-width: 720px; text-wrap: pretty;" data-heroline>Charge the card, reserve the stock, send the receipt, in one method. If the process dies halfway through, another one carries on from where it stopped.</p>
+      <p style="font-size: calc(21px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); margin: 0 0 36px; max-width: 720px; text-wrap: pretty;" data-heroline>Charge the card, reserve the stock, send the receipt, in one method. If the process dies halfway through, another process continues from the step where it stopped.</p>
       <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px;">
         <a href="#install" style="text-decoration: none; display: inline-block; background: var(--accent, #b4552f); color: var(--accent-fg, #fff); font-weight: 600; font-size: 15.5px; padding: 15px 26px; border-radius: 4px;" class="dz-h10" data-dzh="10">Get started</a>
         <a href="#install" style="text-decoration: none; display: inline-block; border: 1px solid var(--line, #ddd6ca); font-weight: 500; font-size: 15.5px; padding: 14px 26px; border-radius: 4px; color: var(--fg, #1d1a16);" class="dz-h11" data-dzh="11">Install now</a>
@@ -182,34 +182,34 @@
           </div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">reserve-stock</code>
-            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Held for an order that will never ship, or dropped, and oversold.</span>
+            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Held for an order that will never ship, or dropped, and the item is oversold.</span>
           </div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">send-receipt</code>
-            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Never runs. The customer hears nothing at all.</span>
+            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Never runs. The customer gets no email.</span>
           </div>
-        <p style="margin: 18px 0 0; font-size: calc(15px * var(--ts, 1)); line-height: 1.6; color: var(--ck, #a1341f); text-wrap: pretty;">You find out from a support ticket three days later, and the way back is a repair script written by hand, in production.</p>
+        <p style="margin: 18px 0 0; font-size: calc(15px * var(--ts, 1)); line-height: 1.6; color: var(--ck, #a1341f); text-wrap: pretty;">You find out from a support ticket three days later. The fix is a repair script, written by hand and run in production.</p>
       </div>
       <div data-reveal data-delay="0.14" style="border: 1px solid var(--line, #ddd6ca); border-left: 3px solid var(--accent, #b4552f); border-radius: 0 6px 6px 0; padding: 20px 24px 22px; rotate: 0.45deg; transition: rotate 0.35s cubic-bezier(.2,.7,.2,1);" class="dz-h14" data-dzh="14">
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 12px;">With Durable, the same redeploy</div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">charge</code>
-            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. Not charged again.</span>
+            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. The card is not charged again.</span>
           </div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">reserve-stock</code>
-            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. Not reserved again.</span>
+            <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Returns from the journal. The stock is not reserved again.</span>
           </div>
           <div style="display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); column-gap: 18px; row-gap: 3px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line, #ddd6ca);">
             <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap;">send-receipt</code>
             <span style="font-size: calc(14.5px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Runs once, after the restart. The email goes out.</span>
           </div>
-        <p style="margin: 18px 0 0; font-size: calc(15px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">Nothing happened to it. The charge is not replayed, the reservation is not lost, and the email still goes out.</p>
+        <p style="margin: 18px 0 0; font-size: calc(15px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); text-wrap: pretty;">The order completes. The charge is not replayed and the reservation is kept, so the email goes out.</p>
       </div>
     </div>
 
     <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 20px; margin-bottom: 24px;">
-      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">The journal, receipts included</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459);">The journal of this order</div>
       <button type="button" data-replay style="display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: 1px solid var(--line, #ddd6ca); color: var(--fg2, #6c6459); border-radius: 999px; padding: 6px 13px; cursor: pointer;" class="dz-h15" data-dzh="15"><span data-replay-glyph style="display: inline-block; font-size: 13px; line-height: 1;">⟳</span>Replay it</button>
     </div>
     <div style="display: flex; flex-direction: column; padding-bottom: 30px; border-bottom: 1px solid var(--line, #ddd6ca);">
@@ -249,7 +249,7 @@
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); margin-bottom: 8px;">10:04:57 · interruption</div>
             <div style="font-family: 'JetBrains Mono', monospace; font-size: calc(15.5px * var(--ts, 1));">deploy v412</div>
           </div>
-          <div style="font-size: calc(15px * var(--ts, 1)); color: var(--fg2, #6c6459); line-height: 1.6; text-wrap: pretty;">The worker stops mid-process. The method is replayed on the new one; both steps above return from the journal instead of running again.</div>
+          <div style="font-size: calc(15px * var(--ts, 1)); color: var(--fg2, #6c6459); line-height: 1.6; text-wrap: pretty;">The worker stops mid-process. The method is replayed on the new worker. Steps 01 and 02 return from the journal and do not run again.</div>
         </div>
       </div>
       <div data-journal-step data-reveal data-delay="0.54" style="display: flex; gap: 22px; align-items: stretch;">
@@ -262,20 +262,20 @@
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg2, #6c6459); margin-bottom: 8px;">10:07:11</div>
             <div style="font-family: 'JetBrains Mono', monospace; font-size: calc(15.5px * var(--ts, 1));">send-receipt <span style="color: var(--accent, #b4552f);">✓</span></div>
           </div>
-          <div style="font-size: calc(15px * var(--ts, 1)); color: var(--fg2, #6c6459); line-height: 1.6; text-wrap: pretty;">Runs for the first time, five minutes after the charge, exactly as written.</div>
+          <div style="font-size: calc(15px * var(--ts, 1)); color: var(--fg2, #6c6459); line-height: 1.6; text-wrap: pretty;">Runs for the first time, five minutes after the charge, as written.</div>
         </div>
       </div>
     </div>
-    <p style="margin: 22px 0 0; font-size: 15px; color: var(--fg2, #6c6459);">No completed step ran again. Nothing was lost. No cron was involved.</p>
+    <p style="margin: 22px 0 0; font-size: 15px; color: var(--fg2, #6c6459);">No completed step ran twice and no step was lost. No cron job took part in this run.</p>
   </section>
 
   <section id="code" style="border-top: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df);">
     <div style="max-width: 1140px; margin: 0 auto; padding: calc(76px * var(--sp, 1)) 40px;">
       <div style="display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; align-items: start;">
         <div style="max-width: 780px;">
-          <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 18px; text-wrap: balance;">One method, top to bottom</h2>
+          <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 18px; text-wrap: balance;">The workflow is one PHP method</h2>
           <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 16px; text-wrap: pretty;">On every resume the code re-runs from the start, but each step already recorded returns its recorded result instead of running again.</p>
-          <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 16px; text-wrap: pretty;">There is no state machine to declare and no transition table: the process <em>is</em> the method. The environment is injected in the constructor, and activities are typed stubs, so every call your workflow makes is one your IDE and your static analyser already understand.</p>
+          <p style="font-size: calc(16.5px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 16px; text-wrap: pretty;">You declare no state machine and no transition table, because the process <em>is</em> the method. The environment is injected in the constructor, and activities are typed stubs, so your IDE and your static analyser already understand every call the workflow makes.</p>
           <p style="font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; color: var(--fg2, #6c6459); margin: 0;">A worker can be redeployed mid-process and the execution continues where it stopped.</p>
         </div>
         <div style="border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--code-bg, #ffffff); overflow: hidden; transition: transform 0.32s cubic-bezier(.2,.7,.2,1), box-shadow 0.32s;" class="dz-h16" data-dzh="16">
@@ -309,7 +309,7 @@
             <div style="white-space: pre; padding: 1px 24px; border-left: 2px solid transparent;">}</div>
             </div>
             <aside style="box-sizing: border-box; flex: 1 1 280px; min-width: 0; max-width: 340px; border-left: 1px solid var(--line, #ddd6ca); background: var(--bg2, #efe9df); padding: 22px 24px;">
-              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459); margin-bottom: 14px;">What this line is up to</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg2, #6c6459); margin-bottom: 14px;">What this line does</div>
               <div data-dz-note-title style="font-family: 'JetBrains Mono', monospace; font-size: 13.5px; color: var(--accent, #b4552f); margin-bottom: 10px; word-break: break-word;">Hover any line</div>
               <p data-dz-note-text style="margin: 0; font-size: 14.5px; line-height: 1.65; color: var(--fg2, #6c6459); text-wrap: pretty;">Every line of this method is either recorded in the journal or replayed from it. Point at one to see which.<span data-caret style="color: var(--accent, #b4552f);"> ▌</span></p>
             </aside>
@@ -321,12 +321,12 @@
 
   <section style="max-width: 1140px; margin: 0 auto; padding: calc(80px * var(--sp, 1)) 40px;">
     <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 12px;">What you no longer write</h2>
-    <p style="margin: 0 0 36px; font-size: calc(18px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); max-width: 620px; text-wrap: pretty;">Five moving parts you maintain today, and the single thing that answers each one instead.</p>
+    <p style="margin: 0 0 36px; font-size: calc(18px * var(--ts, 1)); line-height: 1.6; color: var(--fg2, #6c6459); max-width: 620px; text-wrap: pretty;">Five parts you maintain today, and what replaces each one.</p>
     <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
       <thead>
         <tr>
           <th scope="col" style="text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; padding: 0 0 12px; border-bottom: 1px solid var(--line, #ddd6ca); padding-left: 24px; color: var(--fg2, #6c6459);">What you delete</th>
-          <th scope="col" style="text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; padding: 0 0 12px; border-bottom: 1px solid var(--line, #ddd6ca); padding-left: 24px; color: var(--accent, #b4552f);">What answers it now</th>
+          <th scope="col" style="text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; padding: 0 0 12px; border-bottom: 1px solid var(--line, #ddd6ca); padding-left: 24px; color: var(--accent, #b4552f);">What replaces it</th>
         </tr>
       </thead>
       <tbody>
@@ -353,19 +353,19 @@
       </tbody>
     </table>
 
-    <p style="font-family: 'Newsreader', serif; font-size: calc(27px * var(--ts, 1)); line-height: 1.42; margin: 44px 0 0; max-width: 720px; text-wrap: pretty;">Five files and a runbook, replaced by <span style="color: var(--accent, #b4552f);">one method and the journal behind it</span>.</p>
+    <p style="font-family: 'Newsreader', serif; font-size: calc(27px * var(--ts, 1)); line-height: 1.42; margin: 44px 0 0; max-width: 720px; text-wrap: pretty;">For this order, five files and a runbook become <span style="color: var(--accent, #b4552f);">one method and its journal</span>.</p>
   </section>
 
   <section id="library" style="border-top: 1px solid var(--line, #ddd6ca);">
     <div style="max-width: 1140px; margin: 0 auto; padding: calc(76px * var(--sp, 1)) 40px calc(40px * var(--sp, 1));">
-      <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 10px;">Six things you will need next</h2>
+      <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); letter-spacing: -0.02em; margin: 0 0 10px;">Six more patterns in the same workflow class</h2>
       <p style="margin: 0 0 8px; font-size: calc(16.5px * var(--ts, 1)); line-height: 1.65; color: var(--fg2, #6c6459); max-width: 620px; text-wrap: pretty;">Every excerpt below is the same class as above: the environment injected in the constructor, activities as typed stubs. Each one has its own page.</p>
 
       <div style="display: block; padding: calc(48px * var(--sp, 1)) 0; border-top: 1px solid var(--line, #ddd6ca);">
         <div style="max-width: 760px; margin-bottom: 30px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">use case 01</div>
           <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Run two steps at once, and keep both results</h3>
-          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Calling an activity returns an awaitable, not a result. <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">all()</code> assembles two of them into one; <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">await()</code> is where the execution actually waits.</p>
+          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Calling an activity returns an awaitable. <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">all()</code> combines two of them into one, and the execution waits at <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">await()</code>.</p>
           <a href="/docs/workflows/#waiting-versus-assembling" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" class="dz-h30" data-dzh="30">Parallelism →</a>
         </div>
         <div style="min-width: 0; display: flex; flex-direction: column; gap: 16px;">
@@ -383,12 +383,12 @@
         <div style="max-width: 760px; margin-bottom: 30px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">use case 02</div>
           <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Bound a wait in time, without writing the race</h3>
-          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">The deadline is the second argument to <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">await()</code>: when it elapses you get a failure, not an ambiguous <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">null</code>. Waiting for the clock alone is just <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">sleep()</code>.</p>
+          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">The deadline is the second argument to <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">await()</code>. When the deadline elapses, you get a failure instead of an ambiguous <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">null</code>. To wait for the clock alone, call <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.9em;">sleep()</code>.</p>
           <a href="/docs/workflows/#bounding-a-wait-in-time" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" class="dz-h32" data-dzh="32">Deadlines and timeouts →</a>
         </div>
         <div style="min-width: 0; display: flex; flex-direction: column; gap: 16px;">
           <div style="border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--code-bg, #ffffff); overflow: hidden; transition: transform 0.32s cubic-bezier(.2,.7,.2,1), box-shadow 0.32s;" class="dz-h33" data-dzh="33">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line, #ddd6ca); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg2, #6c6459);"><span>a clock on the await</span><span>elapsed is a failure, not a null</span></div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line, #ddd6ca); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg2, #6c6459);"><span>a clock on the await</span><span>an elapsed deadline is a failure</span></div>
             <pre style="margin: 0; padding: 26px 28px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: calc(14px * var(--ts, 1)); line-height: 1.9; color: var(--code-fg, #1d1a16);"><code><span style="color: var(--ck, #a1341f);">try</span> {
     <span style="color: var(--cv, #1c6b8a);">$quote</span> = <span style="color: var(--cv, #1c6b8a);">$this</span>-&gt;env-&gt;await(
         <span style="color: var(--cv, #1c6b8a);">$this</span>-&gt;orders-&gt;callProvider(<span style="color: var(--cv, #1c6b8a);">$orderId</span>),
@@ -406,7 +406,7 @@
       <div style="display: block; padding: calc(48px * var(--sp, 1)) 0; border-top: 1px solid var(--line, #ddd6ca);">
         <div style="max-width: 760px; margin-bottom: 30px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">use case 03</div>
-          <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Take the answers that are enough, drop the rest</h3>
+          <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Stop waiting once enough answers are in</h3>
           <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Three quotes out of eight are enough to decide; the other five cost only their latency. Results come back indexed by declaration position, so every price still points at the provider that gave it.</p>
           <a href="/docs/workflows/#waiting-versus-assembling" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" class="dz-h34" data-dzh="34">Quorum with some() →</a>
         </div>
@@ -421,8 +421,8 @@
       <div style="display: block; padding: calc(48px * var(--sp, 1)) 0; border-top: 1px solid var(--line, #ddd6ca);">
         <div style="max-width: 760px; margin-bottom: 30px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">use case 04</div>
-          <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Decide what a failure means, once</h3>
-          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Retry limits, non-retryable exceptions and per-attempt timeouts are options on the activity stub, not a counter, a dead-letter table and a runbook spread across your codebase.</p>
+          <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Declare what a failure means, once</h3>
+          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Retry limits, non-retryable exceptions and per-attempt timeouts are options on the activity stub. You no longer spread a counter, a dead-letter table and a runbook across your codebase.</p>
           <a href="/docs/failures/" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" class="dz-h36" data-dzh="36">Retries and failure policy →</a>
         </div>
         <div style="min-width: 0; display: flex; flex-direction: column; gap: 16px;">
@@ -443,13 +443,13 @@
       <div style="display: block; padding: calc(48px * var(--sp, 1)) 0; border-top: 1px solid var(--line, #ddd6ca);">
         <div style="max-width: 760px; margin-bottom: 30px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">use case 05</div>
-          <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Let the outside world interrupt a running process</h3>
-          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">A signal delivers input to an execution already in flight; a query reads its state without disturbing it; an update is validated and answers back. Approval steps and manual holds stop being separate infrastructure.</p>
+          <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Send input to a running process, and read its state</h3>
+          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">A signal delivers input to an execution already in flight; a query reads its state without disturbing it; an update is validated and answers back. Approval steps and manual holds need no separate infrastructure.</p>
           <a href="/docs/workflows/#entry-and-optional-handlers" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" class="dz-h38" data-dzh="38">Signals, queries and updates →</a>
         </div>
         <div style="min-width: 0; display: flex; flex-direction: column; gap: 16px;">
           <div style="border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--code-bg, #ffffff); overflow: hidden; transition: transform 0.32s cubic-bezier(.2,.7,.2,1), box-shadow 0.32s;" class="dz-h39" data-dzh="39">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line, #ddd6ca); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg2, #6c6459);"><span>signal, query, update</span><span>knocking on a running process</span></div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line, #ddd6ca); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg2, #6c6459);"><span>signal, query, update</span><span>sent to a running execution</span></div>
             <pre style="margin: 0; padding: 26px 28px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: calc(14px * var(--ts, 1)); line-height: 1.9; color: var(--code-fg, #1d1a16);"><code><span style="color: var(--cc, #9a9184);">#[AsSignalMethod(OrderSignal::Approve)]
 </span><span style="color: var(--ck, #a1341f);">public function</span> approve(<span style="color: var(--ck, #a1341f);">string</span> <span style="color: var(--cv, #1c6b8a);">$approver</span>): <span style="color: var(--ck, #a1341f);">void</span> { <span style="color: var(--cc, #9a9184);">/* … */</span> }
 
@@ -472,7 +472,7 @@
         <div style="max-width: 760px; margin-bottom: 30px;">
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">use case 06</div>
           <h3 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(30px * var(--ts, 1)); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;">Undo what already happened when a process is cancelled</h3>
-          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Cancellation arrives inside the workflow as a catchable failure, so the process can compensate, refunding the charge and releasing the stock, and then stop for real.</p>
+          <p style="font-size: calc(16px * var(--ts, 1)); line-height: 1.7; color: var(--fg2, #6c6459); margin: 0 0 20px; text-wrap: pretty;">Cancellation arrives inside the workflow as a catchable failure, so the process can compensate, refunding the charge and releasing the stock, and then stop.</p>
           <a href="/docs/cancellation/" style="text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent, #b4552f); border-bottom: 1px solid var(--line, #ddd6ca); padding-bottom: 3px;" class="dz-h40" data-dzh="40">Cancellation and compensation →</a>
         </div>
         <div style="min-width: 0; display: flex; flex-direction: column; gap: 16px;">
@@ -496,7 +496,7 @@
       <div style="max-width: 860px; margin-bottom: 34px;">
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #b4552f); margin-bottom: 14px;">in practice 01</div>
         <h2 style="font-family: 'Newsreader', serif; font-weight: 400; font-size: calc(40px * var(--ts, 1)); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 16px; text-wrap: balance;">A process that lasts a month, in one method</h2>
-        <p style="font-size: calc(18px * var(--ts, 1)); line-height: 1.62; color: var(--fg2, #6c6459); margin: 0;">An order goes to a supplier. The supplier has 48 hours to confirm, or it escalates. Once confirmed, delivery is awaited for up to 30 days, with reminders at day 7 and day 21. If nothing arrives, the payment is refunded. Below is the whole of it.</p>
+        <p style="font-size: calc(18px * var(--ts, 1)); line-height: 1.62; color: var(--fg2, #6c6459); margin: 0;">An order goes to a supplier. The supplier has 48 hours to confirm, or it escalates. Once confirmed, delivery is awaited for up to 30 days, with reminders at day 7 and day 21. If nothing arrives, the payment is refunded. The whole workflow is below.</p>
       </div>
       <div style="min-width: 0;">
         <div style="border: 1px solid var(--line, #ddd6ca); border-radius: 6px; background: var(--code-bg, #ffffff); overflow: hidden; margin: 0 0 40px; transition: transform 0.32s cubic-bezier(.2,.7,.2,1), box-shadow 0.32s;" class="dz-h42" data-dzh="42">
