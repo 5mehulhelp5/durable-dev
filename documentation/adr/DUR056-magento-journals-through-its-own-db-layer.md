@@ -2,8 +2,7 @@
 
 ## Status
 
-Proposed. ADRs in `documentation/adr/` are supervised, so this one takes effect when the user
-approves its text on its pull request.
+Accepted by the user on 2026-09-30.
 
 On 2026-09-30 the user chose option B of spike #709, which goes through Magento's own database
 layer; option A goes through Doctrine DBAL. The measurements below come from that spike, draft PR
