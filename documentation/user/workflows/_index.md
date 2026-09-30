@@ -260,7 +260,7 @@ public function run(
 - A parameter typed **`ActivityStub`** and marked **`#[Activities(Contract::class)]`** receives
   `$env->activityStub(Contract::class)`. PHP has no runtime generics, so the attribute is what names
   the contract.
-- Every other parameter is **input**, matched by name, as before. A caller never passes the
+- Every other parameter is **input**, matched by name. A caller never passes the
   supplied ones: not the code that starts the workflow, not a parent calling it as a child, not a
   Nexus operation.
 - The **`@param ActivityStub<Contract>`** docblock is for PHPStan. With
@@ -268,7 +268,7 @@ public function run(
   attribute is an error (`durable.activities.contractMismatch`), and so is a missing one
   (`durable.activities.missingGeneric`, which a project can ignore), since PHPStan cannot check
   the calls without it.
-- The attribute also takes the stub's **options**, as scalars — an attribute argument cannot call
+- The attribute also takes the stub's **options**, as scalars. An attribute argument cannot call
   `Duration::seconds()`, so durations are given in seconds:
 
   ```php
@@ -280,13 +280,13 @@ public function run(
   Available: `attempts`, `startToClose`, `scheduleToClose`, `scheduleToStart`, `heartbeat`,
   `initialInterval`, `backoffCoefficient`, `maximumInterval`, `nonRetryable`, `taskQueue`,
   `cancellationType`, `summary`. Each one left out keeps its `ActivityOptions` default; with none,
-  the stub is exactly what it was before. On Temporal, a stub with no `startToClose` or
+  the stub is the one `activityStub()` builds without options. On Temporal, a stub with no `startToClose` or
   `scheduleToClose` gets a 30-second bound per attempt.
 - Mistakes fail when the workflow is **registered** (container compilation, with the bundle): an
   `ActivityStub` without `#[Activities]`, `#[Activities]` on another type, a contract that does not
-  exist, one that declares no `#[AsActivityMethod]`, or an impossible option — zero attempts, a
+  exist, one that declares no `#[AsActivityMethod]`, or an impossible option (zero attempts, a
   negative duration, a heartbeat longer than `startToClose`, a `backoffCoefficient` below 1, a
-  `maximumInterval` shorter than the first retry delay, a non-retryable entry that is no exception. The message names the parameter and the option.
+  `maximumInterval` shorter than the first retry delay, a non-retryable entry that is no exception). The message names the parameter and the option.
 
 ### When to build the stub yourself
 
@@ -354,11 +354,14 @@ and every option is described in [Options and value objects](../options/).
 
 ### Naming: ActivityStub vs ActivityInvoker
 
-ADRs use the canonical term **`ActivityInvoker`** for this pattern. In the current package the type is **`ActivityStub`**, returned by **`WorkflowEnvironment::activityStub()`**, in the same role: typed calls that return **`Awaitable`**. The stub delegates to a narrow scheduling port that a workflow never receives, which is why naming an activity as a string is not something you can do from workflow code.
+The ADRs use the canonical term **`ActivityInvoker`** for this pattern. In the current package the
+type is **`ActivityStub`**, returned by **`WorkflowEnvironment::activityStub()`**, in the same role:
+typed calls that return an **`Awaitable`**. The stub delegates to a narrow scheduling port that a
+workflow never receives, so workflow code cannot name an activity as a string.
 
 ## Example: two entry methods
 
-If you expose **two** `#[AsWorkflowMethod]` methods on the same workflow type, **DUR022** requires **exactly one** to set **`default: true`** on the attribute. When the attribute exposes that parameter in your version, it looks like:
+If you expose **two** `#[AsWorkflowMethod]` methods on the same workflow type, **DUR022** requires **exactly one** to set **`default: true`** on the attribute. When the attribute exposes that parameter in your version, the code looks like this:
 
 ```php
 #[AsWorkflowMethod]
@@ -368,70 +371,71 @@ public function runMain(Input $input): mixed { /* ... */ }
 public function runAlternate(Input $input): mixed { /* ... */ }
 ```
 
-Until **`default`** exists on **`#[AsWorkflowMethod]`**, follow your runtime’s registration rules for which method is the primary entry.
+Until **`default`** exists on **`#[AsWorkflowMethod]`**, follow your runtime's registration rules to choose the primary entry.
 
 ## What you define
 
-1. A **workflow interface** (optional contract) and/or a **class** annotated with **`#[AsWorkflow]`** (attribute on the **class** with current loaders). It is the typed contract for registration and tests.
-2. A **concrete class** registered with the runtime; if you wrote a contract interface, it implements it (constructor form).
-3. **`WorkflowEnvironment`** and activity stubs only, as [workflow method arguments](#arguments-durable-supplies) or, with the constructor form, as its **one** parameter **`WorkflowEnvironment $environment`**. Do **not** inject services, repositories, or other application dependencies into the workflow class: side effects belong in [activities](../activities/).
+1. A **workflow interface** (optional contract) and/or a **class** annotated with **`#[AsWorkflow]`** (the attribute goes on the **class** with current loaders). It is the typed contract for registration and tests.
+2. A **concrete class** registered with the runtime. If you wrote a contract interface, the class implements it (constructor form).
+3. **`WorkflowEnvironment`** and activity stubs only, as [workflow method arguments](#arguments-durable-supplies) or, with the constructor form, as its **one** parameter **`WorkflowEnvironment $environment`**. Do **not** inject services, repositories, or other application dependencies into the workflow class. Side effects go in [activities](../activities/).
 
 ## Registry: alias and FQCN
 
-When a workflow class is registered, the runtime indexes it under **two** strings: the **name** from **`#[AsWorkflow]`** (first argument), or the class **short name** if that attribute is missing, and the **fully qualified class name (FQCN)**. **`WorkflowRegistry::getHandler()`** accepts **either** key for dispatch.
+When you register a workflow class, the runtime indexes it under **two** strings: the **name** from **`#[AsWorkflow]`** (first argument), or the class **short name** if that attribute is missing, and the **fully qualified class name (FQCN)**. **`WorkflowRegistry::getHandler()`** accepts **either** key for dispatch.
 
-**Temporal and the durable journal** use the **alias** as the workflow type name (never the FQCN). **`WorkflowRunHandler`** and **`TemporalWorkflowStarter`** normalize **`WorkflowRunMessage`** payloads with **`WorkflowDefinitionLoader::aliasForTemporalInterop()`**: if you pass a FQCN, it is resolved to the alias before **`ExecutionStarted`** is persisted and before the Temporal **`WorkflowType`** is set. Stored metadata uses the alias for consistency with the server.
+**Temporal and the durable journal** use the **alias** as the workflow type name, never the FQCN. **`WorkflowRunHandler`** and **`TemporalWorkflowStarter`** normalize **`WorkflowRunMessage`** payloads with **`WorkflowDefinitionLoader::aliasForTemporalInterop()`**: a FQCN you pass is resolved to the alias before **`ExecutionStarted`** is persisted and before the Temporal **`WorkflowType`** is set. Stored metadata uses the alias, as the server does.
 
 ## Entry and optional handlers
 
 - Declare **at least one** method with **`#[AsWorkflowMethod]`**, your main durable entry (scenario start).
-- If you expose **several** `#[AsWorkflowMethod]` methods on the same workflow type, **exactly one** must set **`default: true`** so the runtime knows the primary entry.
-- Optionally add:
+- If you expose **several** `#[AsWorkflowMethod]` methods on the same workflow type, **exactly one** must set **`default: true`** to mark the primary entry for the runtime.
+- Optionally, add these handlers:
   - **`#[AsSignalMethod]`** takes external input that updates workflow state deterministically.
   - **`#[AsQueryMethod]`** gives a read-only view of state (no durable side effects from the handler).
   - **`#[AsUpdateMethod]`** carries validated updates with response semantics when supported.
 
-Parameters and return types must be **serializable** (see project serialization ADR **DUR007**).
+Parameters and return types must be **serializable** (see the serialization ADR **DUR007**).
 
 ## WorkflowEnvironment
 
-The engine supplies **`WorkflowEnvironment`** as a workflow method argument, or to your constructor. This is its whole surface:
-everything a workflow can do, and nothing the engine keeps for itself.
+The engine supplies **`WorkflowEnvironment`** as a workflow method argument, or to your constructor.
+The table lists its whole surface, every operation available to a workflow. The operations the
+engine keeps for itself are not on it.
 
 | | |
 |---|---|
-| `await($awaitable, $deadline = null)` | The only wait. An elapsed deadline raises `DeadlineExceededException`, a failure and not a value, so work that legitimately returns `null` stays distinguishable. |
+| `await($awaitable, $deadline = null)` | The only wait. An elapsed deadline raises `DeadlineExceededException` and returns no value, so work that legitimately returns `null` stays distinguishable. |
 | `all(...$awaitables)` | Settles when every member succeeds. One failure fails the whole. |
 | `any(...$awaitables)` | Settles on the first member to settle; the losers are cancelled. |
 | `some($count, ...$awaitables)` | Settles when `$count` members have **succeeded**, indexed by declaration position. The rest are cancelled. |
 | `timer($duration, $summary = '')` | An awaitable that settles when the duration elapses. Composes like any other. |
-| `sleep($duration, $summary = '')` | Waits, and awaits for you. Says what it does. |
+| `sleep($duration, $summary = '')` | Waits, and awaits for you, as its name says. |
 | `activityStub($contract, $options = null)` | A typed proxy over an activity contract. Build it in the constructor, or declare it as an [`#[Activities]` argument](#arguments-durable-supplies), options included; every call it makes carries `$options`. |
 | `childWorkflowStub($class, $options = null)` | The same, for a child workflow: resolved from the child's class, and its calls compose like any other. |
-| `onSignal($name, $handler)` | Registers a signal handler. The handler mutates workflow state and `await()` observes it; there is no separate wait. The name takes a backed enum, so a typo is a type error rather than a wait that never settles. |
+| `onSignal($name, $handler)` | Registers a signal handler. The handler mutates workflow state and `await()` observes it; there is no separate wait. The name takes a backed enum, so a typo is a type error instead of a wait that never settles. |
 | `onUpdate($name, $handler)` | The same for an update, whose handler's return value is the caller's response. |
 | `hasSignalHandler($name)`, `hasUpdateHandler($name)` | Whether a handler is registered under that name, for code that registers one only once. |
 | `sideEffect($closure)` | Runs non-deterministic local work once and journals its result, so replay reproduces it. |
 | `continueAsNew($type, $payload = [], $options = null)` | Ends this run and starts the next with a fresh history. |
 | `executionId()` | This execution's identifier. |
 
-Activities are **only** reachable through a stub. Naming one as a string with a free-form payload
-is not on this surface: a typo there produces an activity that is never scheduled, instead of an
-error your IDE and your static analyser catch first.
+Activities are **only** reachable through a stub. This surface has no way to name one as a string
+with a free-form payload. A typo there would produce an activity that is never scheduled, where a
+stub call gives an error that your IDE and your static analyser catch first.
 
 Query, signal and update handlers are declared with `#[AsQueryMethod]`, `#[AsSignalMethod]` and
 `#[AsUpdateMethod]`, and the engine wires them. Signals and updates can also be registered
-imperatively, with `onSignal()` and `onUpdate()`, which is what a workflow expressed as a closure has to
-use, since a closure cannot carry an attribute. Prefer the attribute: it is the form a reader can
-see without running anything.
+imperatively, with `onSignal()` and `onUpdate()`. A workflow expressed as a closure has to use
+them, since a closure cannot carry an attribute. Prefer the attribute, which a reader sees without
+running anything.
 
 **Queries have no imperative form.** They are read by the worker, outside the workflow's fiber, so
 their handlers live on the engine side and `#[AsQueryMethod]` is the only way to declare one. A
-closure-shaped workflow cannot answer a query; if it needs to, it needs to be a class.
+closure-shaped workflow cannot answer a query. A workflow that must answer one has to be a class.
 
 `WorkflowEnvironment::wrap($context, $runtime)` builds an environment over an `ExecutionContext`
-without the contract resolvers. It is for a runner or a test harness of your own, not for workflow
-code, which always receives the environment the engine built.
+without the contract resolvers. Use it in a runner or a test harness of your own. Workflow code always
+receives the environment the engine built.
 
 You never instantiate activity implementations inside the workflow body.
 
@@ -448,8 +452,8 @@ You never instantiate activity implementations inside the workflow body.
 
 ## `finally` runs on every pass that suspends
 
-A workflow that waits is not kept in memory between passes. Each pass replays it up to the next
-wait, then drops it, and PHP runs its `finally` blocks when it drops it. Temporal's Java and Go
+Durable does not keep a waiting workflow in memory between passes. Each pass replays it up to the
+next wait, then drops it, and PHP runs its `finally` blocks when it is dropped. Temporal's Java and Go
 SDKs do the same when they evict a cached workflow.
 
 ```php
@@ -463,14 +467,14 @@ try {
 
 - **Plain code in a `finally` runs once per pass.** Setting a field, or adding to a log kept in
   the workflow, happens again every time the workflow is resumed and waits again.
-- **Work started from a `finally` is refused while the pass is dropped.** An activity, a timer,
+- **Work started from a `finally` fails while the pass is being dropped.** An activity, a timer,
   a child or a side effect started then never reaches the journal, and an `await` there does not
   wait. The pass ends as it would have without the `finally`.
 - **On the pass where the workflow really ends**, by returning, failing or being cancelled, the
   `finally` runs as usual, and the work it starts is recorded.
 
-Cleanup that must happen once goes in a `catch`, or after the `try`, where the workflow reaches it
-only when it really gets there: compensation is written that way, see
+Put cleanup that must happen once in a `catch`, or after the `try`, where the workflow reaches it
+only when it really gets there. Compensation is written that way; see
 [Cancellation](../cancellation/).
 
 ## See also
