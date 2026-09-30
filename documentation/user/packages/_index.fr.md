@@ -228,7 +228,7 @@ par attribut de Symfony, donc la clé `workflows` nomme les classes. Mesuré : l
 même raison : `config:cache` met déjà en cache le fichier qu'il dupliquerait.
 
 **Le travail voyage sur la file que l'application draine déjà**, avec `php artisan queue:work` pour
-seul worker. Activités et reprises sont des jobs ; un minuteur est une reprise différée sur le délai
+seul worker. Activités et reprises sont des jobs ; un minuteur est un job de déclenchement différé sur le délai
 natif de la file.
 
 ### Ce n'est pas un moteur durable pour Laravel, et ce carré est pris
