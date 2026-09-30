@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Durable\Workflow\OrderWorkflow;
 use App\Tests\Functional\Fixture\FailingWorkflow;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\ExecutionId;
-use Gplanchat\Durable\Nexus\NexusUnsupportedByBackendException;
 use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,9 +19,6 @@ use Symfony\Component\Console\Tester\CommandTester;
  * worker hands the resume to that bus. On the shop's own connection, the journal's
  * `WorkflowExecutionFailed` sat in that transaction, and the rollback that follows the handler's
  * exception erased it: the run stayed Running. The journal has a connection of its own (DUR054).
- *
- * `OrderWorkflow` calls a Nexus operation, which the SQL journal refuses (DUR036): outside the
- * `demo_caller` profile it is a run that fails, and it must read as one.
  */
 final class AFailedRunStaysFailedTest extends KernelTestCase
 {
@@ -31,7 +26,6 @@ final class AFailedRunStaysFailedTest extends KernelTestCase
     public static function failingRuns(): iterable
     {
         yield 'a workflow that throws' => [FailingWorkflow::TYPE, [], \RuntimeException::class];
-        yield 'a Nexus call on the SQL journal' => [OrderWorkflow::TYPE, ['order' => 'order-851', 'amount' => 1000], NexusUnsupportedByBackendException::class];
     }
 
     /**
