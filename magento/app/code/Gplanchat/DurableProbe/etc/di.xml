@@ -40,6 +40,12 @@
         </arguments>
     </type>
 
+    <!-- #766: a plugin on the Nexus handler, so the runtime receives its generated Interceptor,
+         which does not carry #[AsNexusServiceHandler]. The plugin changes nothing. -->
+    <type name="Gplanchat\DurableProbe\Nexus\ProbeBillingHandler">
+        <plugin name="durable_probe_billing_passthrough" type="Gplanchat\DurableProbe\Plugin\ProbeBillingHandlerPlugin"/>
+    </type>
+
     <!-- `durable:demo` is a command of the **bench**, not of the published package. -->
     <type name="Magento\Framework\Console\CommandListInterface">
         <arguments>

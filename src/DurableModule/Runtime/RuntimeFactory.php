@@ -364,7 +364,7 @@ class RuntimeFactory
         $handlers = [];
         $contracts = [];
         foreach ($this->nexusHandlers as $handler) {
-            $attribute = (new \ReflectionClass($handler))->getAttributes(AsNexusServiceHandler::class)[0] ?? null;
+            $attribute = self::attributeOf($handler, AsNexusServiceHandler::class);
             if (null === $attribute) {
                 throw new \InvalidArgumentException(\sprintf(
                     'Durable: %s is listed in the nexusHandlers argument of RuntimeFactory (di.xml), but carries no #[AsNexusServiceHandler(contract: ...)] naming the contract it serves.',
@@ -463,6 +463,31 @@ class RuntimeFactory
     }
 
     /**
+     * A handler's attribute, read from the class it intercepts when a plugin made Magento hand over
+     * its generated `Interceptor`: that subclass carries none of its parent's attributes (#766).
+     *
+     * Recognised by its name, `<Class>\Interceptor` extending `<Class>`, and not by
+     * `InterceptorInterface`: Mage-OS ships creatuity/magento2-interceptors, whose compiled
+     * Interceptor does not implement it.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $attribute
+     *
+     * @return \ReflectionAttribute<T>|null
+     */
+    private static function attributeOf(object $handler, string $attribute): ?\ReflectionAttribute
+    {
+        $class = new \ReflectionClass($handler);
+        $parent = $class->getParentClass();
+        if (false !== $parent && $class->getName() === $parent->getName() . '\\Interceptor') {
+            $class = $parent;
+        }
+
+        return $class->getAttributes($attribute)[0] ?? null;
+    }
+
+    /**
      * The declared activities, resolved just once: the in-process engine and the worker both read
      * them from here, so they necessarily execute the same thing.
      *
@@ -476,7 +501,7 @@ class RuntimeFactory
         foreach ($this->activityHandlers as $handler) {
             // `#[AsActivityHandler(contract)]` narrows the handler to that one contract, as
             // Symfony's ActivityHandlerPass does; without it, every activity interface it implements.
-            $named = (new \ReflectionClass($handler))->getAttributes(AsActivityHandler::class)[0] ?? null;
+            $named = self::attributeOf($handler, AsActivityHandler::class);
             $contracts = null !== $named ? [$named->newInstance()->contract] : (\class_implements($handler) ?: []);
 
             foreach ($contracts as $contract) {
