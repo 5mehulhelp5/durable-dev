@@ -2,30 +2,32 @@
 
 ## Status
 
-Proposed. `documentation/adr/` is supervised: this ADR takes effect when the user approves its
-text on its pull request.
+Proposed. ADRs in `documentation/adr/` are supervised, so this one takes effect when the user
+approves its text on its pull request.
 
-The user chose option B of spike #709 on 2026-09-30: Magento's own database layer, not Doctrine
-DBAL. The measurements below come from that spike, draft PR #723. The same day the user ruled on
-decision 3: a `resource/durable` that names the shop's `default` connection is accepted with a
-warning, as in DUR054 decision 6.
+On 2026-09-30 the user chose option B of spike #709, which goes through Magento's own database
+layer; option A used Doctrine DBAL. The measurements below come from that spike, draft PR #723.
+The same day the user settled decision 3. A `resource/durable` that names the shop's `default`
+connection boots with a warning, as in DUR054 decision 6.
 
 Related:
 - [DUR046](DUR046-magento-a-tier-1-host-that-improved-the-core.md), the Magento host. This ADR
-  supersedes part of it (listed under Decision) and does not edit it.
-- [DUR054](DUR054-the-journal-does-not-share-the-applications-connection.md): the journal does not
-  share the application's connection. Decision 3 below applies it to Magento.
-- [DUR051](DUR051-a-backend-refuses-what-it-cannot-honour.md): a backend refuses by name what it
-  cannot honour. That is how Nexus is refused here.
+  supersedes part of it, listed under Decision, and leaves its text unchanged.
+- [DUR054](DUR054-the-journal-does-not-share-the-applications-connection.md): the journal (the
+  append-only sequence of events that records everything an execution did) does not share the
+  application's connection. Decision 3 below applies that rule to Magento.
+- [DUR051](DUR051-a-backend-refuses-what-it-cannot-honour.md): a backend that cannot perform an
+  operation throws an exception that names it. Decision 5 applies that rule to Nexus.
 - [DUR053](DUR053-a-superseded-pass-cannot-write.md): the fencing epoch, which the new event store
-  implements.
+  implements. A pass (one replay of an execution by a worker) claims the next epoch of its
+  execution when it starts, and its appends carry that epoch, so an older pass can no longer write.
 
 ## Context
 
 DUR046 gave Magento two backends, `memory` and `temporal`, "final rather than provisional", because
-`ResourceConnection` is neither Doctrine DBAL nor Illuminate's connection, and it says "Magento has
-no native journal and will not get one". On 2026-09-29 the user reopened the question: Magento
-should run Durable on a database, like Symfony and Laravel, on a connection of its own, with no
+`ResourceConnection` is neither Doctrine DBAL nor Illuminate's connection. It also states "Magento
+has no native journal and will not get one". The user reopened the question on 2026-09-29. The new
+target is Durable on a database, as on Symfony and Laravel, with a connection of its own and no
 Nexus.
 
 Spike #709 compared two ways to get that connection:
@@ -36,24 +38,25 @@ Spike #709 compared two ways to get that connection:
   read through `Magento\Framework\App\ResourceConnection`, with a new family of stores over
   `Magento\Framework\DB\Adapter\AdapterInterface` (`Pdo\Mysql`).
 
-What the spike measured through Magento's adapter, on Mage-OS 2.2.0 and MySQL 8.4
-(`probe-b.php`):
+The spike measured Magento's adapter on Mage-OS 2.2.0 and MySQL 8.4 (`probe-b.php`):
 
 - An inner `rollBack()` followed by the outer `commit()` throws `Rolled back transaction has not
   been completed correctly`.
-- A `createTable()` inside a transaction is accepted, and MySQL commits the transaction implicitly.
-- `getConnection('durable')` silently returns the **shop's** connection (same `CONNECTION_ID()`,
-  database `magento`) unless `resource/durable` is also declared. `getConnectionByName('durable')`
-  reached the journal's server.
-- `db_schema.xml` with `resource="durable"`: without `resource/durable` in `env.php`,
-  `setup:upgrade` exits 0 and creates the table in the shop's database; with it, developer mode
-  rejects the file, because `resource` is an XSD enumeration (`default`, `checkout`, `sales`) that a
-  module cannot extend.
-- The DUR053 fence's SQL works through the adapter: a pass claim's `UPDATE` held the heads row, and
-  a `LOCK IN SHARE MODE` read from another process waited 2.53 s for it.
+- A `createTable()` inside a transaction runs without error, and MySQL commits the transaction
+  implicitly.
+- Unless `resource/durable` is also declared, `getConnection('durable')` silently returns the
+  **shop's** connection (same `CONNECTION_ID()`, database `magento`).
+  `getConnectionByName('durable')` returns a connection to the journal's server.
+- `db_schema.xml` with `resource="durable"` has no working setup. Without `resource/durable` in
+  `env.php`, `setup:upgrade` exits 0 and creates the table in the shop's database. With it,
+  developer mode fails to validate the file, because `resource` is an XSD enumeration (`default`,
+  `checkout`, `sales`) that a module cannot extend.
+- The SQL of the DUR053 fence works through the adapter. A pass claim's `UPDATE` (the statement
+  that raises the execution's epoch) held the heads row, the one row per execution that stores
+  its epoch. A `LOCK IN SHARE MODE` read from another process waited 2.53 s for that row.
 
-The stores themselves were not built under B. By extrapolation from the DBAL stores and schema
-(1007 lines) and Illuminate's (825), they are about 1000 lines of new code.
+The spike did not build the B stores. Extrapolated from the DBAL stores and schema (1007 lines) and
+from Illuminate's (825), they come to about 1000 lines of new code.
 
 ## Decision
 
