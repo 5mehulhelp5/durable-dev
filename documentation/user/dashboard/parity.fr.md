@@ -25,7 +25,7 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Temps de file hachuré | Oui | Oui | Sur la frise | Non |
 | Rouge sur l'événement en échec | Oui | Oui | Sur la frise | Non |
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
-| Présence des workers | Oui | Oui, journal et activity | Non | Non |
+| Présence des workers | Oui | Oui, journal et activity | Oui, workflow et activity | Non |
 | Masquage des charges utiles | Replié | Replié | Replié | Toujours ouvert |
 | Langues | Anglais, français | Anglais | Anglais, français | Anglais |
 

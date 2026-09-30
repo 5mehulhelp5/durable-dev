@@ -25,7 +25,7 @@ when a gap closes.
 | Hatched queue time | Yes | Yes | On the timeline | No |
 | Red on the failing event | Yes | Yes | On the timeline | No |
 | Nexus operations table | Yes | Yes | Yes | Yes |
-| Worker presence | Yes | Yes, journal and activity | No | No |
+| Worker presence | Yes | Yes, journal and activity | Yes, workflow and activity | No |
 | Payload masking | Folded | Folded | Folded | Always open |
 | Languages | English, French | English | English, French | English |
 
