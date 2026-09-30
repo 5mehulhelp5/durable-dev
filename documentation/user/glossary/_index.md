@@ -13,8 +13,8 @@ completion, failure or cancellation. It survives the death of the process that w
 another worker resumes it from its journal.
 
 **Workflow**: the PHP class that describes an execution's steps, marked `#[AsWorkflow]`, with one
-`#[AsWorkflowMethod]`. Its code must be deterministic, because it is replayed: it obtains
-time, randomness and I/O through the environment instead of producing them itself. See
+`#[AsWorkflowMethod]`. Its code must be deterministic, because it is replayed: it gets
+time, randomness and I/O from the environment instead of taking them itself. See
 [Creating a workflow](../workflows/).
 
 **Activity**: a unit of side effect (an HTTP call, a database write, an e-mail) declared on a
@@ -65,10 +65,10 @@ Nothing progresses without one. See [Getting started](../getting-started/).
 
 **Child workflow**: an execution started by another one, which awaits its result the way it awaits
 an activity. **Continue-as-new** closes an execution's journal and opens a fresh one for the same
-work with the state it carries over, so a long-lived workflow's journal does not grow forever.
+work with the state its code chooses to carry over, so a long-lived workflow's journal does not grow forever.
 
 **Nexus operation**: an operation served by another service, with its own contract, that a workflow
-calls the way it calls an activity. Temporal only: the journal backends cannot run it, by construction.
+calls the way it calls an activity. Temporal only: calling one fails on the journal backends, by construction.
 See [Nexus operations](../nexus/).
 
 **Change point**: a named fork in workflow code (`version()`) that lets a new deploy behave

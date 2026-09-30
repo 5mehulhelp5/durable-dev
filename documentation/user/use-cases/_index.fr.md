@@ -10,8 +10,9 @@ là, Nexus plus loin. Cette section prend le chemin inverse. Chaque entrée est 
 plusieurs applications, plusieurs mécanismes, un problème qui existe en dehors de Durable, avec
 son code dans le dépôt et de quoi la lancer.
 
-Les entrées ne sont pas des exercices avancés, et aucune n'est difficile. Ce qui distingue une
-entrée d'un exemple de la section [Écrire un workflow](../workflows/), c'est qu'elle est *complète*.
+Les entrées ne sont pas des exercices avancés, et aucune n'est difficile. La seule chose qui
+distingue une entrée d'un exemple de la section [Écrire un workflow](../workflows/), c'est qu'elle
+est *complète*.
 
 | | |
 |---|---|

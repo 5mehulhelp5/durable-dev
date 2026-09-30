@@ -10,8 +10,8 @@ Nexus further on. This section works the other way round. Each entry is **a whol
 applications, several mechanisms, a problem that exists outside Durable, with its code in the
 repository and a way to run it.
 
-The entries are not advanced exercises, and none of them is hard. What separates an entry from an
-example in [Writing a workflow](../workflows/) is that it is *complete*.
+The entries are not advanced exercises, and none of them is hard. The only thing that separates an
+entry from an example in [Writing a workflow](../workflows/) is that it is *complete*.
 
 | | |
 |---|---|

@@ -89,25 +89,25 @@ it, expire it and wrap it in a state machine that holds the wait.
 
 ## What it does not bring
 
-**Compensation.** None of the three contracts has an operation that gives back what it took. The
+**Compensation is not provided.** None of the three contracts has an operation that gives back what it took. The
 only protection is **call ordering**: `OrderNexusWorkflow` first asks everything that can say no
 (check the invoice, plan the round, hold the stock) and only then commits. Both reverse orders
 were written first, and measured: a USD order held stock before being refused an invoice, and a
 six-parcel order was **charged** before logistics refused to carry it.
 
-**Idempotency.** A Nexus task gets redelivered, and the handler has to withstand it. The `stock` handler
+**Idempotency is not provided.** A Nexus task gets redelivered, and the handler has to withstand it. The `stock` handler
 writes its verdict to `app_durable_stock_reservation`, keyed by order id: replaying the same order
 returns the same verdict and does not hold stock twice. That table is written by hand; Durable does
 not provide it.
 
-**An anti-corruption layer.** You write it yourself, and the shop now has one. `OrderWorkflow`
+**No anti-corruption layer is provided.** You write it yourself, and the shop now has one. `OrderWorkflow`
 invokes a `PlaceOrder` use case through a `Payments` port, and `NexusPayments` is the only class in
 `sylius/` that knows a payload has a field called `accepted`. The three benches that call without
 that layer show the cost of skipping it: `OrderNexusWorkflow` reads five payloads by key, in the code
 that decides. The contracts carry scalars and arrays because the wire is plain JSON, and something
 has to turn them into a model.
 
-**A small shared kernel.** `src/DurableDemoContracts/` is one, and what keeps it defensible is a
+**Nothing keeps the shared kernel small.** `src/DurableDemoContracts/` is a small shared kernel, and what keeps it defensible is a
 rule rather than a mechanism: it carries operation names and payload shapes, and no domain type
 from either side.
 

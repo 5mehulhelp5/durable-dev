@@ -14,7 +14,7 @@ la faisait tourner : un autre worker la reprend depuis son journal.
 
 **Workflow** : la classe PHP qui décrit les étapes d'une exécution, marquée `#[AsWorkflow]`, avec
 une seule `#[AsWorkflowMethod]`. Son code doit être déterministe, parce qu'il est rejoué : il
-obtient l'heure, l'aléatoire et les entrées-sorties par l'environnement au lieu de les produire
+obtient l'heure, l'aléatoire et les entrées-sorties par l'environnement au lieu de les prendre
 lui-même. Voir [Écrire un workflow](../workflows/).
 
 **Activité** : une unité d'effet de bord (un appel HTTP, une écriture en base, un courriel) déclarée
@@ -64,16 +64,16 @@ l'autre. Voir [Backends](../backends/).
 sert les opérations Nexus. Sur Symfony c'est `messenger:consume` sur les transports durables ; sur
 Laravel le worker de file de l'application, ou sur Temporal `durable:temporal-worker` et son
 `--role=activity` ; sur Magento
-`bin/magento durable:worker`. Sans worker, rien n'avance. Voir [Premiers pas](../getting-started/).
+`bin/magento durable:worker`. Rien n'avance sans lui. Voir [Premiers pas](../getting-started/).
 
 **Workflow enfant** : une exécution démarrée par une autre, qui attend son résultat comme elle
 attend une activité. **Continue-as-new** referme le journal d'une exécution et en ouvre un neuf pour
-le même travail, avec l'état qu'elle emporte, pour que le journal d'un workflow qui vit
+le même travail, avec l'état que son code choisit d'emporter, pour que le journal d'un workflow qui vit
 longtemps ne grossisse pas sans fin.
 
 **Opération Nexus** : une opération servie par un autre service, avec son propre contrat, qu'un
-workflow appelle comme il appelle une activité. Temporal seulement : les backends à journal ne
-peuvent pas l'exécuter, par construction. Voir [Opérations Nexus](../nexus/).
+workflow appelle comme il appelle une activité. Temporal seulement : l'appeler échoue sur les
+backends à journal, par construction. Voir [Opérations Nexus](../nexus/).
 
 **Point de changement** : une bifurcation nommée dans le code du workflow (`version()`) qui permet à
 un nouveau déploiement de se comporter autrement pour les exécutions démarrées après lui, pendant
