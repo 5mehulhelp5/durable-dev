@@ -12,6 +12,8 @@ use unit\DurableModule\Fixture\NarrowedOrderActivities;
 use unit\DurableModule\Fixture\OrderWorkflow;
 use unit\DurableModule\Fixture\RecordingOrderActivities;
 
+require_once __DIR__ . '/Fixture/magento-interceptor.php';
+
 /**
  * The declaration, since Magento's container has none of Symfony's tags.
  *
@@ -68,6 +70,18 @@ final class DeclaredRuntimeTest extends TestCase
     public function testAHandlerCarryingTheAttributeIsServedOnlyForTheContractItNames(): void
     {
         $runtime = (new RuntimeFactory(activityHandlers: [new NarrowedOrderActivities()]))->create();
+
+        self::assertSame(
+            ['test.order.charge', 'test.order.reserve', 'test.order.notify'],
+            $runtime->declaredActivities(),
+        );
+    }
+
+    public function testAHandlerBehindAPluginKeepsTheContractItNames(): void
+    {
+        // The generated Interceptor carries no #[AsActivityHandler]: read from it, the handler
+        // would serve AuditActivities too (#766).
+        $runtime = (new RuntimeFactory(activityHandlers: [new NarrowedOrderActivities\Interceptor()]))->create();
 
         self::assertSame(
             ['test.order.charge', 'test.order.reserve', 'test.order.notify'],

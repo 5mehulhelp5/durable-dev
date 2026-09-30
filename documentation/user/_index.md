@@ -6,8 +6,8 @@ bookFlatSection: false
 
 # User guide
 
-How to think about Durable and how to use it. Start with [Why Durable](why/) if you are still
-deciding; the [home page](/) makes the same case interactively.
+The model behind Durable, and how to use it. Start with [Why Durable](why/) if you are still
+deciding; the [home page](/) presents the same arguments interactively.
 
 | | |
 |---|---|

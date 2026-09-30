@@ -5,15 +5,31 @@ weight: 20
 
 # Concepts
 
-This page introduces the vocabulary and mental model behind Durable. Read it before diving into the hands-on guides.
+This page introduces the vocabulary and the model behind Durable. Read it before the hands-on guides.
+The [glossary](../glossary/) defines each term in one paragraph.
 
 ---
 
 ## Durable execution
 
-**Durable execution** means that a long-running process, one that may span seconds, hours, or days, survives restarts, crashes, and deployments. The runtime records every decision (activity result, timer expiry, signal received) into a **history**, then **replays** that history to restore the exact state the program was in.
+**Durable execution** means that a long-running process, one that may span seconds, hours, or days, survives restarts, crashes, and deployments.
 
-From the developer's perspective this feels like writing ordinary sequential PHP: `await` an activity, receive the result, continue. The runtime handles fault tolerance transparently.
+If you have written `async`/`await` in JavaScript, start from there. A JavaScript function that uses
+`await` has to be `async`, and so do its callers: the colour climbs the call stack (Bob Nystrom,
+*What Color Is Your Function?*). In a Durable workflow, `$env->await()` suspends the execution with
+a PHP Fiber, inside the runtime, so a method that waits stays an ordinary method with its own return
+type. The [comparison with the Temporal PHP SDK](../comparison/#5-fibers-or-generators-the-colouring-problem)
+covers this colouring problem in detail.
+
+What JavaScript does not do is keep the wait when the process stops. The runtime records every
+decision (activity result, timer expiry, signal received) in a **history**. After a restart, it
+**replays** that history to restore the exact state the program was in: the method runs again, and
+each step already recorded returns its result. The analogy with JavaScript stops there. A replayed
+method has to take the same decisions on every pass, which is the
+[determinism rule](#determinism-and-the-replay-contract).
+
+In your code, this reads like ordinary sequential PHP: `await` an activity, receive the result,
+continue. The runtime handles fault tolerance, and your code does not deal with it.
 
 ---
 
@@ -29,7 +45,7 @@ A **workflow** is pure orchestration logic. It:
 
 A workflow function must be **deterministic**: given the same history, re-executing it must produce the same sequence of commands. This is what makes replay possible.
 
-**What does NOT belong in a workflow:**
+**What does not belong in a workflow:**
 - HTTP calls, database queries, random numbers, timestamps: all non-deterministic.
 - Filesystem access, environment variable reads.
 - Any I/O that would produce a different result on replay.
@@ -211,8 +227,9 @@ $client->signal($workflowId, OrderSignal::Approve, ['by' => 'alice']);
 > Route `DeliverWorkflowSignalMessage` in `messenger.yaml` the way
 > [Getting started](../getting-started/) routes it. The Laravel package delivers no signals yet.
 
-A plain string is still accepted, and has to be: a signal can arrive from `curl`, the Temporal CLI,
-or a service written in another language. The enum types the inside; it cannot type that boundary.
+A plain string is still accepted, and has to be, because a signal can arrive from `curl`, the
+Temporal CLI, or a service written in another language. The enum types the application side; it
+cannot type that boundary.
 
 > [!IMPORTANT]
 > **Migrating from `waitSignal()`.** The method is gone. It read history directly, which is why it
@@ -245,8 +262,8 @@ An **update** is a transactional message: the workflow processes it and **return
 the caller. The interaction is recorded in history. Updates combine signal semantics (state change)
 with query semantics (return value).
 
-The handler's return value *is* the response, which is the whole difference from a signal, which
-has none:
+The handler's return value *is* the response. That is the difference from a signal, which has no
+response:
 
 ```php
 #[AsUpdateMethod('greet')]
@@ -311,7 +328,7 @@ Durable runs on four backends that share the same workflow and activity code:
 - Runs entirely in a single PHP process.
 - No external server, no persistence between requests.
 - Async activity dispatch is simulated by an in-process transport.
-- Ideal for all **automated tests** and quick local experiments.
+- Suited to all **automated tests** and quick local experiments.
 
 ### DBAL
 
@@ -333,7 +350,8 @@ Durable runs on four backends that share the same workflow and activity code:
 - Production-grade orchestration with a real Temporal cluster.
 - Full history persistence, durable retries, Temporal UI, and the three things no journal backend
   has: search attributes, cron schedules, and Nexus.
-- Workers poll Temporal over gRPC, through whatever the host runs its workers with.
+- Workers (the processes that pull work: they replay workflows and run activities) poll Temporal over
+  gRPC, through whatever the host runs its workers with.
 - Requires the `ext-grpc` PHP extension.
 
 > [!NOTE]
@@ -349,8 +367,8 @@ For setup details, see [Backends](../backends/).
 
 ## How work reaches a worker
 
-Durable brings no transport of its own. Workflow and activity work rides what the host already has,
-and each host says so differently:
+Durable has no transport of its own. Workflow and activity work travels over what the host already
+has, and the mechanism differs from one host to the next.
 
 **Symfony** uses **Messenger**. `ResumeWorkflowMessage` routes to the workflow task queue,
 `ActivityMessage` to the activity task queue, and signals, updates and timer fires go on the

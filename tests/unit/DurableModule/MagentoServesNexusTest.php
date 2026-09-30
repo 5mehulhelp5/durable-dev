@@ -13,6 +13,8 @@ use unit\DurableModule\Fixture\NexusBillingHandler;
 use unit\DurableModule\Fixture\NexusChargeWorkflow;
 use unit\DurableModule\Fixture\OrderActivities;
 
+require_once __DIR__ . '/Fixture/magento-interceptor.php';
+
 /**
  * A Magento module serves Nexus operations (#668): the handler is listed in di.xml's `nexusHandlers`,
  * its contract named by `#[AsNexusServiceHandler]` as on Symfony, and the workflows that fulfil an
@@ -31,6 +33,16 @@ final class MagentoServesNexusTest extends TestCase
 
         $charge = $registry->dispatch(NexusService::named('billing'), NexusOperationName::named('charge'), ['order' => 'ORD-1', 'amount' => 1200, 'currency' => 'EUR']);
         self::assertSame('test.magento.charge', $charge->workflowType);
+    }
+
+    public function testAHandlerBehindAPluginIsReadFromTheClassItIntercepts(): void
+    {
+        // A plugin on the handler: Magento hands over its generated Interceptor, which carries
+        // none of the handler's attributes (#766).
+        $registry = (new RuntimeFactory(workflowClasses: [NexusChargeWorkflow::class], temporalDsn: self::DSN, nexusHandlers: [new NexusBillingHandler\Interceptor()]))->nexusRegistry();
+
+        $verify = $registry->dispatch(NexusService::named('billing'), NexusOperationName::named('verify'), ['order' => 'ORD-1', 'amount' => 1200, 'currency' => 'USD']);
+        self::assertSame(['accepted' => false, 'reason' => 'EUR only, on this module'], $verify->result);
     }
 
     public function testAHandlerWithoutTheAttributeIsRefusedByName(): void

@@ -9,12 +9,12 @@ Some work does not fit in a request. Charging a card, reserving the stock and em
 one business operation, but it touches three systems, takes longer than a connection stays open, and
 can be interrupted between any two steps by a deploy, a crash or an OOM kill.
 
-PHP has no built-in answer for that, so every codebase invents one. Durable is the answer written
-once.
+PHP has no built-in answer for that, so every codebase builds its own. Durable provides that answer
+as a library, written once.
 
 ## You already have this problem if
 
-Look for these in your own code. Each one is a piece of durable execution, hand-built:
+Look for these in your own code. Each of them is a hand-built piece of durable execution:
 
 - a **status column that means *maybe*** (`pending`, `processing`, `in_progress`), and nobody is
   sure which rows are stuck;
@@ -24,13 +24,14 @@ Look for these in your own code. Each one is a piece of durable execution, hand-
 - a **retry counter and a dead-letter table**, plus the runbook that says what to do with them;
 - no way to answer *why did order 4242 stop three days ago* except reading logs.
 
-Those six exist to make a process survive an interruption. Durable makes the process survive
-directly: the runtime records each completed step in a **journal**, and after a restart it replays
-the method, returning recorded results instead of running those steps again. The process resumes on
-the line it was on.
+Those six exist so that a process survives an interruption. Durable makes the process itself
+survive. The runtime records each completed step in a **journal** (the append-only record of
+everything an execution decided and received; see the [glossary](../glossary/)). After a restart,
+it replays the method and returns the recorded results instead of running those steps again. The
+process resumes on the line it was on.
 
-A worker can be redeployed mid-process. No completed step runs again, nothing is lost, and no cron
-is involved.
+You can redeploy a worker (the process that runs workflows and activities) mid-process. No
+completed step runs again and nothing is lost, without any cron job.
 
 ## What it replaces
 
@@ -58,14 +59,14 @@ workflow code has to respect. Skip it when:
 - the work **can safely restart from scratch**. A nightly export that rewrites the whole file loses
   nothing by being retried from the top; a partial charge does;
 - your queue consumers are **already idempotent and already observable**, and you can answer *what
-  happened to this job* without opening a log file. You have built the thing; you do not need it
-  twice;
+  happened to this job* without opening a log file. In that case you have already built what Durable
+  provides;
 - there is **exactly one side effect**. A single `INSERT` in a transaction is already atomic. The
   problem starts at the second step, when the first one has already happened and cannot be rolled
   back.
 
-A good rule: if losing your place mid-process costs money, stock or a customer's trust, the process
-wants a journal. If it costs a re-run, it does not.
+To decide, look at what losing your place mid-process costs. If it costs money, stock or a
+customer's trust, give the process a journal. If it costs a re-run, you do not need one.
 
 ## Where to go next
 
@@ -76,4 +77,5 @@ wants a journal. If it costs a re-run, it does not.
 | [Packages](../packages/) | what to install for your framework, and which backend |
 | [Durable and the Temporal PHP SDK](../comparison/) | if you have decided on durable execution and are choosing between the two |
 
-The last one assumes the decision this page is about is already made. Read it second.
+The comparison assumes you have already made the decision this page is about, so read it after
+this one.

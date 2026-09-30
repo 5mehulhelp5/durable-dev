@@ -30,7 +30,8 @@ et `decode(Payload): Payload`. Le contrat est celui de Temporal :
 - `decode()` rend tel quel un payload qui ne porte pas cette marque, si bien que l'historique écrit
   avant l'activation du codec reste lisible ;
 - `decode()` lève une exception sur un payload qu'il reconnaît mais ne sait pas décoder, par exemple
-  à cause d'une clé inconnue.
+  à cause d'une clé inconnue. Le message de cette exception parvient au serveur Temporal et à son
+  interface web : il ne doit donc jamais contenir d'octets de payload ni de clé.
 
 Durable ne fournit aucune implémentation. L'algorithme, les clés et leur rotation vous
 appartiennent. La classe ci-dessous est un **exemple** sur lequel vous appuyer, pas une classe que
@@ -178,13 +179,19 @@ Chaque processus qui parle au namespace a besoin du même codec, dans le même d
 workers, ce qui démarre ou signale des workflows, et le tableau de bord.
 
 Un payload indéchiffrable, sous une clé inconnue par exemple, lève une exception dans l'appel qui
-l'a lu. Un tableau de bord affiche une erreur de lecture. Un worker est plus durement touché : le
-décodage a lieu sur la réponse du poll, avant tout traitement de la tâche, et rien ne l'y
-intercepte. Le processus du worker s'arrête sans signaler l'échec de la tâche, et Temporal ne la
-redistribue qu'à l'expiration de son délai, à un worker qui s'arrête de la même façon. Faites
-tourner vos workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes), et
-alertez sur les arrêts répétés. Le ticket [#775](https://github.com/gplanchat/durable-dev/issues/775) prévoit de faire échouer la tâche à
-la place. Ni un worker ni un tableau de bord ne présente du chiffré comme s'il s'agissait de
+l'a lu. Un tableau de bord affiche une erreur de lecture. Un worker, lui, signale l'échec de la
+tâche qu'il a reçue, avec l'erreur de décodage pour cause, puis reprend son poll. Une tâche de
+workflow retourne au serveur, qui la redistribue : dès que la clé est disponible, elle passe. Une
+tâche d'activité compte comme une tentative échouée au regard de sa politique de relance. L'échec
+transmet la classe et le message de l'erreur, jamais sa trace d'appels, qui pourrait citer la clé
+ou le texte en clair.
+
+Deux cas arrêtent encore le worker. Un long historique arrive en plusieurs pages, et le worker lit
+celles qui suivent la première pendant le rejeu : un payload indéchiffrable dans l'une de ces pages
+l'arrête. Un worker Nexus, lui, s'arrête sur tout payload indéchiffrable. Le ticket
+[#824](https://github.com/gplanchat/durable-dev/issues/824) suit ces deux cas. Faites tourner vos
+workers sous un superviseur qui les relance (systemd, Supervisor, Kubernetes), et alertez sur les
+arrêts répétés. Ni un worker ni un tableau de bord ne présente du chiffré comme s'il s'agissait de
 données.
 
 ---

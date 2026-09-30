@@ -6,8 +6,8 @@ bookFlatSection: false
 
 # Guide utilisateur
 
-Comment penser Durable, et comment s'en servir. Commencez par [Pourquoi Durable](why/) si vous
-hésitez encore ; la [page d'accueil](/fr/) plaide la même chose, de façon interactive.
+Le modèle de Durable, et la façon de s'en servir. Commencez par [Pourquoi Durable](why/) si vous
+hésitez encore ; la [page d'accueil](/fr/) présente les mêmes arguments sous forme interactive.
 
 | | |
 |---|---|
@@ -15,7 +15,7 @@ hésitez encore ; la [page d'accueil](/fr/) plaide la même chose, de façon int
 | [Paquets](packages/) | la bibliothèque, le bundle, le pilote Temporal : quoi installer, et quand |
 | [Premiers pas](getting-started/) | installation, configuration Symfony, un premier workflow, les commandes du worker |
 | [Concepts](concepts/) | workflows, activités, rejeu et backends, en français courant |
-| [Backends](backends/) | en mémoire, SQL (DBAL ou Illuminate) ou Temporal, et ce que chacun sait faire |
+| [Backends](backends/) | en mémoire, SQL (DBAL ou Illuminate) ou Temporal, et ce que chacun prend en charge |
 | [gRPC dans votre image de conteneur](container-images/) | les images `php-grpc`, et comment ajouter `ext-grpc` aux vôtres |
 | [Le tableau de bord](dashboard/) | la liste des runs et l'historique d'un run, les mêmes panneaux sur chaque hôte |
 | [Durable et le SDK PHP de Temporal](comparison/) | ce qui correspond à quoi, et le jeu Rector qui migre un projet |
