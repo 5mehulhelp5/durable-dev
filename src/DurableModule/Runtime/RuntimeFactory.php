@@ -18,6 +18,7 @@ use Gplanchat\Bridge\Temporal\WorkflowServiceClientFactory;
 use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Gplanchat\Durable\Activity\ActivityContractResolver;
 use Gplanchat\Durable\Activity\PayloadToContractMethodInvoker;
+use Gplanchat\Durable\Attribute\AsActivityHandler;
 use Gplanchat\Durable\Attribute\AsNexusServiceHandler;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Nexus\Serving\NexusHandlerDeclarations;
@@ -458,8 +459,17 @@ class RuntimeFactory
         $bindings = [];
 
         foreach ($this->activityHandlers as $handler) {
-            foreach (\class_implements($handler) ?: [] as $contract) {
+            // `#[AsActivityHandler(contract)]` narrows the handler to that one contract, as
+            // Symfony's ActivityHandlerPass does; without it, every activity interface it implements.
+            $named = (new \ReflectionClass($handler))->getAttributes(AsActivityHandler::class)[0] ?? null;
+            $contracts = null !== $named ? [$named->newInstance()->contract] : (\class_implements($handler) ?: []);
+
+            foreach ($contracts as $contract) {
                 foreach ($resolver->resolveActivityMethods($contract) as $method => $activityName) {
+                    if (null !== $named && !\method_exists($handler, $method)) {
+                        throw new \LogicException(\sprintf('Handler "%s" must implement %s::%s() for #[AsActivityHandler] (contract %s).', $handler::class, $contract, $method, $contract));
+                    }
+
                     $bindings[$activityName] = new PayloadToContractMethodInvoker($handler, $contract, $method);
                 }
             }
