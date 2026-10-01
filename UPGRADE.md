@@ -599,6 +599,17 @@ worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain a
 argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
 runtime factory pass theirs. Nothing to migrate.
 
+### A child memo key `durableExecutionId` or `durableWaitingOn` fails on every backend (#889)
+
+Durable writes both keys in a child's memo itself. The `ChildWorkflowOptions` constructor now
+throws `UnsupportedByBackendException` when `$memo` contains either key, on every backend. Before,
+only the Temporal bridge refused them, and the SQL and in-memory backends recorded them. The check
+runs when the options are built, so a run in flight that rebuilds such options during replay
+fails too.
+
+**What to do:** rename the memo key. A run in flight that used one of the two keys fails on its
+next replay.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

@@ -361,7 +361,10 @@ affiche sur l'enfant.
 > charge.
 
 `durableExecutionId` et `durableWaitingOn` sont des clés de mémo que Durable écrit lui-même. Sur
-Temporal, un mémo d'enfant qui utilise l'une d'elles lève `UnsupportedByBackendException`.
+tous les backends, `new ChildWorkflowOptions()` lève `UnsupportedByBackendException` quand le
+mémo utilise l'une d'elles. Une exécution qui construit de telles options échoue à cette ligne,
+y compris pendant le rejeu (le code du workflow qui tourne à nouveau depuis sa première ligne pour
+reprendre ; voir le [glossaire](../glossary/)).
 
 ---
 
