@@ -791,9 +791,16 @@ does not exist. The journal of the `memory` backend lives in the process, so a s
 When the `durableExecutionId` field of the `WorkflowExecutionStarted` memo holds a number, an empty
 string, `null`, an object or an array, the workflow worker used to read it as no id and fall back
 to the workflow id. A run whose workflow id differs from its execution id then journaled under the
-wrong id. Reading such a field now throws `\JsonException`, as a field that is not JSON already
-did: the workflow task fails and the worker does not fall back. A memo with no such field still
-falls back to the workflow id.
+wrong id. The worker no longer falls back: it answers the workflow task with
+`RespondWorkflowTaskFailed` and polls again. The failure message carries the error, and the cause
+is `WORKFLOW_WORKER_UNHANDLED_FAILURE`, as for a payload that fails to decode (#824). A field that
+is not JSON used to stop the worker process, and the next worker stopped on the same task; it now
+fails the task the same way. The server hands the task back, so the run makes no progress until
+it is terminated. A memo with no such field still falls back to the workflow id.
+
+`WorkflowTaskRunner::run()` reports a history that does not read, the started memo included, as
+`Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, with the `\JsonException` as the
+previous exception. Reading such a field directly throws `\JsonException`.
 
 `JournalExecutionIdResolver::durableExecutionIdFromStartedAttributes()` throws `\JsonException` in
 that case, where it threw `\RuntimeException`. `\JsonException` does not extend
@@ -807,7 +814,8 @@ with something other than a non-empty string, and code that calls
 **What to do:** no Rector rule applies, since the signatures do not change. Catch `\JsonException`
 next to `\RuntimeException` around `durableExecutionIdFromStartedAttributes()`. A client other than
 Durable must not write the `durableExecutionId` memo key. A run that already carries such a memo
-fails its workflow tasks. Terminate it and start it again through `WorkflowClient`.
+has each workflow task answered as failed. Find it by the `WorkflowTaskFailed` events in its
+history, terminate it and start it again through `WorkflowClient`.
 
 ## 0.1.0-beta1
 
