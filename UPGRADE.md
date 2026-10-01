@@ -467,15 +467,38 @@ analyser reports.
 
 ### Laravel: the clock and the Temporal client are bound by class (#879)
 
-`DurableServiceProvider` now binds the clock under `Psr\Clock\ClockInterface` and the Temporal
-workflow service client under `Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface`. The ids
-`durable.clock` and `durable.temporal.client` stay, as aliases of those bindings, and resolve to
-the same instances. `gplanchat/durable-filament` now resolves the clock by its interface.
+`DurableServiceProvider` now binds `Psr\Clock\ClockInterface` and
+`Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface`. The runtime and
+`gplanchat/durable-filament` read the clock through `ClockInterface`, which resolves
+`durable.clock` each time it is asked. Every route #617 documents keeps working for both: a clock
+bound under `durable.clock` with `instance()` or `singleton()`, before or after the provider
+registers, reaches the runtime and the dashboard. Binding `ClockInterface` reaches both as well.
 
-Nothing to migrate. A clock you bind under `durable.clock` before the provider registers stays the
-one both ids resolve. If you replace the clock after the provider registers, bind it under
-`ClockInterface` so that the runtime and the Filament dashboard both read it: a clock rebound
-under `durable.clock` at that point reaches the runtime only.
+**What breaks.** Durable now reads the clock your application binds under
+`Psr\Clock\ClockInterface`, instead of `SystemClock`:
+
+- If you bind `ClockInterface` before `DurableServiceProvider` registers, `durable.clock` resolves
+  to that clock too, and a clock you bind under `durable.clock` afterwards is ignored.
+- If you bind `ClockInterface` after it registers, for instance in `AppServiceProvider`, your
+  binding replaces Durable's, and `durable.clock` is no longer read.
+
+**What to do**, only if your application binds `ClockInterface` and Durable must not read that
+clock: bind `ClockInterface` as a delegate to `durable.clock`, without `singleton()`, so that it
+follows a later rebinding of `durable.clock`:
+
+```php
+$this->app->bind(\Psr\Clock\ClockInterface::class, fn($app) => $app->make('durable.clock'));
+```
+
+`durable.clock` stays `SystemClock` unless you bind another clock under it, before or after the
+provider registers. Your application's other PSR-20 consumers then read that same clock: Durable
+and your application can no longer read two different clocks. If you bind the delegate before
+`DurableServiceProvider` registers, bind `durable.clock` in the same place.
+
+The Temporal client is bound under its interface, and `durable.temporal.client` is now an alias of
+that binding. That id was never documented: an `instance('durable.temporal.client', …)` done after
+the provider registers no longer reaches `TemporalRuntimeAssembly`. Bind
+`WorkflowServiceClientInterface` instead.
 
 ## 0.1.0-beta1
 
