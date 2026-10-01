@@ -1260,8 +1260,7 @@ jobs:
                   # per test, 18 of this job's 19 minutes. 1 s is not the server's default: it only
                   # shortens setup. The tests keep their waits and assert the same things; the lag is
                   # still there, just 1 s instead of 10.
-                  # Updates are off by default before Server 1.25 (#860): WorkflowUpdateTest needs them on.
-                  printf 'system.namespaceCacheRefreshInterval:\n  - value: 1s\nfrontend.enableUpdateWorkflowExecution:\n  - value: true\n' > "$RUNNER_TEMP/temporal-dc.yaml"
+                  printf 'system.namespaceCacheRefreshInterval:\n  - value: 1s\n' > "$RUNNER_TEMP/temporal-dc.yaml"
                   docker run -d --name oldest-temporal --network oldest -p 7233:7233 \
                     -e DB=postgres12 -e DB_PORT=5432 -e POSTGRES_USER=temporal -e POSTGRES_PWD=temporal -e POSTGRES_SEEDS=oldest-pg \
                     -e DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/ci.yaml \
@@ -1286,8 +1285,9 @@ jobs:
                   done"
 
             # --fail-on-skipped: a missing variable or server turns the job red instead of green.
-            # WorkflowUpdateTest (#860): what 1.20 writes in an update's completed event.
-            - name: PHPUnit — the run catalogue, the visibility queries and updates on 1.20
+            # No WorkflowUpdateTest here: updates need Server 1.21 (#860). 1.20 drops the update's
+            # events when the same workflow task completes the workflow.
+            - name: PHPUnit — the run catalogue and the visibility queries on 1.20
               env:
                   DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
               run: >-
@@ -1297,7 +1297,6 @@ jobs:
                   tests/integration/Temporal/TemporalRunCatalogFailedFilterTest.php
                   tests/integration/Temporal/SearchAttributesTest.php
                   tests/integration/Temporal/ContinueAsNewKeepsTheExecutionIdTest.php
-                  tests/integration/Temporal/WorkflowUpdateTest.php
 
             - name: Server logs
               if: failure()
