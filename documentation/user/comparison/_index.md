@@ -546,11 +546,12 @@ boundary.
 One limit is deliberate:
 
 - **Temporal backend only.** Nexus routes to an endpoint served elsewhere. A backend that keeps its
-  journal in one database has no such route and no fallback that keeps the call's meaning. The DBAL backend
-  therefore
-  **fails immediately** with `NexusUnsupportedByBackendException`, which names the backend and
-  what to do instead, so the workflow does not wait for a result nobody will produce. On the
-  handler side, the same check fails **when the container is built**, not at request time, because
+  journal itself, in memory or in one database, has no such route and no fallback that keeps the call's meaning. The in-memory, DBAL
+  and Illuminate backends therefore
+  **fail immediately** with `NexusUnsupportedByBackendException`, whose message says to use the
+  Temporal backend, so the workflow does not wait for a result nobody will produce. On the
+  handler side, on Symfony, the check fails **when the container is built** if
+  `durable.temporal.dsn` is not set, not at request time, because
   a handler with no route never receives a request at all.
 
 [DUR036](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR036-nexus-caller-only-and-the-backend-asymmetry.md)
