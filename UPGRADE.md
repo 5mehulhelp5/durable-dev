@@ -786,6 +786,29 @@ does not exist. The journal of the `memory` backend lives in the process, so a s
 `php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
 `illuminate` and `temporal`.
 
+### Temporal: a started memo whose execution id is not a non-empty string fails the task (#890)
+
+When the `durableExecutionId` field of the `WorkflowExecutionStarted` memo holds a number, an empty
+string, `null`, an object or an array, the workflow worker used to read it as no id and fall back
+to the workflow id. A run whose workflow id differs from its execution id then journaled under the
+wrong id. Reading such a field now throws `\JsonException`, as a field that is not JSON already
+did: the workflow task fails and the worker does not fall back. A memo with no such field still
+falls back to the workflow id.
+
+`JournalExecutionIdResolver::durableExecutionIdFromStartedAttributes()` throws `\JsonException` in
+that case, where it threw `\RuntimeException`. `\JsonException` does not extend
+`\RuntimeException`. It still throws `\RuntimeException` when the field is absent.
+`JournalExecutionIdResolver::fromMemo()` still returns `null` for such a field.
+
+**Who is affected:** a run started by another client that writes `durableExecutionId` in its memo
+with something other than a non-empty string, and code that calls
+`durableExecutionIdFromStartedAttributes()` and catches only `\RuntimeException`.
+
+**What to do:** no Rector rule applies, since the signatures do not change. Catch `\JsonException`
+next to `\RuntimeException` around `durableExecutionIdFromStartedAttributes()`. A client other than
+Durable must not write the `durableExecutionId` memo key. A run that already carries such a memo
+fails its workflow tasks. Terminate it and start it again through `WorkflowClient`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
