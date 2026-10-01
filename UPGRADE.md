@@ -681,6 +681,18 @@ that binding. That id was never documented: an `instance('durable.temporal.clien
 the provider registers no longer reaches `TemporalRuntimeAssembly`. Bind
 `WorkflowServiceClientInterface` instead.
 
+### A child memo key `durableExecutionId` or `durableWaitingOn` fails on every backend (#889)
+
+Durable reserves both keys: on Temporal it writes them in a child's memo itself. The
+`ChildWorkflowOptions` constructor now throws `UnsupportedByBackendException` when `$memo`
+contains either key, on every backend. Before, only the Temporal bridge refused them, and the SQL
+and in-memory backends recorded them. The check runs when the options are built, so a run in
+flight that rebuilds such options during replay fails too.
+
+**What to do:** rename the memo key before you deploy this version. Replay compares a child's type
+and input with the journal, not its memo, so a run in flight resumes with the new key. A run that
+replays on code still using one of the two keys fails at `new ChildWorkflowOptions()`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
