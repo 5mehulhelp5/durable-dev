@@ -890,6 +890,37 @@ These still take or carry a string, for a later part of #682: `ActivityEventJour
 `ContinuationCapReachedException`. The wire messages and the ids an `AwaitedFact` carries keep
 their strings.
 
+### Temporal: a started memo whose execution id is not a non-empty string fails the task (#890)
+
+When the `durableExecutionId` field of the `WorkflowExecutionStarted` memo holds a number, an empty
+string, `null`, an object or an array, the workflow worker used to read it as no id and fall back
+to the workflow id. A run whose workflow id differs from its execution id then journaled under the
+wrong id. The worker no longer falls back: it answers the workflow task with
+`RespondWorkflowTaskFailed` and polls again. The failure message carries the error, and the cause
+is `WORKFLOW_WORKER_UNHANDLED_FAILURE`, as for a payload that fails to decode (#824). A field that
+is not JSON used to stop the worker process, and the next worker stopped on the same task; it now
+fails the task the same way. The server hands the task back, so the run makes no progress until
+it is terminated. A memo with no such field still falls back to the workflow id.
+
+`WorkflowTaskRunner::run()` reports a history that does not read, the started memo included, as
+`Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, with the `\JsonException` as the
+previous exception. Reading such a field directly throws `\JsonException`.
+
+`JournalExecutionIdResolver::durableExecutionIdFromStartedAttributes()` throws `\JsonException` in
+that case, where it threw `\RuntimeException`. `\JsonException` does not extend
+`\RuntimeException`. It still throws `\RuntimeException` when the field is absent.
+`JournalExecutionIdResolver::fromMemo()` still returns `null` for such a field.
+
+**Who is affected:** a run started by another client that writes `durableExecutionId` in its memo
+with something other than a non-empty string, and code that calls
+`durableExecutionIdFromStartedAttributes()` and catches only `\RuntimeException`.
+
+**What to do:** no Rector rule applies, since the signatures do not change. Catch `\JsonException`
+next to `\RuntimeException` around `durableExecutionIdFromStartedAttributes()`. A client other than
+Durable must not write the `durableExecutionId` memo key. A run that already carries such a memo
+has each workflow task answered as failed. Find it by the `WorkflowTaskFailed` events in its
+history, terminate it and start it again through `WorkflowClient`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
