@@ -301,15 +301,18 @@ jobs:
                   coverage: none
 
             # Composer's cache directory depends on the runner (#767): ask Composer instead of guessing.
+            # No lock file here, so the key also carries the ISO week (#910): the cache renews weekly.
             - name: Composer cache directory
               id: composer-cache
-              run: echo "dir=$(composer config --global cache-dir)" >> "$GITHUB_OUTPUT"
+              run: |
+                  echo "dir=$(composer config --global cache-dir)" >> "$GITHUB_OUTPUT"
+                  echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
 
             - name: Cache Composer
               uses: actions/cache@v6
               with:
                   path: ${{ steps.composer-cache.outputs.dir }}
-                  key: filament-${{ matrix.php-version }}-${{ hashFiles('src/**/composer.json') }}
+                  key: filament-${{ matrix.php-version }}-${{ hashFiles('src/**/composer.json') }}-${{ steps.composer-cache.outputs.week }}
                   restore-keys: filament-${{ matrix.php-version }}-
 
             - name: A project that installs the package
