@@ -417,7 +417,8 @@ Donnez au journal une connexion Doctrine à lui, `durable`, à côté de la conn
 l'application. Sur une connexion partagée, les écritures du journal s'imbriquent dans les transactions
 métier : quand l'une est annulée, ce que le journal a écrit l'est aussi, et une exécution en échec
 disparaît. La page du
-[backend DBAL](../backends/#le-backend-dbal) explique ce choix (DUR054).
+[backend DBAL](../backends/#le-backend-dbal) explique ce choix (DUR054). Dans `config/packages/doctrine.yaml`, remplacez la section `dbal:`
+écrite par la recette par celle-ci :
 
 ```yaml
 # config/packages/doctrine.yaml : le journal sur une connexion à lui
@@ -435,6 +436,7 @@ La ligne ci-dessous fait pointer `durable` vers la même base que `DATABASE_URL`
 sont deux sessions : les transactions du journal restent séparées de celles de l'application. Une
 base et un utilisateur SQL propres à Durable tiennent en plus le code métier à l'écart des tables du
 journal.
+
 ```yaml
 # .env.local
 DURABLE_DATABASE_URL=${DATABASE_URL}
