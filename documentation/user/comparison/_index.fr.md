@@ -594,8 +594,8 @@ migration, et reste une rupture.
 
 **Prenez le SDK PHP de Temporal** quand vous opérez déjà un cluster Temporal, que vous voulez le
 client officiellement maintenu et sa parité entre langages, que vous avez besoin du versionnage des
-**workers** (identifiants de build, épinglage d'une exécution à une version de worker) ou d'un
-**gestionnaire** Nexus, et que RoadRunner est acceptable dans votre déploiement.
+**workers** (identifiants de build, épinglage d'une exécution à une version de worker), et que
+RoadRunner est acceptable dans votre déploiement.
 
 **Vous venez du SDK ?** `gplanchat/durable-rector` fait la partie mécanique de la migration. Il
 convertit les attributs et les classes d'échec, et conserve les **noms de type** de workflow et
@@ -609,8 +609,8 @@ sachiez avant de commencer si la migration vous est seulement ouverte.
 **Prenez Durable** quand vous voulez l'exécution durable sans ajouter un second moteur à votre
 application, quand une seule base SQL est la bonne empreinte opérationnelle, quand vous voulez une
 logique de workflow couverte par des tests unitaires sans infrastructure, ou quand vous avez besoin
-d'**appeler** des opérations Nexus depuis PHP tout court. Dans chaque cas, vous devez pouvoir accepter une préversion, avec des
-ruptures possibles entre versions.
+d'**appeler ou de servir** des opérations Nexus depuis PHP tout court. Dans chaque cas, vous devez
+pouvoir accepter une préversion, avec des ruptures possibles entre versions.
 
 ---
 

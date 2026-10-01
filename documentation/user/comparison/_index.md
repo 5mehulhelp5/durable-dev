@@ -577,7 +577,7 @@ and it is still a breaking change.
 
 **Use the Temporal PHP SDK** when you already operate a Temporal cluster, want the officially
 maintained client with cross-language parity, need **worker** versioning (build ids, pinning a run
-to a worker version) or a Nexus **handler**, and RoadRunner is acceptable in your deployment.
+to a worker version), and RoadRunner is acceptable in your deployment.
 
 **Coming from the SDK?** `gplanchat/durable-rector` does the mechanical part of the migration. It
 converts the attributes and the failure classes, and keeps the workflow and activity **type
@@ -590,7 +590,7 @@ open to you at all.
 
 **Use Durable** when you want durable execution without adding a second runtime to your
 application, when a single SQL database is the right operational footprint, when you want workflow
-logic covered by unit tests that need no infrastructure, or when you need to **call** Nexus
+logic covered by unit tests that need no infrastructure, or when you need to **call or serve** Nexus
 operations from PHP at all. In each case, you need to be able to accept a pre-release, with possible
 breaking changes between releases.
 
