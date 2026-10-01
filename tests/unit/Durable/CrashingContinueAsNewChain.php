@@ -29,6 +29,10 @@ require_once __DIR__ . '/AnAsyncChildThatContinuesAsNewReportsToItsParentTest.ph
 /**
  * child-1, linked to parent-1, continues twice. The chain is also every store the handler writes
  * to, and each write can stop the process once, at the point the test names.
+ *
+ * Its dispatcher saves the run's metadata, as the real ones do. Deferred, it holds what it sends
+ * until the handler returns and drops it when the handler throws, as Messenger's
+ * `DispatchAfterCurrentBusStamp` does. Otherwise it sends at once, as the Laravel queue does.
  */
 final class CrashingContinueAsNewChain implements WorkflowMetadataStore, ChildWorkflowParentLinkStoreInterface, EventStoreInterface, WorkflowResumeDispatcher
 {
@@ -40,7 +44,10 @@ final class CrashingContinueAsNewChain implements WorkflowMetadataStore, ChildWo
     private readonly ResumeWorkflowHandler $handler;
     private bool $crashed = false;
 
-    public function __construct(private readonly string $point)
+    /** @var list<string> */
+    private array $held = [];
+
+    public function __construct(private readonly string $point, private readonly bool $deferred = true)
     {
         $this->journal = new InMemoryEventStore();
         $this->links = new InMemoryChildWorkflowParentLinkStore();
@@ -63,7 +70,15 @@ final class CrashingContinueAsNewChain implements WorkflowMetadataStore, ChildWo
 
     public function resume(string $executionId): void
     {
-        ($this->handler)(new ResumeWorkflowMessage($executionId));
+        try {
+            ($this->handler)(new ResumeWorkflowMessage($executionId));
+        } catch (\Throwable $e) {
+            $this->held = [];
+
+            throw $e;
+        }
+        array_push($this->startedRuns, ...$this->held);
+        $this->held = [];
     }
 
     /** Every dispatch is delivered, the duplicates too. */
@@ -178,6 +193,11 @@ final class CrashingContinueAsNewChain implements WorkflowMetadataStore, ChildWo
     public function dispatchNewWorkflowRun(ExecutionId $executionId, string $workflowType, array $payload): void
     {
         $this->crashAt('dispatch');
-        $this->startedRuns[] = $executionId->toString();
+        $this->metadata->save($executionId, $workflowType, $payload);
+        if ($this->deferred) {
+            $this->held[] = $executionId->toString();
+        } else {
+            $this->startedRuns[] = $executionId->toString();
+        }
     }
 }

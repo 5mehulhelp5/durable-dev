@@ -22,23 +22,31 @@ require_once __DIR__ . '/CrashingContinueAsNewChain.php';
 final class AContinueAsNewSurvivesACrashTest extends TestCase
 {
     /**
-     * @return iterable<string, array{string}>
+     * Each step, with sends held until the handler returns (Messenger) or sent at once (Laravel queue).
+     *
+     * @return iterable<string, array{string, bool}>
      */
     public static function crashPoints(): iterable
     {
-        yield 'after the next run is linked' => ['link'];
-        yield 'after the next run is saved' => ['save'];
-        yield 'at the start of the next run' => ['append'];
-        yield 'at the dispatch of the next run' => ['dispatch'];
-        yield 'before the old run is marked completed' => ['before markCompleted'];
-        yield 'after the old run is marked completed' => ['after markCompleted'];
-        yield 'after the old run is unlinked' => ['unlink'];
+        $points = [
+            'after the next run is linked' => 'link',
+            'after the next run is saved' => 'save',
+            'at the start of the next run' => 'append',
+            'at the dispatch of the next run' => 'dispatch',
+            'before the old run is marked completed' => 'before markCompleted',
+            'after the old run is marked completed' => 'after markCompleted',
+            'after the old run is unlinked' => 'unlink',
+        ];
+        foreach ($points as $name => $point) {
+            yield "{$name}, sends held" => [$point, true];
+            yield "{$name}, sends at once" => [$point, false];
+        }
     }
 
     #[DataProvider('crashPoints')]
-    public function testTheChainEndsOnceWhereverTheCrash(string $point): void
+    public function testTheChainEndsOnceWhereverTheCrash(string $point, bool $deferred): void
     {
-        $chain = new CrashingContinueAsNewChain($point);
+        $chain = new CrashingContinueAsNewChain($point, $deferred);
 
         try {
             $chain->resume('child-1');
@@ -63,19 +71,16 @@ final class AContinueAsNewSurvivesACrashTest extends TestCase
         self::assertSame('child-1', $outcomes[0]->childExecutionId()->toString());
         self::assertSame('done at 2', $outcomes[0]->result());
 
-        // A crash between markCompleted() and unlink() leaves a link on a completed run, which no
-        // resume reads again: the review of #870 accepted it.
-        $left = array_map(strval(...), $chain->links->getChildExecutionIdsForParent(ExecutionId::fromString('parent-1')));
-        self::assertSame('after markCompleted' === $point ? ['child-1'] : [], $left);
+        self::assertSame([], $chain->links->getChildExecutionIdsForParent(ExecutionId::fromString('parent-1')), 'no link left');
     }
 
     /**
-     * The first attempt dispatched the next run before it stopped, and the chain finished before
-     * the redelivery came: the redelivery leaves the finished runs as they are.
+     * The first attempt sent the next run before it stopped, and the chain finished before the
+     * redelivery came: the redelivery leaves the finished runs as they are.
      */
     public function testARedeliveryAfterTheChainEndedReopensNothing(): void
     {
-        $chain = new CrashingContinueAsNewChain('before markCompleted');
+        $chain = new CrashingContinueAsNewChain('before markCompleted', deferred: false);
 
         try {
             $chain->resume('child-1');
@@ -94,5 +99,34 @@ final class AContinueAsNewSurvivesACrashTest extends TestCase
         }
         self::assertCount(1, $chain->eventsOf($runs[1], ExecutionCompleted::class), 'the last run completes once');
         self::assertCount(1, $chain->eventsOf('parent-1', ChildWorkflowCompleted::class));
+    }
+
+    /**
+     * Before #881, the old run was marked completed and unlinked first: a crash at the save left
+     * the next run linked, with no row and no start. A redelivery of the old run now resumes it.
+     */
+    public function testARedeliveryRepairsAChainBrokenBeforeTheFix(): void
+    {
+        $chain = new CrashingContinueAsNewChain('append');
+
+        try {
+            $chain->resume('child-1');
+            self::fail('No crash at the start of the next run.');
+        } catch (\LogicException) {
+        }
+        $next = $chain->eventsOf('child-1', WorkflowContinuedAsNew::class)[0]->newExecutionId();
+        self::assertNotNull($next);
+        $chain->delete($next);
+        $chain->markCompleted(ExecutionId::fromString('child-1'));
+        $chain->unlink(ExecutionId::fromString('child-1'));
+
+        $chain->resume('child-1');
+        $chain->driveStartedRuns();
+
+        self::assertSame($next->toString(), $chain->startedRuns[0] ?? null, 'the run the journal names');
+        self::assertCount(1, $chain->eventsOf($next->toString(), ExecutionStarted::class));
+        $outcomes = $chain->eventsOf('parent-1', ChildWorkflowCompleted::class);
+        self::assertCount(1, $outcomes);
+        self::assertSame('done at 2', $outcomes[0]->result());
     }
 }
