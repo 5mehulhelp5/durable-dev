@@ -615,8 +615,10 @@ journal read. `read()` returns the same history as before.
 parameter, with no options or with literal `ActivityOptions::of()` values. The message gives the
 attribute and the `@param ActivityStub<Contract>` docblock to write. Nothing is rewritten. The rule
 stays silent when the move would change what runs: computed options, `default()`, an empty
-`taskQueue`, or a stub that a signal, helper or closure reads. The extension's README lists every
-case.
+`taskQueue`, or a stub that a signal, helper or closure reads. Code that already fails, such as
+`of(0)` or a contract with no `#[AsActivityMethod]`, is reported with a warning: after the move,
+the worker refuses to register the workflow. The extension's README lists every case, and the
+shapes the rule does not see.
 
 **Who is affected:** a project that runs PHPStan with the extension and builds activity stubs with
 `activityStub()`. Its analysis can report new errors after the upgrade.
