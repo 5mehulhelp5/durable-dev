@@ -53,7 +53,7 @@ final class TimerCancellationTest extends TestCase
         // The Messenger wake calculation must no longer see a pending deadline.
         self::assertNull(TimerWakeDelayCalculator::millisecondsUntilNextTimerDue(
             $this->eventStore,
-            'race-1',
+            ExecutionId::fromString('race-1'),
             microtime(true),
         ));
     }
