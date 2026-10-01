@@ -8,11 +8,13 @@ use Gplanchat\Durable\Event\ChildWorkflowCompleted;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
+use Gplanchat\Durable\Exception\WorkflowStuckException;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
 use Gplanchat\Durable\WorkflowEnvironment;
 use PHPUnit\Framework\TestCase;
 use unit\Durable\Fixtures\CounterWorkflow;
+use unit\Durable\Fixtures\ForeverWorkflow;
 
 /**
  * A run that calls `continueAsNew()` hands over to the next one, as `ResumeWorkflowHandler` does on
@@ -65,6 +67,40 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
             $this->eventsOf($env, 'parent-0'),
             static fn(Event $event): bool => $event instanceof ChildWorkflowCompleted,
         ));
+    }
+
+    /**
+     * A chain longer than the cap fails instead of running forever, and names where it started (#888).
+     */
+    public function testAWorkflowThatAlwaysContinuesAsNewFailsAtTheDefaultCap(): void
+    {
+        $env = WorkflowTestEnvironment::inMemory();
+
+        try {
+            $env->runWorkflowClass(ForeverWorkflow::class, ['n' => 0], 'forever-0');
+            self::fail('The chain should have stopped at the cap.');
+        } catch (WorkflowStuckException $e) {
+            self::assertSame('forever-0', $e->executionId);
+            self::assertStringContainsString('forever-0', $e->getMessage());
+            self::assertStringContainsString('maxContinuations (10)', $e->getMessage());
+        }
+    }
+
+    public function testAChainOfExactlyTheCapStillReturnsTheLastRunsResult(): void
+    {
+        $env = WorkflowTestEnvironment::inMemory(maxContinuations: 2);
+
+        self::assertSame('done at 2', $env->runWorkflowClass(CounterWorkflow::class, ['n' => 0], 'counter-0'));
+    }
+
+    public function testTheCapIsConfigurable(): void
+    {
+        $env = WorkflowTestEnvironment::inMemory(maxContinuations: 1);
+
+        $this->expectException(WorkflowStuckException::class);
+        $this->expectExceptionMessage('Workflow counter-0 continued as new more often than maxContinuations (1) allows');
+
+        $env->runWorkflowClass(CounterWorkflow::class, ['n' => 0], 'counter-0');
     }
 
     private function successorOf(WorkflowTestEnvironment $env, string $executionId): ?string
