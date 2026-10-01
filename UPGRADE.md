@@ -942,14 +942,16 @@ the Laravel provider and the Magento module need no change.
 **What to do:** nothing, unless you build `PayloadCodecWorkflowServiceClient` yourself: pass it a
 PSR-3 logger to get the record. No Rector rule applies.
 
-### Temporal: an activity input that is not JSON fails the task, and a Nexus handler failure is logged (#938)
+### Temporal: an unreadable activity input fails the task, and a Nexus handler failure is logged (#938)
 
 An activity task whose input is not JSON used to throw `\JsonException` out of
-`TemporalActivityWorker::pollOnce()`: the worker process stopped, and the next worker stopped on the
-same task. The worker now answers the task with `RespondActivityTaskFailed`, with the
-`\JsonException` class and message, no stack trace and the cause
-`ACTIVITY_WORKER_UNHANDLED_FAILURE`, then polls again. The server counts it as a failed attempt
-under the activity's retry policy.
+`TemporalActivityWorker::pollOnce()`, and one whose input is JSON of the wrong shape (no input, not
+an object, no `executionId`, `activityId` or `activityName`) threw `\InvalidArgumentException`. The
+worker process stopped, and the next worker stopped on the same task. The worker now answers the
+task with `RespondActivityTaskFailed`, with the exception's class and message, no stack trace and
+the cause `ACTIVITY_WORKER_UNHANDLED_FAILURE`, then polls again. The failure is non-retryable,
+since the same input fails the same way on every attempt: the activity fails at once, whatever its
+retry policy. An undecodable payload (#775) stays retryable, since its key can come back.
 
 When a Nexus operation handler throws, a non-JSON input included, the Nexus worker still answers a
 retryable `INTERNAL` error with the message only. It now also logs it.
@@ -961,7 +963,7 @@ Both log an `error` record whose `exception` is the original error, with its sta
 optional fourth one, `?LoggerInterface $logger`. The Symfony bundle, the Laravel provider and the
 Magento module pass theirs.
 
-**Who is affected:** a deployment that relied on a non-JSON activity input stopping the worker.
+**Who is affected:** a deployment that relied on an unreadable activity input stopping the worker.
 Nobody needs to change code: the arguments are optional.
 
 **What to do:** nothing, unless you build either worker yourself: pass it a PSR-3 logger to get the

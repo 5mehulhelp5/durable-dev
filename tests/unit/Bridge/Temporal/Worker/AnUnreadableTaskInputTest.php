@@ -17,6 +17,7 @@ use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Transport\NoopActivityTransport;
 use Gplanchat\Durable\Worker\ActivityMessageProcessor;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;
@@ -42,12 +43,27 @@ final class AnUnreadableTaskInputTest extends TestCase
     /** @var list<array{string, string, array<string, mixed>}> */
     private array $records = [];
 
-    public function testANonJsonActivityInputFailsTheTaskAndTheWorkerPollsAgain(): void
+    /**
+     * @return iterable<string, array{?Payloads, class-string<\Throwable>, string}>
+     */
+    public static function unreadableActivityInputs(): iterable
+    {
+        yield 'not JSON' => [new Payloads(['payloads' => [self::notJson()]]), \JsonException::class, 'Syntax error'];
+        yield 'no input' => [null, \InvalidArgumentException::class, 'missing input'];
+        yield 'not an object' => [new Payloads(['payloads' => [self::json('"text"')]]), \InvalidArgumentException::class, 'expected JSON object'];
+        yield 'no activityId' => [new Payloads(['payloads' => [self::json('{"executionId":"e-1","activityName":"charge"}')]]), \InvalidArgumentException::class, '"activityId"'];
+    }
+
+    /**
+     * @param class-string<\Throwable> $class
+     */
+    #[DataProvider('unreadableActivityInputs')]
+    public function testAnUnreadableActivityInputFailsTheTaskForGoodAndTheWorkerPollsAgain(?Payloads $input, string $class, string $message): void
     {
         $failed = null;
         $client = $this->createMock(WorkflowServiceClientInterface::class);
         $client->expects(self::exactly(2))->method('PollActivityTaskQueue')->willReturnOnConsecutiveCalls(
-            new PollActivityTaskQueueResponse(['task_token' => 'act-token', 'activity_id' => 'act-1', 'input' => new Payloads(['payloads' => [self::notJson()]])]),
+            new PollActivityTaskQueueResponse(['task_token' => 'act-token', 'activity_id' => 'act-1', 'input' => $input]),
             new PollActivityTaskQueueResponse(),
         );
         $client->expects(self::once())->method('RespondActivityTaskFailed')->willReturnCallback(static function (RespondActivityTaskFailedRequest $request) use (&$failed): RespondActivityTaskFailedResponse {
@@ -71,11 +87,12 @@ final class AnUnreadableTaskInputTest extends TestCase
 
         self::assertInstanceOf(RespondActivityTaskFailedRequest::class, $failed);
         self::assertSame('act-token', $failed->getTaskToken());
-        self::assertSame(\JsonException::class, $failed->getFailure()?->getApplicationFailureInfo()?->getType());
-        self::assertStringContainsString('Syntax error', $failed->getFailure()->getMessage());
+        self::assertSame($class, $failed->getFailure()?->getApplicationFailureInfo()?->getType());
+        self::assertTrue($failed->getFailure()->getApplicationFailureInfo()->getNonRetryable(), 'the same input fails the same way on every attempt');
+        self::assertStringContainsString($message, $failed->getFailure()->getMessage());
         self::assertSame('', $failed->getFailure()->getStackTrace(), 'a stack trace may quote the input');
         self::assertSame(ActivityTaskFailedCause::ACTIVITY_TASK_FAILED_CAUSE_ACTIVITY_WORKER_UNHANDLED_FAILURE, $failed->getCause());
-        $context = $this->assertOneErrorRecord(\JsonException::class);
+        $context = $this->assertOneErrorRecord($class);
         self::assertSame('RespondActivityTaskFailed', $context['rpc'] ?? null);
         self::assertSame('act-1', $context['activity_id'] ?? null);
     }
@@ -142,6 +159,11 @@ final class AnUnreadableTaskInputTest extends TestCase
 
     private static function notJson(): Payload
     {
-        return new Payload(['metadata' => ['encoding' => 'json/plain'], 'data' => '{not json']);
+        return self::json('{not json');
+    }
+
+    private static function json(string $data): Payload
+    {
+        return new Payload(['metadata' => ['encoding' => 'json/plain'], 'data' => $data]);
     }
 }
