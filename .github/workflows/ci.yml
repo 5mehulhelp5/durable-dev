@@ -288,6 +288,7 @@ jobs:
                 include:
                     - { php-version: '8.2', filament: '^3.3', deps: 'lowest', label: 'Filament 3 lowest' }
                     - { php-version: '8.4', filament: '^4.0', deps: 'highest', label: 'Filament 4 highest' }
+                    - { php-version: '8.5', filament: '^4.0', deps: 'highest', label: 'Filament 4 highest' }
         steps:
             - uses: actions/checkout@v7
 
@@ -339,18 +340,21 @@ jobs:
 
             # Only the Filament dimension moves, as in the laravel job: an unfiltered `--prefer-lowest`
             # would lower phpunit and the bridge's dependencies too. The first update writes the lock
-            # the partial one starts from.
+            # the partial one starts from. `--with-dependencies` lets filament/* drag livewire and the
+            # rest of its own tree down with it; without it they stay locked at their highest and hold
+            # filament up. The floor is 3.3.53 and livewire 3.8.3: every version below is blocked by a
+            # Packagist security advisory (filament/forms <=3.3.52, livewire <=3.8.2).
             - name: Composer update
               working-directory: /tmp/filament-app
               run: |
                 composer update --no-interaction --prefer-dist --no-progress
                 composer update --no-interaction --prefer-dist --no-progress \
-                  ${{ matrix.deps == 'lowest' && '--prefer-lowest' || '' }} 'filament/*'
+                  ${{ matrix.deps == 'lowest' && '--prefer-lowest --with-dependencies' || '' }} 'filament/*'
 
             - name: Filament line actually installed, and the bridge
               working-directory: /tmp/filament-app
               run: |
-                for package in filament/filament laravel/framework gplanchat/durable-bridge-temporal; do
+                for package in filament/filament livewire/livewire laravel/framework gplanchat/durable-bridge-temporal; do
                   composer show "$package" --no-ansi | grep -E '^(name|versions) '
                 done
                 test -e vendor/gplanchat/durable-bridge-temporal
