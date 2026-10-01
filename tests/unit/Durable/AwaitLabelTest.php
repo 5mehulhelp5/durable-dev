@@ -97,7 +97,7 @@ final class AwaitLabelTest extends TestCase
         };
         foreach (['start', 'resume'] as $pass) {
             try {
-                $engine->{$pass}('exec-1', $workflow);
+                $engine->{$pass}(ExecutionId::fromString('exec-1'), $workflow);
             } catch (WorkflowSuspendedException) {
             }
         }

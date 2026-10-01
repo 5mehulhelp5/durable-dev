@@ -146,7 +146,6 @@ final class WorkflowFiberDriverTest extends TestCase
         );
 
         return (new WorkflowFiberDriver($lifecycle))->run(
-            'exec-1',
             $context,
             new WorkflowEnvironment($context, $runtime),
             $handler,
