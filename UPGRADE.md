@@ -613,7 +613,8 @@ journal read. `read()` returns the same history as before.
 A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
 `INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
 and the server message, and the worker polls again. Any other gRPC error still propagates out of
-`WorkflowTaskProcessor::processOne()`. Nothing to migrate.
+`WorkflowTaskProcessor::processOne()`. A `RespondWorkflowTaskCompleted` rejected with `NOT_FOUND`
+is now logged the same way (#891). Nothing to migrate.
 
 ### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
 
