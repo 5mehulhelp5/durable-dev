@@ -918,6 +918,9 @@ existed and has no recorded work after it, for example one waiting only on a con
 signal, gets `$maxSupported` from `version()`, where the SDK returns `DEFAULT_VERSION`. The
 docblock of `ExecutionContext::version()` describes this limit.
 
+A `Workflow::getVersion() — no equivalent yet` marker written by an earlier run of the set stays
+where it is. Delete it by hand.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
