@@ -19,11 +19,18 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
 {
     private const DIR = __DIR__ . '/Fixtures/StubCouldBeParameter/';
 
-    private const TIP = 'Keep activityStub() when the options are computed at run time, or when a signal, update or helper method, or a closure, uses the stub. Otherwise ignore this with the identifier durable.activityStubCouldBeParameter.';
+    private const TIP = 'Keep activityStub() when the options are computed at run time, or when a signal, update or helper method, or a closure, uses the stub. The rule does not see another method calling the workflow method, __call, reflection or get_object_vars() reaching the property, or the local name used before the stub is built. Otherwise ignore this with the identifier durable.activityStubCouldBeParameter.';
+
+    private const REFUSED = ' Warning: after the move, the worker refuses to register the workflow: %s.';
 
     protected function getRule(): Rule
     {
-        return new ActivityStubCouldBeParameterRule();
+        return new ActivityStubCouldBeParameterRule(self::createReflectionProvider());
+    }
+
+    public static function getAdditionalConfigFiles(): array
+    {
+        return [...parent::getAdditionalConfigFiles(), __DIR__ . '/stub-could-be-parameter.neon'];
     }
 
     public function testALocalStubWithoutOptionsIsReported(): void
@@ -55,6 +62,29 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
     }
 
     /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function refusedAtRegistration(): iterable
+    {
+        // The source already fails, on every run or on a call; the move brings the failure
+        // forward to the worker's start. Still reported, with the warning.
+        yield 'of(0)' => ['zero-attempts.php', 'OrderActivities', ', attempts: 0|attempts: 0 is not a number of attempts'];
+        yield 'an unknown nonRetryable class' => ['unknown-non-retryable.php', 'OrderActivities', ', attempts: 3, nonRetryable: [\NoSuchException::class]|nonRetryable: NoSuchException is not a \Throwable class'];
+        yield 'a nonRetryable self::class' => ['self-non-retryable.php', 'OrderActivities', ', attempts: 3, nonRetryable: [self::class]|nonRetryable: unit\DurablePhpstan\Fixtures\StubCouldBeParameter\SelfNonRetryable is not a \Throwable class'];
+        yield 'a contract with no #[AsActivityMethod]' => ['contract-without-activity-method.php', 'Countable', '|Countable declares no #[AsActivityMethod]'];
+    }
+
+    #[DataProvider('refusedAtRegistration')]
+    public function testAMoveThatFailsAtRegistrationIsReportedWithAWarning(string $file, string $contract, string $expected): void
+    {
+        [$fields, $reason] = explode('|', $expected);
+        $line = str_contains($file, 'contract-without') ? 15 : 17;
+        $this->analyse([self::DIR . $file], [
+            [self::message('run', 'orders', $fields, $contract) . \sprintf(self::REFUSED, $reason), $line, self::TIP],
+        ]);
+    }
+
+    /**
      * @return iterable<string, array{string}>
      */
     public static function silentCases(): iterable
@@ -70,6 +100,16 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
         yield 'a stub read inside a closure' => ['closure-reads-stub.php'];
         yield 'a class with no workflow method' => ['not-a-workflow.php'];
         yield 'a workflow method an interface declares' => ['contract-interface.php'];
+        yield 'a class that extends another' => ['extends-a-class.php'];
+        yield 'a class that uses a trait' => ['uses-a-trait.php'];
+        yield 'an activityId, which the attribute cannot carry' => ['activity-id.php'];
+        yield 'a constructor that reads the stub it built' => ['constructor-reads-stub.php'];
+        yield 'a local name assigned twice' => ['name-assigned-twice.php'];
+        yield 'a local name that is already a parameter' => ['name-is-a-parameter.php'];
+        yield 'a stub read inside an arrow function' => ['arrow-fn-reads-stub.php'];
+        yield 'a property name read inside an anonymous class' => ['anonymous-class-reads-stub.php'];
+        yield 'a nullsafe read in a signal method' => ['nullsafe-read-in-signal.php'];
+        yield 'a dynamic read in a signal method' => ['dynamic-read-in-signal.php'];
     }
 
     #[DataProvider('silentCases')]
@@ -78,13 +118,14 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
         $this->analyse([self::DIR . $file], []);
     }
 
-    private static function message(string $method, string $name, string $fields): string
+    private static function message(string $method, string $name, string $fields, string $contract = 'OrderActivities'): string
     {
         return \sprintf(
-            'Activity stub $%2$s could be a parameter of %1$s(): #[Activities(OrderActivities::class%3$s)] ActivityStub $%2$s, documented with @param ActivityStub<OrderActivities> $%2$s.',
+            'Activity stub $%2$s could be a parameter of %1$s(): #[Activities(%4$s::class%3$s)] ActivityStub $%2$s, documented with @param ActivityStub<%4$s> $%2$s.',
             $method,
             $name,
             $fields,
+            $contract,
         );
     }
 }

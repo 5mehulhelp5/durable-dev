@@ -1,0 +1,4 @@
+# The contracts the rule reflects on: the fixtures are not autoloadable.
+parameters:
+    scanFiles:
+        - Fixtures/StubCallSites.php
