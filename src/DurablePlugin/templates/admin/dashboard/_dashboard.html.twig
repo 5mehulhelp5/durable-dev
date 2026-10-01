@@ -78,12 +78,13 @@
                 </div>
 
                 {# A missing worker fails nothing: executions stop at their first task of its kind.
-                   Named by its `durable:worker` role, and blamed only when the backend answered. #}
+                   Named by its `durable:worker` role, and blamed only when the backend answered.
+                   An unlisted row comes from a backend that keeps no list of its workers. #}
                 {% for worker in workers|default([]) %}
                     {% if worker.polling %}
                         <div class="alert alert-success" role="status">{{ 'dashboard.worker_polling'|trans({'%role%': worker.role}, 'durable') }}</div>
-                    {% elseif worker.error is not null %}
-                        <div class="alert alert-warning" role="status">{{ 'dashboard.worker_unknown'|trans({'%role%': worker.role, '%error%': worker.error}, 'durable') }}</div>
+                    {% elseif worker.error is not null or worker.unlisted|default(false) %}
+                        <div class="alert alert-warning" role="status">{{ 'dashboard.worker_unknown'|trans({'%role%': worker.role, '%error%': worker.error ?? 'dashboard.workers_unlisted'|trans({}, 'durable')}, 'durable') }}</div>
                     {% else %}
                         <div class="alert alert-danger" role="alert">{{ 'dashboard.worker_missing'|trans({'%role%': worker.role, '%seconds%': worker.seconds}, 'durable') }}</div>
                     {% endif %}

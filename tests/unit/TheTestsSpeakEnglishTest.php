@@ -63,6 +63,7 @@ final class TheTestsSpeakEnglishTest extends TestCase
             "'TERMINÉES'" => 'same',
             "'Exécution côté backend run-1'" => 'same',
             "'En cours', 'Terminée', 'En échec', 'Annulée', 'Poursuivie à neuf'" => 'same',
+            'Messenger ne tient aucune liste des processus' => 'same',
         ],
         'src/DurableFilament/tests/TheIlluminateBackendTest.php' => [
             'Impossible de demander au backend si un worker queue est à l’écoute : la file de Laravel ne tient aucune liste' => 'asserts the French catalogue renders, the one product exception WA006 makes',
