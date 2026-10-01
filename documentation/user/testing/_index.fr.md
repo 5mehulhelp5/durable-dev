@@ -415,8 +415,18 @@ $env = WorkflowTestEnvironment::inMemory(maxContinuations: 50);
 Un workflow enfant exécuté dans le processus garde le plafond par défaut de 10, comme il garde le
 budget par défaut, quel que soit le plafond de l'environnement de son parent.
 
-`DurableTestCase::createWorkflowTestEnvironment()` utilise le plafond par défaut ; appelez
-`WorkflowTestEnvironment::inMemory()` pour le changer. Sous Magento sans DSN Temporal, réglez
+Dans un `DurableTestCase`, `createWorkflowTestEnvironment()` et `createWorkflowRunner()` prennent
+les deux mêmes arguments, `budgetSeconds` et `maxContinuations`, et les transmettent au moteur :
+
+```php
+$env = $this->createWorkflowTestEnvironment(
+    ['charge' => $spy],
+    budgetSeconds: 3.0,
+    maxContinuations: 50,
+);
+```
+
+Sous Magento sans DSN Temporal, réglez
 l'argument `maxContinuations` de `RuntimeFactory` dans `di.xml`, comme pour `budgetSeconds`.
 
 ---
