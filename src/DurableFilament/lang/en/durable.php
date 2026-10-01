@@ -23,6 +23,7 @@ return [
         'queue_unlisted' => 'Laravel\'s queue keeps no list of the processes that run php artisan queue:work.',
     ],
     'status' => [
+        'all' => 'All',
         'running' => 'Running',
         'completed' => 'Completed',
         'failed' => 'Failed',
@@ -30,6 +31,7 @@ return [
         'continued_as_new' => 'Continued as new',
     ],
     'filter' => [
+        'outcome' => 'Outcome',
         'workflow_name' => 'Workflow name',
         'execution_id_prefix' => 'Execution id starts with',
         'submit' => 'Filter',

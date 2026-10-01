@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\Durable;
 
+use Gplanchat\Durable\Exception\ContinueAsNewRequested;
 use Gplanchat\Durable\Exception\WorkflowStuckException;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
@@ -13,6 +14,7 @@ use Gplanchat\Durable\Store\PassEventStore;
 use Gplanchat\Durable\Timer\TimerWakeDelayCalculator;
 use Gplanchat\Durable\Timer\VirtualClock;
 use Gplanchat\Durable\Transport\ActivityTransportInterface;
+use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -37,6 +39,7 @@ final readonly class InMemoryWorkflowRunner
         /**
          * Required to run child workflows: without a registry no child type can be resolved
          * and {@see \Gplanchat\Durable\ExecutionContext::executeChildWorkflow()} throws.
+         * Without one, a continue-as-new still reaches the caller as ContinueAsNewRequested.
          */
         private readonly ?WorkflowRegistry $workflowRegistry = null,
         /**
@@ -67,6 +70,31 @@ final readonly class InMemoryWorkflowRunner
      * @return mixed the handler's result
      */
     public function run(string $executionId, callable $handler, ?string $workflowType = null): mixed
+    {
+        $startedExtras = [];
+
+        // A continue-as-new chain is followed to its last run, as ResumeWorkflowHandler does on the
+        // journal backends (#802); each run gets its own budget.
+        while (true) {
+            try {
+                return $this->runOnce($executionId, $handler, $workflowType, $startedExtras);
+            } catch (ContinueAsNewRequested $e) {
+                if (null === $this->workflowRegistry || null === $e->nextExecutionId) {
+                    throw $e;
+                }
+                $startedExtras = ['continuedFromExecutionId' => $executionId];
+                $executionId = $e->nextExecutionId;
+                // The alias, as ResumeWorkflowHandler journals it; the registry knows both keys.
+                $workflowType = (new WorkflowDefinitionLoader())->aliasForTemporalInterop($e->workflowType);
+                $handler = $this->workflowRegistry->getHandler($e->workflowType, $e->payload);
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $startedExtras merged into the run's ExecutionStarted
+     */
+    private function runOnce(string $executionId, callable $handler, ?string $workflowType, array $startedExtras): mixed
     {
         // Virtual clock: an inline harness has nobody to deliver a timer wake-up, and waiting
         // out a due time for real would make every workflow that sleeps untestable. It only
@@ -105,11 +133,13 @@ final readonly class InMemoryWorkflowRunner
         // What the last suspension was waiting on, when that has a name: it is all that
         // separates "stuck" from "stuck on that particular condition" in the diagnosis.
         try {
-            return $engine->start($executionId, $handler, $workflowType);
+            return $engine->start($executionId, $handler, $workflowType, $startedExtras);
         } catch (WorkflowSuspendedException $e) {
             // DUR003: expected suspension (control flow), not an error — the while loop runs the worker then resumes.
             $waitingOn = $e->waitingOn();
         }
+
+        $id = ExecutionId::fromString($executionId);
 
         // A length of real work, not an instant: the monotonic timer, which the virtual clock is not.
         $deadline = hrtime(true) + (int) ($this->budgetSeconds * 1e9);
@@ -119,10 +149,10 @@ final readonly class InMemoryWorkflowRunner
                 throw WorkflowStuckException::budgetExhausted($executionId, $this->budgetSeconds);
             }
 
-            $before = $this->eventStore->countEventsInStream(ExecutionId::fromString($executionId));
-            $this->runActivityWorker($executionId, $runtime, $clock, max(0.0, ((float) ($deadline - hrtime(true))) / 1e9));
+            $before = $this->eventStore->countEventsInStream($id);
+            $this->runActivityWorker($id, $runtime, $clock, max(0.0, ((float) ($deadline - hrtime(true))) / 1e9));
             // Timers already due fire on every round; time itself does not move yet.
-            $runtime->checkTimers($this->timerContext($executionId, $runtime), PassEventStore::open($this->eventStore, $executionId));
+            $runtime->checkTimers($this->timerContext($id, $runtime), PassEventStore::open($this->eventStore, $executionId));
 
             try {
                 return $engine->resume($executionId, $handler);
@@ -137,11 +167,11 @@ final readonly class InMemoryWorkflowRunner
             // forever — a test that forgets to deliver its signal froze everything after it.
             // ponytail: detection by absence of progress; a real timer scheduler would call
             // for a virtual clock.
-            if ($this->eventStore->countEventsInStream(ExecutionId::fromString($executionId)) === $before) {
+            if ($this->eventStore->countEventsInStream($id) === $before) {
                 // Nothing moves any more: only now are we allowed to move time forward. Doing
                 // it sooner would hand the timer a race the activity was in the middle of
                 // winning.
-                if ($this->skipToNextTimer($executionId, $runtime, $clock)) {
+                if ($this->skipToNextTimer($id, $runtime, $clock)) {
                     continue;
                 }
 
@@ -166,34 +196,34 @@ final readonly class InMemoryWorkflowRunner
      *
      * @return bool true when time was moved forward
      */
-    private function skipToNextTimer(string $executionId, ExecutionRuntime $runtime, VirtualClock $clock): bool
+    private function skipToNextTimer(ExecutionId $id, ExecutionRuntime $runtime, VirtualClock $clock): bool
     {
-        $dueInMs = TimerWakeDelayCalculator::millisecondsUntilNextTimerDue($this->eventStore, $executionId, $clock->seconds());
+        $dueInMs = TimerWakeDelayCalculator::millisecondsUntilNextTimerDue($this->eventStore, $id->toString(), $clock->seconds());
         if (null === $dueInMs) {
             return false;
         }
 
         $clock->advance((float) $dueInMs / 1000.0);
-        $runtime->checkTimers($this->timerContext($executionId, $runtime), PassEventStore::open($this->eventStore, $executionId));
+        $runtime->checkTimers($this->timerContext($id, $runtime), PassEventStore::open($this->eventStore, $id->toString()));
 
         return true;
     }
 
-    private function timerContext(string $executionId, ExecutionRuntime $runtime): ExecutionContext
+    private function timerContext(ExecutionId $id, ExecutionRuntime $runtime): ExecutionContext
     {
         return new ExecutionContext(
-            $executionId,
-            $history = new EventStoreHistorySource($this->eventStore, $executionId),
-            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $executionId, $runtime->clock(), $history),
+            $id,
+            $history = new EventStoreHistorySource($this->eventStore, $id->toString()),
+            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $id, $runtime->clock(), $history),
         );
     }
 
-    private function runActivityWorker(string $executionId, ExecutionRuntime $runtime, VirtualClock $clock, float $budgetSeconds): void
+    private function runActivityWorker(ExecutionId $id, ExecutionRuntime $runtime, VirtualClock $clock, float $budgetSeconds): void
     {
         $context = new ExecutionContext(
-            $executionId,
-            $history = new EventStoreHistorySource($this->eventStore, $executionId),
-            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $executionId, $runtime->clock(), $history),
+            $id,
+            $history = new EventStoreHistorySource($this->eventStore, $id->toString()),
+            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $id, $runtime->clock(), $history),
             null,
         );
         $runtime->runUntilIdle($context, $budgetSeconds, $this->clock, $clock);

@@ -430,6 +430,9 @@ framework:
             durable_activities: 'doctrine://default?queue_name=durable_activities'
 ```
 
+Sur PostgreSQL, ajoutez `use_notify: false` aux deux transports ; la
+[page du backend DBAL](../backends/#doctrine-transport-on-postgresql) montre comment et explique pourquoi.
+
 
 **Avec un cluster Temporal : le DSN seulement.** Un environnement dont `durable.temporal.dsn` est
 renseigné tourne sur Temporal. Le cluster conserve le journal et les files, et les

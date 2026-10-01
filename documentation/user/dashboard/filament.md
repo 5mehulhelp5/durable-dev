@@ -32,7 +32,8 @@ read-only.
 
 - **The backend state**, dated.
 - **Counters** per outcome, with a **Waiting for a worker** count, over the runs on the page.
-- **Filters** on workflow name and on execution id prefix, where the backend can apply them.
+- **Filters** on outcome, and on workflow name and execution id prefix where the backend can apply
+  them. The filters stay set from one page to the next.
 - **Worker presence**, above the list, on the Temporal backend: for each `durable:temporal-worker`
   role, workflow and activity, whether a worker polled its task queue in the last 120 seconds. On
   the Illuminate backend, the panel reads "Could not ask": Laravel's queue keeps no list of the
@@ -45,7 +46,7 @@ read-only.
 
 ## What it does not show
 
-There is no filter on outcome, and no worker presence row for `durable:nexus-worker`. See [Parity](../parity/).
+There is no worker presence row for `durable:nexus-worker`. See [Parity](../parity/).
 
 ## Language and payloads
 

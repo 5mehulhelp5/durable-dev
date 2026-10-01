@@ -501,10 +501,15 @@ jobs:
                   ini-values: memory_limit=-1
                   coverage: none
 
+            # Composer's cache directory depends on the runner (#767): ask Composer instead of guessing.
+            - name: Composer cache directory
+              id: composer-cache
+              run: echo "dir=$(composer config --global cache-dir)" >> "$GITHUB_OUTPUT"
+
             - name: Cache Composer
               uses: actions/cache@v6
               with:
-                  path: ~/.composer/cache
+                  path: ${{ steps.composer-cache.outputs.dir }}
                   key: magento-no-temporal-${{ hashFiles('magento/composer.lock') }}
                   restore-keys: magento-no-temporal-
 
@@ -645,11 +650,16 @@ jobs:
                   ini-values: memory_limit=-1
                   coverage: none
 
+            # Composer's cache directory depends on the runner (#767): ask Composer instead of guessing.
+            - name: Composer cache directory
+              id: composer-cache
+              run: echo "dir=$(composer config --global cache-dir)" >> "$GITHUB_OUTPUT"
+
             # Without this cache, every execution re-downloads the distribution.
             - name: Cache Composer
               uses: actions/cache@v6
               with:
-                  path: ~/.composer/cache
+                  path: ${{ steps.composer-cache.outputs.dir }}
                   key: magento-boot-${{ hashFiles('magento/composer.lock') }}
                   restore-keys: magento-boot-
 
@@ -1285,6 +1295,8 @@ jobs:
                   done"
 
             # --fail-on-skipped: a missing variable or server turns the job red instead of green.
+            # No WorkflowUpdateTest here: updates need Server 1.21 (#860). 1.20 drops the update's
+            # events when the same workflow task completes the workflow.
             - name: PHPUnit — the run catalogue and the visibility queries on 1.20
               env:
                   DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
