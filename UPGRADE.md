@@ -737,6 +737,26 @@ last arguments, `float $budgetSeconds` and `int $maxContinuations`, with the run
 **What to do:** if a subclass of `DurableTestCase` overrides either method, add the two parameters
 to its signature; without them, PHP fails to load the class. Otherwise nothing.
 
+### New: PHPStan reports a stub that could be an `#[Activities]` parameter (#778)
+
+`gplanchat/durable-phpstan` has a new rule, `durable.activityStubCouldBeParameter`. It reports an
+`$env->activityStub()` call that the workflow method could receive as an `#[Activities]`
+parameter, with no options or with literal `ActivityOptions::of()` values. The message gives the
+attribute and the `@param ActivityStub<Contract>` docblock to write. Nothing is rewritten. The rule
+stays silent when the move would change what runs: computed options, `default()`, an empty
+`taskQueue`, or a stub that a signal, helper or closure reads. Code that already fails, such as
+`of(0)` or a contract with no `#[AsActivityMethod]`, is reported with a warning: after the move,
+the worker refuses to register the workflow. The extension's README lists every case, and the
+shapes the rule does not see.
+
+**Who is affected:** a project that runs PHPStan with the extension and builds activity stubs with
+`activityStub()`. Its analysis can report new errors after the upgrade.
+
+**What to do:** move the stub to the parameter the message gives, or keep it and ignore the rule
+with `- identifier: durable.activityStubCouldBeParameter` under `ignoreErrors` in `phpstan.neon`.
+To ignore it on one call only, add `// @phpstan-ignore durable.activityStubCouldBeParameter` on
+that line.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
