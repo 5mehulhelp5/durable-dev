@@ -276,14 +276,17 @@ DSN](../configuration/#format-du-dsn).
 
 ## Le backend DBAL
 
-Le backend DBAL persiste le journal, les métadonnées de reprise et les liens parent/enfant dans une
-**seule base SQL**, à travers Doctrine DBAL. Pas de serveur d'orchestration, pas de sidecar, pas
-d'`ext-grpc`. Voir **DUR030**.
+Le backend DBAL persiste le journal, les métadonnées de reprise, les liens parent/enfant et le
+catalogue des exécutions (la liste des exécutions que lit un tableau de bord) dans une **seule base
+SQL**, à travers Doctrine DBAL. Pas de serveur d'orchestration, pas de sidecar, pas d'`ext-grpc`.
+Voir **DUR030**.
 
 ### Comment il fonctionne
 
-- Les trois stockages locaux au processus deviennent des tables SQL ; tout le reste (rejeu, tampon
-  de commandes, cycle de vie) est le code que le backend en mémoire fait déjà tourner.
+- Les quatre stockages locaux au processus deviennent des tables SQL : le journal d'événements,
+  les métadonnées de workflow, les liens parents des workflows enfants et le catalogue des
+  exécutions. Tout le reste (rejeu, tampon de commandes, cycle de vie) est le code que le backend
+  en mémoire fait déjà tourner.
 - Reprises et activités voyagent par **Symfony Messenger** : prenez donc un transport durable
   (Doctrine, Redis, AMQP). Un transport `in-memory://` jette ce que le journal SQL vient de
   persister.

@@ -143,9 +143,11 @@ records the decision behind it.
 
 The bridge leaves the replay interpreter, the workflow ports and the command buffer unchanged.
 Replay is how an execution resumes: the workflow code runs again from its first line, and each
-recorded step returns its result from the journal. The bridge only makes three process-local stores
-persistent: the event journal, the workflow metadata, and the parent links between child workflows.
-Workflow and activity code is byte-for-byte what runs on Temporal or in memory.
+recorded step returns its result from the journal. The bridge only makes four process-local stores
+persistent: the event journal, the workflow metadata, the parent links between child workflows, and
+the run catalog, the list of executions a dashboard reads. Two classes share the run catalog's
+table: `DbalWorkflowRunProjection` writes it and `DbalWorkflowRunCatalog` reads it. Workflow and
+activity code is byte-for-byte what runs on Temporal or in memory.
 
 | Kept | Given up, compared with Temporal |
 |---|---|
@@ -169,7 +171,8 @@ php artisan migrate
 ```
 
 This bridge provides the same four stores as the DBAL bridge, with the same trade-offs against
-Temporal: the table above applies here word for word. The connection differs. These stores use
+Temporal: the table above applies here word for word. One class, `IlluminateWorkflowRunCatalog`,
+both writes and reads the run catalog. The connection differs. These stores use
 `Illuminate\Database\Connection` and its query builder, without Eloquent.
 
 Give the stores their own connection in `config/database.php`, separate from the application's
@@ -178,11 +181,13 @@ application's: a business rollback erases journal events, and a claim stays invi
 workers until the business code commits. To handle an activity that writes and then dies, make the
 activity idempotent. Never share a transaction with business code for that purpose.
 
-The four tables ship as a migration loaded straight from the package, so `migrate` is enough. To
-edit them, publish them with `vendor:publish --tag=durable-migrations`; from then on, you maintain
-the published copy. **Keep the published file's name.** Laravel keys migrations by basename and
-gives precedence to `database/migrations` when two names match, which makes your copy the one that
-runs. If you rename it, both migrations run, and the second fails on a table that already exists.
+The five tables ship as migrations loaded straight from the package, so `migrate` is enough. Each
+store has its table, and the event journal also writes `durable_execution_heads`, a counter per
+execution that stops a superseded resume from writing (DUR053). To edit them, publish them with
+`vendor:publish --tag=durable-migrations`; from then on, you maintain the published copy. **Keep the
+published file's name.** Laravel keys migrations by basename and gives precedence to
+`database/migrations` when two names match, which makes your copy the one that runs. If you rename
+it, both migrations run, and the second fails on a table that already exists.
 
 `Queue\ResumeLock` covers what no choice of storage supplies. When two workers resume the **same**
 execution, both replay it, both treat the commands it produces as new, and those commands go out
