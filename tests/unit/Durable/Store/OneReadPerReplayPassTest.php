@@ -79,7 +79,7 @@ final class OneReadPerReplayPassTest extends TestCase
         };
 
         $runtime = new ExecutionRuntime($counting, new InMemoryActivityTransport(), $executor, 0, null, true);
-        $replayed = (new ExecutionEngine($counting, $runtime))->resume('exec-1', $handler);
+        $replayed = (new ExecutionEngine($counting, $runtime))->resume(ExecutionId::fromString('exec-1'), $handler);
 
         self::assertSame($expected, $replayed, 'the replay reads the journal back to the same result');
         self::assertSame(1, $counting->historyReads, 'one read of the stream for the whole pass');

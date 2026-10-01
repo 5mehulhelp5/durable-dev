@@ -46,7 +46,7 @@ final class TemporalHistoryReplayConformanceTest extends TemporalServerTestCase
         $cursor = new TemporalHistoryCursor($this->client, $this->connection);
         $subject = TemporalExecutionHistory::fromEvents($cursor->events(new WorkflowExecution(['workflow_id' => $this->workflowId($executionId)])));
 
-        self::assertHistoriesAgree(new EventStoreHistorySource($reference, 'exec-reference'), $subject);
+        self::assertHistoriesAgree(new EventStoreHistorySource($reference, ExecutionId::fromString('exec-reference')), $subject);
     }
 
     /**
@@ -64,7 +64,7 @@ final class TemporalHistoryReplayConformanceTest extends TemporalServerTestCase
 
         $store = new TemporalReadThroughEventStore(new InMemoryEventStore(), new TemporalHistoryCursor($this->client, $this->connection), $this->workflowClient());
 
-        self::assertHistoriesAgree(new EventStoreHistorySource($reference, 'exec-reference'), new EventStoreHistorySource($store, $executionId));
+        self::assertHistoriesAgree(new EventStoreHistorySource($reference, ExecutionId::fromString('exec-reference')), new EventStoreHistorySource($store, ExecutionId::fromString($executionId)));
     }
 
     private static function assertHistoriesAgree(WorkflowHistorySourceInterface $reference, WorkflowHistorySourceInterface $subject): void
