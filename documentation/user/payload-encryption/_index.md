@@ -191,7 +191,8 @@ to `On` in its `php.ini`. The setting is `Off` by default and in `php.ini-develo
 `Off`, each frame of the trace as text lists the arguments of the call, and each string argument
 shows its first
 [`zend.exception_string_param_max_len`](https://www.php.net/manual/en/ini.core.php#ini.zend.exception-string-param-max-len)
-characters, 15 by default. Those characters can come from a key or a ciphertext. With `On`, as in
+characters, 15 by default. Those characters can come from a key or a ciphertext. A handler that
+reads the frames through `getTrace()` gets each argument in full. With `On`, as in
 `php.ini-production`, the trace leaves the arguments out.
 
 Neither a worker nor a dashboard shows ciphertext as if it were data.
