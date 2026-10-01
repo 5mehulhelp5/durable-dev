@@ -121,8 +121,6 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
     - value: true
   ```
 
-  L'intégration continue exécute les tests des mises à jour contre la 1.20 avec cette valeur.
-
 ### Installer `ext-grpc`
 
 ```bash

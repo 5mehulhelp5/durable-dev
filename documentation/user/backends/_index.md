@@ -116,8 +116,6 @@ exists when the application [serves a Nexus operation](../nexus/).
     - value: true
   ```
 
-  CI runs the update tests against 1.20 with this value.
-
 ### Install `ext-grpc`
 
 ```bash
