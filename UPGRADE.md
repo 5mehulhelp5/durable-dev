@@ -789,6 +789,29 @@ does not exist. The journal of the `memory` backend lives in the process, so a s
 `php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
 `illuminate` and `temporal`.
 
+### Profiler: `getTimeFrame()` no longer returns `store_timelines` (#876)
+
+Since #867 the profiler panel draws the shared run timeline and no longer draws one segment per
+journal event. `DurableDataCollector` stops computing those segments:
+
+- `DurableDataCollector::getTimeFrame()` returns `process` only; the `store_timelines` key is gone;
+- each entry of `getExecutionsDetail()` loses its `storeTimeline` key.
+
+`storeEventCount` and `storeTruncated` keep their values; the collector reads them from the
+journal it already loads.
+
+**Who is affected:** code that reads `getTimeFrame()['store_timelines']` or
+`getExecutionsDetail()[n]['storeTimeline']` from a collected profile, such as a custom profiler
+template.
+
+**What to do:** read the journal events of an execution from `getStoreEventRows()` (one row per
+event, with its `recordedAt`), or its timeline from `getExecutionsDetail()[n]['runTimeline']`, the
+one the panel draws. Profiles stored before the upgrade still carry the removed keys; the panel
+does not read them.
+
+`DurableProfilerTimeframe::monotonicUnixSecondsFromRecordedEntries()`, which only computed those
+segments, is removed, and `DurableProfilerTimeframe::MIN_SEGMENT_SEC` is now private.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
