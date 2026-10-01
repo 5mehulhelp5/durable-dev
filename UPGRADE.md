@@ -608,7 +608,7 @@ journal read. `read()` returns the same history as before.
 
 **What to do:** nothing.
 
-### Temporal: the workflow worker keeps polling after a rejected task failure (#863)
+### Temporal: the workflow worker keeps polling after a rejected task answer (#863, #891)
 
 A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
 `INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
