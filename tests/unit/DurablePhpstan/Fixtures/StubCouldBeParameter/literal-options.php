@@ -8,7 +8,6 @@ use Gplanchat\Durable\Activity\ActivityCancellationType;
 use Gplanchat\Durable\Activity\ActivityOptions;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\WorkflowEnvironment;
-use unit\DurablePhpstan\Fixtures\OrderActivities;
 
 final class LiteralOptions
 {

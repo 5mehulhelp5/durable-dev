@@ -8,7 +8,6 @@ use Gplanchat\Durable\Activity\ActivityStub;
 use Gplanchat\Durable\Attribute\AsSignalMethod;
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\WorkflowEnvironment;
-use unit\DurablePhpstan\Fixtures\OrderActivities;
 
 final class NullsafeReadInSignal
 {

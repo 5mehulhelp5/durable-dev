@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace unit\DurablePhpstan\Fixtures\StubCouldBeParameter;
 
 use Gplanchat\Durable\WorkflowEnvironment;
-use unit\DurablePhpstan\Fixtures\OrderActivities;
 
 final class NotAWorkflow
 {

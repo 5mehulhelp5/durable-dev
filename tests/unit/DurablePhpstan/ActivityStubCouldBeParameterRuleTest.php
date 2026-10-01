@@ -28,36 +28,31 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
         return new ActivityStubCouldBeParameterRule(self::createReflectionProvider());
     }
 
-    public static function getAdditionalConfigFiles(): array
-    {
-        return [...parent::getAdditionalConfigFiles(), __DIR__ . '/stub-could-be-parameter.neon'];
-    }
-
     public function testALocalStubWithoutOptionsIsReported(): void
     {
         $this->analyse([self::DIR . 'local-stub.php'], [
-            [self::message('run', 'orders', ''), 16, self::TIP],
+            [self::message('run', 'orders', ''), 15, self::TIP],
         ]);
     }
 
     public function testAConstructorStubReadOnlyByTheWorkflowMethodIsReported(): void
     {
         $this->analyse([self::DIR . 'constructor-stub.php'], [
-            [self::message('run', 'orders', ''), 18, self::TIP],
+            [self::message('run', 'orders', ''), 17, self::TIP],
         ]);
     }
 
     public function testLiteralPositionalOptionsAreSpelledAsAttributeFields(): void
     {
         $this->analyse([self::DIR . 'literal-options.php'], [
-            [self::message('run', 'orders', ', attempts: 5, startToClose: 120, initialInterval: 2.5, nonRetryable: [\RuntimeException::class], taskQueue: \'billing\', backoffCoefficient: 3.0, maximumInterval: 60.0, summary: \'Charge\', cancellationType: \Gplanchat\Durable\Activity\ActivityCancellationType::Abandon'), 18, self::TIP],
+            [self::message('run', 'orders', ', attempts: 5, startToClose: 120, initialInterval: 2.5, nonRetryable: [\RuntimeException::class], taskQueue: \'billing\', backoffCoefficient: 3.0, maximumInterval: 60.0, summary: \'Charge\', cancellationType: \Gplanchat\Durable\Activity\ActivityCancellationType::Abandon'), 17, self::TIP],
         ]);
     }
 
     public function testNamedOptionsAreMappedAndAnEmptyListDropped(): void
     {
         $this->analyse([self::DIR . 'named-options.php'], [
-            [self::message('run', 'orders', ', startToClose: 30.0, attempts: 3'), 17, self::TIP],
+            [self::message('run', 'orders', ', startToClose: 30.0, attempts: 3'), 16, self::TIP],
         ]);
     }
 
@@ -78,7 +73,7 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
     public function testAMoveThatFailsAtRegistrationIsReportedWithAWarning(string $file, string $contract, string $expected): void
     {
         [$fields, $reason] = explode('|', $expected);
-        $line = str_contains($file, 'contract-without') ? 15 : 17;
+        $line = str_contains($file, 'contract-without') ? 15 : 16;
         $this->analyse([self::DIR . $file], [
             [self::message('run', 'orders', $fields, $contract) . \sprintf(self::REFUSED, $reason), $line, self::TIP],
         ]);

@@ -6,7 +6,6 @@ namespace unit\DurablePhpstan\Fixtures\StubCouldBeParameter;
 
 use Gplanchat\Durable\Attribute\AsWorkflowMethod;
 use Gplanchat\Durable\WorkflowEnvironment;
-use unit\DurablePhpstan\Fixtures\OrderActivities;
 
 interface ChargeContract
 {
