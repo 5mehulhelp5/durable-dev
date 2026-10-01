@@ -714,18 +714,22 @@ used to leave the code unchanged without a word:
 
 - above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
   or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
-  static call, a `::class`. Durable has no counterpart for these four failures. The `use` import is
-  not marked;
+  static call, a `::class`, a parameter or return type (marked above its method or function,
+  #909). Durable has no counterpart for these four failures, and once `temporal/sdk` is removed the
+  reference no longer resolves. The `use` import is not marked;
 - above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
   and `some`, one of those three with no argument, and `some()` without a count;
 - above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
-  computed prefix, or a literal one that is neither empty nor a single name ending in a dot), and
+  computed prefix, a literal one that does not end in a dot, or `'.'` alone), and
   above an activity method whose `#[ActivityMethod(name:)]` is not a string literal. The contract
-  keeps its SDK attributes, as before.
+  keeps its SDK attributes, as before. A prefix with several segments, such as `'Billing.Order.'`,
+  is converted: both engines give the same activity names (#907). The prefix `'.'` used to become
+  `#[AsActivity(name: '')]`, which renamed `.charge` to `charge`; it is now marked.
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
-without a marker. A second run adds no second marker.
+without a marker. A second run adds no second marker. A failure marker written by an earlier run
+keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
 
 ### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
 
