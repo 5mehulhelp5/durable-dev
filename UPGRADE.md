@@ -942,6 +942,24 @@ the Laravel provider and the Magento module need no change.
 **What to do:** nothing, unless you build `PayloadCodecWorkflowServiceClient` yourself: pass it a
 PSR-3 logger to get the record. No Rector rule applies.
 
+### `dispatchNewWorkflowRun()` no longer rewrites an existing metadata row (#918)
+
+The Messenger, Laravel queue and Laravel in-process dispatchers now write a run's metadata row only
+when the run has none. They used to rewrite it, which set `completed` back to false. A late resume
+of a run that continued as new sends its next run again, and that rewrite could reopen the next run
+if it finished in between. The resume is still sent. The Temporal dispatcher does not change: the
+server owns its runs. `WorkflowMetadataStore::save()` does not change either.
+
+**Who is affected:** code that calls `dispatchNewWorkflowRun()` with an execution id that already
+has a row, to start that run again or with another type or payload. The row now keeps its type, its
+payload and its `completed` flag, and a completed run stays completed. Custom
+`WorkflowResumeDispatcher` implementations should follow the same rule, or a re-dispatch can reopen
+a finished run.
+
+**What to do:** start a new run under a new execution id. In a custom dispatcher, call `save()`
+only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
+signature.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
