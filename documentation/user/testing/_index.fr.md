@@ -412,6 +412,9 @@ Pour tester une chaîne plus longue, relevez le plafond :
 $env = WorkflowTestEnvironment::inMemory(maxContinuations: 50);
 ```
 
+Un workflow enfant exécuté dans le processus garde le plafond par défaut de 10, comme il garde le
+budget par défaut, quel que soit le plafond de l'environnement de son parent.
+
 `DurableTestCase::createWorkflowTestEnvironment()` utilise le plafond par défaut ; appelez
 `WorkflowTestEnvironment::inMemory()` pour le changer. Sous Magento sans DSN Temporal, réglez
 l'argument `maxContinuations` de `RuntimeFactory` dans `di.xml`, comme pour `budgetSeconds`.

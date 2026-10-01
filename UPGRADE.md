@@ -689,7 +689,8 @@ it throws the new `Gplanchat\Durable\Exception\ContinuationCapReachedException`,
 execution the caller started and the cap. It extends `WorkflowStuckException`, so a `catch` on
 `WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
 constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
-Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`. A test whose chain
+Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`; `0` allows no
+continuation, and a negative value throws `\InvalidArgumentException`. A test whose chain
 runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
 
 ## 0.1.0-beta1

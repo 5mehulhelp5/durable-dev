@@ -399,6 +399,9 @@ To test a longer chain, raise the cap:
 $env = WorkflowTestEnvironment::inMemory(maxContinuations: 50);
 ```
 
+An inline child workflow keeps the default cap of 10, as it keeps the default budget, whatever cap
+its parent's environment sets.
+
 `DurableTestCase::createWorkflowTestEnvironment()` uses the default cap; call
 `WorkflowTestEnvironment::inMemory()` to change it. On Magento without a Temporal DSN, set the
 `maxContinuations` argument of `RuntimeFactory` in `di.xml`, as for `budgetSeconds`.
