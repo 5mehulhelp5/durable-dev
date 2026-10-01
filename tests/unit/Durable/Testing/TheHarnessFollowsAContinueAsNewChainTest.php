@@ -106,6 +106,24 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
         $env->runWorkflowClass(CounterWorkflow::class, ['n' => 0], 'counter-0');
     }
 
+    public function testACapOfZeroAllowsNoContinuation(): void
+    {
+        $env = WorkflowTestEnvironment::inMemory(maxContinuations: 0);
+
+        $this->expectException(ContinuationCapReachedException::class);
+        $this->expectExceptionMessage('maxContinuations (0)');
+
+        $env->runWorkflowClass(CounterWorkflow::class, ['n' => 0], 'counter-0');
+    }
+
+    public function testANegativeCapFailsAtConstruction(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('-1');
+
+        WorkflowTestEnvironment::inMemory(maxContinuations: -1);
+    }
+
     private function successorOf(WorkflowTestEnvironment $env, string $executionId): ?string
     {
         foreach ($this->eventsOf($env, $executionId) as $event) {
