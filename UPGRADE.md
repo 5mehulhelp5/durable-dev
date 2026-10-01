@@ -726,7 +726,8 @@ used to leave the code unchanged without a word:
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
-without a marker. A second run adds no second marker.
+without a marker. A second run adds no second marker. A failure marker written by an earlier run
+keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
 
 ## 0.1.0-beta1
 
