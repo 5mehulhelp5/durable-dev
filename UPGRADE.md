@@ -614,9 +614,9 @@ With a DSN, four things differ from the in-process run:
   `budgetSeconds` is spent.
 - `maxActivityRetries` no longer applies: the cluster retries from each activity's own `RetryLimit`.
   `budgetSeconds` bounds the wait for the result, polled every 500 ms.
-- A workflow that fails comes back as a plain `\RuntimeException` whose message starts with
-  `Workflow "<execution id>" failed`, with no previous exception. A workflow that waits on a signal
-  waits the whole budget instead of failing at once.
+- A workflow that fails, times out or is terminated comes back as a plain `\RuntimeException` whose
+  message starts with `Workflow "<execution id>"`, with no previous exception. A workflow that waits
+  on a signal waits the whole budget instead of failing at once.
 - The result comes back decoded from JSON: an object the workflow returns arrives as an array.
 
 **What to do:** if your code relies on `run()` executing in the calling process while a DSN is set
