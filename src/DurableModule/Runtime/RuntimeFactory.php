@@ -341,7 +341,7 @@ class RuntimeFactory
         $client = $this->workflowClient();
         $client->startAsync($workflowClass, $input, ExecutionId::fromString($executionId));
 
-        return $client->pollForCompletion($executionId, 500, max(1, (int) ceil($this->budgetSeconds * 2)));
+        return $client->pollForCompletion($executionId, 500, max(1, (int) ceil($this->budgetSeconds * 2.0)));
     }
 
     private function client(TemporalConnection $settings): WorkflowServiceClientInterface
