@@ -235,8 +235,8 @@ l'appel, et vous l'apprenez tout de suite. Un *gestionnaire* sans route ne reço
 n'échoue : aucune requête ne lui parvient. Le contrôle a donc lieu au démarrage de l'application.
 
 Le message ci-dessus est celui de Symfony. Sur Laravel, le registre Nexus lève
-`NexusUnsupportedByBackendException` quand il est résolu sous un autre backend que `temporal`. Sur
-Magento, `bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster`
+`NexusUnsupportedByBackendException` quand il est résolu sous un autre backend que `temporal`, et
+`php artisan durable:nexus-worker` n'est enregistrée que sous `temporal`. Sur Magento, `bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster`
 quand `app/etc/env.php` n'a pas de DSN.
 
 ---

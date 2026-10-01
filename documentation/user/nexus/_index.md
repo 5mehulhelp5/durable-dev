@@ -228,8 +228,8 @@ call, so you find out immediately. A *handler* with no route receives nothing, a
 no request ever reaches it. The check therefore runs when the application starts.
 
 The message above is Symfony's. On Laravel, the Nexus registry throws
-`NexusUnsupportedByBackendException` when it is resolved under a backend other than `temporal`. On
-Magento, `bin/magento durable:worker --role=nexus` fails with `A Nexus worker needs a cluster` when
+`NexusUnsupportedByBackendException` when it is resolved under a backend other than `temporal`, and
+`php artisan durable:nexus-worker` is registered only under `temporal`. On Magento, `bin/magento durable:worker --role=nexus` fails with `A Nexus worker needs a cluster` when
 `app/etc/env.php` has no DSN.
 
 ---
