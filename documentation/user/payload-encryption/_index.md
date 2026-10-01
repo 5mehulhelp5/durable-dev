@@ -185,6 +185,15 @@ framework: the exception itself, stack trace included, under `exception`, and th
 event that did not decode under `event_id`, when the payload belongs to one. Keep that log where
 only operators read it, since the trace may quote what the server must not see.
 
+For a worker that uses a codec, set
+[`zend.exception_ignore_args`](https://www.php.net/manual/en/ini.core.php#ini.zend.exception-ignore-args)
+to `On` in its `php.ini`. The setting is `Off` by default and in `php.ini-development`. When it is
+`Off`, each frame of the trace as text lists the arguments of the call, and each string argument
+shows its first
+[`zend.exception_string_param_max_len`](https://www.php.net/manual/en/ini.core.php#ini.zend.exception-string-param-max-len)
+characters, 15 by default. Those characters can come from a key or a ciphertext. With `On`, as in
+`php.ini-production`, the trace leaves the arguments out.
+
 Neither a worker nor a dashboard shows ciphertext as if it were data.
 
 ---
