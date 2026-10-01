@@ -85,7 +85,7 @@ final class SyncChildWorkflowTest extends TestCase
 
         foreach ($this->eventStore->readStream(ExecutionId::fromString('parent-3')) as $event) {
             if ($event instanceof ChildWorkflowScheduled) {
-                $started = iterator_to_array($this->eventStore->readStream(ExecutionId::fromString($event->childExecutionId())), false)[0];
+                $started = iterator_to_array($this->eventStore->readStream($event->childExecutionId()), false)[0];
                 self::assertInstanceOf(ExecutionStarted::class, $started);
                 self::assertSame($event->childWorkflowType(), $started->payload()['workflowType'] ?? null);
 
