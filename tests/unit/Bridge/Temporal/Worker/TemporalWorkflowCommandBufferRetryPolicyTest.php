@@ -10,6 +10,7 @@ use Gplanchat\Durable\Activity\ActivityOptions;
 use Gplanchat\Durable\Activity\ActivityTimeouts;
 use Gplanchat\Durable\Activity\RetryLimit;
 use Gplanchat\Durable\Duration;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Command\V1\ScheduleActivityTaskCommandAttributes;
 
@@ -23,7 +24,7 @@ final class TemporalWorkflowCommandBufferRetryPolicyTest extends TestCase
 {
     private function buffer(): TemporalWorkflowCommandBuffer
     {
-        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), 'exec-1');
+        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), ExecutionId::fromString('exec-1'));
     }
 
     private function scheduledAttrs(TemporalWorkflowCommandBuffer $buffer): ScheduleActivityTaskCommandAttributes
