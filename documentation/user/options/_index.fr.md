@@ -360,11 +360,13 @@ affiche sur l'enfant.
 > les ignore sans erreur, et l'enfant démarre sans eux. Le mémo passe sur tous les serveurs pris en
 > charge.
 
-`durableExecutionId` et `durableWaitingOn` sont des clés de mémo que Durable écrit lui-même. Sur
-tous les backends, `new ChildWorkflowOptions()` lève `UnsupportedByBackendException` quand le
-mémo utilise l'une d'elles. Une exécution qui construit de telles options échoue à cette ligne,
-y compris pendant le rejeu (le code du workflow qui tourne à nouveau depuis sa première ligne pour
-reprendre ; voir le [glossaire](../glossary/)).
+Durable réserve les clés de mémo `durableExecutionId` et `durableWaitingOn`, et les écrit lui-même
+dans le mémo d'un enfant sur Temporal. Sur tous les backends, `new ChildWorkflowOptions()` lève
+`UnsupportedByBackendException` quand le mémo utilise l'une d'elles. Une exécution qui construit
+de telles options échoue à cette ligne, y compris pendant le rejeu (le code du workflow qui tourne
+à nouveau depuis sa première ligne pour reprendre ; voir le [glossaire](../glossary/)). Le rejeu
+compare le type et l'entrée d'un enfant avec le journal, pas son mémo : une exécution en cours
+reprend dès que le code utilise une autre clé.
 
 ---
 
