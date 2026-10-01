@@ -105,6 +105,19 @@ exists when the application [serves a Nexus operation](../nexus/).
   `RunFilterUnavailableException` naming 1.23 for a prefix, and the dashboards offer only the name
   filter.
   Filtering by exact workflow name works from 1.20.
+- **Updates** (`#[AsUpdateMethod]`, `onUpdate()`) need **Server 1.21 or newer**. On 1.20, when
+  the workflow task that answers an update also completes the workflow, the server writes no
+  update event to the history, and a later replay does not see the update.
+  From 1.21 through 1.24, updates are switched off by default: set the dynamic config value
+  `frontend.enableUpdateWorkflowExecution` to `true`. Without it, `WorkflowClient::update()` fails
+  with `UpdateWorkflowExecution operation is disabled on this namespace`. In the server's dynamic
+  config file (`frontend.enableUpdateWorkflowExecutionAsyncAccepted` is not needed: Durable waits
+  for the update's COMPLETED stage):
+
+  ```yaml
+  frontend.enableUpdateWorkflowExecution:
+    - value: true
+  ```
 
 ### Install `ext-grpc`
 
@@ -306,6 +319,28 @@ first write, or from `bin/console durable:setup`.
 Adding a `temporal.dsn` keeps the journal in SQL and uses the cluster only to serve Nexus operations.
 With `backend: temporal`, the cluster holds the journal instead. In neither case is there a second
 source of truth.
+
+### The Doctrine transport on PostgreSQL {#doctrine-transport-on-postgresql}
+
+On PostgreSQL, set `use_notify: false` on Durable's Doctrine transports:
+
+```yaml
+framework:
+    messenger:
+        transports:
+            durable_workflows:
+                dsn: 'doctrine://default?queue_name=durable_workflows'
+                options: { use_notify: false }
+            durable_activities:
+                dsn: 'doctrine://default?queue_name=durable_activities'
+                options: { use_notify: false }
+```
+
+Once a queue is empty, Messenger's PostgreSQL transport reads it again only on a notification or
+after 60 seconds (`check_delayed_interval`). A worker that consumes both queues over one connection
+can miss that notification, and the resume an activity sends then waits up to 60 seconds, or until
+the next `durable:worker` starts, whatever the `--sleep` value. With `use_notify: false`, the transport polls
+each queue on every loop, as it does on MySQL.
 
 ### One resume at a time per execution {#one-resume-at-a-time--the-thing-to-get-right}
 

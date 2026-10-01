@@ -585,6 +585,29 @@ A child memo key `durableExecutionId` or `durableWaitingOn` now throws
 
 **What to do:** rename a child memo key if it is one of those two.
 
+### Temporal: the workflow worker keeps polling after a decode failure or a rejected completion (#824, #840)
+
+A payload that fails to decode on a later history page now fails the workflow task
+(`RespondWorkflowTaskFailed`), as it already did on the first page. Outside a task poll, the codec
+client throws `Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, a `\RuntimeException` whose
+previous exception is the codec's own error. A Nexus task whose payload fails to decode is
+answered with a retryable `INTERNAL` handler error: the server delivers it again, and a worker
+redeployed with the right codec or key serves it.
+
+A `RespondWorkflowTaskCompleted` rejected with `INVALID_ARGUMENT` is logged as a warning and the
+worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain an optional last
+argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
+runtime factory pass theirs. Nothing to migrate.
+
+### `JournalRunHistoryReader::fromEntries()` (#819)
+
+`JournalRunHistoryReader` gains a static `fromEntries(iterable $entries, string $workflowName = '')`.
+It builds the same history as `read()` from journal entries you already read with
+`readStreamWithRecordedAt()`. The profiler panel uses it to draw `RunTimeline` without a second
+journal read. `read()` returns the same history as before.
+
+**What to do:** nothing.
+
 ### New: PHPStan reports a stub that could be an `#[Activities]` parameter (#778)
 
 `gplanchat/durable-phpstan` has a new rule, `durable.activityStubCouldBeParameter`. It reports an
