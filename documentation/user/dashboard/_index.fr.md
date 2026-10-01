@@ -23,7 +23,7 @@ traduire.
 ### 1. L'état du backend
 
 Une liste vide ne dit rien toute seule : elle se lit pareil quand rien n'a tourné, quand le cluster
-est tombée, et quand le journal ne survit pas à la requête qui rend la page. La page dit donc lequel
+est tombé, et quand le journal ne survit pas à la requête qui rend la page. La page dit donc lequel
 des trois c'est, avant de montrer quoi que ce soit.
 
 | État | Ce que la page dit | Quoi faire |
