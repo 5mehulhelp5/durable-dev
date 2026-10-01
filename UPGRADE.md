@@ -599,20 +599,73 @@ worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain a
 argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
 runtime factory pass theirs. Nothing to migrate.
 
+### `JournalRunHistoryReader::fromEntries()` (#819)
+
+`JournalRunHistoryReader` gains a static `fromEntries(iterable $entries, string $workflowName = '')`.
+It builds the same history as `read()` from journal entries you already read with
+`readStreamWithRecordedAt()`. The profiler panel uses it to draw `RunTimeline` without a second
+journal read. `read()` returns the same history as before.
+
+**What to do:** nothing.
+
+### Temporal: the workflow worker keeps polling after a rejected task failure (#863)
+
+A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
+`INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
+and the server message, and the worker polls again. Any other gRPC error still propagates out of
+`WorkflowTaskProcessor::processOne()`. Nothing to migrate.
+
+### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
+
+With `durable/temporal/dsn` set in `app/etc/env.php`, `run()` used to execute the workflow in the
+calling process, its activities included, and the cluster never saw it. It now starts the workflow
+on the cluster with `workflowClient()->startAsync()` and waits for its result with
+`pollForCompletion()`, as the Symfony bench does. Without a DSN, `run()` still executes in the
+calling process.
+
+With a DSN, four things differ from the in-process run:
+
+- The journal and activity workers (`bin/magento durable:worker --role=journal` and
+  `--role=activity`) carry the execution. Without them, `run()` throws `WorkflowStuckException` once
+  `budgetSeconds` is spent.
+- `maxActivityRetries` no longer applies: the cluster retries from each activity's own `RetryLimit`.
+  `budgetSeconds` bounds the wait for the result, polled every 500 ms.
+- A workflow that fails, times out or is terminated comes back as a plain `\RuntimeException` whose
+  message starts with `Workflow "<execution id>"`, with no previous exception. A workflow that waits
+  on a signal waits the whole budget instead of failing at once.
+- The result comes back decoded from JSON: an object the workflow returns arrives as an array.
+
+**What to do:** if your code relies on `run()` executing in the calling process while a DSN is set
+(activities reading request state, a test without a cluster), keep the DSN out of that process's
+`env.php`, or start the workers before calling `run()`. To start a workflow from a web request
+without waiting, call `workflowClient()->startAsync()`.
+
+### `WorkflowClient::pollForCompletion()` throws `WorkflowStuckException` when its polls run out
+
+When no close event arrives within its polls, `pollForCompletion()` now throws
+`Gplanchat\Durable\Exception\WorkflowStuckException`, built by the new
+`WorkflowStuckException::pollsExhausted()`, with the same message as before. It used to throw a
+plain `\RuntimeException`. Every host that waits through the Temporal client sees the new type.
+
+**What to do:** nothing if you catch `\RuntimeException`: `WorkflowStuckException` extends it. To
+tell a wait that ran out from a workflow that failed, catch `WorkflowStuckException` first; its
+`executionId` property names the execution.
+
 ### durable-rector: the SDK migration marks the constructs it leaves as they are
 
 A run of the `temporal-sdk.php` set now adds a `// durable-rector:` comment in three places where it
 used to leave the code unchanged without a word:
 
 - above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
-  or `TimeoutFailure` (a `catch`, marked above its `try`, a `new`, a `throw`, an `instanceof`).
-  Durable has no counterpart for these four failures;
+  or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
+  static call, a `::class`. Durable has no counterpart for these four failures. The `use` import is
+  not marked;
 - above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
   and `some`, one of those three with no argument, and `some()` without a count;
 - above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
-  computed prefix, or a literal one that is neither empty nor a single name ending in a dot), and above an activity method whose
-  `#[ActivityMethod(name:)]` is not a string literal. The contract keeps its SDK attributes, as
-  before.
+  computed prefix, or a literal one that is neither empty nor a single name ending in a dot), and
+  above an activity method whose `#[ActivityMethod(name:)]` is not a string literal. The contract
+  keeps its SDK attributes, as before.
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
