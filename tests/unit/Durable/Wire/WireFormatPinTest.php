@@ -178,9 +178,9 @@ final class WireFormatPinTest extends TestCase
         $store = new InMemoryEventStore();
         $transport = new InMemoryActivityTransport();
         $context = new ExecutionContext(
-            'exec-1',
+            ExecutionId::fromString('exec-1'),
             new EventStoreHistorySource($store, 'exec-1'),
-            new EventStoreCommandBuffer($store, $transport, 'exec-1', new FrozenClock(1_700_000_000.0)),
+            new EventStoreCommandBuffer($store, $transport, ExecutionId::fromString('exec-1'), new FrozenClock(1_700_000_000.0)),
         );
 
         $context->activity('charge', ['o' => 1], new ActivityOptions(

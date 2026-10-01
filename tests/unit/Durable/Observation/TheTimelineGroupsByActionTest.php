@@ -165,8 +165,8 @@ final class TheTimelineGroupsByActionTest extends TestCase
     {
         $history = $this->read([
             new ExecutionStarted(ExecutionId::fromString('exec-1'), []),
-            new ChildWorkflowScheduled(ExecutionId::fromString('exec-1'), 'child-1', 'App\\ShipmentWorkflow', []),
-            new ChildWorkflowCompleted(ExecutionId::fromString('exec-1'), 'child-1', null),
+            new ChildWorkflowScheduled(ExecutionId::fromString('exec-1'), ExecutionId::fromString('child-1'), 'App\\ShipmentWorkflow', []),
+            new ChildWorkflowCompleted(ExecutionId::fromString('exec-1'), ExecutionId::fromString('child-1'), null),
         ], 'App\\OrderWorkflow');
 
         self::assertSame('child:child-1', $history[1]->actionKey);

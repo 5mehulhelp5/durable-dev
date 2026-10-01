@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
 use Gplanchat\Durable\ContinueAsNewOptions;
 use Gplanchat\Durable\Event\WorkflowExecutionFailed;
 use Gplanchat\Durable\Exception\DurableActivityFailedException;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Failure\FailureEnvelope;
 use Gplanchat\Durable\TaskQueue;
 use PHPUnit\Framework\TestCase;
@@ -29,7 +30,7 @@ final class TemporalWorkflowFailureRoundTripTest extends TestCase
 {
     private function buffer(): TemporalWorkflowCommandBuffer
     {
-        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), 'exec-1');
+        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), ExecutionId::fromString('exec-1'));
     }
 
     public function testUnhandledActivityFailureKindSurvivesTheRoundTrip(): void
@@ -58,7 +59,7 @@ final class TemporalWorkflowFailureRoundTripTest extends TestCase
         $event->setEventType(EventType::EVENT_TYPE_WORKFLOW_EXECUTION_FAILED);
         $event->setWorkflowExecutionFailedEventAttributes($attrs);
 
-        $decoded = (new TemporalEventConverter('exec-1'))->convert($event);
+        $decoded = (new TemporalEventConverter(ExecutionId::fromString('exec-1')))->convert($event);
         self::assertInstanceOf(WorkflowExecutionFailed::class, $decoded);
         self::assertSame(WorkflowExecutionFailed::KIND_UNHANDLED_ACTIVITY, $decoded->kind());
         self::assertSame('act-9', $decoded->context()['activityId'] ?? null);
