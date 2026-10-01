@@ -123,15 +123,20 @@ final class TemporalWorkflowCommandBufferSchedulingTest extends TestCase
 
     /**
      * The child's journal reads its execution id from this memo key, and the worker overwrites the
-     * wait key at each suspension: a user value under either would be misread or lost.
+     * wait key at each suspension: a user value under either would be misread or lost. Since #896
+     * the ChildWorkflowOptions constructor throws on these keys (#898), so options carrying one
+     * never reach the buffer.
      */
     public function testChildWorkflowMemoRefusesTheKeysDurableWrites(): void
     {
         foreach ([JournalExecutionIdResolver::MEMO_KEY_DURABLE_EXECUTION_ID, JournalExecutionIdResolver::MEMO_KEY_DURABLE_WAITING_ON] as $key) {
             try {
-                $this->buffer()->scheduleChildWorkflow(ExecutionId::fromString('child-4'), 'ChildType', [], new ChildWorkflowOptions(memo: [$key => 'x']));
+                new ChildWorkflowOptions(memo: [$key => 'x']);
                 self::fail(\sprintf('the memo key "%s" must be refused', $key));
             } catch (UnsupportedByBackendException $refusal) {
+                $thrower = $refusal->getTrace()[0];
+                self::assertSame(ChildWorkflowOptions::class, $thrower['class'] ?? null);
+                self::assertSame('__construct', $thrower['function']);
                 self::assertStringContainsString($key, $refusal->getMessage());
                 self::assertStringContainsString('ChildWorkflowOptions::$memo', $refusal->getMessage());
             }
