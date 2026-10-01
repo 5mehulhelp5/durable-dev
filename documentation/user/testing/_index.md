@@ -402,8 +402,18 @@ $env = WorkflowTestEnvironment::inMemory(maxContinuations: 50);
 An inline child workflow keeps the default cap of 10, as it keeps the default budget, whatever cap
 its parent's environment sets.
 
-`DurableTestCase::createWorkflowTestEnvironment()` uses the default cap; call
-`WorkflowTestEnvironment::inMemory()` to change it. On Magento without a Temporal DSN, set the
+In a `DurableTestCase`, `createWorkflowTestEnvironment()` and `createWorkflowRunner()` take the
+same two arguments, `budgetSeconds` and `maxContinuations`, and pass them to the runner:
+
+```php
+$env = $this->createWorkflowTestEnvironment(
+    ['charge' => $spy],
+    budgetSeconds: 3.0,
+    maxContinuations: 50,
+);
+```
+
+On Magento without a Temporal DSN, set the
 `maxContinuations` argument of `RuntimeFactory` in `di.xml`, as for `budgetSeconds`.
 
 ---

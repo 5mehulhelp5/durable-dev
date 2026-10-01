@@ -608,12 +608,13 @@ journal read. `read()` returns the same history as before.
 
 **What to do:** nothing.
 
-### Temporal: the workflow worker keeps polling after a rejected task failure (#863)
+### Temporal: the workflow worker keeps polling after a rejected task answer (#863, #891)
 
 A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
 `INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
 and the server message, and the worker polls again. Any other gRPC error still propagates out of
-`WorkflowTaskProcessor::processOne()`. Nothing to migrate.
+`WorkflowTaskProcessor::processOne()`. A `RespondWorkflowTaskCompleted` rejected with `NOT_FOUND`
+is now logged the same way (#891). Nothing to migrate.
 
 ### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
 
@@ -702,7 +703,8 @@ execution the caller started and the cap. It extends `WorkflowStuckException`, s
 `WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
 constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
 Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`; `0` allows no
-continuation, and a negative value throws `\InvalidArgumentException`. A test whose chain
+continuation, and a negative value throws `\InvalidArgumentException`, on Magento when the
+factory is built. A test whose chain
 runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
 
 ### durable-rector: the SDK migration marks the constructs it leaves as they are
@@ -724,6 +726,36 @@ used to leave the code unchanged without a word:
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
 without a marker. A second run adds no second marker.
+
+### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
+
+`DurableTestCase::createWorkflowTestEnvironment()` and `createWorkflowRunner()` gain two optional
+last arguments, `float $budgetSeconds` and `int $maxContinuations`, with the runner's defaults
+(`InMemoryWorkflowRunner::DEFAULT_BUDGET_SECONDS` and `DEFAULT_MAX_CONTINUATIONS`). Both go to
+`WorkflowTestEnvironment::inMemory()` unchanged.
+
+**What to do:** if a subclass of `DurableTestCase` overrides either method, add the two parameters
+to its signature; without them, PHP fails to load the class. Otherwise nothing.
+
+### New: PHPStan reports a stub that could be an `#[Activities]` parameter (#778)
+
+`gplanchat/durable-phpstan` has a new rule, `durable.activityStubCouldBeParameter`. It reports an
+`$env->activityStub()` call that the workflow method could receive as an `#[Activities]`
+parameter, with no options or with literal `ActivityOptions::of()` values. The message gives the
+attribute and the `@param ActivityStub<Contract>` docblock to write. Nothing is rewritten. The rule
+stays silent when the move would change what runs: computed options, `default()`, an empty
+`taskQueue`, or a stub that a signal, helper or closure reads. Code that already fails, such as
+`of(0)` or a contract with no `#[AsActivityMethod]`, is reported with a warning: after the move,
+the worker refuses to register the workflow. The extension's README lists every case, and the
+shapes the rule does not see.
+
+**Who is affected:** a project that runs PHPStan with the extension and builds activity stubs with
+`activityStub()`. Its analysis can report new errors after the upgrade.
+
+**What to do:** move the stub to the parameter the message gives, or keep it and ignore the rule
+with `- identifier: durable.activityStubCouldBeParameter` under `ignoreErrors` in `phpstan.neon`.
+To ignore it on one call only, add `// @phpstan-ignore durable.activityStubCouldBeParameter` on
+that line.
 
 ## 0.1.0-beta1
 

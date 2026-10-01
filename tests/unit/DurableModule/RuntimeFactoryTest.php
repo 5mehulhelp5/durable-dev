@@ -334,4 +334,16 @@ final class RuntimeFactoryTest extends TestCase
 
         $runtime->run(CounterWorkflow::class, ['n' => 0]);
     }
+
+    /**
+     * A negative cap in di.xml fails when the ObjectManager builds the factory, not at the first
+     * `create()` (#900).
+     */
+    public function testANegativeContinueAsNewCapFailsWhenTheFactoryIsBuilt(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxContinuations must be 0 or more, -1 given.');
+
+        new RuntimeFactory(maxContinuations: -1);
+    }
 }

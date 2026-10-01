@@ -84,6 +84,9 @@ public function run(
 
 Certains workflows construisent le stub eux-mêmes avec `$env->activityStub(OrderActivities::class)` :
 voyez [Quand construire le stub soi-même](../workflows/#when-to-build-the-stub-yourself).
+[`gplanchat/durable-phpstan`](https://github.com/gplanchat/durable-phpstan) signale un stub
+construit qui pourrait être un paramètre `#[Activities]`, avec l'attribut à écrire, sous
+l'identifiant `durable.activityStubCouldBeParameter`.
 
 Le type **`ActivityStub`** résout les noms de méthode par réflexion sur **`OrderActivities`** et construit les charges utiles **`#[AsActivityMethod]`**. [Écrire un workflow](../workflows/) explique le nom **ActivityInvoker**.
 
