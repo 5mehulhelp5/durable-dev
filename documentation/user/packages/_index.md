@@ -429,8 +429,9 @@ Three more arguments of the same factory bound a run, and `di.xml` is the only p
   budget, the call throws `WorkflowStuckException` instead of waiting longer. The default is `10`.
   In process, the budget exists because of the retry ceiling: with no ceiling, an activity that
   keeps failing would keep that process busy forever.
-- `maxContinuations` is, without a DSN, the number of continue-as-new the in-process run follows
-  before it throws `ContinuationCapReachedException`. The default is `10`. With a DSN, the cluster
+- `maxContinuations` is, without a DSN, how many continue-as-new the in-process run follows (an
+  execution that closes its journal and hands over to a fresh one; see the
+  [glossary](../glossary/)) before it throws `ContinuationCapReachedException`. The default is `10`. With a DSN, the cluster
   runs the chain.
 
 Workers and `workflowClient()` read none of them.

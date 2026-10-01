@@ -451,8 +451,9 @@ les régler :
   budget, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. La valeur par défaut est
   `10`. Dans le processus, le budget existe à cause du plafond de tentatives : sans plafond, une
   activité qui échoue sans cesse occuperait ce processus pour toujours.
-- `maxContinuations` est, sans DSN, le nombre de continue-as-new que suit l'exécution dans le
-  processus avant de lever `ContinuationCapReachedException`. La valeur par défaut est `10`. Avec un
+- `maxContinuations` est, sans DSN, le nombre de continue-as-new (une exécution qui referme son
+  journal et passe la main à une exécution neuve ; voir le [glossaire](../glossary/)) que suit
+  l'exécution dans le processus avant de lever `ContinuationCapReachedException`. La valeur par défaut est `10`. Avec un
   DSN, le cluster mène la chaîne.
 
 Les workers et `workflowClient()` n'en lisent aucun.
