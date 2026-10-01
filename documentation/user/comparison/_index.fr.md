@@ -567,7 +567,8 @@ Une limite est délibérée :
   qui garde son journal lui-même, en mémoire ou dans une seule base, n'a ni cette route ni de repli qui garde le sens de l'appel. Les backends en mémoire, DBAL et Illuminate
   **lèvent donc immédiatement** `NexusUnsupportedByBackendException`, dont le message indique
   d'utiliser le backend Temporal ; le workflow n'attend pas un résultat que personne ne produira.
-  Côté gestionnaire, sur Symfony, la vérification échoue **au montage du conteneur**, et non à la requête,
+  Côté gestionnaire, sur Symfony, la vérification échoue **au montage du conteneur** quand
+  `durable.temporal.dsn` n'est pas renseigné, et non à la requête,
   parce qu'un gestionnaire sans route ne reçoit jamais aucune requête.
 
 [DUR036](https://github.com/gplanchat/durable-dev/blob/main/documentation/adr/DUR036-nexus-caller-only-and-the-backend-asymmetry.md)
