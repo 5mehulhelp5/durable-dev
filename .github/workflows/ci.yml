@@ -1260,7 +1260,8 @@ jobs:
                   # per test, 18 of this job's 19 minutes. 1 s is not the server's default: it only
                   # shortens setup. The tests keep their waits and assert the same things; the lag is
                   # still there, just 1 s instead of 10.
-                  printf 'system.namespaceCacheRefreshInterval:\n  - value: 1s\n' > "$RUNNER_TEMP/temporal-dc.yaml"
+                  # Updates are off by default before Server 1.25 (#860): WorkflowUpdateTest needs them on.
+                  printf 'system.namespaceCacheRefreshInterval:\n  - value: 1s\nfrontend.enableUpdateWorkflowExecution:\n  - value: true\n' > "$RUNNER_TEMP/temporal-dc.yaml"
                   docker run -d --name oldest-temporal --network oldest -p 7233:7233 \
                     -e DB=postgres12 -e DB_PORT=5432 -e POSTGRES_USER=temporal -e POSTGRES_PWD=temporal -e POSTGRES_SEEDS=oldest-pg \
                     -e DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/ci.yaml \
@@ -1297,6 +1298,7 @@ jobs:
                   tests/integration/Temporal/SearchAttributesTest.php
                   tests/integration/Temporal/ContinueAsNewKeepsTheExecutionIdTest.php
                   tests/integration/Temporal/WorkflowUpdateTest.php
+                  tests/integration/Temporal/UpdateEventsProbeTest.php
 
             - name: Server logs
               if: failure()
