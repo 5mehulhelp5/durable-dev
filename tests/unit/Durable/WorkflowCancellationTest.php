@@ -281,9 +281,9 @@ final class WorkflowCancellationTest extends TestCase
     private function drainActivities(string $executionId): void
     {
         $this->runtime->runUntilIdle(new ExecutionContext(
-            $executionId,
+            ExecutionId::fromString($executionId),
             new EventStoreHistorySource($this->eventStore, $executionId),
-            new EventStoreCommandBuffer($this->eventStore, $this->transport, $executionId),
+            new EventStoreCommandBuffer($this->eventStore, $this->transport, ExecutionId::fromString($executionId)),
         ));
     }
 

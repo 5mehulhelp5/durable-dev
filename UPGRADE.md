@@ -386,8 +386,8 @@ only plain data, and `InMemoryEventStore` still files each stream under the stri
 
 The other ids an event carries keep their string type for now: the child id of the `ChildWorkflow*`
 events, `WorkflowCancellationRequested::sourceParentExecutionId()`, the next id of
-`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They follow in the last part
-of #682.
+`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They became `ExecutionId`s too:
+see the section on the other ids an event carries, below.
 
 **Reading back is stricter in one case.** `EventDataMapper::toDomainEvent()` converts the stored
 `execution_id` with `ExecutionId::fromString()`, so a row stored with an empty id now throws
@@ -464,6 +464,140 @@ or is not a `Throwable`.
 
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
+
+### Magento grid: the text filters work, on the whole workflow name and the start of an id (#815)
+
+The workflow name, execution id and backend run id filters of the process history grid matched
+nothing in a real admin. They declared the `text` shorthand, which Magento turns into a `like`
+condition and a `%text%` pattern before the data provider sees it, and the provider compared that
+pattern with the value. They now declare an `eq` condition, so the text arrives as typed, and they
+follow the rule of the Sylius and Filament lists: the whole workflow name, and the start of the
+execution id or of the run id, all as typed, with `%` and `_` as ordinary characters.
+
+**What to do:** nothing in your code. Operators type the whole workflow name, or the start of an id.
+### Dashboards: every event of the run carries the workflow's name (#850)
+
+On every backend, the events of the run's own line (its end, its failure, its cancellation) now
+carry the workflow's name, as the follow-ups of an activity carry the activity's name. The phase
+says what happened. They used to carry the event class, such as `WorkflowExecutionFailed` or
+`WORKFLOW EXECUTION FAILED`. On Temporal, the memo the worker writes at each suspension
+(`WORKFLOW PROPERTIES MODIFIED`) also joins the run's line instead of drawing a line of its own.
+
+**What to do:** nothing, unless a check of your own reads `WorkflowRunEvent::$label` and expects
+an event class there. Read `$phase` instead.
+
+### The other ids an event carries, the pass and `WorkflowEnvironment::executionId()` are `ExecutionId`s (#682)
+
+**Who is affected**: workflow code that reads `$env->executionId()`, code that reads the child,
+parent or next id of a journal event, and code that builds an `ExecutionContext`, a command buffer
+or a `TemporalEventConverter` itself, such as a test harness. **Nothing stored or sent changes.**
+Each payload still writes these ids as strings, and the Temporal memo and search attributes still
+carry the string. `TheJournalKeepsItsStringIdsTest` pins the payloads, and the Temporal command
+buffer's tests pin the memo.
+
+| Where                                                                   | Changes                              |
+|-------------------------------------------------------------------------|--------------------------------------|
+| `WorkflowEnvironment::executionId()`, `ExecutionContext::executionId()` | return `ExecutionId`                 |
+| `ChildWorkflowScheduled`, `ChildWorkflowCompleted`, `ChildWorkflowFailed`: second constructor argument, `childExecutionId()` | `ExecutionId` |
+| `WorkflowCancellationRequested`, `WorkflowExecutionCancelled`: `$sourceParentExecutionId`, `sourceParentExecutionId()` | `?ExecutionId` |
+| `WorkflowContinuedAsNew`: `$newExecutionId`, `newExecutionId()`         | `?ExecutionId`                       |
+| `WorkflowExecutionFailed::terminatedByParent()`                         | the parent id is an `ExecutionId`    |
+| The constructors of `ExecutionContext`, `EventStoreCommandBuffer`, `TemporalWorkflowCommandBuffer` and `TemporalEventConverter`, and `TemporalEventConverter::forHistory()` | take `ExecutionId` |
+| `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
+| `AwaitedFact::isJournalledIn()`                                         | the journal's id is an `ExecutionId`; the fact itself keeps its string ids, since it travels in the resume message |
+
+These keep a string for now, and a later part of #682 moves most of them:
+
+- `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the `EventStoreHistorySource`
+  constructor, `ExecutionEngine::start()` and `resume()`, `InMemoryWorkflowRunner::run()`;
+- the public and testing helpers, among them `PendingTimers`, `WaitReason`,
+  `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
+  `JournalAssertions`, `DurableTestCase` and `DurableBundleTestTrait`;
+- `WorkflowRunDescription::$executionId`, `ContinueAsNewRequested::nextExecutionId`,
+  `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
+- the wire messages, and the ids an `AwaitedFact` carries.
+
+`WorkflowRunDescription::$runId` stays a string for good (decision on #682).
+
+**Reading back is stricter.** `EventDataMapper::toDomainEvent()` converts the stored child id and
+the next id with `ExecutionId::fromString()`, so an empty one now throws `InvalidArgumentException`.
+An empty `sourceParentExecutionId` reads back as `null` on both cancellation events;
+`WorkflowExecutionCancelled` used to keep the empty string. `TemporalEventConverter` refuses a child
+event whose workflow id is empty.
+
+A journal written by 0.1.0-beta1 can hold an empty child id in one case: a workflow started a child
+with `ChildWorkflowOptions(workflowId: '')` on the local backend (in memory, DBAL or Illuminate).
+Nothing checked that option, and `ChildWorkflowScheduled` is appended before the child runs, so the
+parent's journal records `"childExecutionId":""`. Temporal refuses an empty workflow id, so its
+histories cannot hold one. After the upgrade, every read of that parent's stream throws: the
+replay, the dashboards, `durable:execution:diagnose` and the parent and child coordinator.
+
+To find such a parent, look for the empty field in the stored payloads, for instance on DBAL:
+`SELECT DISTINCT execution_id FROM durable_events WHERE payload LIKE '%"childExecutionId":""%'`.
+Finish or cancel those runs before you upgrade, or remove their rows once they no longer matter.
+
+**Rector does the building side.** In the `durable-upgrade` set:
+
+- `ExecutionIdEventArgumentRector` now wraps **every** positional string argument whose parameter
+  accepts an `ExecutionId`, not only the first one. It reaches the constructors and the factory
+  in the table.
+- `ExecutionIdArgumentRector` wraps the id passed to `TemporalExecutionHistory::waitJournal()` and
+  `AwaitedFact::isJournalledIn()`.
+
+It does not touch code that reads `executionId()`, `childExecutionId()`,
+`sourceParentExecutionId()` or `newExecutionId()`: after the upgrade, such a call may already be
+where an `ExecutionId` belongs.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id they report in
+   `ExecutionId::fromString()`. An empty string is refused.
+2. Look for these four getters in your code, workflow code first. Call `->toString()` wherever
+   the value lands in an activity payload, a log context, an array key or a comparison with a
+   string: `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+   Under `declare(strict_types=1)`, passing the object to a `string` parameter is a `TypeError`,
+   even though `ExecutionId` is `Stringable`. Compare two ids with `->equals()`, and pass the
+   object as it is to a port.
+
+### Temporal: a whole-valued float reads back as a float (#826)
+
+The Temporal bridge now encodes payloads with `JSON_PRESERVE_ZERO_FRACTION`, as the DBAL and
+Illuminate stores do since #759. A `30.0` in an activity result, a side effect, a workflow input or
+result, an update or a Nexus result used to read back as the int `30`. It now reads back as `30.0`.
+A `Double` search attribute goes out as `30.0` instead of `30`; an `Int` one is unchanged.
+
+**What to do:** nothing. Events recorded before this change keep their bytes and still read back as
+ints, so replaying them gives the same values, and the replay guard compares `30` and `30.0` as
+equal. Code that received an int from those payloads and branched on `is_int()` sees a float from
+new events.
+
+### Temporal: a child starts with its memo, summary and details (#804)
+
+`ChildWorkflowOptions::$memo`, `$staticSummary` and `$staticDetails` now reach the
+`StartChildWorkflowExecution` command: the memo as the child's memo, the summary and details as the
+command's user metadata, which the Temporal UI shows. Before, the SQL and in-memory journals
+recorded them and the Temporal bridge dropped them. The summary and details need Temporal Server
+1.25 or later: an older server drops them without an error. The memo reaches every supported
+server.
+
+A child memo key `durableExecutionId` or `durableWaitingOn` now throws
+`UnsupportedByBackendException` on Temporal: Durable writes both keys itself.
+
+**What to do:** rename a child memo key if it is one of those two.
+
+### Temporal: the workflow worker keeps polling after a decode failure or a rejected completion (#824, #840)
+
+A payload that fails to decode on a later history page now fails the workflow task
+(`RespondWorkflowTaskFailed`), as it already did on the first page. Outside a task poll, the codec
+client throws `Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, a `\RuntimeException` whose
+previous exception is the codec's own error. A Nexus task whose payload fails to decode is
+answered with a retryable `INTERNAL` handler error: the server delivers it again, and a worker
+redeployed with the right codec or key serves it.
+
+A `RespondWorkflowTaskCompleted` rejected with `INVALID_ARGUMENT` is logged as a warning and the
+worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain an optional last
+argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
+runtime factory pass theirs. Nothing to migrate.
 
 ### Laravel: the clock and the Temporal client are bound by class (#879)
 

@@ -8,6 +8,7 @@ use Gplanchat\Durable\ActivityExecutor;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
 use Gplanchat\Durable\Store\EventStoreHistorySource;
@@ -101,9 +102,9 @@ final class StepwiseWorkflowHarness
         // Wired the way ExecutionEngine wires it: the context takes the ports, not the store.
         $history = new EventStoreHistorySource($this->eventStore, $executionId);
         $context = new ExecutionContext(
-            $executionId,
+            ExecutionId::fromString($executionId),
             $history,
-            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, $executionId, $this->runtime->clock(), $history),
+            new EventStoreCommandBuffer($this->eventStore, $this->activityTransport, ExecutionId::fromString($executionId), $this->runtime->clock(), $history),
         );
         $this->runtime->drainActivityQueueOnce($context);
 
