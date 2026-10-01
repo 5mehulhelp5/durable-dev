@@ -349,8 +349,12 @@ become the user metadata of the start command, which the Temporal UI shows on th
 > The summary and details need Temporal Server 1.25 or later. An older server drops them without
 > an error, and the child starts without them. The memo reaches every supported server.
 
-`durableExecutionId` and `durableWaitingOn` are memo keys Durable writes itself. On Temporal, a
-child memo that uses one of them throws `UnsupportedByBackendException`.
+Durable reserves the memo keys `durableExecutionId` and `durableWaitingOn`, and writes them in a
+child's memo itself on Temporal. On every backend, `new ChildWorkflowOptions()` throws
+`UnsupportedByBackendException` when the memo uses one of them. A run that builds such options
+fails at that line, during replay too (the workflow code running again from its first line to
+resume; see the [glossary](../glossary/)). Replay compares a child's type and input with the
+journal, not its memo, so a run in flight resumes once the code uses another key.
 
 ---
 
