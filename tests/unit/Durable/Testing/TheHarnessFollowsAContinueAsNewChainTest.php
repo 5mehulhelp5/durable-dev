@@ -71,7 +71,7 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
     {
         foreach ($this->eventsOf($env, $executionId) as $event) {
             if ($event instanceof WorkflowContinuedAsNew) {
-                return $event->newExecutionId();
+                return $event->newExecutionId()?->toString();
             }
         }
 
