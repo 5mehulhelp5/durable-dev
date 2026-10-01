@@ -96,6 +96,11 @@ final class TheProviderWiresTheClockTest extends TestCase
         // The application owns the PSR-20 id: its clock drives Durable, and wins over durable.clock.
         yield 'ClockInterface before' => [[['instance', ClockInterface::class, 'Y']], [], 'Y'];
         yield 'ClockInterface before, durable.clock after' => [[['instance', ClockInterface::class, 'Y']], [['instance', 'durable.clock', 'X']], 'Y'];
+        yield 'ClockInterface and durable.clock before' => [[['instance', ClockInterface::class, 'Y'], ['instance', 'durable.clock', 'P']], [], 'Y'];
+        // The UPGRADE migration: ClockInterface delegates to durable.clock. Bound before the
+        // provider with nothing under durable.clock, it must resolve, not recurse.
+        yield 'delegate before, nothing else' => [[['delegate', ClockInterface::class, '']], [], null];
+        yield 'delegate before, durable.clock after' => [[['delegate', ClockInterface::class, '']], [['instance', 'durable.clock', 'X']], 'X'];
     }
 
     /**
@@ -108,7 +113,11 @@ final class TheProviderWiresTheClockTest extends TestCase
         $clocks = ['P' => new FrozenClock(1.0), 'X' => new FrozenClock(2.0), 'Y' => new FrozenClock(3.0)];
         $bind = static function (Container $app, array $steps) use ($clocks): void {
             foreach ($steps as [$method, $id, $name]) {
-                'instance' === $method ? $app->instance($id, $clocks[$name]) : $app->singleton($id, static fn() => $clocks[$name]);
+                match ($method) {
+                    'instance' => $app->instance($id, $clocks[$name]),
+                    'singleton' => $app->singleton($id, static fn() => $clocks[$name]),
+                    'delegate' => $app->bind($id, static fn($app) => $app->make('durable.clock')),
+                };
             }
         };
         $app = new Container();
