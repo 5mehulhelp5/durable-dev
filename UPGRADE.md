@@ -702,7 +702,8 @@ execution the caller started and the cap. It extends `WorkflowStuckException`, s
 `WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
 constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
 Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`; `0` allows no
-continuation, and a negative value throws `\InvalidArgumentException`. A test whose chain
+continuation, and a negative value throws `\InvalidArgumentException`, on Magento when the
+factory is built. A test whose chain
 runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
 
 ### durable-rector: the SDK migration marks the constructs it leaves as they are
