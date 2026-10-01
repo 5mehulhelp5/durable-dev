@@ -332,7 +332,7 @@ Messenger. Voici **tout** le câblage d'hôte, sur un framework qui n'a ni l'une
 
 ```php
 // config/durable.php
-'backend' => env('DURABLE_BACKEND', 'temporal'),   // servir du Nexus exige la grappe : c'est elle qui route
+'backend' => env('DURABLE_BACKEND', 'temporal'),   // servir du Nexus exige le cluster : c'est lui qui route
 'temporal' => ['dsn' => env('DURABLE_DSN')],
 'workflows' => [App\Durable\Workflow\ShipWorkflow::class],
 'nexus' => ['handlers' => [
