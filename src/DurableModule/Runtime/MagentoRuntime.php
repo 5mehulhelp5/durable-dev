@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Gplanchat\DurableModule\Runtime;
 
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
@@ -78,7 +79,7 @@ final class MagentoRuntime
             return ($this->runOnBackend)($workflowClass, $input, $executionId);
         }
 
-        return $this->runner->run($executionId, $this->workflows->getHandler($workflowClass, $input));
+        return $this->runner->run(ExecutionId::fromString($executionId), $this->workflows->getHandler($workflowClass, $input));
     }
 
     /**

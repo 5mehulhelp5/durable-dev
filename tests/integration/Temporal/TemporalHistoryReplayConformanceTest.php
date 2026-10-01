@@ -140,6 +140,6 @@ final class TemporalHistoryReplayConformanceTest extends TemporalServerTestCase
         $registry->registerClass(ConformanceChildWorkflow::class);
 
         return (new InMemoryWorkflowRunner($store, new InMemoryActivityTransport(), $activities, 0, $registry))
-            ->run('exec-reference', ConformanceWorkflow::run(...));
+            ->run(ExecutionId::fromString('exec-reference'), ConformanceWorkflow::run(...));
     }
 }

@@ -241,7 +241,7 @@ final class WorkflowCancellationTest extends TestCase
         $this->executor->register('fast', static fn(): string => 'winner');
         $runner = new \Gplanchat\Durable\InMemoryWorkflowRunner($this->eventStore, $this->transport, $this->executor);
 
-        $result = $runner->run('race-1', static fn(WorkflowEnvironment $env): mixed => $env->await($env->any(
+        $result = $runner->run(ExecutionId::fromString('race-1'), static fn(WorkflowEnvironment $env): mixed => $env->await($env->any(
             $env->activityStub(SuiteActivities::class)->fast(),
             $env->timer(3600.0),
         )));

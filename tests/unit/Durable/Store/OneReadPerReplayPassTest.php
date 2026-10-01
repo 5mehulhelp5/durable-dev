@@ -42,7 +42,7 @@ final class OneReadPerReplayPassTest extends TestCase
             return $sum;
         };
 
-        $expected = (new InMemoryWorkflowRunner($store, new InMemoryActivityTransport(), $executor))->run('exec-1', $handler);
+        $expected = (new InMemoryWorkflowRunner($store, new InMemoryActivityTransport(), $executor))->run(ExecutionId::fromString('exec-1'), $handler);
 
         $counting = new class ($store) implements EventStoreInterface {
             public int $historyReads = 0;
