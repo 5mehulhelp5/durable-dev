@@ -619,11 +619,12 @@ and the server message, and the worker polls again. Any other gRPC error still p
 
 `InMemoryWorkflowRunner` follows a continue-as-new chain to its last execution. Past
 `maxContinuations` continuations (default `InMemoryWorkflowRunner::DEFAULT_MAX_CONTINUATIONS`, 10),
-it throws `WorkflowStuckException`, built by the new `WorkflowStuckException::continuationCapReached()`,
-naming the execution the caller started and the cap. `InMemoryWorkflowRunner`,
-`WorkflowTestEnvironment::inMemory()` and the Magento `RuntimeFactory` gain an optional last argument
-`int $maxContinuations`. A test whose chain runs past 10 continuations passes
-`maxContinuations: <n>`; nothing else to migrate.
+it throws the new `Gplanchat\Durable\Exception\ContinuationCapReachedException`, naming the
+execution the caller started and the cap. It extends `WorkflowStuckException`, so a `catch` on
+`WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
+constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
+Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`. A test whose chain
+runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
 
 ## 0.1.0-beta1
 

@@ -398,7 +398,8 @@ les tests rapides.
 le [glossaire](../glossary/)). Le moteur en mémoire suit la chaîne et renvoie le résultat de la
 dernière exécution. Chaque exécution de la chaîne a son propre budget, qui n'arrête donc pas un
 workflow appelant `continueAsNew()` à chaque fois. Au-delà de 10 continuations, le moteur lève
-`WorkflowStuckException`, où `x` est l'identifiant de l'exécution que vous avez démarrée :
+`ContinuationCapReachedException`, une `WorkflowStuckException`, où `x` est l'identifiant de
+l'exécution que vous avez démarrée :
 
 ```
 Workflow x continued as new more often than maxContinuations (10) allows. Give the workflow a run

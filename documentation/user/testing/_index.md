@@ -385,7 +385,8 @@ closes its journal and hands over to a fresh execution (continue-as-new; see the
 [glossary](../glossary/)). The in-memory runner follows the chain and returns the result of the last
 execution. Each execution in the chain gets its own budget, so the budget does not stop a workflow
 that calls `continueAsNew()` every time. Past 10 continuations, the runner throws
-`WorkflowStuckException`, where `x` is the execution id you started:
+`ContinuationCapReachedException`, a `WorkflowStuckException`, where `x` is the execution id you
+started:
 
 ```
 Workflow x continued as new more often than maxContinuations (10) allows. Give the workflow a run

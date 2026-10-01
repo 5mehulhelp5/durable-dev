@@ -420,6 +420,7 @@ reaches two journals only, in memory and Temporal, so the SQL rows do not apply 
 | `profiler.enabled` | none | none | host-specific: the Symfony web profiler |
 | `max_activity_retries` | `max_activity_retries` | `maxActivityRetries` argument, read by `MagentoRuntime::run()` only; Temporal workers ignore it | same on Symfony and Laravel; host-specific on Magento, whose workers leave retries to the cluster. On Temporal, no host reads it |
 | none | none | `budgetSeconds` argument | host-specific: bounds `MagentoRuntime::run()`, the one host call that runs a workflow to its end in the calling process |
+| none | none | `maxContinuations` argument (default 10) | host-specific: caps the continue-as-new chain that `MagentoRuntime::run()` follows; past it, the call throws `ContinuationCapReachedException` |
 | `activity_contracts.cache`, `activity_contracts.contracts` | none | none | to add on Laravel and Magento |
 | `child_workflow.async_messenger` | none | none | host-specific: Messenger only |
 | workflows: `#[AsWorkflow]` on a service | `workflows` | `workflowClasses` argument | host-specific: neither container autoconfigures by attribute |

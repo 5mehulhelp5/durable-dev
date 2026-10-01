@@ -430,6 +430,7 @@ SQL ne s'y appliquent pas.
 | `profiler.enabled` | aucun | aucun | propre à l'hôte : le profileur web de Symfony |
 | `max_activity_retries` | `max_activity_retries` | argument `maxActivityRetries`, lu par `MagentoRuntime::run()` seulement ; les workers Temporal l'ignorent | identique sous Symfony et Laravel ; propre à l'hôte sous Magento, dont les workers laissent les tentatives à la grappe. Sous Temporal, aucun hôte ne le lit |
 | aucun | aucun | argument `budgetSeconds` | propre à l'hôte : borne `MagentoRuntime::run()`, le seul appel de l'hôte qui mène un workflow à son terme dans le processus appelant |
+| aucun | aucun | argument `maxContinuations` (10 par défaut) | propre à l'hôte : plafonne la chaîne de continue-as-new que suit `MagentoRuntime::run()` ; au-delà, l'appel lève `ContinuationCapReachedException` |
 | `activity_contracts.cache`, `activity_contracts.contracts` | aucun | aucun | à ajouter sous Laravel et Magento |
 | `child_workflow.async_messenger` | aucun | aucun | propre à l'hôte : Messenger seulement |
 | workflows : `#[AsWorkflow]` sur un service | `workflows` | argument `workflowClasses` | propre à l'hôte : aucun des deux conteneurs ne s'autoconfigure par attribut |
