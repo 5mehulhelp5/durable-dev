@@ -11,7 +11,19 @@ return [
     'kpi' => [
         'waiting_for_worker' => 'En attente d’un worker',
     ],
+    'workers' => [
+        'state' => [
+            'polled' => 'À l’écoute',
+            'missing' => 'Aucun worker',
+            'unknown' => 'Impossible de demander',
+        ],
+        'polling' => 'Le worker :role est à l’écoute.',
+        'missing' => 'Aucun worker :role n’a interrogé le backend depuis :seconds secondes : les exécutions s’arrêtent à leur première tâche :role. Démarrez php artisan durable:temporal-worker --role=:role.',
+        'unknown' => 'Impossible de demander au backend si un worker :role est à l’écoute : :error',
+        'queue_unlisted' => 'La file de Laravel ne tient aucune liste des processus qui lancent php artisan queue:work.',
+    ],
     'status' => [
+        'all' => 'Toutes',
         'running' => 'En cours',
         'completed' => 'Terminée',
         'failed' => 'En échec',
@@ -19,6 +31,7 @@ return [
         'continued_as_new' => 'Poursuivie à neuf',
     ],
     'filter' => [
+        'outcome' => 'Issue',
         'workflow_name' => 'Nom du workflow',
         'execution_id_prefix' => 'L’identifiant d’exécution commence par',
         'submit' => 'Filtrer',

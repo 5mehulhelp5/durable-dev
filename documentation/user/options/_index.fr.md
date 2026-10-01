@@ -336,6 +336,40 @@ Les workflows enfants acceptent la même planification par `ChildWorkflowOptions
 
 ---
 
+## Mémo, résumé et détails d'un enfant {#child-memo-summary-and-details}
+
+`ChildWorkflowOptions` prend un mémo, un résumé d'une ligne et des détails plus longs pour l'enfant.
+
+```php
+use Gplanchat\Durable\ChildWorkflowOptions;
+
+$shipment = $env->childWorkflowStub(ShipmentWorkflow::class, new ChildWorkflowOptions(
+    memo: ['orderId' => 'ORD-4242'],
+    staticSummary: 'Ship order ORD-4242',
+    staticDetails: 'Two parcels, carrier chosen at dispatch',
+));
+```
+
+Les backends SQL et en mémoire enregistrent les trois dans le journal du parent, sur l'événement qui
+planifie l'enfant. Sur Temporal, le mémo devient celui de l'enfant, et le résumé et les détails
+deviennent les métadonnées utilisateur de la commande de démarrage, que l'interface de Temporal
+affiche sur l'enfant.
+
+> [!NOTE]
+> Le résumé et les détails demandent Temporal Server 1.25 ou plus récent. Un serveur plus ancien
+> les ignore sans erreur, et l'enfant démarre sans eux. Le mémo passe sur tous les serveurs pris en
+> charge.
+
+Durable réserve les clés de mémo `durableExecutionId` et `durableWaitingOn`, et les écrit lui-même
+dans le mémo d'un enfant sur Temporal. Sur tous les backends, `new ChildWorkflowOptions()` lève
+`UnsupportedByBackendException` quand le mémo utilise l'une d'elles. Une exécution qui construit
+de telles options échoue à cette ligne, y compris pendant le rejeu (le code du workflow qui tourne
+à nouveau depuis sa première ligne pour reprendre ; voir le [glossaire](../glossary/)). Le rejeu
+compare le type et l'entrée d'un enfant avec le journal, pas son mémo : une exécution en cours
+reprend dès que le code utilise une autre clé.
+
+---
+
 ## Migrer depuis l'API précédente
 
 Les arguments nommés ont changé en même temps que les objets valeur. Un appel non migré échoue

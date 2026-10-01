@@ -386,8 +386,8 @@ only plain data, and `InMemoryEventStore` still files each stream under the stri
 
 The other ids an event carries keep their string type for now: the child id of the `ChildWorkflow*`
 events, `WorkflowCancellationRequested::sourceParentExecutionId()`, the next id of
-`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They follow in the last part
-of #682.
+`WorkflowContinuedAsNew`, and the parent id of `terminatedByParent()`. They became `ExecutionId`s too:
+see the section on the other ids an event carries, below.
 
 **Reading back is stricter in one case.** `EventDataMapper::toDomainEvent()` converts the stored
 `execution_id` with `ExecutionId::fromString()`, so a row stored with an empty id now throws
@@ -464,6 +464,302 @@ or is not a `Throwable`.
 
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
+
+### Magento grid: the text filters work, on the whole workflow name and the start of an id (#815)
+
+The workflow name, execution id and backend run id filters of the process history grid matched
+nothing in a real admin. They declared the `text` shorthand, which Magento turns into a `like`
+condition and a `%text%` pattern before the data provider sees it, and the provider compared that
+pattern with the value. They now declare an `eq` condition, so the text arrives as typed, and they
+follow the rule of the Sylius and Filament lists: the whole workflow name, and the start of the
+execution id or of the run id, all as typed, with `%` and `_` as ordinary characters.
+
+**What to do:** nothing in your code. Operators type the whole workflow name, or the start of an id.
+### Dashboards: every event of the run carries the workflow's name (#850)
+
+On every backend, the events of the run's own line (its end, its failure, its cancellation) now
+carry the workflow's name, as the follow-ups of an activity carry the activity's name. The phase
+says what happened. They used to carry the event class, such as `WorkflowExecutionFailed` or
+`WORKFLOW EXECUTION FAILED`. On Temporal, the memo the worker writes at each suspension
+(`WORKFLOW PROPERTIES MODIFIED`) also joins the run's line instead of drawing a line of its own.
+
+**What to do:** nothing, unless a check of your own reads `WorkflowRunEvent::$label` and expects
+an event class there. Read `$phase` instead.
+
+### The other ids an event carries, the pass and `WorkflowEnvironment::executionId()` are `ExecutionId`s (#682)
+
+**Who is affected**: workflow code that reads `$env->executionId()`, code that reads the child,
+parent or next id of a journal event, and code that builds an `ExecutionContext`, a command buffer
+or a `TemporalEventConverter` itself, such as a test harness. **Nothing stored or sent changes.**
+Each payload still writes these ids as strings, and the Temporal memo and search attributes still
+carry the string. `TheJournalKeepsItsStringIdsTest` pins the payloads, and the Temporal command
+buffer's tests pin the memo.
+
+| Where                                                                   | Changes                              |
+|-------------------------------------------------------------------------|--------------------------------------|
+| `WorkflowEnvironment::executionId()`, `ExecutionContext::executionId()` | return `ExecutionId`                 |
+| `ChildWorkflowScheduled`, `ChildWorkflowCompleted`, `ChildWorkflowFailed`: second constructor argument, `childExecutionId()` | `ExecutionId` |
+| `WorkflowCancellationRequested`, `WorkflowExecutionCancelled`: `$sourceParentExecutionId`, `sourceParentExecutionId()` | `?ExecutionId` |
+| `WorkflowContinuedAsNew`: `$newExecutionId`, `newExecutionId()`         | `?ExecutionId`                       |
+| `WorkflowExecutionFailed::terminatedByParent()`                         | the parent id is an `ExecutionId`    |
+| The constructors of `ExecutionContext`, `EventStoreCommandBuffer`, `TemporalWorkflowCommandBuffer` and `TemporalEventConverter`, and `TemporalEventConverter::forHistory()` | take `ExecutionId` |
+| `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
+| `AwaitedFact::isJournalledIn()`                                         | the journal's id is an `ExecutionId`; the fact itself keeps its string ids, since it travels in the resume message |
+
+These keep a string for now, and a later part of #682 moves most of them:
+
+- `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the `EventStoreHistorySource`
+  constructor, `ExecutionEngine::start()` and `resume()`, `InMemoryWorkflowRunner::run()`;
+- the public and testing helpers, among them `PendingTimers`, `WaitReason`,
+  `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
+  `JournalAssertions`, `DurableTestCase` and `DurableBundleTestTrait`;
+- `WorkflowRunDescription::$executionId`, `ContinueAsNewRequested::nextExecutionId`,
+  `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
+- the wire messages, and the ids an `AwaitedFact` carries.
+
+`WorkflowRunDescription::$runId` stays a string for good (decision on #682).
+
+**Reading back is stricter.** `EventDataMapper::toDomainEvent()` converts the stored child id and
+the next id with `ExecutionId::fromString()`, so an empty one now throws `InvalidArgumentException`.
+An empty `sourceParentExecutionId` reads back as `null` on both cancellation events;
+`WorkflowExecutionCancelled` used to keep the empty string. `TemporalEventConverter` refuses a child
+event whose workflow id is empty.
+
+A journal written by 0.1.0-beta1 can hold an empty child id in one case: a workflow started a child
+with `ChildWorkflowOptions(workflowId: '')` on the local backend (in memory, DBAL or Illuminate).
+Nothing checked that option, and `ChildWorkflowScheduled` is appended before the child runs, so the
+parent's journal records `"childExecutionId":""`. Temporal refuses an empty workflow id, so its
+histories cannot hold one. After the upgrade, every read of that parent's stream throws: the
+replay, the dashboards, `durable:execution:diagnose` and the parent and child coordinator.
+
+To find such a parent, look for the empty field in the stored payloads, for instance on DBAL:
+`SELECT DISTINCT execution_id FROM durable_events WHERE payload LIKE '%"childExecutionId":""%'`.
+Finish or cancel those runs before you upgrade, or remove their rows once they no longer matter.
+
+**Rector does the building side.** In the `durable-upgrade` set:
+
+- `ExecutionIdEventArgumentRector` now wraps **every** positional string argument whose parameter
+  accepts an `ExecutionId`, not only the first one. It reaches the constructors and the factory
+  in the table.
+- `ExecutionIdArgumentRector` wraps the id passed to `TemporalExecutionHistory::waitJournal()` and
+  `AwaitedFact::isJournalledIn()`.
+
+It does not touch code that reads `executionId()`, `childExecutionId()`,
+`sourceParentExecutionId()` or `newExecutionId()`: after the upgrade, such a call may already be
+where an `ExecutionId` belongs.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set, then PHPStan or Psalm, and wrap each id they report in
+   `ExecutionId::fromString()`. An empty string is refused.
+2. Look for these four getters in your code, workflow code first. Call `->toString()` wherever
+   the value lands in an activity payload, a log context, an array key or a comparison with a
+   string: `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+   Under `declare(strict_types=1)`, passing the object to a `string` parameter is a `TypeError`,
+   even though `ExecutionId` is `Stringable`. Compare two ids with `->equals()`, and pass the
+   object as it is to a port.
+
+### Temporal: a whole-valued float reads back as a float (#826)
+
+The Temporal bridge now encodes payloads with `JSON_PRESERVE_ZERO_FRACTION`, as the DBAL and
+Illuminate stores do since #759. A `30.0` in an activity result, a side effect, a workflow input or
+result, an update or a Nexus result used to read back as the int `30`. It now reads back as `30.0`.
+A `Double` search attribute goes out as `30.0` instead of `30`; an `Int` one is unchanged.
+
+**What to do:** nothing. Events recorded before this change keep their bytes and still read back as
+ints, so replaying them gives the same values, and the replay guard compares `30` and `30.0` as
+equal. Code that received an int from those payloads and branched on `is_int()` sees a float from
+new events.
+
+### Temporal: a child starts with its memo, summary and details (#804)
+
+`ChildWorkflowOptions::$memo`, `$staticSummary` and `$staticDetails` now reach the
+`StartChildWorkflowExecution` command: the memo as the child's memo, the summary and details as the
+command's user metadata, which the Temporal UI shows. Before, the SQL and in-memory journals
+recorded them and the Temporal bridge dropped them. The summary and details need Temporal Server
+1.25 or later: an older server drops them without an error. The memo reaches every supported
+server.
+
+A child memo key `durableExecutionId` or `durableWaitingOn` now throws
+`UnsupportedByBackendException` on Temporal: Durable writes both keys itself.
+
+**What to do:** rename a child memo key if it is one of those two.
+
+### Temporal: the workflow worker keeps polling after a decode failure or a rejected completion (#824, #840)
+
+A payload that fails to decode on a later history page now fails the workflow task
+(`RespondWorkflowTaskFailed`), as it already did on the first page. Outside a task poll, the codec
+client throws `Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, a `\RuntimeException` whose
+previous exception is the codec's own error. A Nexus task whose payload fails to decode is
+answered with a retryable `INTERNAL` handler error: the server delivers it again, and a worker
+redeployed with the right codec or key serves it.
+
+A `RespondWorkflowTaskCompleted` rejected with `INVALID_ARGUMENT` is logged as a warning and the
+worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain an optional last
+argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
+runtime factory pass theirs. Nothing to migrate.
+
+### `JournalRunHistoryReader::fromEntries()` (#819)
+
+`JournalRunHistoryReader` gains a static `fromEntries(iterable $entries, string $workflowName = '')`.
+It builds the same history as `read()` from journal entries you already read with
+`readStreamWithRecordedAt()`. The profiler panel uses it to draw `RunTimeline` without a second
+journal read. `read()` returns the same history as before.
+
+**What to do:** nothing.
+
+### Temporal: the workflow worker keeps polling after a rejected task answer (#863, #891)
+
+A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
+`INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
+and the server message, and the worker polls again. Any other gRPC error still propagates out of
+`WorkflowTaskProcessor::processOne()`. A `RespondWorkflowTaskCompleted` rejected with `NOT_FOUND`
+is now logged the same way (#891). Nothing to migrate.
+
+### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
+
+With `durable/temporal/dsn` set in `app/etc/env.php`, `run()` used to execute the workflow in the
+calling process, its activities included, and the cluster never saw it. It now starts the workflow
+on the cluster with `workflowClient()->startAsync()` and waits for its result with
+`pollForCompletion()`, as the Symfony bench does. Without a DSN, `run()` still executes in the
+calling process.
+
+With a DSN, four things differ from the in-process run:
+
+- The journal and activity workers (`bin/magento durable:worker --role=journal` and
+  `--role=activity`) carry the execution. Without them, `run()` throws `WorkflowStuckException` once
+  `budgetSeconds` is spent.
+- `maxActivityRetries` no longer applies: the cluster retries from each activity's own `RetryLimit`.
+  `budgetSeconds` bounds the wait for the result, polled every 500 ms.
+- A workflow that fails, times out or is terminated comes back as a plain `\RuntimeException` whose
+  message starts with `Workflow "<execution id>"`, with no previous exception. A workflow that waits
+  on a signal waits the whole budget instead of failing at once.
+- The result comes back decoded from JSON: an object the workflow returns arrives as an array.
+
+**What to do:** if your code relies on `run()` executing in the calling process while a DSN is set
+(activities reading request state, a test without a cluster), keep the DSN out of that process's
+`env.php`, or start the workers before calling `run()`. To start a workflow from a web request
+without waiting, call `workflowClient()->startAsync()`.
+
+### `WorkflowClient::pollForCompletion()` throws `WorkflowStuckException` when its polls run out
+
+When no close event arrives within its polls, `pollForCompletion()` now throws
+`Gplanchat\Durable\Exception\WorkflowStuckException`, built by the new
+`WorkflowStuckException::pollsExhausted()`, with the same message as before. It used to throw a
+plain `\RuntimeException`. Every host that waits through the Temporal client sees the new type.
+
+**What to do:** nothing if you catch `\RuntimeException`: `WorkflowStuckException` extends it. To
+tell a wait that ran out from a workflow that failed, catch `WorkflowStuckException` first; its
+`executionId` property names the execution.
+
+### Laravel: the clock and the Temporal client are bound by class (#879)
+
+`DurableServiceProvider` now binds `Psr\Clock\ClockInterface` and
+`Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface`. The runtime and
+`gplanchat/durable-filament` read the clock through `ClockInterface`, which resolves
+`durable.clock` each time it is asked. Every route #617 documents keeps working for both: a clock
+bound under `durable.clock` with `instance()` or `singleton()`, before or after the provider
+registers, reaches the runtime and the dashboard. Binding `ClockInterface` reaches both as well.
+
+**What breaks.** If you bind `Psr\Clock\ClockInterface` before or after `DurableServiceProvider`
+registers, Durable reads that clock, and `durable.clock` no longer reaches Durable. Until now,
+Durable read `durable.clock` and ignored a `ClockInterface` binding.
+
+**What to do**, only if your application binds `ClockInterface` and Durable must not read that
+clock: bind `ClockInterface` as a delegate to `durable.clock`, without `singleton()`, so that it
+follows a later rebinding of `durable.clock`:
+
+```php
+$this->app->bind(\Psr\Clock\ClockInterface::class, fn($app) => $app->make('durable.clock'));
+```
+
+`durable.clock` stays `SystemClock` unless you bind another clock under it, before or after the
+provider registers. Your application's other PSR-20 consumers then read that same clock: Durable
+and your application can no longer read two different clocks.
+
+The Temporal client is bound under its interface, and `durable.temporal.client` is now an alias of
+that binding. That id was never documented: an `instance('durable.temporal.client', …)` done after
+the provider registers no longer reaches `TemporalRuntimeAssembly`. Bind
+`WorkflowServiceClientInterface` instead.
+
+### A child memo key `durableExecutionId` or `durableWaitingOn` fails on every backend (#889)
+
+Durable reserves both keys: on Temporal it writes them in a child's memo itself. The
+`ChildWorkflowOptions` constructor now throws `UnsupportedByBackendException` when `$memo`
+contains either key, on every backend. Before, only the Temporal bridge refused them, and the SQL
+and in-memory backends recorded them. The check runs when the options are built, so a run in
+flight that rebuilds such options during replay fails too.
+
+**What to do:** rename the memo key before you deploy this version. Replay compares a child's type
+and input with the journal, not its memo, so a run in flight resumes with the new key. A run that
+replays on code still using one of the two keys fails at `new ChildWorkflowOptions()`.
+
+### In-memory runner: a continue-as-new chain stops after 10 continuations (#888)
+
+`InMemoryWorkflowRunner` follows a continue-as-new chain to its last execution. Past
+`maxContinuations` continuations (default `InMemoryWorkflowRunner::DEFAULT_MAX_CONTINUATIONS`, 10),
+it throws the new `Gplanchat\Durable\Exception\ContinuationCapReachedException`, naming the
+execution the caller started and the cap. It extends `WorkflowStuckException`, so a `catch` on
+`WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
+constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
+Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`; `0` allows no
+continuation, and a negative value throws `\InvalidArgumentException`, on Magento when the
+factory is built. A test whose chain
+runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
+
+### durable-rector: the SDK migration marks the constructs it leaves as they are
+
+A run of the `temporal-sdk.php` set now adds a `// durable-rector:` comment in three places where it
+used to leave the code unchanged without a word:
+
+- above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
+  or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
+  static call, a `::class`, a parameter or return type (marked above its method or function,
+  #909). Durable has no counterpart for these four failures, and once `temporal/sdk` is removed the
+  reference no longer resolves. The `use` import is not marked;
+- above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
+  and `some`, one of those three with no argument, and `some()` without a count;
+- above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
+  computed prefix, a literal one that does not end in a dot, or `'.'` alone), and
+  above an activity method whose `#[ActivityMethod(name:)]` is not a string literal. The contract
+  keeps its SDK attributes, as before. A prefix with several segments, such as `'Billing.Order.'`,
+  is converted: both engines give the same activity names (#907). The prefix `'.'` used to become
+  `#[AsActivity(name: '')]`, which renamed `.charge` to `charge`; it is now marked.
+
+**What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
+marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
+without a marker. A second run adds no second marker. A failure marker written by an earlier run
+keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
+
+### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
+
+`DurableTestCase::createWorkflowTestEnvironment()` and `createWorkflowRunner()` gain two optional
+last arguments, `float $budgetSeconds` and `int $maxContinuations`, with the runner's defaults
+(`InMemoryWorkflowRunner::DEFAULT_BUDGET_SECONDS` and `DEFAULT_MAX_CONTINUATIONS`). Both go to
+`WorkflowTestEnvironment::inMemory()` unchanged.
+
+**What to do:** if a subclass of `DurableTestCase` overrides either method, add the two parameters
+to its signature; without them, PHP fails to load the class. Otherwise nothing.
+
+### New: PHPStan reports a stub that could be an `#[Activities]` parameter (#778)
+
+`gplanchat/durable-phpstan` has a new rule, `durable.activityStubCouldBeParameter`. It reports an
+`$env->activityStub()` call that the workflow method could receive as an `#[Activities]`
+parameter, with no options or with literal `ActivityOptions::of()` values. The message gives the
+attribute and the `@param ActivityStub<Contract>` docblock to write. Nothing is rewritten. The rule
+stays silent when the move would change what runs: computed options, `default()`, an empty
+`taskQueue`, or a stub that a signal, helper or closure reads. Code that already fails, such as
+`of(0)` or a contract with no `#[AsActivityMethod]`, is reported with a warning: after the move,
+the worker refuses to register the workflow. The extension's README lists every case, and the
+shapes the rule does not see.
+
+**Who is affected:** a project that runs PHPStan with the extension and builds activity stubs with
+`activityStub()`. Its analysis can report new errors after the upgrade.
+
+**What to do:** move the stub to the parameter the message gives, or keep it and ignore the rule
+with `- identifier: durable.activityStubCouldBeParameter` under `ignoreErrors` in `phpstan.neon`.
+To ignore it on one call only, add `// @phpstan-ignore durable.activityStubCouldBeParameter` on
+that line.
 
 ## 0.1.0-beta1
 

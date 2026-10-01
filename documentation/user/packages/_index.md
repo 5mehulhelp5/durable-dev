@@ -412,22 +412,29 @@ You do not declare the *contract*. The factory reads each handler's interfaces a
 carrying `#[AsActivityMethod]`, which leaves one declaration fewer to get wrong and keeps the
 activity names those of the attributes.
 
-Two more arguments of the same factory bound a run, and `di.xml` is the only place to set them:
+Three more arguments of the same factory bound a run, and `di.xml` is the only place to set them:
 
 ```xml
 <argument name="maxActivityRetries" xsi:type="number">3</argument>
 <argument name="budgetSeconds" xsi:type="number">30</argument>
+<argument name="maxContinuations" xsi:type="number">10</argument>
 ```
 
 - `maxActivityRetries` is the retry ceiling of the activities that `MagentoRuntime::run()` runs in
-  the calling process, the equivalent of the Symfony bundle's
+  the calling process when no DSN is set, the equivalent of the Symfony bundle's
   [`max_activity_retries`](../configuration/#max_activity_retries). The default, `0`, sets no cap.
   Temporal workers never read it: there, the cluster retries from the activity's own `RetryLimit`.
-- `budgetSeconds` bounds `MagentoRuntime::run()`, which runs a workflow to its end inside the
-  calling process. Past the budget, the call throws `WorkflowStuckException` instead of waiting
-  longer. The default is `10`. The budget exists because of the retry ceiling: with no ceiling, an
-  activity that keeps failing would keep that process busy forever. Workers and `workflowClient()`
-  read neither argument.
+- `budgetSeconds` bounds `MagentoRuntime::run()`. Without a DSN, the call runs a workflow to its end
+  inside the calling process; with one, it waits that long for the cluster's result. Past the
+  budget, the call throws `WorkflowStuckException` instead of waiting longer. The default is `10`.
+  In process, the budget exists because of the retry ceiling: with no ceiling, an activity that
+  keeps failing would keep that process busy forever.
+- `maxContinuations` is, without a DSN, how many continue-as-new the in-process run follows (an
+  execution that closes its journal and hands over to a fresh one; see the
+  [glossary](../glossary/)) before it throws `ContinuationCapReachedException`. The default is `10`. With a DSN, the cluster
+  runs the chain.
+
+Workers and `workflowClient()` read none of them.
 
 **Magento supports two backends, and Composer enforces it.** Magento reaches in-memory and
 Temporal, and the module declares a `conflict` on both SQL bridges, because
@@ -442,6 +449,19 @@ A DSN in `app/etc/env.php` selects the backend; no other setting does:
 
 Without the DSN, the journal lives in the process that writes it and is lost when that process
 ends. That is acceptable for a console command and unsuitable for anything else.
+
+`MagentoRuntime::run()` follows the same choice. Without a DSN, it runs the workflow in the calling
+process. With a DSN, it starts the workflow on the cluster and waits for its result, which the
+workers below produce. The wait lasts about `budgetSeconds` and ends with `WorkflowStuckException`.
+
+A workflow that fails, times out or is terminated reaches the caller differently with a DSN: as a
+plain `\RuntimeException` whose message starts with `Workflow "<execution id>"`, with no previous
+exception. A workflow that waits on a signal waits the whole budget instead of failing at once.
+
+The result comes back decoded from JSON: an object the workflow returns arrives as an array.
+
+To start a workflow without waiting, from a web request for example, call
+`workflowClient()->startAsync()`.
 
 **Workers are `bin/magento` commands**, not queue consumers. Supervise them like any other
 long-running process:

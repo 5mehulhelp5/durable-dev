@@ -356,7 +356,7 @@ as a timer. Pass `initialInterval: Duration::zero()` to keep those tests fast.
 
 ---
 
-## Stuck executions and endless retries in the in-memory runner {#two-traps-of-the-in-memory-runner}
+## Stuck executions, endless retries and endless chains in the in-memory runner {#two-traps-of-the-in-memory-runner}
 
 **An execution that cannot progress fails instead of hanging.** A workflow waiting on a signal that
 the test never delivers raises `WorkflowStuckException` instead of spinning.
@@ -380,6 +380,42 @@ $env = WorkflowTestEnvironment::inMemory(
 
 Retry backoff takes real time, so an activity configured with the default one-second interval makes
 the test wait. Pass `initialInterval: Duration::zero()` to keep tests fast.
+
+**A continue-as-new chain stops after 10 continuations.** An execution that calls `continueAsNew()`
+closes its journal and hands over to a fresh execution (continue-as-new; see the
+[glossary](../glossary/)). The in-memory runner follows the chain and returns the result of the last
+execution. Each execution in the chain gets its own budget, so the budget does not stop a workflow
+that calls `continueAsNew()` every time. Past 10 continuations, the runner throws
+`ContinuationCapReachedException`, a `WorkflowStuckException`, where `x` is the execution id you
+started:
+
+```
+Workflow x continued as new more often than maxContinuations (10) allows. Give the workflow a run
+that returns, or raise the runner's maxContinuations.
+```
+
+To test a longer chain, raise the cap:
+
+```php
+$env = WorkflowTestEnvironment::inMemory(maxContinuations: 50);
+```
+
+An inline child workflow keeps the default cap of 10, as it keeps the default budget, whatever cap
+its parent's environment sets.
+
+In a `DurableTestCase`, `createWorkflowTestEnvironment()` and `createWorkflowRunner()` take the
+same two arguments, `budgetSeconds` and `maxContinuations`, and pass them to the runner:
+
+```php
+$env = $this->createWorkflowTestEnvironment(
+    ['charge' => $spy],
+    budgetSeconds: 3.0,
+    maxContinuations: 50,
+);
+```
+
+On Magento without a Temporal DSN, set the
+`maxContinuations` argument of `RuntimeFactory` in `di.xml`, as for `budgetSeconds`.
 
 ---
 

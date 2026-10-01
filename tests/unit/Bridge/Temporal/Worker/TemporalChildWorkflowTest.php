@@ -9,7 +9,10 @@ use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\Worker\TemporalChildWorkflowRunner;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
 use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
+use Gplanchat\Durable\ChildWorkflowOptions;
+use Gplanchat\Durable\Exception\UnsupportedByBackendException;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
@@ -55,16 +58,32 @@ final class TemporalChildWorkflowTest extends TestCase
         self::assertSame([], $buffer->peek(), 'no command must be re-emitted at replay');
     }
 
+    public function testAReservedChildMemoKeyFailsBeforeAnyStartCommand(): void
+    {
+        foreach ([ChildWorkflowOptions::MEMO_KEY_DURABLE_EXECUTION_ID, ChildWorkflowOptions::MEMO_KEY_DURABLE_WAITING_ON] as $key) {
+            $buffer = $this->buffer();
+            $context = $this->context(TemporalExecutionHistory::fromEvents([]), $buffer);
+
+            try {
+                $context->executeChildWorkflow('ChildType', [], new ChildWorkflowOptions(memo: [$key => 'x']));
+                self::fail(\sprintf('the memo key "%s" must be refused', $key));
+            } catch (UnsupportedByBackendException $refusal) {
+                self::assertStringContainsString(\sprintf('The key "%s" in ChildWorkflowOptions::$memo is reserved', $key), $refusal->getMessage());
+            }
+            self::assertSame([], $buffer->peek(), 'no start command for a refused memo');
+        }
+    }
+
     // -------------------------------------------------------------------------
 
     private function buffer(): TemporalWorkflowCommandBuffer
     {
-        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), 'parent-1');
+        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), ExecutionId::fromString('parent-1'));
     }
 
     private function context(TemporalExecutionHistory $history, TemporalWorkflowCommandBuffer $buffer): ExecutionContext
     {
-        return new ExecutionContext('parent-1', $history, $buffer, new TemporalChildWorkflowRunner());
+        return new ExecutionContext(ExecutionId::fromString('parent-1'), $history, $buffer, new TemporalChildWorkflowRunner());
     }
 
     private function initiated(string $childWorkflowId): HistoryEvent
