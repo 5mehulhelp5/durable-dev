@@ -15,7 +15,9 @@ final class TheIlluminateBackendTest extends PanelTestCase
         $this->app->make(Kernel::class)->call('migrate', ['--force' => true]);
         $this->startRun('sql-run-1');
 
-        $this->get('/admin/durable/runs')->assertOk()->assertSee('sql-run-1')->assertSee('App\\ShipWorkflow');
+        $this->get('/admin/durable/runs')->assertOk()->assertSee('sql-run-1')->assertSee('App\\ShipWorkflow')
+            // Laravel's queue keeps no list of its workers.
+            ->assertSee('Could not ask the backend whether a queue worker polls');
         $this->get('/admin/durable/run?executionId=sql-run-1')->assertOk()->assertSee('App\\ShipWorkflow');
     }
 }
