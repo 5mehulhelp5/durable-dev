@@ -615,6 +615,42 @@ A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already ti
 and the server message, and the worker polls again. Any other gRPC error still propagates out of
 `WorkflowTaskProcessor::processOne()`. Nothing to migrate.
 
+### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
+
+With `durable/temporal/dsn` set in `app/etc/env.php`, `run()` used to execute the workflow in the
+calling process, its activities included, and the cluster never saw it. It now starts the workflow
+on the cluster with `workflowClient()->startAsync()` and waits for its result with
+`pollForCompletion()`, as the Symfony bench does. Without a DSN, `run()` still executes in the
+calling process.
+
+With a DSN, four things differ from the in-process run:
+
+- The journal and activity workers (`bin/magento durable:worker --role=journal` and
+  `--role=activity`) carry the execution. Without them, `run()` throws `WorkflowStuckException` once
+  `budgetSeconds` is spent.
+- `maxActivityRetries` no longer applies: the cluster retries from each activity's own `RetryLimit`.
+  `budgetSeconds` bounds the wait for the result, polled every 500 ms.
+- A workflow that fails, times out or is terminated comes back as a plain `\RuntimeException` whose
+  message starts with `Workflow "<execution id>"`, with no previous exception. A workflow that waits
+  on a signal waits the whole budget instead of failing at once.
+- The result comes back decoded from JSON: an object the workflow returns arrives as an array.
+
+**What to do:** if your code relies on `run()` executing in the calling process while a DSN is set
+(activities reading request state, a test without a cluster), keep the DSN out of that process's
+`env.php`, or start the workers before calling `run()`. To start a workflow from a web request
+without waiting, call `workflowClient()->startAsync()`.
+
+### `WorkflowClient::pollForCompletion()` throws `WorkflowStuckException` when its polls run out
+
+When no close event arrives within its polls, `pollForCompletion()` now throws
+`Gplanchat\Durable\Exception\WorkflowStuckException`, built by the new
+`WorkflowStuckException::pollsExhausted()`, with the same message as before. It used to throw a
+plain `\RuntimeException`. Every host that waits through the Temporal client sees the new type.
+
+**What to do:** nothing if you catch `\RuntimeException`: `WorkflowStuckException` extends it. To
+tell a wait that ran out from a workflow that failed, catch `WorkflowStuckException` first; its
+`executionId` property names the execution.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
