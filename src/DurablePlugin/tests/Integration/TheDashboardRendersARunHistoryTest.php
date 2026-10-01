@@ -291,6 +291,21 @@ final class TheDashboardRendersARunHistoryTest extends TestCase
         self::assertStringNotContainsString('alert-danger', $page);
     }
 
+    /**
+     * Messenger keeps no list of its consumers: the page says it could not ask, and why, rather
+     * than blaming a worker it cannot see.
+     */
+    public function testABackendThatKeepsNoListOfItsWorkersSaysItCouldNotAsk(): void
+    {
+        $unlisted = [['role' => 'queue', 'pollers' => 0, 'polling' => false, 'error' => null, 'seconds' => 120, 'unlisted' => true]];
+
+        $page = $this->renderWorkers($unlisted);
+        self::assertStringContainsString('Could not ask the backend whether a queue worker polls: Messenger keeps no list of the processes that run bin/console durable:worker.', $page);
+        self::assertStringNotContainsString('alert-danger', $page);
+
+        self::assertStringContainsString('Messenger ne tient aucune liste des processus qui lancent bin/console durable:worker.', $this->renderWorkers($unlisted, 'fr'));
+    }
+
     public function testAnEphemeralJournalIsNeitherAFailureNorASuccess(): void
     {
         // The third state: it answers, and its answer is empty by construction.

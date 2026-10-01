@@ -143,9 +143,11 @@ records the decision behind it.
 
 The bridge leaves the replay interpreter, the workflow ports and the command buffer unchanged.
 Replay is how an execution resumes: the workflow code runs again from its first line, and each
-recorded step returns its result from the journal. The bridge only makes three process-local stores
-persistent: the event journal, the workflow metadata, and the parent links between child workflows.
-Workflow and activity code is byte-for-byte what runs on Temporal or in memory.
+recorded step returns its result from the journal. The bridge only makes four process-local stores
+persistent: the event journal, the workflow metadata, the parent links between child workflows, and
+the run catalog, the list of executions a dashboard reads. Two classes share the run catalog's
+table: `DbalWorkflowRunProjection` writes it and `DbalWorkflowRunCatalog` reads it. Workflow and
+activity code is byte-for-byte what runs on Temporal or in memory.
 
 | Kept | Given up, compared with Temporal |
 |---|---|
@@ -155,7 +157,9 @@ Workflow and activity code is byte-for-byte what runs on Temporal or in memory.
 | Replay determinism and the event journal | History retention, visibility API, the Temporal UI |
 
 Choose it when you need durability without running a cluster. It takes one database you already
-back up, one migration, and no extension to compile.
+back up and no extension to compile. The bridge ships no migration: `DurableSchema` creates the
+tables on the first write, and `bin/console durable:setup` creates them up front (see
+[DBAL backend](../backends/#dbal-backend)).
 
 ---
 
@@ -169,7 +173,8 @@ php artisan migrate
 ```
 
 This bridge provides the same four stores as the DBAL bridge, with the same trade-offs against
-Temporal: the table above applies here word for word. The connection differs. These stores use
+Temporal: the table above applies here word for word. One class, `IlluminateWorkflowRunCatalog`,
+both writes and reads the run catalog. The connection differs. These stores use
 `Illuminate\Database\Connection` and its query builder, without Eloquent.
 
 Give the stores their own connection in `config/database.php`, separate from the application's
@@ -178,11 +183,17 @@ application's: a business rollback erases journal events, and a claim stays invi
 workers until the business code commits. To handle an activity that writes and then dies, make the
 activity idempotent. Never share a transaction with business code for that purpose.
 
-The four tables ship as a migration loaded straight from the package, so `migrate` is enough. To
-edit them, publish them with `vendor:publish --tag=durable-migrations`; from then on, you maintain
-the published copy. **Keep the published file's name.** Laravel keys migrations by basename and
-gives precedence to `database/migrations` when two names match, which makes your copy the one that
-runs. If you rename it, both migrations run, and the second fails on a table that already exists.
+The five tables ship as migrations loaded straight from the package, so `migrate` is enough. Each
+store has its table, and the event journal also writes `durable_execution_heads`, a counter per
+execution that stops a superseded resume from writing (DUR053). To edit them, publish them with
+`vendor:publish --tag=durable-migrations`. The command copies the whole `Migrations/` directory of
+the package, five files, into `database/migrations`; from then on, you maintain the published
+copies. **Keep the published files' names.** Laravel keys migrations by basename and gives
+precedence to `database/migrations` when two names match, which makes your copy the one that runs.
+If you rename a file, Laravel runs both the package's file and your copy. Only
+`0001_01_01_000000_create_durable_tables.php` fails on the second run: its `Schema::create` calls
+have no guard and stop on a table that already exists. The four other migrations check `hasColumn`,
+`hasIndex` or `hasTable` first and change nothing the second time.
 
 `Queue\ResumeLock` covers what no choice of storage supplies. When two workers resume the **same**
 execution, both replay it, both treat the commands it produces as new, and those commands go out
@@ -214,11 +225,11 @@ provider binds the four storage ports, the activity and resume jobs, and the per
 
 **One `backend` value binds every port.** A journal on one backend with a run catalogue on another
 is a fault, so `backend` takes a single value. A value this package does not serve fails at
-registration with an error that names it and the two backends the package serves: `illuminate` and
-`memory`.
+registration with an error that names it and the three backends the package serves: `illuminate`, `memory`
+and `temporal`.
 
 **You declare workflows in configuration.** Laravel has no equivalent of Symfony's attribute
-autoconfiguration, so the `workflows` key names the classes. Naming them costs 0,14 ms, measured,
+autoconfiguration, so the `workflows` key names the classes. Naming them costs 0.14 ms, measured,
 and does not grow with the application. A reflection scan costs 15 ms at a thousand classes **and
 loads all of them into every process** to find five. For the same reason, there is no
 `durable:cache`: `config:cache` already caches the file it would duplicate.
@@ -472,10 +483,18 @@ bin/magento durable:worker --role=journal   --time-limit=3600
 bin/magento durable:worker --role=activity  --time-limit=3600
 ```
 
-Each process serves one role on one queue. The two roles use two distinct Temporal queues, and you
-tune their concurrency separately. Nothing goes through Magento's own `MessageQueue`: on Temporal,
+Each process serves one role on one queue. The journal and activity roles use two distinct Temporal
+queues, and you tune their concurrency separately. Nothing goes through Magento's own `MessageQueue`: on Temporal,
 an activity is a Temporal command and a resume is a workflow task, so a Magento topic would only
 add a second queue for an operator to supervise.
+
+**A shop that serves [Nexus operations](../nexus/#serving-an-operation)** lists its handlers in
+one more array of the same factory, `nexusHandlers`: one object per handler, whose
+`#[AsNexusServiceHandler]` names the contract it serves. An operation the handler has no method for
+comes from a `workflowClasses` entry carrying `#[FulfilsNexusOperation]`. A third process,
+`bin/magento durable:worker --role=nexus`, serves them on the DSN's `nexus_task_queue`, which
+defaults to the workflow task queue. Without a DSN, that worker fails with
+`A Nexus worker needs a cluster`.
 
 **A missing worker shows differently depending on its role.** Without `--role=journal`, nothing
 advances: executions start, their history fills, and no process answers their workflow tasks.
@@ -548,8 +567,8 @@ bundle. Without a framework, you name the library yourself, and you also wire th
 The Laravel line names the library instead of an integration, and that is now a *choice*.
 `gplanchat/durable-laravel` exists: a service provider that binds the four storage ports,
 workflows declared in `config/durable.php`, and work on the queue the application already drains.
-Until it is tagged, the bridge installs on its own and you wire it yourself; the section above
-lists what the integration does for you.
+To have it wire the ports for you, require `gplanchat/durable-laravel` instead: it pulls in the
+library and the Illuminate bridge, and the section above lists what it does for you.
 
 ---
 

@@ -25,7 +25,7 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Temps de file hachuré | Oui | Oui | Sur la frise | Oui |
 | Rouge sur l'événement en échec | Oui | Oui | Sur la frise | Oui |
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
-| Présence des workers | Oui | Oui, journal et activity | Oui, workflow et activity | Non |
+| Présence des workers | Par rôle sous Temporal, « Impossible de demander » sous DBAL, aucune en mémoire | Journal et activity sous Temporal, aucune en mémoire | Workflow et activity sous Temporal, « Impossible de demander » sous Illuminate, aucune en mémoire | Non |
 | Masquage des charges utiles | Replié | Replié | Replié | Replié |
 | Langues | Anglais, français | Anglais, français | Anglais, français | Anglais |
 

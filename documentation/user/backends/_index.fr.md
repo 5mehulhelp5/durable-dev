@@ -94,6 +94,21 @@ Le bundle enregistre lui-même ces workers à partir de `durable.temporal.dsn` :
 les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Temporal. Un troisième,
 `durable_nexus`, existe quand l'application [sert une opération Nexus](../nexus/).
 
+### Attendre le résultat avec `pollForCompletion()` {#waiting-for-the-result}
+
+`WorkflowClient::pollForCompletion()` lit l'événement de clôture de l'exécution jusqu'à ce qu'il
+arrive, puis renvoie le résultat ou lève une exception. Deux comportements diffèrent d'une exécution
+sur les backends à journal :
+
+- Un workflow qui laisse échapper l'échec d'une activité lève `DurableWorkflowAlgorithmFailureException`,
+  comme sur les backends à journal. Son exception précédente est une `ActivityFailureCauseException`
+  qui porte la classe et le message d'origine, pas l'exception d'origine elle-même. Tout autre échec
+  du workflow lève une simple `\RuntimeException` dont le message commence par
+  `Workflow "<execution id>" failed:`, et non l'exception propre au workflow.
+- Un workflow qui attend un signal que personne n'envoie échoue aussitôt en mémoire, puisque rien
+  d'autre ne peut le faire avancer. Sur Temporal, l'exécution reste ouverte : `pollForCompletion()`
+  attend jusqu'au bout de ses interrogations, puis lève `WorkflowStuckException`.
+
 ### Prérequis
 
 - L'extension PHP **`ext-grpc`**, compilée contre la version du paquet `grpc/grpc` qu'exige le pont.
@@ -276,14 +291,18 @@ DSN](../configuration/#format-du-dsn).
 
 ## Le backend DBAL
 
-Le backend DBAL persiste le journal, les métadonnées de reprise et les liens parent/enfant dans une
-**seule base SQL**, à travers Doctrine DBAL. Pas de serveur d'orchestration, pas de sidecar, pas
-d'`ext-grpc`. Voir **DUR030**.
+Le backend DBAL persiste le journal, les métadonnées de reprise, les liens parent/enfant et le
+catalogue des exécutions (la liste des exécutions que lit un tableau de bord) dans une **seule base
+SQL**, à travers Doctrine DBAL. Pas de serveur d'orchestration, pas de sidecar, pas d'`ext-grpc`.
+Voir **DUR030**.
 
 ### Comment il fonctionne
 
-- Les trois stockages locaux au processus deviennent des tables SQL ; tout le reste (rejeu, tampon
-  de commandes, cycle de vie) est le code que le backend en mémoire fait déjà tourner.
+- Les quatre stockages locaux au processus deviennent des tables SQL : le journal d'événements,
+  les métadonnées de workflow, les liens parents des workflows enfants et le catalogue des
+  exécutions. Une cinquième table, `durable_execution_heads`, tient un compteur par exécution qui
+  empêche une reprise dépassée d'écrire dans le journal (DUR053). Tout le reste (rejeu, tampon de commandes, cycle de vie) est le code que le backend
+  en mémoire fait déjà tourner.
 - Reprises et activités voyagent par **Symfony Messenger** : prenez donc un transport durable
   (Doctrine, Redis, AMQP). Un transport `in-memory://` jette ce que le journal SQL vient de
   persister.
@@ -449,10 +468,16 @@ ligne, sauf pour le transport.
 | Opérations Nexus (appeler **et** servir) | ❌ | ❌ | ❌ | ✅ |
 
 Aucun backend hors Temporal n'a d'ordonnanceur ou de frontière entre espaces de noms : cron et Nexus
-n'ont donc pas d'équivalent sur les trois autres. Une capacité absente **échoue explicitement** et
-n'est jamais ignorée en silence. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus échoue
-au montage du conteneur, car un gestionnaire sans route ne voit jamais d'appel échouer : c'est un
-service qui ne reçoit jamais rien.
+n'ont donc pas d'équivalent sur les trois autres. Une capacité absente **échoue explicitement**, à
+une lacune près sur Laravel, décrite plus bas. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus sans
+route ne voit jamais d'appel échouer : c'est un service qui ne reçoit jamais rien. Sur Symfony, le
+montage du conteneur échoue quand `durable.temporal.dsn` n'est pas renseigné. Sur Magento,
+`bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster` quand
+`app/etc/env.php` n'a pas de DSN.
+Sur Laravel, rien n'échoue au démarrage. Hors de `temporal`, rien ne résout le registre Nexus : un
+gestionnaire listé dans `durable.nexus.handlers` ne lève rien et ne reçoit rien, et
+`php artisan durable:nexus-worker` se termine sur `Command "durable:nexus-worker" is not defined.`,
+qui ne nomme pas le backend (voir [#931](https://github.com/gplanchat/durable-dev/issues/931)).
 
 ---
 

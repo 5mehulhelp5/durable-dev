@@ -14,13 +14,14 @@ return [
     'workers' => [
         'state' => [
             'polled' => 'À l’écoute',
-            'missing' => 'Aucun worker',
+            'missing' => 'Personne à l’écoute',
             'unknown' => 'Impossible de demander',
         ],
         'polling' => 'Le worker :role est à l’écoute.',
         'missing' => 'Aucun worker :role n’a interrogé le backend depuis :seconds secondes : les exécutions s’arrêtent à leur première tâche :role. Démarrez php artisan durable:temporal-worker --role=:role.',
         'unknown' => 'Impossible de demander au backend si un worker :role est à l’écoute : :error',
-        'queue_unlisted' => 'La file de Laravel ne tient aucune liste des processus qui lancent php artisan queue:work.',
+        // Shown only as the :error of workers.unknown, after its colon: hence the lowercase.
+        'queue_unlisted' => 'la file de Laravel ne tient aucune liste des processus qui lancent php artisan queue:work.',
     ],
     'status' => [
         'all' => 'Toutes',

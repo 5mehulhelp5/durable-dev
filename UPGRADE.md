@@ -251,9 +251,9 @@ migrated by hand, calls to the other ports included.
 **What to do**, in this order:
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at
-   each call left. An empty string is refused, including by `WorkflowFiberDriver::run()` and
-   `PassEventStore::open()` (over any store), which keep a `string` parameter for now and convert
-   on entry.
+   each call left. An empty string is refused. `WorkflowFiberDriver::run()` and
+   `PassEventStore::open()` have since moved to `ExecutionId` as well (see "The engine, the pass
+   and the in-memory runner take an `ExecutionId`" below).
 2. **In a class that implements one of these interfaces**, change each listed parameter to
    `ExecutionId` (`?ExecutionId` for the parent of `runChild()`). Call `->toString()` where the
    body stores, binds, formats, serialises or compares the id. `json_encode()` turns the object
@@ -506,15 +506,16 @@ buffer's tests pin the memo.
 | `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
 | `AwaitedFact::isJournalledIn()`                                         | the journal's id is an `ExecutionId`; the fact itself keeps its string ids, since it travels in the resume message |
 
-These keep a string for now, and a later part of #682 moves most of them:
+These keep a string for now, and a later part of #682 moves most of them. The engine, the pass,
+the in-memory runner, `ContinueAsNewRequested`, `PendingTimers`, `TimerWakeDelayCalculator` and
+`WaitReason` have since moved (see "The engine, the pass and the in-memory runner take an
+`ExecutionId`" below):
 
-- `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the `EventStoreHistorySource`
-  constructor, `ExecutionEngine::start()` and `resume()`, `InMemoryWorkflowRunner::run()`;
-- the public and testing helpers, among them `PendingTimers`, `WaitReason`,
-  `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
-  `JournalAssertions`, `DurableTestCase` and `DurableBundleTestTrait`;
-- `WorkflowRunDescription::$executionId`, `ContinueAsNewRequested::nextExecutionId`,
-  `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
+- the public and testing helpers, among them `ActivityEventJournal`, `WorkflowQueryEvaluator`,
+  `JournalRunHistoryReader`, `RunDashboard`, `JournalAssertions`, `DurableTestCase` and
+  `DurableBundleTestTrait`;
+- `WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and
+  `DurableChildWorkflowFailedException`;
 - the wire messages, and the ids an `AwaitedFact` carries.
 
 `WorkflowRunDescription::$runId` stays a string for good (decision on #682).
@@ -715,8 +716,9 @@ used to leave the code unchanged without a word:
 - above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
   or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
   static call, a `::class`, a parameter or return type (marked above its method or function,
-  #909). Durable has no counterpart for these four failures, and once `temporal/sdk` is removed the
-  reference no longer resolves. The `use` import is not marked;
+  #909), the `extends` of a named class (marked above the class, #916). Durable has no
+  counterpart for these four failures, and once `temporal/sdk` is removed the reference no longer
+  resolves. The `use` import is not marked;
 - above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
   and `some`, one of those three with no argument, and `some()` without a count;
 - above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
@@ -728,8 +730,10 @@ used to leave the code unchanged without a word:
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
-without a marker. A second run adds no second marker. A failure marker written by an earlier run
-keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
+without a marker. A second run adds no second marker for a construct already marked, and adds a
+different marker next to an existing one: a method can carry an activity marker and a failure
+marker (#917). A failure marker written by an earlier run keeps its old text ("a catch on it never
+matches after migration"), and a re-run adds no second one.
 
 ### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
 
@@ -785,6 +789,106 @@ workers). There, `Artisan::call('durable:drain')` does the same; in an HTTP requ
 does not exist. The journal of the `memory` backend lives in the process, so a separate
 `php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
 `illuminate` and `temporal`.
+
+### Profiler: `getTimeFrame()` no longer returns `store_timelines` (#876)
+
+Since #867 the profiler panel draws the shared run timeline and no longer draws one segment per
+journal event. `DurableDataCollector` stops computing those segments:
+
+- `DurableDataCollector::getTimeFrame()` returns `process` only; the `store_timelines` key is gone;
+- each entry of `getExecutionsDetail()` loses its `storeTimeline` key.
+
+`storeEventCount` and `storeTruncated` keep their values; the collector reads them from the
+journal it already loads.
+
+**Who is affected:** code that reads `getTimeFrame()['store_timelines']` or
+`getExecutionsDetail()[n]['storeTimeline']` from a collected profile, such as a custom profiler
+template.
+
+**What to do:** read the journal events of an execution from `getStoreEventRows()` (one row per
+event, with its `recordedAt`), or its timeline from `getExecutionsDetail()[n]['runTimeline']`, the
+one the panel draws. Profiles stored before the upgrade still carry the removed keys; the panel
+does not read them.
+
+`DurableProfilerTimeframe::monotonicUnixSecondsFromRecordedEntries()`, which only computed those
+segments, is removed, and `DurableProfilerTimeframe::MIN_SEGMENT_SEC` is now private.
+
+### Temporal: `pollForCompletion()` reports an unhandled activity failure as the journal does (#872)
+
+A workflow that lets an activity failure escape (plain, catastrophic, superseded or declared) now
+makes `WorkflowClient::pollForCompletion()` throw
+`Gplanchat\Durable\Exception\DurableWorkflowAlgorithmFailureException`, with the message the
+journal backends use (`Workflow did not handle activity failure: …`). Its previous exception is an
+`ActivityFailureCauseException` naming the original class. It used to throw a plain
+`\RuntimeException` whose message started with `Workflow "<execution id>" failed:`, with no
+previous exception. Every other failure keeps that plain `\RuntimeException`. For an activity
+failure, this replaces the third bullet of the Magento `run()` entry (#765) above.
+
+**Who is affected:** code that waits through the Temporal client and reads the failure's message or
+checks its exact class: the Symfony bench runner, Laravel's `WorkflowClientInterface` binding, the
+Sylius and Symfony Nexus demo commands, and Magento's `run()` with a DSN set.
+
+**What to do:** nothing if you catch `\RuntimeException`: the new exception extends it. Code that
+matched on `Workflow "…" failed:` for an activity failure catches
+`DurableWorkflowAlgorithmFailureException` instead, as it already does on the journal backends, and
+reads the original class from `$e->getPrevious()->originalExceptionClass()`. No Rector rule: the
+change is in what a `catch` block receives, not in a call.
+
+### The engine, the pass and the in-memory runner take an `ExecutionId` (#682)
+
+**Who is affected**: code that drives the engine or the fiber driver itself, such as a custom
+backend or a test harness; code that builds an `EventStoreHistorySource` or opens a
+`PassEventStore`; code that calls `InMemoryWorkflowRunner::run()` directly; code that reads
+`ContinueAsNewRequested::$nextExecutionId`; and code that calls the timer and wait helpers.
+`WorkflowTestEnvironment`, `DurableTestCase` and `MagentoRuntime` keep their string parameter and
+convert it once. **Nothing stored or sent changes**: the wire messages keep their string ids, and
+`continuedFromExecutionId` in `ExecutionStarted` is still written as a string.
+
+| Where                                                                   | Changes                              |
+|-------------------------------------------------------------------------|--------------------------------------|
+| `ExecutionEngine::start()`, `resume()`: first argument                  | `ExecutionId`                        |
+| `InMemoryWorkflowRunner::run()`: first argument                         | `ExecutionId`                        |
+| `EventStoreHistorySource` constructor: second argument                  | `ExecutionId`                        |
+| `PassEventStore::open()`: second argument                               | `ExecutionId`                        |
+| `WorkflowFiberDriver::run()`                                            | the execution id argument is removed: the driver reads it from the `ExecutionContext` |
+| `ContinueAsNewRequested::$nextExecutionId`, `withNextExecutionId()`     | `?ExecutionId`, `ExecutionId`        |
+| `PendingTimers::of()`, `dueAt()`, `TimerWakeDelayCalculator::millisecondsUntilNextTimerDue()`, `WaitReason::describe()` | take `ExecutionId` |
+
+`WorkflowFiberDriver::run($executionId, $context, $environment, $handler)` used to take the id
+twice: as its first argument and inside the context, and nothing checked that the two agreed. It
+is now `run($context, $environment, $handler)`.
+
+An empty id cannot reach these methods any more, since `ExecutionId::fromString('')` throws
+`InvalidArgumentException`. The resume and timer message handlers convert the message's string
+before they touch any store, and refuse an empty one there.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set. `ExecutionIdArgumentRector` wraps a string passed to
+   `ExecutionEngine::start()`/`resume()`, `InMemoryWorkflowRunner::run()` and
+   `withNextExecutionId()`. `ExecutionIdEventArgumentRector` wraps the one passed to the
+   `EventStoreHistorySource` and `ContinueAsNewRequested` constructors and to the static helpers.
+   The new `WorkflowFiberDriverRunRector` drops the first argument of a four-argument
+   `WorkflowFiberDriver::run()` call. It leaves alone a call that already has three, and a call
+   with named arguments: remove `executionId:` from it by hand.
+2. Run PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at each call left: a named or
+   nullable argument, or a call made with `$engine->{$method}()`.
+3. Code that reads `ContinueAsNewRequested::$nextExecutionId` gets an `ExecutionId`. Call
+   `->toString()` where it stores, formats, serialises or compares the id with a string.
+   `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+   Compare two ids with `->equals()`. Under `declare(strict_types=1)`, passing the object to a
+   `string` parameter is a `TypeError`, even though `ExecutionId` is `Stringable`: the typical
+   line to fix is `ExecutionId::fromString($e->nextExecutionId)`, which now becomes
+   `$e->nextExecutionId`.
+
+These still take or carry a string, for a later part of #682: `ActivityEventJournal`,
+`WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`, `DurableDataCollector`,
+`JournalAssertions`, `DurableTestCase`, `DurableBundleTestTrait`, `WorkflowTestEnvironment`,
+`MagentoRuntime::run()`, Magento's `ProcessDetail::getRun()`,
+`WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome`,
+`DurableChildWorkflowFailedException`, `WorkflowStuckException` and
+`ContinuationCapReachedException`. The wire messages and the ids an `AwaitedFact` carries keep
+their strings.
 
 ### `durable-rector`: `Workflow::getVersion()` becomes `version()` (#894)
 
