@@ -331,6 +331,7 @@ documente en tête :
 ```bash
 temporal operator search-attribute create --name DurableOrderId --type Keyword
 temporal operator search-attribute create --name DurableAmount  --type Int
+temporal operator search-attribute create --name DurablePrice   --type Double
 ```
 
 ---
