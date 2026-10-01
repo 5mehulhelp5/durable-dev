@@ -58,6 +58,7 @@
         "gplanchat/durable-bridge-dbal": "@dev",
         "gplanchat/durable-bridge-illuminate": "@dev",
         "gplanchat/durable-laravel": "@dev",
+        "gplanchat/grpc-client": "@dev",
         "roadrunner-php/roadrunner-api-dto": "^1.17"
     },
     "require-dev": {
