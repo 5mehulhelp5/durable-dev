@@ -693,6 +693,18 @@ flight that rebuilds such options during replay fails too.
 and input with the journal, not its memo, so a run in flight resumes with the new key. A run that
 replays on code still using one of the two keys fails at `new ChildWorkflowOptions()`.
 
+### In-memory runner: a continue-as-new chain stops after 10 continuations (#888)
+
+`InMemoryWorkflowRunner` follows a continue-as-new chain to its last execution. Past
+`maxContinuations` continuations (default `InMemoryWorkflowRunner::DEFAULT_MAX_CONTINUATIONS`, 10),
+it throws the new `Gplanchat\Durable\Exception\ContinuationCapReachedException`, naming the
+execution the caller started and the cap. It extends `WorkflowStuckException`, so a `catch` on
+`WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
+constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
+Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`; `0` allows no
+continuation, and a negative value throws `\InvalidArgumentException`. A test whose chain
+runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
