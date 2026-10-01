@@ -34,8 +34,12 @@ bandeau d'état du backend, ni compteurs, ni filtres.
    son type, son issue et son nombre d'événements.
 
 L'onglet **Executions** ouvre chaque exécution : son historique d'événements, ses opérations Nexus,
-la frise de son journal et sa trace de processus. L'onglet **Overview** dessine tous les processus
-sur une même échelle de temps et liste les envois Messenger de la requête.
+sa frise et sa trace de processus. La frise est celle des pages d'exécution, avec une ligne par
+action, l'attente d'un worker hachurée et l'intervalle en échec en rouge (voir
+[Lire une exécution](../reading-a-run/)). La trace de processus montre le temps que ce processus a
+passé sur l'exécution pendant la requête, que le journal n'enregistre pas. L'onglet **Overview**
+dessine tous les processus sur une même échelle de temps et liste les envois Messenger de la
+requête.
 
 ## Charger un journal que la requête n'a pas envoyé
 
@@ -63,10 +67,6 @@ dans ce processus. Le panneau affiche **Journal still empty**. Lancez un worker,
 ## Ce qui diffère du tableau de bord
 
 - **Vocabulaire.** La colonne d'issue emploie les mots des autres tableaux de bord et ajoute trois états qui ne sont pas des issues : Queued (no journal yet), Pending et Cancellation requested. Le panneau est en anglais seulement.
-- **Frise.** Une ligne par événement, dans l'ordre du journal, et non une ligne par action. Le
-  temps de file n'est pas hachuré et un événement en échec n'est pas peint en rouge.
-- **Charges utiles.** Elles sont masquées comme celles du tableau de bord, et toujours affichées
-  dépliées.
 - **Limites.** 500 événements par journal, et un avertissement quand une table d'opérations Nexus
   est tronquée.
 
