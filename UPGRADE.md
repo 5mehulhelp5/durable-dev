@@ -251,9 +251,9 @@ migrated by hand, calls to the other ports included.
 **What to do**, in this order:
 
 1. Run the `durable-upgrade` set, then PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at
-   each call left. An empty string is refused, including by `WorkflowFiberDriver::run()` and
-   `PassEventStore::open()` (over any store), which keep a `string` parameter for now and convert
-   on entry.
+   each call left. An empty string is refused. `WorkflowFiberDriver::run()` and
+   `PassEventStore::open()` have since moved to `ExecutionId` as well (see "The engine, the pass
+   and the in-memory runner take an `ExecutionId`" below).
 2. **In a class that implements one of these interfaces**, change each listed parameter to
    `ExecutionId` (`?ExecutionId` for the parent of `runChild()`). Call `->toString()` where the
    body stores, binds, formats, serialises or compares the id. `json_encode()` turns the object
@@ -506,15 +506,14 @@ buffer's tests pin the memo.
 | `TemporalExecutionHistory::waitJournal()`                               | takes `ExecutionId`                  |
 | `AwaitedFact::isJournalledIn()`                                         | the journal's id is an `ExecutionId`; the fact itself keeps its string ids, since it travels in the resume message |
 
-These keep a string for now, and a later part of #682 moves most of them:
+These keep a string for now, and a later part of #682 moves most of them. The engine, the pass,
+the in-memory runner, `ContinueAsNewRequested`, `PendingTimers`, `TimerWakeDelayCalculator` and
+`WaitReason` have since moved (see "The engine, the pass and the in-memory runner take an
+`ExecutionId`" below):
 
-- `WorkflowFiberDriver::run()`, `PassEventStore::open()`, the `EventStoreHistorySource`
-  constructor, `ExecutionEngine::start()` and `resume()`, `InMemoryWorkflowRunner::run()`;
-- the public and testing helpers, among them `PendingTimers`, `WaitReason`,
-  `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
+- the public and testing helpers, among them `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
   `JournalAssertions`, `DurableTestCase` and `DurableBundleTestTrait`;
-- `WorkflowRunDescription::$executionId`, `ContinueAsNewRequested::nextExecutionId`,
-  `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
+- `WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
 - the wire messages, and the ids an `AwaitedFact` carries.
 
 `WorkflowRunDescription::$runId` stays a string for good (decision on #682).
@@ -785,6 +784,56 @@ workers). There, `Artisan::call('durable:drain')` does the same; in an HTTP requ
 does not exist. The journal of the `memory` backend lives in the process, so a separate
 `php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
 `illuminate` and `temporal`.
+
+### The engine, the pass and the in-memory runner take an `ExecutionId` (#682)
+
+**Who is affected**: code that drives the engine or the fiber driver itself, such as a custom
+backend or a test harness; code that builds an `EventStoreHistorySource` or opens a
+`PassEventStore`; code that calls `InMemoryWorkflowRunner::run()` directly; code that reads
+`ContinueAsNewRequested::$nextExecutionId`; and code that calls the timer and wait helpers.
+`WorkflowTestEnvironment`, `DurableTestCase` and `MagentoRuntime` keep their string parameter and
+convert it once. **Nothing stored or sent changes**: the wire messages keep their string ids, and
+`continuedFromExecutionId` in `ExecutionStarted` is still written as a string.
+
+| Where                                                                   | Changes                              |
+|-------------------------------------------------------------------------|--------------------------------------|
+| `ExecutionEngine::start()`, `resume()`: first argument                  | `ExecutionId`                        |
+| `InMemoryWorkflowRunner::run()`: first argument                         | `ExecutionId`                        |
+| `EventStoreHistorySource` constructor: second argument                  | `ExecutionId`                        |
+| `PassEventStore::open()`: second argument                               | `ExecutionId`                        |
+| `WorkflowFiberDriver::run()`                                            | the execution id argument is removed: the driver reads it from the `ExecutionContext` |
+| `ContinueAsNewRequested::$nextExecutionId`, `withNextExecutionId()`     | `?ExecutionId`, `ExecutionId`        |
+| `PendingTimers::of()`, `dueAt()`, `TimerWakeDelayCalculator::millisecondsUntilNextTimerDue()`, `WaitReason::describe()` | take `ExecutionId` |
+
+`WorkflowFiberDriver::run($executionId, $context, $environment, $handler)` used to take the id
+twice: as its first argument and inside the context, and nothing checked that the two agreed. It
+is now `run($context, $environment, $handler)`.
+
+An empty id cannot reach these methods any more, since `ExecutionId::fromString('')` throws
+`InvalidArgumentException`. The resume and timer message handlers convert the message's string
+before they touch any store, and refuse an empty one there.
+
+**What to do**, in this order:
+
+1. Run the `durable-upgrade` set. `ExecutionIdArgumentRector` wraps a string passed to
+   `ExecutionEngine::start()`/`resume()`, `InMemoryWorkflowRunner::run()` and
+   `withNextExecutionId()`. `ExecutionIdEventArgumentRector` wraps the one passed to the
+   `EventStoreHistorySource` and `ContinueAsNewRequested` constructors and to the static helpers.
+   The new `WorkflowFiberDriverRunRector` drops the first argument of a four-argument
+   `WorkflowFiberDriver::run()` call, and leaves a call that already has three alone.
+2. Run PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at each call left: a named or
+   nullable argument, or a call made with `$engine->{$method}()`.
+3. Code that reads `ContinueAsNewRequested::$nextExecutionId` gets an `ExecutionId`. Call
+   `->toString()` where it stores, formats, serialises or compares the id with a string.
+   `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+
+These still take or carry a string, for a later part of #682: `ActivityEventJournal`,
+`WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`, `JournalAssertions`,
+`DurableTestCase`, `DurableBundleTestTrait`, `WorkflowTestEnvironment`, `MagentoRuntime::run()`,
+`WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome`,
+`DurableChildWorkflowFailedException`, `WorkflowStuckException` and
+`ContinuationCapReachedException`. The wire messages and the ids an `AwaitedFact` carries keep
+their strings.
 
 ## 0.1.0-beta1
 
