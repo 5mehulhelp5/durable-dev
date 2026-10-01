@@ -432,7 +432,7 @@ call: it is a service that never receives anything. On Symfony, the container bu
 On Laravel, nothing fails at boot. Outside `temporal`, nothing resolves the Nexus registry: a
 handler listed in `durable.nexus.handlers` raises nothing and receives nothing, and
 `php artisan durable:nexus-worker` ends with `Command "durable:nexus-worker" is not defined.`, which
-does not name the backend.
+does not name the backend (see [#931](https://github.com/gplanchat/durable-dev/issues/931)).
 
 ---
 

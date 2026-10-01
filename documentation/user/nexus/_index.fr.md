@@ -240,7 +240,7 @@ Le message ci-dessus est celui de Symfony. Sur Magento, `bin/magento durable:wor
 Sur Laravel, rien n'échoue au démarrage. Hors de `temporal`, rien ne résout le registre Nexus : un
 gestionnaire listé dans `durable.nexus.handlers` ne lève rien et ne reçoit rien, et
 `php artisan durable:nexus-worker` se termine sur `Command "durable:nexus-worker" is not defined.`,
-qui ne nomme pas le backend.
+qui ne nomme pas le backend (voir [#931](https://github.com/gplanchat/durable-dev/issues/931)).
 
 ---
 
