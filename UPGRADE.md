@@ -786,6 +786,26 @@ does not exist. The journal of the `memory` backend lives in the process, so a s
 `php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
 `illuminate` and `temporal`.
 
+### `durable-rector`: `Workflow::getVersion()` becomes `version()` (#894)
+
+The `temporal-sdk` set rewrites `yield Workflow::getVersion($changeId, $min, $max)` to
+`$this->environment->version($changeId, $min, $max)`, with positional or named arguments. Until
+now, `UnmigratableTemporalCallRector` marked every `getVersion()` call as having no equivalent.
+
+Three shapes stay as written and get a `durable-rector:` marker:
+
+- a `getVersion()` call with a number of arguments other than three;
+- a `getVersion()` call that is not yielded where it is made: the SDK returns a promise there, and
+  `version()` returns the int;
+- a reference to `Workflow::DEFAULT_VERSION`. Its counterpart is `ChangePoint::DEFAULT_VERSION`,
+  also `-1`.
+
+**Who is affected:** a project that migrates off the Temporal PHP SDK with the `temporal-sdk` set,
+and whose workflows call `Workflow::getVersion()`.
+
+**What to do:** run the set again. At each marker, write the call by hand, and replace
+`Workflow::DEFAULT_VERSION` with `Gplanchat\Durable\Versioning\ChangePoint::DEFAULT_VERSION`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
