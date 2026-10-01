@@ -599,6 +599,25 @@ worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain a
 argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
 runtime factory pass theirs. Nothing to migrate.
 
+### durable-rector: the SDK migration marks the constructs it leaves as they are
+
+A run of the `temporal-sdk.php` set now adds a `// durable-rector:` comment in three places where it
+used to leave the code unchanged without a word:
+
+- above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
+  or `TimeoutFailure` (a `catch`, marked above its `try`, a `new`, a `throw`, an `instanceof`).
+  Durable has no counterpart for these four failures;
+- above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
+  and `some`, one of those three with no argument, and `some()` without a count;
+- above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
+  computed prefix, or a literal one that is neither empty nor a single name ending in a dot), and above an activity method whose
+  `#[ActivityMethod(name:)]` is not a string literal. The contract keeps its SDK attributes, as
+  before.
+
+**What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
+marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
+without a marker. A second run adds no second marker.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
