@@ -806,6 +806,9 @@ event, with its `recordedAt`), or its timeline from `getExecutionsDetail()[n]['r
 one the panel draws. Profiles stored before the upgrade still carry the removed keys; the panel
 does not read them.
 
+`DurableProfilerTimeframe::monotonicUnixSecondsFromRecordedEntries()`, which only computed those
+segments, is removed, and `DurableProfilerTimeframe::MIN_SEGMENT_SEC` is now private.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
