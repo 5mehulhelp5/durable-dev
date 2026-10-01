@@ -274,6 +274,91 @@ jobs:
                   DURABLE_DSN: 'temporal://127.0.0.1:7233?namespace=durable-test&nexus_task_queue=laravel-bench-nexus&workflow_task_queue=laravel-bench-workflows&tls=0'
               run: vendor/bin/phpunit --testdox --fail-on-skipped
 
+    filament:
+        # gplanchat/durable-filament (#712, #899), outside the root graph: Filament pulls
+        # laravel/framework, which requires Symfony ^7 and would break the 6.4 legs of
+        # symfony-matrix. A throwaway project installs it through path repositories, on each
+        # Filament line, with the Temporal bridge so a test that needs it (#871) cannot skip.
+        name: Filament · package (${{ matrix.label }} / PHP ${{ matrix.php-version }})
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { php-version: '8.2', filament: '^3.3', deps: 'lowest', label: 'Filament 3 lowest' }
+                    - { php-version: '8.4', filament: '^4.0', deps: 'highest', label: 'Filament 4 highest' }
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php-version }}
+                  # grpc: the Temporal bridge is installed, as in the Laravel bench.
+                  extensions: mbstring, sqlite3, pdo_sqlite, curl, grpc, intl
+                  coverage: none
+
+            # Composer's cache directory depends on the runner (#767): ask Composer instead of guessing.
+            - name: Composer cache directory
+              id: composer-cache
+              run: echo "dir=$(composer config --global cache-dir)" >> "$GITHUB_OUTPUT"
+
+            - name: Cache Composer
+              uses: actions/cache@v6
+              with:
+                  path: ${{ steps.composer-cache.outputs.dir }}
+                  key: filament-${{ matrix.php-version }}-${{ hashFiles('src/**/composer.json') }}
+                  restore-keys: filament-${{ matrix.php-version }}-
+
+            - name: A project that installs the package
+              run: |
+                mkdir -p /tmp/filament-app
+                cat > /tmp/filament-app/composer.json <<JSON
+                {
+                    "minimum-stability": "dev",
+                    "prefer-stable": true,
+                    "repositories": [
+                        { "type": "path", "url": "${{ github.workspace }}/src/Durable" },
+                        { "type": "path", "url": "${{ github.workspace }}/src/DurableLaravel" },
+                        { "type": "path", "url": "${{ github.workspace }}/src/Bridge/Illuminate" },
+                        { "type": "path", "url": "${{ github.workspace }}/src/Bridge/Temporal" },
+                        { "type": "path", "url": "${{ github.workspace }}/src/DurableFilament" }
+                    ],
+                    "require": {
+                        "filament/filament": "${{ matrix.filament }}",
+                        "gplanchat/durable-filament": "@dev",
+                        "gplanchat/durable-bridge-temporal": "@dev",
+                        "phpunit/phpunit": "^11.5"
+                    },
+                    "autoload-dev": {
+                        "psr-4": { "Gplanchat\\\\Durable\\\\Filament\\\\Tests\\\\": "${{ github.workspace }}/src/DurableFilament/tests/" }
+                    }
+                }
+                JSON
+
+            # Only the Filament dimension moves, as in the laravel job: an unfiltered `--prefer-lowest`
+            # would lower phpunit and the bridge's dependencies too. The first update writes the lock
+            # the partial one starts from.
+            - name: Composer update
+              working-directory: /tmp/filament-app
+              run: |
+                composer update --no-interaction --prefer-dist --no-progress
+                composer update --no-interaction --prefer-dist --no-progress \
+                  ${{ matrix.deps == 'lowest' && '--prefer-lowest' || '' }} 'filament/*'
+
+            - name: Filament line actually installed, and the bridge
+              working-directory: /tmp/filament-app
+              run: |
+                for package in filament/filament laravel/framework gplanchat/durable-bridge-temporal; do
+                  composer show "$package" --no-ansi | grep -E '^(name|versions) '
+                done
+                test -e vendor/gplanchat/durable-bridge-temporal
+
+            - name: PHPUnit (src/DurableFilament/tests)
+              working-directory: /tmp/filament-app
+              run: vendor/bin/phpunit -c "$GITHUB_WORKSPACE/src/DurableFilament/phpunit.xml" --bootstrap vendor/autoload.php --display-skipped --fail-on-skipped
+
     sylius-shop:
         # The only check in the repository that really renders a page. Everything else proves the
         # pieces are correct; this one proves that, assembled, they display something.
@@ -1446,7 +1531,7 @@ jobs:
         # job names can move without touching the protection. A skipped job is not a failure.
         name: ci-ok
         if: always()
-        needs: [qa, symfony-matrix, laravel, laravel-bench, sylius-shop, magento-matrix, magento-without-temporal, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, temporal-transport, manifests]
+        needs: [qa, symfony-matrix, laravel, laravel-bench, filament, sylius-shop, magento-matrix, magento-without-temporal, magento-boot, static-analysis, symfony-sample, conformance-sql, guide-follows, temporal-integration, temporal-oldest-server, temporal-transport, manifests]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
