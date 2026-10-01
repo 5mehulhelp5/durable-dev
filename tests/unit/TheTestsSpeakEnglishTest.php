@@ -63,6 +63,7 @@ final class TheTestsSpeakEnglishTest extends TestCase
             "'TERMINÉES'" => 'same',
             "'Exécution côté backend run-1'" => 'same',
             "'En cours', 'Terminée', 'En échec', 'Annulée', 'Poursuivie à neuf'" => 'same',
+            'Messenger ne tient aucune liste des processus' => 'same',
         ],
         'src/DurableFilament/tests/TheRunListTest.php' => [
             'Issues des 2 exécutions de cette page' => 'asserts the French catalogue renders, the one product exception WA006 makes',
