@@ -511,9 +511,11 @@ the in-memory runner, `ContinueAsNewRequested`, `PendingTimers`, `TimerWakeDelay
 `WaitReason` have since moved (see "The engine, the pass and the in-memory runner take an
 `ExecutionId`" below):
 
-- the public and testing helpers, among them `ActivityEventJournal`, `WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`,
-  `JournalAssertions`, `DurableTestCase` and `DurableBundleTestTrait`;
-- `WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and `DurableChildWorkflowFailedException`;
+- the public and testing helpers, among them `ActivityEventJournal`, `WorkflowQueryEvaluator`,
+  `JournalRunHistoryReader`, `RunDashboard`, `JournalAssertions`, `DurableTestCase` and
+  `DurableBundleTestTrait`;
+- `WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome` and
+  `DurableChildWorkflowFailedException`;
 - the wire messages, and the ids an `AwaitedFact` carries.
 
 `WorkflowRunDescription::$runId` stays a string for good (decision on #682).
@@ -820,16 +822,22 @@ before they touch any store, and refuse an empty one there.
    `withNextExecutionId()`. `ExecutionIdEventArgumentRector` wraps the one passed to the
    `EventStoreHistorySource` and `ContinueAsNewRequested` constructors and to the static helpers.
    The new `WorkflowFiberDriverRunRector` drops the first argument of a four-argument
-   `WorkflowFiberDriver::run()` call, and leaves a call that already has three alone.
+   `WorkflowFiberDriver::run()` call. It leaves alone a call that already has three, and a call
+   with named arguments: remove `executionId:` from it by hand.
 2. Run PHPStan or Psalm, and pass `ExecutionId::fromString($id)` at each call left: a named or
    nullable argument, or a call made with `$engine->{$method}()`.
 3. Code that reads `ContinueAsNewRequested::$nextExecutionId` gets an `ExecutionId`. Call
    `->toString()` where it stores, formats, serialises or compares the id with a string.
    `json_encode()` turns the object into `{}`, and `===` against a string is always false.
+   Compare two ids with `->equals()`. Under `declare(strict_types=1)`, passing the object to a
+   `string` parameter is a `TypeError`, even though `ExecutionId` is `Stringable`: the typical
+   line to fix is `ExecutionId::fromString($e->nextExecutionId)`, which now becomes
+   `$e->nextExecutionId`.
 
 These still take or carry a string, for a later part of #682: `ActivityEventJournal`,
-`WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`, `JournalAssertions`,
-`DurableTestCase`, `DurableBundleTestTrait`, `WorkflowTestEnvironment`, `MagentoRuntime::run()`,
+`WorkflowQueryEvaluator`, `JournalRunHistoryReader`, `RunDashboard`, `DurableDataCollector`,
+`JournalAssertions`, `DurableTestCase`, `DurableBundleTestTrait`, `WorkflowTestEnvironment`,
+`MagentoRuntime::run()`, Magento's `ProcessDetail::getRun()`,
 `WorkflowRunDescription::$executionId`, `WorkflowCancelledFailure`, `ChildWorkflowOutcome`,
 `DurableChildWorkflowFailedException`, `WorkflowStuckException` and
 `ContinuationCapReachedException`. The wire messages and the ids an `AwaitedFact` carries keep
