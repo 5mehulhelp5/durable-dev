@@ -608,12 +608,13 @@ journal read. `read()` returns the same history as before.
 
 **What to do:** nothing.
 
-### Temporal: the workflow worker keeps polling after a rejected task failure (#863)
+### Temporal: the workflow worker keeps polling after a rejected task answer (#863, #891)
 
 A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
 `INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
 and the server message, and the worker polls again. Any other gRPC error still propagates out of
-`WorkflowTaskProcessor::processOne()`. Nothing to migrate.
+`WorkflowTaskProcessor::processOne()`. A `RespondWorkflowTaskCompleted` rejected with `NOT_FOUND`
+is now logged the same way (#891). Nothing to migrate.
 
 ### Magento: `MagentoRuntime::run()` follows the configured backend (#765)
 
@@ -680,6 +681,85 @@ The Temporal client is bound under its interface, and `durable.temporal.client` 
 that binding. That id was never documented: an `instance('durable.temporal.client', …)` done after
 the provider registers no longer reaches `TemporalRuntimeAssembly`. Bind
 `WorkflowServiceClientInterface` instead.
+
+### A child memo key `durableExecutionId` or `durableWaitingOn` fails on every backend (#889)
+
+Durable reserves both keys: on Temporal it writes them in a child's memo itself. The
+`ChildWorkflowOptions` constructor now throws `UnsupportedByBackendException` when `$memo`
+contains either key, on every backend. Before, only the Temporal bridge refused them, and the SQL
+and in-memory backends recorded them. The check runs when the options are built, so a run in
+flight that rebuilds such options during replay fails too.
+
+**What to do:** rename the memo key before you deploy this version. Replay compares a child's type
+and input with the journal, not its memo, so a run in flight resumes with the new key. A run that
+replays on code still using one of the two keys fails at `new ChildWorkflowOptions()`.
+
+### In-memory runner: a continue-as-new chain stops after 10 continuations (#888)
+
+`InMemoryWorkflowRunner` follows a continue-as-new chain to its last execution. Past
+`maxContinuations` continuations (default `InMemoryWorkflowRunner::DEFAULT_MAX_CONTINUATIONS`, 10),
+it throws the new `Gplanchat\Durable\Exception\ContinuationCapReachedException`, naming the
+execution the caller started and the cap. It extends `WorkflowStuckException`, so a `catch` on
+`WorkflowStuckException` catches it. `WorkflowStuckException` is no longer `final` and its
+constructor is `protected`. `InMemoryWorkflowRunner`, `WorkflowTestEnvironment::inMemory()` and the
+Magento `RuntimeFactory` gain an optional last argument `int $maxContinuations`; `0` allows no
+continuation, and a negative value throws `\InvalidArgumentException`, on Magento when the
+factory is built. A test whose chain
+runs past 10 continuations passes `maxContinuations: <n>`; nothing else to migrate.
+
+### durable-rector: the SDK migration marks the constructs it leaves as they are
+
+A run of the `temporal-sdk.php` set now adds a `// durable-rector:` comment in three places where it
+used to leave the code unchanged without a word:
+
+- above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
+  or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
+  static call, a `::class`, a parameter or return type (marked above its method or function,
+  #909). Durable has no counterpart for these four failures, and once `temporal/sdk` is removed the
+  reference no longer resolves. The `use` import is not marked;
+- above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
+  and `some`, one of those three with no argument, and `some()` without a count;
+- above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
+  computed prefix, a literal one that does not end in a dot, or `'.'` alone), and
+  above an activity method whose `#[ActivityMethod(name:)]` is not a string literal. The contract
+  keeps its SDK attributes, as before. A prefix with several segments, such as `'Billing.Order.'`,
+  is converted: both engines give the same activity names (#907). The prefix `'.'` used to become
+  `#[AsActivity(name: '')]`, which renamed `.charge` to `charge`; it is now marked.
+
+**What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
+marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
+without a marker. A second run adds no second marker. A failure marker written by an earlier run
+keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
+
+### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
+
+`DurableTestCase::createWorkflowTestEnvironment()` and `createWorkflowRunner()` gain two optional
+last arguments, `float $budgetSeconds` and `int $maxContinuations`, with the runner's defaults
+(`InMemoryWorkflowRunner::DEFAULT_BUDGET_SECONDS` and `DEFAULT_MAX_CONTINUATIONS`). Both go to
+`WorkflowTestEnvironment::inMemory()` unchanged.
+
+**What to do:** if a subclass of `DurableTestCase` overrides either method, add the two parameters
+to its signature; without them, PHP fails to load the class. Otherwise nothing.
+
+### New: PHPStan reports a stub that could be an `#[Activities]` parameter (#778)
+
+`gplanchat/durable-phpstan` has a new rule, `durable.activityStubCouldBeParameter`. It reports an
+`$env->activityStub()` call that the workflow method could receive as an `#[Activities]`
+parameter, with no options or with literal `ActivityOptions::of()` values. The message gives the
+attribute and the `@param ActivityStub<Contract>` docblock to write. Nothing is rewritten. The rule
+stays silent when the move would change what runs: computed options, `default()`, an empty
+`taskQueue`, or a stub that a signal, helper or closure reads. Code that already fails, such as
+`of(0)` or a contract with no `#[AsActivityMethod]`, is reported with a warning: after the move,
+the worker refuses to register the workflow. The extension's README lists every case, and the
+shapes the rule does not see.
+
+**Who is affected:** a project that runs PHPStan with the extension and builds activity stubs with
+`activityStub()`. Its analysis can report new errors after the upgrade.
+
+**What to do:** move the stub to the parameter the message gives, or keep it and ignore the rule
+with `- identifier: durable.activityStubCouldBeParameter` under `ignoreErrors` in `phpstan.neon`.
+To ignore it on one call only, add `// @phpstan-ignore durable.activityStubCouldBeParameter` on
+that line.
 
 ## 0.1.0-beta1
 

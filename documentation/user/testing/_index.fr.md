@@ -363,7 +363,7 @@ gagner. Comme l'horloge attend, une course a ici la même issue qu'en production
 
 ---
 
-## Exécutions bloquées et réessais sans fin dans le moteur en mémoire {#deux-pièges-du-moteur-en-mémoire}
+## Exécutions bloquées, réessais et chaînes sans fin dans le moteur en mémoire {#deux-pièges-du-moteur-en-mémoire}
 
 **Une exécution bloquée échoue.** Un workflow qui attend un signal que le test ne livre jamais lève `WorkflowStuckException`.
 
@@ -388,6 +388,42 @@ Le recul entre réessais prend du temps réel, parce qu'un réessai est mis en f
 lieu d'être enregistré comme un minuteur : une activité configurée avec l'intervalle par défaut
 d'une seconde fait donc attendre le test. Passez `initialInterval: Duration::zero()` pour garder
 les tests rapides.
+
+**Une chaîne de continue-as-new s'arrête après 10 continuations.** Une exécution qui appelle
+`continueAsNew()` referme son journal et passe la main à une exécution neuve (continue-as-new ; voir
+le [glossaire](../glossary/)). Le moteur en mémoire suit la chaîne et renvoie le résultat de la
+dernière exécution. Chaque exécution de la chaîne a son propre budget, qui n'arrête donc pas un
+workflow appelant `continueAsNew()` à chaque fois. Au-delà de 10 continuations, le moteur lève
+`ContinuationCapReachedException`, une `WorkflowStuckException`, où `x` est l'identifiant de
+l'exécution que vous avez démarrée :
+
+```
+Workflow x continued as new more often than maxContinuations (10) allows. Give the workflow a run
+that returns, or raise the runner's maxContinuations.
+```
+
+Pour tester une chaîne plus longue, relevez le plafond :
+
+```php
+$env = WorkflowTestEnvironment::inMemory(maxContinuations: 50);
+```
+
+Un workflow enfant exécuté dans le processus garde le plafond par défaut de 10, comme il garde le
+budget par défaut, quel que soit le plafond de l'environnement de son parent.
+
+Dans un `DurableTestCase`, `createWorkflowTestEnvironment()` et `createWorkflowRunner()` prennent
+les deux mêmes arguments, `budgetSeconds` et `maxContinuations`, et les transmettent au moteur :
+
+```php
+$env = $this->createWorkflowTestEnvironment(
+    ['charge' => $spy],
+    budgetSeconds: 3.0,
+    maxContinuations: 50,
+);
+```
+
+Sous Magento sans DSN Temporal, réglez
+l'argument `maxContinuations` de `RuntimeFactory` dans `di.xml`, comme pour `budgetSeconds`.
 
 ---
 

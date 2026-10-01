@@ -245,6 +245,42 @@ final class WorkflowTaskProcessorTest extends TestCase
         self::assertSame(2, $polls);
     }
 
+    /**
+     * #891: the server rejects the completion with NOT_FOUND when the task token is stale or the
+     * workflow is already closed. The worker logs the rejection, as on the failure path (#863),
+     * and polls again.
+     */
+    public function testANotFoundOnTheCompletionIsLoggedAndTheLoopPollsAgain(): void
+    {
+        $registry = new WorkflowRegistry();
+        $registry->registerFactory('ImmediateWorkflow', static fn(array $payload) => static fn(WorkflowEnvironment $env): string => 'done');
+
+        $this->grpcClient->expects($this->exactly(2))->method('PollWorkflowTaskQueue')->willReturnOnConsecutiveCalls(
+            self::buildPoll('my-token', 'wf-1', 'ImmediateWorkflow', [self::makeStarted(1)]),
+            new PollWorkflowTaskQueueResponse(),
+        );
+        $this->grpcClient->expects($this->once())->method('RespondWorkflowTaskCompleted')
+            ->willThrowException(new \RuntimeException('Temporal gRPC error [5]: Workflow task not found.', 5));
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning')->with(
+            self::stringContains('rejected'),
+            self::callback(static fn(array $context): bool => 5 === $context['code']
+                && str_contains($context['message'], 'Workflow task not found.')
+                && !\in_array('my-token', $context, true)),
+        );
+
+        $cursor = new TemporalHistoryCursor($this->grpcClient, 'test-namespace');
+        $processor = new WorkflowTaskProcessor($this->grpcClient, $this->connection, new WorkflowTaskRunner($cursor, $registry, $this->connection), $logger);
+
+        $polls = 0;
+        $processor->run(static function () use (&$polls): bool {
+            return ++$polls < 2;
+        });
+
+        self::assertSame(2, $polls);
+    }
+
     public function testNewActivityEmitsScheduleCommandInResponse(): void
     {
         $registry = new WorkflowRegistry();

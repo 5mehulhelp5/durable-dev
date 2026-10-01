@@ -160,7 +160,18 @@ class RuntimeFactory
          * signature (#725).
          */
         private readonly ?object $codec = null,
-    ) {}
+        /**
+         * Without a DSN: how many times a chain may continue as new before the run fails. Like
+         * `budgetSeconds`, a bound on an inline run; set with an
+         * `<argument name="maxContinuations" xsi:type="number">` in `di.xml` (#888). A negative
+         * value throws here, when the factory is built, not at the first `create()` (#900).
+         */
+        private readonly int $maxContinuations = InMemoryWorkflowRunner::DEFAULT_MAX_CONTINUATIONS,
+    ) {
+        if ($maxContinuations < 0) {
+            throw new \InvalidArgumentException(\sprintf('maxContinuations must be 0 or more, %d given.', $maxContinuations));
+        }
+    }
 
     /** One per factory, and the ObjectManager shares the factory: one gRPC client per request (#356). */
     private ?WorkflowServiceClientInterface $client = null;
@@ -191,6 +202,7 @@ class RuntimeFactory
                 $workflows,
                 $this->budgetSeconds,
                 $this->clock(),
+                maxContinuations: $this->maxContinuations,
             ),
             null === $this->temporalSettings() ? null : $this->runOnCluster(...),
         );

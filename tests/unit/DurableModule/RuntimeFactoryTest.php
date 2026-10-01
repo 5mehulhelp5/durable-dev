@@ -12,6 +12,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalActivityWorker;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\WorkflowClient;
 use Gplanchat\Durable\Event\WorkflowSignalReceived;
+use Gplanchat\Durable\Exception\ContinuationCapReachedException;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
@@ -323,5 +324,26 @@ final class RuntimeFactoryTest extends TestCase
         $runtime = (new RuntimeFactory(workflowClasses: [CounterWorkflow::class]))->create();
 
         self::assertSame('done at 2', $runtime->run(CounterWorkflow::class, ['n' => 0]));
+    }
+
+    public function testWithoutADsnTheContinueAsNewCapIsConfigurable(): void
+    {
+        $runtime = (new RuntimeFactory(workflowClasses: [CounterWorkflow::class], maxContinuations: 1))->create();
+
+        $this->expectException(ContinuationCapReachedException::class);
+
+        $runtime->run(CounterWorkflow::class, ['n' => 0]);
+    }
+
+    /**
+     * A negative cap in di.xml fails when the ObjectManager builds the factory, not at the first
+     * `create()` (#900).
+     */
+    public function testANegativeContinueAsNewCapFailsWhenTheFactoryIsBuilt(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxContinuations must be 0 or more, -1 given.');
+
+        new RuntimeFactory(maxContinuations: -1);
     }
 }

@@ -16,7 +16,7 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Exécutions listées | Toutes | Les 200 plus récentes | Toutes | Celles vues pendant une requête, plus 20 nommées dans `durable_execution` au plus |
 | État du backend | 4 états, dont 3 datés | 3 états, celui du backend en mémoire non daté | 4 états, dont 3 datés | Aucun |
 | Compteurs | Par issue, sur la page | Par issue, sur la fenêtre | Par issue, sur la page | Aucun |
-| Filtre par issue | Oui | Oui | Non | Non |
+| Filtre par issue | Oui | Oui | Oui | Non |
 | Filtre par nom de workflow | Nom entier, là où le backend sait l'appliquer | Nom entier, dans la fenêtre | Nom entier, là où le backend sait l'appliquer | Non |
 | Filtre par identifiant d'exécution | Préfixe, là où le backend sait l'appliquer | Préfixe, dans la fenêtre | Préfixe, là où le backend sait l'appliquer | Non |
 | `waiting for a worker` | Ligne et compteur | Non | Ligne et compteur | Non |
@@ -25,7 +25,7 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Temps de file hachuré | Oui | Oui | Sur la frise | Oui |
 | Rouge sur l'événement en échec | Oui | Oui | Sur la frise | Oui |
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
-| Présence des workers | Oui | Oui, journal et activity | Non | Non |
+| Présence des workers | Oui | Oui, journal et activity | Oui, workflow et activity | Non |
 | Masquage des charges utiles | Replié | Replié | Replié | Replié |
 | Langues | Anglais, français | Anglais, français | Anglais, français | Anglais |
 
@@ -56,7 +56,6 @@ Trois éléments restent propres à une surface :
 
 - **Compteurs Magento.** Ils couvrent toute la fenêtre de 200 exécutions et ignorent les filtres de
   la grille.
-- **Issue sous Filament.** La liste lit toutes les issues.
 - **Page d'une exécution sous Sylius.** Elle n'affiche pas la ligne `waiting on`, que la liste
   affiche.
 - **Cases vides.** La grille Sylius laisse la date de début vide quand une exécution n'en a pas, et

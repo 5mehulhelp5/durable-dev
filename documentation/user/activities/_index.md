@@ -84,6 +84,9 @@ public function run(
 
 Some workflows build the stub themselves with `$env->activityStub(OrderActivities::class)`: see
 [When to build the stub yourself](../workflows/#when-to-build-the-stub-yourself).
+[`gplanchat/durable-phpstan`](https://github.com/gplanchat/durable-phpstan) reports a built stub
+that could be an `#[Activities]` parameter, with the attribute to write, under the identifier
+`durable.activityStubCouldBeParameter`.
 
 The **`ActivityStub`** type resolves method names by reflection on **`OrderActivities`** and builds the **`#[AsActivityMethod]`** payloads. [Creating a workflow](../workflows/) explains the **ActivityInvoker** name.
 
