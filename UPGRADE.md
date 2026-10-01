@@ -474,13 +474,9 @@ analyser reports.
 bound under `durable.clock` with `instance()` or `singleton()`, before or after the provider
 registers, reaches the runtime and the dashboard. Binding `ClockInterface` reaches both as well.
 
-**What breaks.** Durable now reads the clock your application binds under
-`Psr\Clock\ClockInterface`, instead of `SystemClock`:
-
-- If you bind `ClockInterface` before `DurableServiceProvider` registers, `durable.clock` resolves
-  to that clock too, and a clock you bind under `durable.clock` afterwards is ignored.
-- If you bind `ClockInterface` after it registers, for instance in `AppServiceProvider`, your
-  binding replaces Durable's, and `durable.clock` is no longer read.
+**What breaks.** If you bind `Psr\Clock\ClockInterface` before or after `DurableServiceProvider`
+registers, Durable reads that clock, and `durable.clock` no longer reaches Durable. Until now,
+Durable read `durable.clock` and ignored a `ClockInterface` binding.
 
 **What to do**, only if your application binds `ClockInterface` and Durable must not read that
 clock: bind `ClockInterface` as a delegate to `durable.clock`, without `singleton()`, so that it
@@ -492,8 +488,7 @@ $this->app->bind(\Psr\Clock\ClockInterface::class, fn($app) => $app->make('durab
 
 `durable.clock` stays `SystemClock` unless you bind another clock under it, before or after the
 provider registers. Your application's other PSR-20 consumers then read that same clock: Durable
-and your application can no longer read two different clocks. If you bind the delegate before
-`DurableServiceProvider` registers, bind `durable.clock` in the same place.
+and your application can no longer read two different clocks.
 
 The Temporal client is bound under its interface, and `durable.temporal.client` is now an alias of
 that binding. That id was never documented: an `instance('durable.temporal.client', …)` done after

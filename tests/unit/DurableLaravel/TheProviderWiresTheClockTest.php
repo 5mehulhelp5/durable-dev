@@ -117,6 +117,7 @@ final class TheProviderWiresTheClockTest extends TestCase
                     'instance' => $app->instance($id, $clocks[$name]),
                     'singleton' => $app->singleton($id, static fn() => $clocks[$name]),
                     'delegate' => $app->bind($id, static fn($app) => $app->make('durable.clock')),
+                    default => throw new \LogicException(\sprintf('Unknown binding step "%s".', $method)),
                 };
             }
         };
