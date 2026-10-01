@@ -22,6 +22,8 @@ use Temporal\Api\Enums\V1\EventType;
 use Temporal\Api\History\V1\History;
 use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\WorkflowExecutionSignaledEventAttributes;
+use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
+use Temporal\Api\Workflowservice\V1\GetWorkflowExecutionHistoryResponse;
 use Temporal\Api\Workflowservice\V1\PollActivityTaskQueueRequest;
 use Temporal\Api\Workflowservice\V1\PollActivityTaskQueueResponse;
 use Temporal\Api\Workflowservice\V1\PollWorkflowTaskQueueResponse;
@@ -44,6 +46,30 @@ final class TheWorkerLogsAnUnreadablePayloadTest extends TestCase
         $this->processWorkflowTasks(new PayloadCodecWorkflowServiceClient($inner, self::failingCodec(), $this->logger()));
 
         $this->assertOneRecord(\RuntimeException::class, 'unknown key k2', 7);
+    }
+
+    public function testAnUndecodablePayloadOnALaterPageIsLoggedWithItsEvent(): void
+    {
+        $inner = $this->workflowPolls(self::poll([self::started(1)], 'page-2'));
+        $inner->method('GetWorkflowExecutionHistory')->willReturn(new GetWorkflowExecutionHistoryResponse([
+            'history' => new History(['events' => [self::signaled(5, 'go'), self::signaled(7, self::undecodable())]]),
+        ]));
+
+        $this->processWorkflowTasks(new PayloadCodecWorkflowServiceClient($inner, self::failingCodec(), $this->logger()));
+
+        $this->assertOneRecord(\RuntimeException::class, 'unknown key k2', 7);
+    }
+
+    public function testAPayloadThatIsNotJsonOnALaterPageIsLoggedWithItsEvent(): void
+    {
+        $inner = $this->workflowPolls(self::poll([self::started(1)], 'page-2'));
+        $inner->method('GetWorkflowExecutionHistory')->willReturn(new GetWorkflowExecutionHistoryResponse([
+            'history' => new History(['events' => [self::signaled(5, 'go'), self::signaled(7, new Payload(['metadata' => ['encoding' => 'json/plain'], 'data' => '{not json']))]]),
+        ]));
+
+        $this->processWorkflowTasks($inner);
+
+        $this->assertOneRecord(\JsonException::class, 'Syntax error', 7);
     }
 
     /**
@@ -119,6 +145,15 @@ final class TheWorkerLogsAnUnreadablePayloadTest extends TestCase
             'workflow_execution' => new WorkflowExecution(['workflow_id' => 'wf-1', 'run_id' => 'run-1']),
             'history' => new History(['events' => $events]),
             'next_page_token' => $nextPageToken,
+        ]);
+    }
+
+    private static function started(int $eventId): HistoryEvent
+    {
+        return new HistoryEvent([
+            'event_id' => $eventId,
+            'event_type' => EventType::EVENT_TYPE_WORKFLOW_EXECUTION_STARTED,
+            'workflow_execution_started_event_attributes' => new WorkflowExecutionStartedEventAttributes(),
         ]);
     }
 
