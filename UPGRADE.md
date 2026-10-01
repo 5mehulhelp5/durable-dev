@@ -608,6 +608,13 @@ journal read. `read()` returns the same history as before.
 
 **What to do:** nothing.
 
+### Temporal: the workflow worker keeps polling after a rejected task failure (#863)
+
+A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
+`INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
+and the server message, and the worker polls again. Any other gRPC error still propagates out of
+`WorkflowTaskProcessor::processOne()`. Nothing to migrate.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
