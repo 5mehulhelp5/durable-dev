@@ -25,6 +25,7 @@ use Temporal\Api\History\V1\HistoryEvent;
 use Temporal\Api\History\V1\StartChildWorkflowExecutionInitiatedEventAttributes;
 use Temporal\Api\History\V1\TimerStartedEventAttributes;
 use Temporal\Api\History\V1\WorkflowExecutionSignaledEventAttributes;
+use Temporal\Api\History\V1\WorkflowExecutionStartedEventAttributes;
 use Temporal\Api\History\V1\WorkflowExecutionUpdateAcceptedEventAttributes;
 use Temporal\Api\History\V1\WorkflowExecutionUpdateCompletedEventAttributes;
 use Temporal\Api\Update\V1\Input;
@@ -51,6 +52,18 @@ final class TemporalWorkflowRunHistoryTest extends TestCase
 
         self::assertSame(WorkflowRunEventKind::Activity, $history[0]->kind);
         self::assertSame('SendWelcomeEmail', $history[0]->label);
+    }
+
+    public function testTheEndOfTheRunCarriesTheWorkflowTypeLikeItsStartDoes(): void
+    {
+        // #850: on the house journal the events of the run's own line carry the workflow's name;
+        // the same run on Temporal says the same, where it used to say WORKFLOW EXECUTION FAILED.
+        $started = $this->event(1, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_STARTED);
+        $started->setWorkflowExecutionStartedEventAttributes((new WorkflowExecutionStartedEventAttributes())->setWorkflowType((new WorkflowType())->setName('App\\OrderWorkflow')));
+
+        $history = $this->readHistory($started, $this->event(9, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_FAILED));
+
+        self::assertSame(['App\\OrderWorkflow', 'App\\OrderWorkflow'], [$history[0]->label, $history[1]->label]);
     }
 
     public function testASignalDoesNotLandOnTheExecutionLane(): void

@@ -17,8 +17,8 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | État du backend | 4 états, dont 3 datés | 3 états, celui du backend en mémoire non daté | 4 états, dont 3 datés | Aucun |
 | Compteurs | Par issue, sur la page | Par issue, sur la fenêtre | Par issue, sur la page | Aucun |
 | Filtre par issue | Oui | Oui | Non | Non |
-| Filtre par nom de workflow | Nom entier, là où le backend sait l'appliquer | Contient, sans tenir compte de la casse, dans la fenêtre | Nom entier, là où le backend sait l'appliquer | Non |
-| Filtre par identifiant d'exécution | Préfixe, là où le backend sait l'appliquer | Contient, dans la fenêtre | Préfixe, là où le backend sait l'appliquer | Non |
+| Filtre par nom de workflow | Nom entier, là où le backend sait l'appliquer | Nom entier, dans la fenêtre | Nom entier, là où le backend sait l'appliquer | Non |
+| Filtre par identifiant d'exécution | Préfixe, là où le backend sait l'appliquer | Préfixe, dans la fenêtre | Préfixe, là où le backend sait l'appliquer | Non |
 | `waiting for a worker` | Ligne et compteur | Non | Ligne et compteur | Non |
 | `waiting on` | Liste | Liste et page de l'exécution | Liste et page de l'exécution | Section de l'exécution |
 | Une ligne par action | Oui | Oui, plus une table du journal | Oui | Non, une ligne par événement |
@@ -27,14 +27,14 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
 | Présence des workers | Oui | Oui, journal et activity | Non | Non |
 | Masquage des charges utiles | Replié | Replié | Replié | Toujours ouvert |
-| Langues | Anglais, français | Anglais | Anglais, français | Anglais |
+| Langues | Anglais, français | Anglais, français | Anglais, français | Anglais |
 
 ## Les mots à l'écran
 
-Les quatre surfaces emploient les mêmes mots. Sylius et Filament les affichent en anglais ou en
-français, Magento et le profileur web en anglais.
+Les quatre surfaces emploient les mêmes mots. Sylius, Magento et Filament les affichent en anglais ou
+en français, le profileur web en anglais.
 
-| | Mot commun | Français, sous Sylius et Filament |
+| | Mot commun | Français, sous Sylius, Magento et Filament |
 | --- | --- | --- |
 | Intitulé de l'issue | `Outcome` | `Issue` |
 | Intitulé de l'historique enregistré | `History` | `Historique` |
