@@ -232,8 +232,8 @@ exécution.
 
 **Une seule valeur `backend` lie tous les ports.** Un journal sur un backend avec un catalogue
 d'exécutions sur un autre est une panne : `backend` prend donc une seule valeur. Une valeur que ce
-paquet ne sert pas fait échouer l'enregistrement, avec une erreur qui la nomme et nomme les deux
-backends que le paquet sert : `illuminate` et `memory`.
+paquet ne sert pas fait échouer l'enregistrement, avec une erreur qui la nomme et nomme les trois
+backends que le paquet sert : `illuminate`, `memory` et `temporal`.
 
 **Vous déclarez les workflows dans la configuration.** Laravel n'a pas d'équivalent de
 l'autoconfiguration par attribut de Symfony : la clé `workflows` nomme donc les classes. Les nommer
@@ -579,8 +579,9 @@ vous-même.
 La ligne Laravel nomme la bibliothèque plutôt qu'une intégration, et c'est désormais un *choix*.
 `gplanchat/durable-laravel` existe : un service provider qui lie les quatre ports
 de stockage, des workflows déclarés dans `config/durable.php`, et le travail sur la file que
-l'application draine déjà. Tant qu'il n'est pas tagué, le pont s'installe seul et vous le câblez
-vous-même ; la section ci-dessus décrit ce que l'intégration fait à votre place.
+l'application draine déjà. Pour qu'il câble les ports à votre place, installez plutôt
+`gplanchat/durable-laravel` : il tire la bibliothèque et le pont Illuminate, et la section
+ci-dessus décrit ce qu'il fait pour vous.
 
 ---
 

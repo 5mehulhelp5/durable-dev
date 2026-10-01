@@ -219,8 +219,8 @@ provider binds the four storage ports, the activity and resume jobs, and the per
 
 **One `backend` value binds every port.** A journal on one backend with a run catalogue on another
 is a fault, so `backend` takes a single value. A value this package does not serve fails at
-registration with an error that names it and the two backends the package serves: `illuminate` and
-`memory`.
+registration with an error that names it and the three backends the package serves: `illuminate`, `memory`
+and `temporal`.
 
 **You declare workflows in configuration.** Laravel has no equivalent of Symfony's attribute
 autoconfiguration, so the `workflows` key names the classes. Naming them costs 0,14 ms, measured,
@@ -553,8 +553,8 @@ bundle. Without a framework, you name the library yourself, and you also wire th
 The Laravel line names the library instead of an integration, and that is now a *choice*.
 `gplanchat/durable-laravel` exists: a service provider that binds the four storage ports,
 workflows declared in `config/durable.php`, and work on the queue the application already drains.
-Until it is tagged, the bridge installs on its own and you wire it yourself; the section above
-lists what the integration does for you.
+To have it wire the ports for you, require `gplanchat/durable-laravel` instead: it pulls in the
+library and the Illuminate bridge, and the section above lists what it does for you.
 
 ---
 
