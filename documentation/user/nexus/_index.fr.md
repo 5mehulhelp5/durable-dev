@@ -234,6 +234,11 @@ Le côté appelant se comporte autrement, et c'est voulu. Un appel sur un backen
 l'appel, et vous l'apprenez tout de suite. Un *gestionnaire* sans route ne reçoit rien, et rien
 n'échoue : aucune requête ne lui parvient. Le contrôle a donc lieu au démarrage de l'application.
 
+Le message ci-dessus est celui de Symfony. Sur Laravel, le registre Nexus lève
+`NexusUnsupportedByBackendException` quand il est résolu sous un autre backend que `temporal`. Sur
+Magento, `bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster`
+quand `app/etc/env.php` n'a pas de DSN.
+
 ---
 
 ## Une démonstration à quatre applications {#quatre-applications-en-vrai}
@@ -249,6 +254,9 @@ frameworks.
 | ce qui déclare le gestionnaire | une balise sous `when@demo` | `#[AsNexusServiceHandler]` | rien | six lignes de `config/durable.php` |
 
 Les quatre lisent le même paquet de contrats. Rien d'autre ne circule entre elles.
+
+Le banc Magento ne sert rien, mais le module Magento peut servir des opérations : les gestionnaires listés dans l'argument `nexusHandlers` de `RuntimeFactory`, comme dans
+[Servir une opération](#servir-une-opération).
 
 Le workflow de commande de la boutique appelle les deux formes sur le même stub :
 
@@ -343,15 +351,17 @@ Messenger. Voici **tout** le câblage d'hôte, sur un framework qui n'a ni l'une
 `DeclaredNexusOperations` lit ce fichier comme `NexusHandlerPass` lit les balises de Symfony, par le
 même `NexusContractResolver` et le même `NexusHandlerInvoker` ; `php artisan durable:nexus-worker`
 interroge la file. La classe du gestionnaire ne contient rien de tout cela : elle implémente
-`DeliveryServed` et ne mentionne pas Nexus.
+`DeliveryServed` et ne mentionne pas Nexus. Magento lit son argument `nexusHandlers` par la même
+classe du cœur que Laravel, `NexusHandlerDeclarations`, et `bin/magento durable:worker --role=nexus`
+interroge la file.
 
 > [!WARNING]
-> **Le contrôle des signatures vit au cœur, partagé par les deux hôtes.** L'enregistrement échoue
+> **Le contrôle des signatures vit au cœur, partagé par tous les hôtes.** L'enregistrement échoue
 > pour un workflow remplissant dont un paramètre obligatoire ne correspond à rien dans la signature
 > du contrat, et le message nomme les deux signatures. La charge est clée par nom de paramètre aux
 > deux bouts : sans ce contrôle, le paramètre recevrait `null`. Symfony appelle le contrôle depuis
-> sa passe de compilation, Laravel depuis `durable.nexus.handlers`. Il a été écrit pour le premier
-> hôte et a rejoint le cœur quand un second hôte est arrivé.
+> sa passe de compilation, Laravel depuis `durable.nexus.handlers`, Magento depuis l'argument
+> `nexusHandlers`. Il a été écrit pour le premier hôte et a rejoint le cœur quand un second hôte est arrivé.
 
 ### Un workflow qui sert peut appeler
 
