@@ -919,8 +919,8 @@ signal, gets `$maxSupported` from `version()`, where the SDK returns `DEFAULT_VE
 docblock of `ExecutionContext::version()` describes this limit.
 
 A `Workflow::getVersion() — no equivalent yet` marker written by an earlier run of the set is
-replaced by the new marker where the call is still unmapped. Above a call the set rewrote to
-`version()`, the old marker stays: delete it by hand.
+removed where the set rewrites the call to `version()`, and replaced by the new marker where the
+call stays unmapped. Other comments on the statement stay.
 
 ## 0.1.0-beta1
 
