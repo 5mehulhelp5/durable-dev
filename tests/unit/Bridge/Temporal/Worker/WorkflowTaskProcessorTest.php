@@ -15,6 +15,7 @@ use Gplanchat\Durable\WorkflowEnvironment;
 use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Common\V1\WorkflowType;
@@ -208,6 +209,40 @@ final class WorkflowTaskProcessorTest extends TestCase
             CommandType::COMMAND_TYPE_COMPLETE_WORKFLOW_EXECUTION,
             $capturedRequest->getCommands()[0]->getCommandType(),
         );
+    }
+
+    /**
+     * #840: the server rejects the completion with InvalidArgument (BadSearchAttributes on a
+     * continue-as-new, Temporal 1.20). It has already failed and rescheduled the task, so the
+     * worker logs the rejection and polls again.
+     */
+    public function testAnInvalidArgumentOnTheCompletionIsLoggedAndTheLoopPollsAgain(): void
+    {
+        $registry = new WorkflowRegistry();
+        $registry->registerFactory('ImmediateWorkflow', static fn(array $payload) => static fn(WorkflowEnvironment $env): string => 'done');
+
+        $this->grpcClient->expects($this->exactly(2))->method('PollWorkflowTaskQueue')->willReturnOnConsecutiveCalls(
+            self::buildPoll('my-token', 'wf-1', 'ImmediateWorkflow', [self::makeStarted(1)]),
+            new PollWorkflowTaskQueueResponse(),
+        );
+        $this->grpcClient->expects($this->once())->method('RespondWorkflowTaskCompleted')
+            ->willThrowException(new \RuntimeException('Temporal gRPC error [3]: BadSearchAttributes', 3));
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning')->with(
+            self::stringContains('rejected'),
+            self::callback(static fn(array $context): bool => 3 === $context['code'] && str_contains($context['message'], 'BadSearchAttributes')),
+        );
+
+        $cursor = new TemporalHistoryCursor($this->grpcClient, 'test-namespace');
+        $processor = new WorkflowTaskProcessor($this->grpcClient, $this->connection, new WorkflowTaskRunner($cursor, $registry, $this->connection), $logger);
+
+        $polls = 0;
+        $processor->run(static function () use (&$polls): bool {
+            return ++$polls < 2;
+        });
+
+        self::assertSame(2, $polls);
     }
 
     public function testNewActivityEmitsScheduleCommandInResponse(): void

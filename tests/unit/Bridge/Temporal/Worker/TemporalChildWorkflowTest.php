@@ -10,6 +10,7 @@ use Gplanchat\Bridge\Temporal\Worker\TemporalChildWorkflowRunner;
 use Gplanchat\Bridge\Temporal\Worker\TemporalExecutionHistory;
 use Gplanchat\Bridge\Temporal\Worker\TemporalWorkflowCommandBuffer;
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionId;
 use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
@@ -59,12 +60,12 @@ final class TemporalChildWorkflowTest extends TestCase
 
     private function buffer(): TemporalWorkflowCommandBuffer
     {
-        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), 'parent-1');
+        return new TemporalWorkflowCommandBuffer(new TemporalConnection('localhost:7233', 'test'), ExecutionId::fromString('parent-1'));
     }
 
     private function context(TemporalExecutionHistory $history, TemporalWorkflowCommandBuffer $buffer): ExecutionContext
     {
-        return new ExecutionContext('parent-1', $history, $buffer, new TemporalChildWorkflowRunner());
+        return new ExecutionContext(ExecutionId::fromString('parent-1'), $history, $buffer, new TemporalChildWorkflowRunner());
     }
 
     private function initiated(string $childWorkflowId): HistoryEvent
