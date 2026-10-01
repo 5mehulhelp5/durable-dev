@@ -651,6 +651,36 @@ plain `\RuntimeException`. Every host that waits through the Temporal client see
 tell a wait that ran out from a workflow that failed, catch `WorkflowStuckException` first; its
 `executionId` property names the execution.
 
+### Laravel: the clock and the Temporal client are bound by class (#879)
+
+`DurableServiceProvider` now binds `Psr\Clock\ClockInterface` and
+`Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface`. The runtime and
+`gplanchat/durable-filament` read the clock through `ClockInterface`, which resolves
+`durable.clock` each time it is asked. Every route #617 documents keeps working for both: a clock
+bound under `durable.clock` with `instance()` or `singleton()`, before or after the provider
+registers, reaches the runtime and the dashboard. Binding `ClockInterface` reaches both as well.
+
+**What breaks.** If you bind `Psr\Clock\ClockInterface` before or after `DurableServiceProvider`
+registers, Durable reads that clock, and `durable.clock` no longer reaches Durable. Until now,
+Durable read `durable.clock` and ignored a `ClockInterface` binding.
+
+**What to do**, only if your application binds `ClockInterface` and Durable must not read that
+clock: bind `ClockInterface` as a delegate to `durable.clock`, without `singleton()`, so that it
+follows a later rebinding of `durable.clock`:
+
+```php
+$this->app->bind(\Psr\Clock\ClockInterface::class, fn($app) => $app->make('durable.clock'));
+```
+
+`durable.clock` stays `SystemClock` unless you bind another clock under it, before or after the
+provider registers. Your application's other PSR-20 consumers then read that same clock: Durable
+and your application can no longer read two different clocks.
+
+The Temporal client is bound under its interface, and `durable.temporal.client` is now an alias of
+that binding. That id was never documented: an `instance('durable.temporal.client', …)` done after
+the provider registers no longer reaches `TemporalRuntimeAssembly`. Bind
+`WorkflowServiceClientInterface` instead.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
