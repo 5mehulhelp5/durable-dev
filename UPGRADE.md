@@ -712,8 +712,8 @@ used to leave the code unchanged without a word:
 
 - above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
   or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
-  static call, a `::class`. Durable has no counterpart for these four failures. The `use` import is
-  not marked;
+  static call, a `::class`, a parameter type (marked above its method or function, #909). Durable
+  has no counterpart for these four failures. The `use` import is not marked;
 - above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
   and `some`, one of those three with no argument, and `some()` without a count;
 - above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
