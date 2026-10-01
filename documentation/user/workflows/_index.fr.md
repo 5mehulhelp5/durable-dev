@@ -81,8 +81,7 @@ $quotes = $env->await($env->some(3, ...$providers), deadline: Duration::seconds(
 ```
 
 `some()` ne compte que les membres qui **réussissent**. Un fournisseur qui échoue ne rapproche pas
-du quorum, et dès qu'il ne reste plus assez de membres pour l'atteindre, l'attente échoue ; elle ne
-reste pas en suspens indéfiniment. `all()` est le quorum complet : un seul membre en échec fait
+du quorum, et dès qu'il ne reste plus assez de membres pour l'atteindre, l'attente échoue. `all()` est le quorum complet : un seul membre en échec fait
 échouer tout l'assemblage. `any()` est une course : le premier membre à se résoudre gagne, même
 s'il se résout en échouant.
 
@@ -135,7 +134,7 @@ try {
 }
 ```
 
-Cet exemple attend une approbation et renonce au bout d'une heure, la forme canonique de la saga.
+Cet exemple attend une approbation et renonce au bout d'une heure.
 
 Pour décrire en mots **ce qu'une condition attend**, passez un `label`. Sur les backends qui
 enregistrent l'attente (en mémoire, DBAL, Illuminate, Temporal), la liste des exécutions affiche
@@ -152,7 +151,7 @@ l'échéance expire et que rien n'attrape l'exception, le libellé figure dans l
 garde le journal, écrit une seule fois. Le rejeu (la réexécution du code du workflow depuis sa
 première ligne, où chaque étape enregistrée renvoie son résultat) ne le compare jamais : vous pouvez
 ajouter, changer ou retirer un libellé sans risque. Un minuteur ou une activité se nomment déjà
-eux-mêmes : passer un libellé à `await()` avec l'un d'eux est une erreur.
+eux-mêmes : passer un libellé à `await()` avec l'un d'eux lève une `InvalidArgumentException`.
 
 #### Déclarer le gestionnaire et l'attente comme des méthodes {#le-gestionnaire-est-une-méthode-lattente-aussi}
 
@@ -230,7 +229,7 @@ non-déterminisme. Servez-vous de `sideEffect()` à la place.
 
 Une condition qui ne peut jamais tenir, parce que rien de ce qui est en attente ne peut changer
 l'état qu'elle lit, est signalée comme une exécution qui ne peut plus avancer, avec la condition
-nommée par son fichier et sa ligne. L'exécution ne tourne pas à vide.
+nommée par son fichier et sa ligne.
 
 La branche perdante, quelle qu'elle soit, est annulée. Une échéance qui s'écoule annule le travail
 qu'elle bornait, et un travail qui se résout annule l'échéance, si bien qu'aucun minuteur mort ne
@@ -425,7 +424,7 @@ opérations que le moteur garde pour lui n'y figurent pas.
 | `any(...$awaitables)` | Se résout au premier membre qui se résout ; les perdants sont annulés. |
 | `some($count, ...$awaitables)` | Se résout quand `$count` membres ont **réussi**, indexés par position de déclaration. Les autres sont annulés. |
 | `timer($duration, $summary = '')` | Un awaitable qui se résout à l'échéance de la durée. Se compose comme n'importe quel autre. |
-| `sleep($duration, $summary = '')` | Attend, et fait l'attente pour vous, comme son nom l'indique. |
+| `sleep($duration, $summary = '')` | Attend la durée, comme `await(timer($duration, $summary))`. |
 | `activityStub($contract, $options = null)` | Un proxy typé sur un contrat d'activité. Construisez-le dans le constructeur, ou déclarez-le en [argument `#[Activities]`](#arguments-durable-supplies), options comprises ; tous ses appels portent `$options`. |
 | `childWorkflowStub($class, $options = null)` | Le même, pour un workflow enfant : résolu depuis la classe de l'enfant, et ses appels se composent comme les autres. |
 | `onSignal($name, $handler)` | Enregistre un gestionnaire de signal. Le gestionnaire mute l'état du workflow et `await()` l'observe ; il n'y a pas d'attente séparée. Le nom prend une énumération adossée, donc une faute de frappe donne une erreur de type au lieu d'une attente qui ne se résout jamais. |
@@ -448,8 +447,8 @@ l'attribut, qu'un lecteur voit sans rien exécuter.
 
 **Les requêtes n'ont pas de forme impérative.** Elles sont lues par le worker, hors de la fibre du
 workflow : leurs gestionnaires vivent côté moteur et `#[AsQueryMethod]` est le seul moyen d'en
-déclarer un. Un workflow en forme de fermeture ne peut pas répondre à une requête. Un workflow qui
-doit y répondre doit être une classe.
+déclarer un. Un workflow en forme de fermeture ne peut pas répondre à une requête. Pour répondre à une
+requête, un workflow doit être une classe.
 
 `WorkflowEnvironment::wrap($context, $runtime)` construit un environnement sur un `ExecutionContext`
 sans les résolveurs de contrats. Servez-vous-en dans un exécuteur ou un harnais de test à vous. Le
@@ -470,7 +469,7 @@ Vous n'instanciez jamais d'implémentation d'activité dans le corps du workflow
 
 ## `finally` s'exécute à chaque passe qui se suspend
 
-Durable ne garde pas en mémoire un workflow qui attend, d'une passe à l'autre. Chaque passe le
+D'une passe à l'autre, Durable ne garde pas en mémoire un workflow qui attend. Chaque passe le
 rejoue jusqu'à la prochaine attente, puis l'abandonne, et PHP exécute ses blocs `finally` à ce
 moment-là.
 Les SDK Java et Go de Temporal font de même quand ils évincent un workflow de leur cache.
@@ -494,7 +493,7 @@ try {
   le `finally` s'exécute normalement, et le travail qu'il lance est enregistré.
 
 Placez un nettoyage qui doit avoir lieu une seule fois dans un `catch`, ou après le `try`, là où le
-workflow n'arrive que lorsqu'il y arrive vraiment. Une compensation s'écrit ainsi ; voyez
+workflow n'arrive que lorsqu'il y arrive vraiment. Une compensation s'écrit ainsi ; voir
 [Annulation](../cancellation/).
 
 ## Voir aussi

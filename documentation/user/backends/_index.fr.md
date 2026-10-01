@@ -21,7 +21,7 @@ mémoire ; les trois autres sont les ponts entre lesquels vous choisissez.
 > **Sur Magento, les deux backends SQL ne sont pas disponibles.** `gplanchat/durable-magento`
 > déclare un `conflict` Composer sur les deux ponts SQL : `Magento\Framework\App\ResourceConnection`
 > n'est ni une connexion Doctrine DBAL ni celle d'Illuminate, donc aucun des deux n'a de quoi se
-> lier. L'état vit soit dans une grappe Temporal, soit dans un processus. La présence de
+> lier. L'état vit soit dans un cluster Temporal, soit dans un processus. La présence de
 > `durable/temporal/dsn` dans `app/etc/env.php` détermine lequel des deux ; aucun réglage ne le fait.
 
 Les quatre font tourner le **même pilote à fibres** et le même code de workflows et d'activités.
@@ -336,8 +336,8 @@ autre que celle de l'ORM, `doctrine:migrations:diff` ne voit pas les tables de D
 viennent de la première écriture, ou de `bin/console durable:setup`.
 
 Ajouter un `temporal.dsn` garde le journal en SQL et n'utilise le cluster que pour servir des
-opérations Nexus. Avec `backend: temporal`, c'est le cluster qui porte le journal. Dans aucun des
-deux cas il n'y a de seconde source de vérité.
+opérations Nexus. Avec `backend: temporal`, c'est le cluster qui porte le journal. Dans les deux
+cas, le journal vit à un seul endroit.
 
 ### Le transport Doctrine sur PostgreSQL {#doctrine-transport-on-postgresql}
 
@@ -461,7 +461,7 @@ service qui ne reçoit jamais rien.
 Une activité sans borne de tentatives réessaie **indéfiniment** sur tous les backends, c'est le
 défaut de Temporal. Le `max_activity_retries` du bundle agit toujours comme un plafond quand une
 activité n'en pose pas, sur les backends en mémoire et DBAL ; à `0`, il ne plafonne rien. Sous
-Temporal, la grappe relance d'après la `RetryLimit` propre à l'activité, et ne lit pas le plafond.
+Temporal, le cluster relance d'après la `RetryLimit` propre à l'activité, et ne lit pas le plafond.
 
 Voir [Échecs et réessais](../failures/) et [Options](../options/#retrylimit).
 
