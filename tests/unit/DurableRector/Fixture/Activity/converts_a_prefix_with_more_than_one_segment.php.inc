@@ -2,7 +2,7 @@
 
 namespace unit\DurableRector\Fixture\Activity;
 
-// 'Billing.Order.' would give 'Billing.Order.charge' on both engines; the rule does not attempt it.
+// 'Billing.Order.' gives 'Billing.Order.charge' on both engines.
 #[\Temporal\Activity\ActivityInterface(prefix: 'Billing.Order.')]
 interface BillingOrderActivities
 {
@@ -15,11 +15,11 @@ interface BillingOrderActivities
 
 namespace unit\DurableRector\Fixture\Activity;
 
-// 'Billing.Order.' would give 'Billing.Order.charge' on both engines; the rule does not attempt it.
-// durable-rector: activity prefix "Billing.Order." cannot become a Durable activity name — name the activities by hand
-#[\Temporal\Activity\ActivityInterface(prefix: 'Billing.Order.')]
+// 'Billing.Order.' gives 'Billing.Order.charge' on both engines.
+#[\Gplanchat\Durable\Attribute\AsActivity(name: 'Billing.Order')]
 interface BillingOrderActivities
 {
+    #[\Gplanchat\Durable\Attribute\AsActivityMethod(name: 'charge')]
     public function charge(string $orderId): string;
 }
 
