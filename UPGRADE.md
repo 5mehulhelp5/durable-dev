@@ -729,8 +729,10 @@ used to leave the code unchanged without a word:
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
-without a marker. A second run adds no second marker. A failure marker written by an earlier run
-keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
+without a marker. A second run adds no second marker for a construct already marked, and adds a
+different marker next to an existing one: a method can carry an activity marker and a failure
+marker (#917). A failure marker written by an earlier run keeps its old text ("a catch on it never
+matches after migration"), and a re-run adds no second one.
 
 ### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
 
