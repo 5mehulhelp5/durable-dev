@@ -153,9 +153,11 @@ consigne la décision qui le fonde.
 Le pont laisse intacts l'interpréteur de rejeu, les ports de workflow et le tampon de commandes. Le
 rejeu est la façon dont une exécution reprend : le code du workflow tourne à nouveau depuis sa
 première ligne, et chaque étape enregistrée renvoie son résultat depuis le journal. Le pont rend
-seulement persistants trois stockages locaux au processus : le journal d'événements, les
-métadonnées de workflow, et les liens parents des workflows enfants. Le code de workflows et
-d'activités est octet pour octet celui qui tourne sur Temporal ou en mémoire.
+seulement persistants quatre stockages locaux au processus : le journal d'événements, les
+métadonnées de workflow, les liens parents des workflows enfants, et le catalogue des exécutions,
+la liste des exécutions que lit un tableau de bord. Deux classes se partagent la table du
+catalogue : `DbalWorkflowRunProjection` y écrit et `DbalWorkflowRunCatalog` la lit. Le code de
+workflows et d'activités est octet pour octet celui qui tourne sur Temporal ou en mémoire.
 
 | Conservé | Abandonné par rapport à Temporal |
 |---|---|
@@ -165,7 +167,9 @@ d'activités est octet pour octet celui qui tourne sur Temporal ou en mémoire.
 | Le déterminisme du rejeu et le journal d'événements | La rétention d'historique, l'API de visibilité, l'interface Temporal |
 
 Choisissez-le quand vous avez besoin de durabilité sans opérer de cluster. Il demande une base que
-vous sauvegardez déjà, une migration, et aucune extension à compiler.
+vous sauvegardez déjà et aucune extension à compiler. Le pont ne livre aucune migration :
+`DurableSchema` crée les tables à la première écriture, et `bin/console durable:setup` les crée
+d'avance (voir [Backend DBAL](../backends/#le-backend-dbal)).
 
 ---
 
@@ -179,8 +183,9 @@ php artisan migrate
 ```
 
 Ce pont fournit les mêmes quatre stockages que le pont DBAL, avec les mêmes compromis face à
-Temporal : le tableau ci-dessus s'applique mot pour mot. La connexion change. Ces stockages
-utilisent `Illuminate\Database\Connection` et son constructeur de requêtes, sans Eloquent.
+Temporal : le tableau ci-dessus s'applique mot pour mot. Une seule classe,
+`IlluminateWorkflowRunCatalog`, écrit et lit le catalogue des exécutions. La connexion change. Ces
+stockages utilisent `Illuminate\Database\Connection` et son constructeur de requêtes, sans Eloquent.
 
 Donnez aux stockages leur propre connexion dans `config/database.php`, distincte de la connexion par
 défaut de l'application (DUR054). Sur une connexion partagée, les transactions propres à Durable
@@ -189,12 +194,19 @@ une prise de main reste invisible aux autres workers tant que le code métier n'
 traiter une activité qui écrit puis meurt, rendez l'activité idempotente. Ne partagez jamais une
 transaction avec le code métier à cette fin.
 
-Les quatre tables sont livrées en migration, chargée directement depuis le paquet : `migrate`
-suffit. Pour les modifier, publiez-les avec `vendor:publish --tag=durable-migrations` ; à partir de
-là, vous maintenez la copie publiée. **Gardez le nom du fichier publié.** Laravel indexe les
-migrations par leur nom de base et donne la priorité à `database/migrations` quand deux noms
-coïncident, ce qui fait de votre copie celle qui s'exécute. Si vous la renommez, les deux migrations
-s'exécutent, et la seconde échoue sur une table qui existe déjà.
+Les cinq tables sont livrées en migrations, chargées directement depuis le paquet : `migrate`
+suffit. Chaque stockage a sa table, et le journal d'événements écrit aussi dans
+`durable_execution_heads`, un compteur par exécution qui empêche une reprise dépassée d'écrire
+(DUR053). Pour les modifier, publiez-les avec `vendor:publish --tag=durable-migrations` ; à partir
+de là, vous maintenez les copies publiées. La commande copie tout le répertoire `Migrations/` du
+paquet, cinq fichiers, dans `database/migrations`. **Gardez les noms des fichiers publiés.** Laravel
+indexe les migrations par leur nom de base et donne la priorité à `database/migrations` quand deux
+noms coïncident, ce qui fait de votre copie celle qui s'exécute. Si vous renommez un fichier,
+Laravel exécute à la fois le fichier du paquet et votre copie. Seule
+`0001_01_01_000000_create_durable_tables.php` échoue à la seconde exécution : ses appels à
+`Schema::create` n'ont aucune garde et s'arrêtent sur une table qui existe déjà. Les quatre autres
+migrations vérifient d'abord `hasColumn`, `hasIndex` ou `hasTable` et ne modifient rien la seconde
+fois.
 
 `Queue\ResumeLock` couvre ce qu'aucun choix de stockage ne fournit. Quand deux workers reprennent la
 **même** exécution, tous deux la rejouent, tous deux traitent les commandes qu'elle produit comme
@@ -227,8 +239,8 @@ exécution.
 
 **Une seule valeur `backend` lie tous les ports.** Un journal sur un backend avec un catalogue
 d'exécutions sur un autre est une panne : `backend` prend donc une seule valeur. Une valeur que ce
-paquet ne sert pas fait échouer l'enregistrement, avec une erreur qui la nomme et nomme les deux
-backends que le paquet sert : `illuminate` et `memory`.
+paquet ne sert pas fait échouer l'enregistrement, avec une erreur qui la nomme et nomme les trois
+backends que le paquet sert : `illuminate`, `memory` et `temporal`.
 
 **Vous déclarez les workflows dans la configuration.** Laravel n'a pas d'équivalent de
 l'autoconfiguration par attribut de Symfony : la clé `workflows` nomme donc les classes. Les nommer
@@ -574,8 +586,9 @@ vous-même.
 La ligne Laravel nomme la bibliothèque plutôt qu'une intégration, et c'est désormais un *choix*.
 `gplanchat/durable-laravel` existe : un service provider qui lie les quatre ports
 de stockage, des workflows déclarés dans `config/durable.php`, et le travail sur la file que
-l'application draine déjà. Tant qu'il n'est pas tagué, le pont s'installe seul et vous le câblez
-vous-même ; la section ci-dessus décrit ce que l'intégration fait à votre place.
+l'application draine déjà. Pour qu'il câble les ports à votre place, installez plutôt
+`gplanchat/durable-laravel` : il tire la bibliothèque et le pont Illuminate, et la section
+ci-dessus décrit ce qu'il fait pour vous.
 
 ---
 

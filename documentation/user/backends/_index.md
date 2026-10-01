@@ -260,14 +260,17 @@ with a private CA, `ca=`. See [the DSN parameters](../configuration/#dsn-format)
 
 ## DBAL backend
 
-The DBAL backend persists the journal, the resume metadata and the parent/child links in a **single
-SQL database** through Doctrine DBAL. There is no orchestration server, no sidecar and no
-`ext-grpc`. See **DUR030**.
+The DBAL backend persists the journal, the resume metadata, the parent/child links and the run
+catalog (the list of executions a dashboard reads) in a **single SQL database** through Doctrine
+DBAL. There is no orchestration server, no sidecar and no `ext-grpc`. See **DUR030**.
 
 ### How it works
 
-- The three process-local stores become SQL tables; everything else (replay, command buffer,
-  lifecycle) is the code the In-Memory backend already runs.
+- The four process-local stores become SQL tables: the event journal, the workflow metadata, the
+  parent links between child workflows, and the run catalog. A fifth table,
+  `durable_execution_heads`, holds a counter per execution that stops a superseded resume from
+  writing to the journal (DUR053). Everything else (replay, command
+  buffer, lifecycle) is the code the In-Memory backend already runs.
 - Resumes and activities ride **Symfony Messenger**, so use a durable transport (Doctrine, Redis,
   AMQP). An `in-memory://` transport throws away what the SQL journal just persisted.
 - Timers ride Messenger `DelayStamp` through `FireWorkflowTimersHandler`.
