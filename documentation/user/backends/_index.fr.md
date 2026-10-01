@@ -110,9 +110,12 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
   exécuter le `STARTS_WITH` qu'il demande. Sur ces serveurs, le catalogue lève pour un préfixe une
   `RunFilterUnavailableException` qui nomme la 1.23, et les tableaux de bord ne proposent que le
   filtre par nom. Le filtre exact par nom de workflow fonctionne dès la 1.20.
-- Les **mises à jour** (`#[AsUpdateMethod]`, `onUpdate()`) sont désactivées par défaut sur les
-  serveurs antérieurs à la 1.25, 1.20 comprise. Sur ces serveurs, passez la valeur de
-  configuration dynamique `frontend.enableUpdateWorkflowExecution` à `true` ; sans elle,
+- Les **mises à jour** (`#[AsUpdateMethod]`, `onUpdate()`) demandent un **serveur 1.21 ou plus
+  récent**. Sur la 1.20, quand la tâche de workflow qui répond à une mise à jour termine aussi le
+  workflow, le serveur n'écrit aucun événement de mise à jour dans l'historique, et un rejeu
+  ultérieur ne voit pas la mise à jour.
+  De la 1.21 à la 1.24, les mises à jour sont désactivées par défaut : passez la valeur de
+  configuration dynamique `frontend.enableUpdateWorkflowExecution` à `true`. Sans elle,
   `WorkflowClient::update()` échoue avec `UpdateWorkflowExecution operation is disabled on this
   namespace`. Dans le fichier de configuration dynamique du serveur :
 
