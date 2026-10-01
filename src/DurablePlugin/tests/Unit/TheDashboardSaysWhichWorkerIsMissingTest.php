@@ -51,6 +51,20 @@ final class TheDashboardSaysWhichWorkerIsMissingTest extends TestCase
         ], $this->workers(null));
     }
 
+    /**
+     * A DBAL journal with a Nexus handler on a cluster: the cluster says who polls the Nexus queue,
+     * and Messenger still keeps no list of the workers that resume the runs.
+     */
+    public function testANexusRoleOnTheClusterLeavesTheJournalWorkersUnlisted(): void
+    {
+        $rows = $this->workers(new WorkerPresence($this->probe([TaskQueueType::TASK_QUEUE_TYPE_NEXUS => time()]), ['nexus']));
+
+        self::assertSame([
+            ['role' => 'nexus', 'pollers' => 1, 'polling' => true, 'error' => null, 'seconds' => 120],
+            ['role' => 'queue', 'pollers' => 0, 'polling' => false, 'error' => null, 'seconds' => 120, 'unlisted' => true],
+        ], $rows);
+    }
+
     public function testAnEphemeralBackendHasNoRow(): void
     {
         self::assertSame([], $this->workers(null, ephemeral: true));
