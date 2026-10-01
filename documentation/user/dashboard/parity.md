@@ -21,12 +21,12 @@ when a gap closes.
 | Execution id filter | Prefix, where the backend can | Prefix, within the window | Prefix, where the backend can | No |
 | `waiting for a worker` | Line and counter | No | Line and counter | No |
 | `waiting on` | List | List and run page | List and run page | Run section |
-| One line per action | Yes | Yes, plus a journal table | Yes | No, one row per event |
-| Hatched queue time | Yes | Yes | On the timeline | No |
-| Red on the failing event | Yes | Yes | On the timeline | No |
+| One line per action | Yes | Yes, plus a journal table | Yes | Yes |
+| Hatched queue time | Yes | Yes | On the timeline | Yes |
+| Red on the failing event | Yes | Yes | On the timeline | Yes |
 | Nexus operations table | Yes | Yes | Yes | Yes |
 | Worker presence | Yes | Yes, journal and activity | No | No |
-| Payload masking | Folded | Folded | Folded | Always open |
+| Payload masking | Folded | Folded | Folded | Folded |
 | Languages | English, French | English, French | English, French | English |
 
 ## Words on screen

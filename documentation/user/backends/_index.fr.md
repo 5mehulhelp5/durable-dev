@@ -21,7 +21,7 @@ mémoire ; les trois autres sont les ponts entre lesquels vous choisissez.
 > **Sur Magento, les deux backends SQL ne sont pas disponibles.** `gplanchat/durable-magento`
 > déclare un `conflict` Composer sur les deux ponts SQL : `Magento\Framework\App\ResourceConnection`
 > n'est ni une connexion Doctrine DBAL ni celle d'Illuminate, donc aucun des deux n'a de quoi se
-> lier. L'état vit soit dans une grappe Temporal, soit dans un processus. La présence de
+> lier. L'état vit soit dans un cluster Temporal, soit dans un processus. La présence de
 > `durable/temporal/dsn` dans `app/etc/env.php` détermine lequel des deux ; aucun réglage ne le fait.
 
 Les quatre font tourner le **même pilote à fibres** et le même code de workflows et d'activités.
@@ -110,6 +110,21 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
   exécuter le `STARTS_WITH` qu'il demande. Sur ces serveurs, le catalogue lève pour un préfixe une
   `RunFilterUnavailableException` qui nomme la 1.23, et les tableaux de bord ne proposent que le
   filtre par nom. Le filtre exact par nom de workflow fonctionne dès la 1.20.
+- Les **mises à jour** (`#[AsUpdateMethod]`, `onUpdate()`) demandent un **serveur 1.21 ou plus
+  récent**. Sur la 1.20, quand la tâche de workflow qui répond à une mise à jour termine aussi le
+  workflow, le serveur n'écrit aucun événement de mise à jour dans l'historique, et un rejeu
+  ultérieur ne voit pas la mise à jour.
+  De la 1.21 à la 1.24, les mises à jour sont désactivées par défaut : passez la valeur de
+  configuration dynamique `frontend.enableUpdateWorkflowExecution` à `true`. Sans elle,
+  `WorkflowClient::update()` échoue avec `UpdateWorkflowExecution operation is disabled on this
+  namespace`. Dans le fichier de configuration dynamique du serveur (inutile d'activer
+  `frontend.enableUpdateWorkflowExecutionAsyncAccepted` : Durable attend l'étape COMPLETED de la
+  mise à jour) :
+
+  ```yaml
+  frontend.enableUpdateWorkflowExecution:
+    - value: true
+  ```
 
 ### Installer `ext-grpc`
 
@@ -324,6 +339,29 @@ Ajouter un `temporal.dsn` garde le journal en SQL et n'utilise le cluster que po
 opérations Nexus. Avec `backend: temporal`, c'est le cluster qui porte le journal. Dans les deux
 cas, le journal vit à un seul endroit.
 
+### Le transport Doctrine sur PostgreSQL {#doctrine-transport-on-postgresql}
+
+Sur PostgreSQL, réglez `use_notify: false` sur les transports Doctrine de Durable :
+
+```yaml
+framework:
+    messenger:
+        transports:
+            durable_workflows:
+                dsn: 'doctrine://default?queue_name=durable_workflows'
+                options: { use_notify: false }
+            durable_activities:
+                dsn: 'doctrine://default?queue_name=durable_activities'
+                options: { use_notify: false }
+```
+
+Une fois une file vide, le transport PostgreSQL de Messenger ne la relit qu'à réception d'une
+notification ou au bout de 60 secondes (`check_delayed_interval`). Un worker qui consomme les deux
+files sur une seule connexion peut manquer cette notification, et la reprise qu'envoie une activité
+attend alors jusqu'à 60 secondes, ou le prochain lancement de `durable:worker`, quelle que soit la
+valeur de `--sleep`. Avec `use_notify: false`, le transport interroge chaque file à chaque tour, comme sur
+MySQL.
+
 ### Une seule reprise à la fois par exécution {#une-reprise-à-la-fois--la-chose-à-ne-pas-rater}
 
 Temporal sérialise les tâches de workflow d'une exécution côté serveur. Ici il n'y a pas de serveur :
@@ -423,7 +461,7 @@ service qui ne reçoit jamais rien.
 Une activité sans borne de tentatives réessaie **indéfiniment** sur tous les backends, c'est le
 défaut de Temporal. Le `max_activity_retries` du bundle agit toujours comme un plafond quand une
 activité n'en pose pas, sur les backends en mémoire et DBAL ; à `0`, il ne plafonne rien. Sous
-Temporal, la grappe relance d'après la `RetryLimit` propre à l'activité, et ne lit pas le plafond.
+Temporal, le cluster relance d'après la `RetryLimit` propre à l'activité, et ne lit pas le plafond.
 
 Voir [Échecs et réessais](../failures/) et [Options](../options/#retrylimit).
 

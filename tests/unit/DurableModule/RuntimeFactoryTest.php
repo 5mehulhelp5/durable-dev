@@ -17,6 +17,7 @@ use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
 use Gplanchat\DurableModule\Runtime\RuntimeFactory;
 use PHPUnit\Framework\TestCase;
+use unit\Durable\Fixtures\CounterWorkflow;
 use unit\Durable\Fixtures\FrozenClock;
 use unit\DurableModule\Fixture\OrderWorkflow;
 use unit\DurableModule\Fixture\RecordingOrderActivities;
@@ -311,5 +312,16 @@ final class RuntimeFactoryTest extends TestCase
             $declared(null),
         );
         self::assertSame($declared(null), $declared('temporal://127.0.0.1:7234?namespace=default&tls=0'));
+    }
+
+    /**
+     * Without a DSN, a run that continues as new hands over to the next one, as on every other
+     * backend, and the caller gets the last run's result (#802).
+     */
+    public function testWithoutADsnAContinueAsNewChainRunsToItsLastRun(): void
+    {
+        $runtime = (new RuntimeFactory(workflowClasses: [CounterWorkflow::class]))->create();
+
+        self::assertSame('done at 2', $runtime->run(CounterWorkflow::class, ['n' => 0]));
     }
 }

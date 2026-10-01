@@ -1295,6 +1295,8 @@ jobs:
                   done"
 
             # --fail-on-skipped: a missing variable or server turns the job red instead of green.
+            # No WorkflowUpdateTest here: updates need Server 1.21 (#860). 1.20 drops the update's
+            # events when the same workflow task completes the workflow.
             - name: PHPUnit — the run catalogue and the visibility queries on 1.20
               env:
                   DURABLE_TEMPORAL_ADDRESS: '127.0.0.1:7233'
