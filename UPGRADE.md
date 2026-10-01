@@ -559,6 +559,18 @@ where an `ExecutionId` belongs.
    even though `ExecutionId` is `Stringable`. Compare two ids with `->equals()`, and pass the
    object as it is to a port.
 
+### Temporal: a whole-valued float reads back as a float (#826)
+
+The Temporal bridge now encodes payloads with `JSON_PRESERVE_ZERO_FRACTION`, as the DBAL and
+Illuminate stores do since #759. A `30.0` in an activity result, a side effect, a workflow input or
+result, an update or a Nexus result used to read back as the int `30`. It now reads back as `30.0`.
+A `Double` search attribute goes out as `30.0` instead of `30`; an `Int` one is unchanged.
+
+**What to do:** nothing. Events recorded before this change keep their bytes and still read back as
+ints, so replaying them gives the same values, and the replay guard compares `30` and `30.0` as
+equal. Code that received an int from those payloads and branched on `is_int()` sees a float from
+new events.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
