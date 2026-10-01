@@ -5,18 +5,29 @@ declare(strict_types=1);
 namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\ExecutionContext;
+use Gplanchat\Durable\ExecutionEngine;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
+use Gplanchat\Durable\Handler\FireWorkflowTimersHandler;
+use Gplanchat\Durable\Handler\ResumeWorkflowHandler;
 use Gplanchat\Durable\Port\WorkflowLifecycleInterface;
+use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
+use Gplanchat\Durable\Port\WorkflowTimerDispatcher;
 use Gplanchat\Durable\RegistryActivityExecutor;
+use Gplanchat\Durable\Store\ChildWorkflowParentLinkStoreInterface;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
 use Gplanchat\Durable\Store\EventStoreHistorySource;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\PassEventStore;
+use Gplanchat\Durable\Store\WorkflowMetadataStore;
+use Gplanchat\Durable\Transport\FireWorkflowTimersMessage;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
+use Gplanchat\Durable\Transport\ResumeWorkflowMessage;
 use Gplanchat\Durable\Worker\WorkflowFiberDriver;
+use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
 use Gplanchat\Durable\WorkflowEnvironment;
+use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -69,5 +80,58 @@ final class AnEmptyExecutionIdIsRefusedTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         (new WorkflowFiberDriver($lifecycle))->run('', $context, new WorkflowEnvironment($context, $runtime), static fn(): null => null);
+    }
+
+    public function testATimerMessageWithAnEmptyIdIsRefusedOverAFencedStore(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->timersHandler(new InMemoryEventStore())(new FireWorkflowTimersMessage(''));
+    }
+
+    public function testATimerMessageWithAnEmptyIdIsRefusedOverAStoreThatCannotFence(): void
+    {
+        $store = $this->createMock(EventStoreInterface::class);
+        $store->expects(self::never())->method(self::anything());
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->timersHandler($store)(new FireWorkflowTimersMessage(''));
+    }
+
+    public function testAResumeMessageWithAnEmptyIdIsRefusedBeforeAnyStoreHearsOfIt(): void
+    {
+        $store = $this->createMock(EventStoreInterface::class);
+        $store->expects(self::never())->method(self::anything());
+        $metadata = $this->createMock(WorkflowMetadataStore::class);
+        $metadata->expects(self::never())->method(self::anything());
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new ResumeWorkflowHandler(
+            new ExecutionEngine($store, $this->runtime($store)),
+            new WorkflowRegistry(),
+            $metadata,
+            $this->createStub(WorkflowResumeDispatcher::class),
+            $store,
+            $this->createStub(ChildWorkflowParentLinkStoreInterface::class),
+            $this->createStub(WorkflowTimerDispatcher::class),
+            new WorkflowDefinitionLoader(),
+        ))(new ResumeWorkflowMessage(''));
+    }
+
+    private function timersHandler(EventStoreInterface $store): FireWorkflowTimersHandler
+    {
+        return new FireWorkflowTimersHandler(
+            $store,
+            $this->runtime($store),
+            $this->createStub(WorkflowResumeDispatcher::class),
+            $this->createStub(WorkflowTimerDispatcher::class),
+        );
+    }
+
+    private function runtime(EventStoreInterface $store): ExecutionRuntime
+    {
+        return new ExecutionRuntime($store, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, null, true);
     }
 }
