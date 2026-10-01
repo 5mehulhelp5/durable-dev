@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace unit\Gplanchat\Bridge\Temporal\Worker;
 
+use Gplanchat\Bridge\Temporal\Codec\JsonPlainPayload;
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecWorkflowServiceClient;
 use Gplanchat\Bridge\Temporal\Grpc\TemporalHistoryCursor;
+use Gplanchat\Bridge\Temporal\Journal\JournalExecutionIdResolver;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskProcessor;
 use Gplanchat\Bridge\Temporal\Worker\WorkflowTaskRunner;
@@ -15,6 +17,7 @@ use Gplanchat\Durable\WorkflowRegistry;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;
+use Temporal\Api\Common\V1\Memo;
 use Temporal\Api\Common\V1\Payload;
 use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
@@ -70,6 +73,18 @@ final class TheWorkerLogsAnUnreadablePayloadTest extends TestCase
         $this->processWorkflowTasks($inner);
 
         $this->assertOneRecord(\JsonException::class, 'Syntax error', 7);
+    }
+
+    public function testAMalformedStartedMemoIsLoggedWithItsEvent(): void
+    {
+        $started = self::started(1);
+        $started->getWorkflowExecutionStartedEventAttributes()?->setMemo(new Memo(['fields' => [
+            JournalExecutionIdResolver::MEMO_KEY_DURABLE_EXECUTION_ID => JsonPlainPayload::encode(42),
+        ]]));
+
+        $this->processWorkflowTasks($this->workflowPolls(self::poll([$started])));
+
+        $this->assertOneRecord(\JsonException::class, 'holds int', 1);
     }
 
     /**

@@ -188,7 +188,7 @@ Nexus reçoit une erreur `INTERNAL` relançable, et le serveur la redistribue. L
 classe et le message de l'erreur, jamais sa trace d'appels, qui pourrait citer la clé ou le texte en
 clair.
 
-Avant de répondre, le worker journalise l'erreur au niveau `error` par le logger PSR-3 de votre
+Avant de répondre, le worker journalise l'erreur au niveau `error` via le logger PSR-3 de votre
 framework : l'exception elle-même, trace d'appels comprise, sous `exception`, et l'id de l'événement
 d'historique qui ne se décode pas sous `event_id`, quand le payload appartient à un événement.
 Gardez ce journal là où seuls vos opérateurs le lisent, puisque la trace peut citer ce que le

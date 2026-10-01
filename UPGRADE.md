@@ -919,9 +919,9 @@ with something other than a non-empty string, and code that calls
 **What to do:** no Rector rule applies, since the signatures do not change. Catch `\JsonException`
 next to `\RuntimeException` around `durableExecutionIdFromStartedAttributes()`. A client other than
 Durable must not write the `durableExecutionId` memo key. A run that already carries such a memo
-has each workflow task answered as failed. Its history shows one `WorkflowTaskFailed` event, the
-first failure: the server does not write the retries to the history, it counts them in the
-pending workflow task's attempt (`temporal workflow describe`). Terminate the run and start it
+has each workflow task answered as failed. While nothing else reaches the run, its history shows
+one `WorkflowTaskFailed` event, the first failure: the server does not write the retries to the
+history, it counts them in the pending workflow task's attempt (`temporal workflow describe`). Terminate the run and start it
 again through `WorkflowClient`.
 
 ### Temporal: the worker logs a payload it cannot read before it fails the task (#936)
