@@ -599,6 +599,15 @@ worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain a
 argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
 runtime factory pass theirs. Nothing to migrate.
 
+### `JournalRunHistoryReader::fromEntries()` (#819)
+
+`JournalRunHistoryReader` gains a static `fromEntries(iterable $entries, string $workflowName = '')`.
+It builds the same history as `read()` from journal entries you already read with
+`readStreamWithRecordedAt()`. The profiler panel uses it to draw `RunTimeline` without a second
+journal read. `read()` returns the same history as before.
+
+**What to do:** nothing.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

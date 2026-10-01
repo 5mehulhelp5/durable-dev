@@ -53,7 +53,7 @@ première ligne est l'exécution elle-même.
 
 *Order/4243 sous Sylius. L'événement en échec est rouge, et l'exécution se termine en échec.*
 
-Le profileur web ne dessine pas cette frise : il liste une ligne par événement.
+Le profileur web dessine la même frise pour chaque exécution de la requête profilée.
 
 ## Les événements
 
