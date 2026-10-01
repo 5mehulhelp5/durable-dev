@@ -61,8 +61,9 @@ final class ActivityStubCouldBeParameterRuleTest extends RuleTestCase
      */
     public static function refusedAtRegistration(): iterable
     {
-        // The source already fails, on every run or on a call; the move brings the failure
-        // forward to the worker's start. Still reported, with the warning.
+        // The source already fails, on every run or on a call, or holds a nonRetryable entry
+        // that never matches; after the move, the worker refuses to register the workflow.
+        // Still reported, with the warning.
         yield 'of(0)' => ['zero-attempts.php', 'OrderActivities', ', attempts: 0|attempts: 0 is not a number of attempts'];
         yield 'an unknown nonRetryable class' => ['unknown-non-retryable.php', 'OrderActivities', ', attempts: 3, nonRetryable: [\NoSuchException::class]|nonRetryable: NoSuchException is not a \Throwable class'];
         yield 'a nonRetryable self::class' => ['self-non-retryable.php', 'OrderActivities', ', attempts: 3, nonRetryable: [self::class]|nonRetryable: unit\DurablePhpstan\Fixtures\StubCouldBeParameter\SelfNonRetryable is not a \Throwable class'];
