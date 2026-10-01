@@ -942,6 +942,31 @@ the Laravel provider and the Magento module need no change.
 **What to do:** nothing, unless you build `PayloadCodecWorkflowServiceClient` yourself: pass it a
 PSR-3 logger to get the record. No Rector rule applies.
 
+### Temporal: an activity input that is not JSON fails the task, and a Nexus handler failure is logged (#938)
+
+An activity task whose input is not JSON used to throw `\JsonException` out of
+`TemporalActivityWorker::pollOnce()`: the worker process stopped, and the next worker stopped on the
+same task. The worker now answers the task with `RespondActivityTaskFailed`, with the
+`\JsonException` class and message, no stack trace and the cause
+`ACTIVITY_WORKER_UNHANDLED_FAILURE`, then polls again. The server counts it as a failed attempt
+under the activity's retry policy.
+
+When a Nexus operation handler throws, a non-JSON input included, the Nexus worker still answers a
+retryable `INTERNAL` error with the message only. It now also logs it.
+
+Both log an `error` record whose `exception` is the original error, with its stack trace, and whose
+`event_id` is `null`. The activity record also carries `activity_id`.
+
+`TemporalActivityWorker` gains an optional sixth constructor argument, and `TemporalNexusWorker` an
+optional fourth one, `?LoggerInterface $logger`. The Symfony bundle, the Laravel provider and the
+Magento module pass theirs.
+
+**Who is affected:** a deployment that relied on a non-JSON activity input stopping the worker.
+Nobody needs to change code: the arguments are optional.
+
+**What to do:** nothing, unless you build either worker yourself: pass it a PSR-3 logger to get the
+record. No Rector rule applies.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
