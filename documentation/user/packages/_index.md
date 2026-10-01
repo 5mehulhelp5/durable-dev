@@ -218,7 +218,7 @@ registration with an error that names it and the two backends the package serves
 `memory`.
 
 **You declare workflows in configuration.** Laravel has no equivalent of Symfony's attribute
-autoconfiguration, so the `workflows` key names the classes. Naming them costs 0,14 ms, measured,
+autoconfiguration, so the `workflows` key names the classes. Naming them costs 0.14 ms, measured,
 and does not grow with the application. A reflection scan costs 15 ms at a thousand classes **and
 loads all of them into every process** to find five. For the same reason, there is no
 `durable:cache`: `config:cache` already caches the file it would duplicate.
@@ -472,10 +472,18 @@ bin/magento durable:worker --role=journal   --time-limit=3600
 bin/magento durable:worker --role=activity  --time-limit=3600
 ```
 
-Each process serves one role on one queue. The two roles use two distinct Temporal queues, and you
-tune their concurrency separately. Nothing goes through Magento's own `MessageQueue`: on Temporal,
+Each process serves one role on one queue. The journal and activity roles use two distinct Temporal
+queues, and you tune their concurrency separately. Nothing goes through Magento's own `MessageQueue`: on Temporal,
 an activity is a Temporal command and a resume is a workflow task, so a Magento topic would only
 add a second queue for an operator to supervise.
+
+**A shop that serves [Nexus operations](../nexus/#serving-an-operation)** lists its handlers in
+one more array of the same factory, `nexusHandlers`: one object per handler, whose
+`#[AsNexusServiceHandler]` names the contract it serves. An operation the handler has no method for
+comes from a `workflowClasses` entry carrying `#[FulfilsNexusOperation]`. A third process,
+`bin/magento durable:worker --role=nexus`, serves them on the DSN's `nexus_task_queue`, which
+defaults to the workflow task queue. Without a DSN, that worker fails with
+`A Nexus worker needs a cluster`.
 
 **A missing worker shows differently depending on its role.** Without `--role=journal`, nothing
 advances: executions start, their history fills, and no process answers their workflow tasks.

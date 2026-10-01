@@ -496,10 +496,18 @@ bin/magento durable:worker --role=journal   --time-limit=3600
 bin/magento durable:worker --role=activity  --time-limit=3600
 ```
 
-Chaque processus sert un rôle sur une file. Les deux rôles utilisent deux files Temporal distinctes,
-et vous réglez leur parallélisme séparément. Rien ne passe par le `MessageQueue` de Magento : sur
+Chaque processus sert un rôle sur une file. Les rôles journal et activité utilisent deux files
+Temporal distinctes, et vous réglez leur parallélisme séparément. Rien ne passe par le `MessageQueue` de Magento : sur
 Temporal, une activité est une commande Temporal et une reprise une tâche de workflow, donc un topic
 Magento ne ferait qu'ajouter une seconde file à superviser.
+
+**Une boutique qui sert des [opérations Nexus](../nexus/#servir-une-opération)** liste ses
+gestionnaires dans un tableau de plus de la même fabrique, `nexusHandlers` : un objet par
+gestionnaire, dont le `#[AsNexusServiceHandler]` nomme le contrat servi. Une opération pour laquelle
+le gestionnaire n'a pas de méthode vient d'une entrée de `workflowClasses` qui porte
+`#[FulfilsNexusOperation]`. Un troisième processus, `bin/magento durable:worker --role=nexus`, les
+sert sur la `nexus_task_queue` du DSN, qui vaut par défaut la file des tâches de workflow. Sans DSN,
+ce worker échoue avec `A Nexus worker needs a cluster`.
 
 **Un worker absent se manifeste différemment selon son rôle.** Sans `--role=journal`, rien
 n'avance : les exécutions démarrent, leur historique se remplit, et aucun processus ne répond à
