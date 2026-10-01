@@ -726,6 +726,16 @@ used to leave the code unchanged without a word:
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
 without a marker. A second run adds no second marker.
 
+### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
+
+`DurableTestCase::createWorkflowTestEnvironment()` and `createWorkflowRunner()` gain two optional
+last arguments, `float $budgetSeconds` and `int $maxContinuations`, with the runner's defaults
+(`InMemoryWorkflowRunner::DEFAULT_BUDGET_SECONDS` and `DEFAULT_MAX_CONTINUATIONS`). Both go to
+`WorkflowTestEnvironment::inMemory()` unchanged.
+
+**What to do:** if a subclass of `DurableTestCase` overrides either method, add the two parameters
+to its signature; without them, PHP fails to load the class. Otherwise nothing.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
