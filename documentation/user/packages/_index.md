@@ -412,11 +412,12 @@ You do not declare the *contract*. The factory reads each handler's interfaces a
 carrying `#[AsActivityMethod]`, which leaves one declaration fewer to get wrong and keeps the
 activity names those of the attributes.
 
-Two more arguments of the same factory bound a run, and `di.xml` is the only place to set them:
+Three more arguments of the same factory bound a run, and `di.xml` is the only place to set them:
 
 ```xml
 <argument name="maxActivityRetries" xsi:type="number">3</argument>
 <argument name="budgetSeconds" xsi:type="number">30</argument>
+<argument name="maxContinuations" xsi:type="number">10</argument>
 ```
 
 - `maxActivityRetries` is the retry ceiling of the activities that `MagentoRuntime::run()` runs in
@@ -427,8 +428,12 @@ Two more arguments of the same factory bound a run, and `di.xml` is the only pla
   inside the calling process; with one, it waits that long for the cluster's result. Past the
   budget, the call throws `WorkflowStuckException` instead of waiting longer. The default is `10`.
   In process, the budget exists because of the retry ceiling: with no ceiling, an activity that
-  keeps failing would keep that process busy forever. Workers and `workflowClient()` read neither
-  argument.
+  keeps failing would keep that process busy forever.
+- `maxContinuations` is, without a DSN, the number of continue-as-new the in-process run follows
+  before it throws `ContinuationCapReachedException`. The default is `10`. With a DSN, the cluster
+  runs the chain.
+
+Workers and `workflowClient()` read none of them.
 
 **Magento supports two backends, and Composer enforces it.** Magento reaches in-memory and
 Temporal, and the module declares a `conflict` on both SQL bridges, because
