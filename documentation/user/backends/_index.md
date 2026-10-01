@@ -90,6 +90,20 @@ The bundle registers these workers itself, from `durable.temporal.dsn`: `messeng
 them by name, and `messenger.yaml` declares no Temporal transport. A third one, `durable_nexus`,
 exists when the application [serves a Nexus operation](../nexus/).
 
+### Waiting for the result with `pollForCompletion()` {#waiting-for-the-result}
+
+`WorkflowClient::pollForCompletion()` reads the run's close event until it arrives, then returns the
+result or throws. Two things differ from a run on the journal backends:
+
+- A workflow that lets an activity failure escape throws `DurableWorkflowAlgorithmFailureException`,
+  as on the journal backends. Its previous exception is an `ActivityFailureCauseException` that
+  carries the original class and message, not the original exception object. Any other workflow
+  failure throws a plain `\RuntimeException` whose message starts with `Workflow "<execution id>"
+  failed:`, not the workflow's own exception.
+- A workflow that waits on a signal nobody sends fails at once in memory, because nothing else can
+  make it progress. On Temporal the run stays open, and `pollForCompletion()` waits until its polls
+  run out, then throws `WorkflowStuckException`.
+
 ### Prerequisites
 
 - **`ext-grpc`** PHP extension compiled against the `grpc/grpc` package version required by the bridge.

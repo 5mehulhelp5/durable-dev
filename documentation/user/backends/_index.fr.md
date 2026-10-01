@@ -94,6 +94,21 @@ Le bundle enregistre lui-même ces workers à partir de `durable.temporal.dsn` :
 les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Temporal. Un troisième,
 `durable_nexus`, existe quand l'application [sert une opération Nexus](../nexus/).
 
+### Attendre le résultat avec `pollForCompletion()` {#waiting-for-the-result}
+
+`WorkflowClient::pollForCompletion()` lit l'événement de clôture de l'exécution jusqu'à ce qu'il
+arrive, puis renvoie le résultat ou lève une exception. Deux comportements diffèrent d'une exécution
+sur les backends à journal :
+
+- Un workflow qui laisse échapper l'échec d'une activité lève `DurableWorkflowAlgorithmFailureException`,
+  comme sur les backends à journal. Son exception précédente est une `ActivityFailureCauseException`
+  qui porte la classe et le message d'origine, pas l'exception d'origine elle-même. Tout autre échec
+  du workflow lève une simple `\RuntimeException` dont le message commence par
+  `Workflow "<execution id>" failed:`, et non l'exception propre au workflow.
+- Un workflow qui attend un signal que personne n'envoie échoue aussitôt en mémoire, puisque rien
+  d'autre ne peut le faire avancer. Sur Temporal, l'exécution reste ouverte : `pollForCompletion()`
+  attend jusqu'au bout de ses interrogations, puis lève `WorkflowStuckException`.
+
 ### Prérequis
 
 - L'extension PHP **`ext-grpc`**, compilée contre la version du paquet `grpc/grpc` qu'exige le pont.
