@@ -251,11 +251,13 @@ This section exists because the two packages have neighbouring names on Packagis
 
 - on `illuminate`, it queues the first resume for `queue:work`;
 - on `temporal`, it starts the workflow on the cluster, which delivers everything after that;
-- on `memory`, it queues the run **in the caller's process**, and `durable:drain` drives it, in
-  the same process: `Artisan::call('durable:drain')` after the dispatch. The drain returns once the
-  run has completed, or once it waits on a signal or on something due later than the ten-second
-  budget. This backend's journal lives in the process, so nothing outside the process can advance
-  the run, and a separate `php artisan durable:drain` drains a queue of its own, empty.
+- on `memory`, it queues the run **in the caller's process**. Drive it in the same process with
+  `app(InProcessWorkflowResumeDispatcher::class)->drain()` after the dispatch. In a console process
+  (tests, commands, queue workers), `Artisan::call('durable:drain')` does the same; the command is
+  not registered in an HTTP request. The drain returns once the run has completed, or once it waits
+  on a signal or on something due later than the ten-second budget. This backend's journal lives in
+  the process, so nothing outside the process can advance the run, and a separate
+  `php artisan durable:drain` starts with an empty queue and drives nothing.
 
 ### Serving Nexus operations {#nexus-on-the-backend-that-can-route-it}
 

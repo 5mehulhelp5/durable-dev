@@ -773,14 +773,14 @@ runs.
 
 ```php
 $dispatcher->dispatchNewWorkflowRun($executionId, 'greeting', $payload);
-Artisan::call('durable:drain');
+app(InProcessWorkflowResumeDispatcher::class)->drain();
 ```
 
-`php artisan durable:drain` drains only the process that runs it. The journal of the `memory`
-backend lives in the process, so a separate `artisan` call starts with an empty queue: call the
-command from the process that dispatched, with `Artisan::call()`, or call
-`app(InProcessWorkflowResumeDispatcher::class)->drain()`. Nothing changes on `illuminate` and
-`temporal`.
+The provider registers `durable:drain` in a console process only (tests, commands, queue
+workers). There, `Artisan::call('durable:drain')` does the same; in an HTTP request the command
+does not exist. The journal of the `memory` backend lives in the process, so a separate
+`php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
+`illuminate` and `temporal`.
 
 ## 0.1.0-beta1
 
