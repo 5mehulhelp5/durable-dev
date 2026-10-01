@@ -715,8 +715,9 @@ used to leave the code unchanged without a word:
 - above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
   or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
   static call, a `::class`, a parameter or return type (marked above its method or function,
-  #909). Durable has no counterpart for these four failures, and once `temporal/sdk` is removed the
-  reference no longer resolves. The `use` import is not marked;
+  #909), the `extends` of a named class (marked above the class, #916). Durable has no
+  counterpart for these four failures, and once `temporal/sdk` is removed the reference no longer
+  resolves. The `use` import is not marked;
 - above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
   and `some`, one of those three with no argument, and `some()` without a count;
 - above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
@@ -728,8 +729,10 @@ used to leave the code unchanged without a word:
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
-without a marker. A second run adds no second marker. A failure marker written by an earlier run
-keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
+without a marker. A second run adds no second marker for a construct already marked, and adds a
+different marker next to an existing one: a method can carry an activity marker and a failure
+marker (#917). A failure marker written by an earlier run keeps its old text ("a catch on it never
+matches after migration"), and a re-run adds no second one.
 
 ### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
 
