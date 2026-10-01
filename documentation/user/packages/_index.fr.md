@@ -432,12 +432,13 @@ Vous ne déclarez pas le *contrat*. La fabrique lit les interfaces de chaque ges
 celles qui portent `#[AsActivityMethod]`, ce qui fait une déclaration de moins à écrire de travers
 et laisse les noms d'activité à ceux des attributs.
 
-Deux autres arguments de la même fabrique bornent une exécution, et `di.xml` est le seul endroit où
+Trois autres arguments de la même fabrique bornent une exécution, et `di.xml` est le seul endroit où
 les régler :
 
 ```xml
 <argument name="maxActivityRetries" xsi:type="number">3</argument>
 <argument name="budgetSeconds" xsi:type="number">30</argument>
+<argument name="maxContinuations" xsi:type="number">10</argument>
 ```
 
 - `maxActivityRetries` est le plafond de tentatives des activités que `MagentoRuntime::run()`
@@ -449,8 +450,13 @@ les régler :
   le processus appelant ; avec un DSN, il attend aussi longtemps le résultat du cluster. Au-delà du
   budget, l'appel lève `WorkflowStuckException` au lieu d'attendre encore. La valeur par défaut est
   `10`. Dans le processus, le budget existe à cause du plafond de tentatives : sans plafond, une
-  activité qui échoue sans cesse occuperait ce processus pour toujours. Les workers et
-  `workflowClient()` ne lisent ni l'un ni l'autre.
+  activité qui échoue sans cesse occuperait ce processus pour toujours.
+- `maxContinuations` est, sans DSN, le nombre de continue-as-new (une exécution qui referme son
+  journal et passe la main à une exécution neuve ; voir le [glossaire](../glossary/)) que suit
+  l'exécution dans le processus avant de lever `ContinuationCapReachedException`. La valeur par défaut est `10`. Avec un
+  DSN, le cluster mène la chaîne.
+
+Les workers et `workflowClient()` n'en lisent aucun.
 
 **Magento prend en charge deux backends, et Composer l'impose.** Magento atteint la mémoire et
 Temporal, et le module déclare un `conflict` sur les deux ponts SQL, car
