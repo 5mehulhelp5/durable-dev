@@ -27,14 +27,14 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | Table des opérations Nexus | Oui | Oui | Oui | Oui |
 | Présence des workers | Oui | Oui, journal et activity | Non | Non |
 | Masquage des charges utiles | Replié | Replié | Replié | Toujours ouvert |
-| Langues | Anglais, français | Anglais | Anglais, français | Anglais |
+| Langues | Anglais, français | Anglais, français | Anglais, français | Anglais |
 
 ## Les mots à l'écran
 
-Les quatre surfaces emploient les mêmes mots. Sylius et Filament les affichent en anglais ou en
-français, Magento et le profileur web en anglais.
+Les quatre surfaces emploient les mêmes mots. Sylius, Magento et Filament les affichent en anglais ou
+en français, le profileur web en anglais.
 
-| | Mot commun | Français, sous Sylius et Filament |
+| | Mot commun | Français, sous Sylius, Magento et Filament |
 | --- | --- | --- |
 | Intitulé de l'issue | `Outcome` | `Issue` |
 | Intitulé de l'historique enregistré | `History` | `Historique` |

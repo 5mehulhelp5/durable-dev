@@ -34,6 +34,16 @@ final class TheRunListTest extends PanelTestCase
             ->assertSee('The fake answers.');
     }
 
+    public function testTheTableSpacesItsCellsAndKeepsBadgesAndDatesWhole(): void
+    {
+        // #850: unpadded cells glued Execution to Workflow, and the Outcome badges and the Started
+        // date were squeezed into "Complet…" and two lines.
+        $this->get('/admin/durable/runs')
+            ->assertSee('class="durable-runs"', false)
+            ->assertSee('.durable-runs th, .durable-runs td { padding:', false)
+            ->assertSee('<td style="white-space: nowrap">2026-09-29 09:00:00</td>', false);
+    }
+
     public function testTheCountersNameThePageTheyCover(): void
     {
         $this->get('/admin/durable/runs')->assertSee('Outcomes across the 2 runs on this page');

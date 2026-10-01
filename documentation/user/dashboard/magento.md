@@ -7,7 +7,9 @@ weight: 20
 
 To follow the workflows of a store from the Magento admin, install `gplanchat/durable-magento`
 ([Packages](../../packages/)) and open **System > Durable processes > Process history**. The page is
-read-only and in English.
+read-only. It is in English or French, following the **Interface Locale** of the admin account.
+The texts the core composes, such as the event labels and the `waiting on …` values, stay in
+English, as on Sylius and Filament.
 
 ## Screenshots
 

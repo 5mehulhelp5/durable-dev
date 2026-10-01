@@ -475,6 +475,16 @@ follow the rule of the Sylius and Filament lists: the whole workflow name, and t
 execution id or of the run id, all as typed, with `%` and `_` as ordinary characters.
 
 **What to do:** nothing in your code. Operators type the whole workflow name, or the start of an id.
+### Dashboards: every event of the run carries the workflow's name (#850)
+
+On every backend, the events of the run's own line (its end, its failure, its cancellation) now
+carry the workflow's name, as the follow-ups of an activity carry the activity's name. The phase
+says what happened. They used to carry the event class, such as `WorkflowExecutionFailed` or
+`WORKFLOW EXECUTION FAILED`. On Temporal, the memo the worker writes at each suspension
+(`WORKFLOW PROPERTIES MODIFIED`) also joins the run's line instead of drawing a line of its own.
+
+**What to do:** nothing, unless a check of your own reads `WorkflowRunEvent::$label` and expects
+an event class there. Read `$phase` instead.
 
 ## 0.1.0-beta1
 
