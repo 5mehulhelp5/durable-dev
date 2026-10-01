@@ -789,22 +789,30 @@ does not exist. The journal of the `memory` backend lives in the process, so a s
 ### `durable-rector`: `Workflow::getVersion()` becomes `version()` (#894)
 
 The `temporal-sdk` set rewrites `yield Workflow::getVersion($changeId, $min, $max)` to
-`$this->environment->version($changeId, $min, $max)`, with positional or named arguments. Until
-now, `UnmigratableTemporalCallRector` marked every `getVersion()` call as having no equivalent.
+`$this->environment->version($changeId, $min, $max)`, with positional or named arguments, and no
+`await()` around it. Until now, `UnmigratableTemporalCallRector` marked every `getVersion()` call
+as having no equivalent, and the facade rule wrapped a yielded call in `await()`. In a workflow
+class, `Workflow::DEFAULT_VERSION` becomes `ChangePoint::DEFAULT_VERSION`, with a
+`use Gplanchat\Durable\Versioning\ChangePoint;` import. Both constants are `-1`.
+
+`gplanchat/durable-rector` now requires `rector/rector` `^2.4.7`, the first version with the
+import API the rule uses.
 
 Three shapes stay as written and get a `durable-rector:` marker:
 
 - a `getVersion()` call with a number of arguments other than three;
 - a `getVersion()` call that is not yielded where it is made: the SDK returns a promise there, and
   `version()` returns the int;
-- a reference to `Workflow::DEFAULT_VERSION`. Its counterpart is `ChangePoint::DEFAULT_VERSION`,
-  also `-1`.
+- a reference to `Workflow::DEFAULT_VERSION` outside a workflow class.
 
 **Who is affected:** a project that migrates off the Temporal PHP SDK with the `temporal-sdk` set,
 and whose workflows call `Workflow::getVersion()`.
 
-**What to do:** run the set again. At each marker, write the call by hand, and replace
-`Workflow::DEFAULT_VERSION` with `Gplanchat\Durable\Versioning\ChangePoint::DEFAULT_VERSION`.
+**What to do:** update `rector/rector` to 2.4.7 or later, then run the set again. At each marker,
+write the call by hand. One runtime case differs: a run that went past the point before the call
+existed and has no recorded work after it, for example one waiting only on a condition or a
+signal, gets `$maxSupported` from `version()`, where the SDK returns `DEFAULT_VERSION`. The
+docblock of `ExecutionContext::version()` describes this limit.
 
 ## 0.1.0-beta1
 
