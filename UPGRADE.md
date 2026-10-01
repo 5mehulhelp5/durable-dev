@@ -599,6 +599,16 @@ worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain a
 argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
 runtime factory pass theirs. Nothing to migrate.
 
+### In-memory runner: a continue-as-new chain stops after 10 continuations (#888)
+
+`InMemoryWorkflowRunner` follows a continue-as-new chain to its last execution. Past
+`maxContinuations` continuations (default `InMemoryWorkflowRunner::DEFAULT_MAX_CONTINUATIONS`, 10),
+it throws `WorkflowStuckException`, built by the new `WorkflowStuckException::continuationCapReached()`,
+naming the execution the caller started and the cap. `InMemoryWorkflowRunner`,
+`WorkflowTestEnvironment::inMemory()` and the Magento `RuntimeFactory` gain an optional last argument
+`int $maxContinuations`. A test whose chain runs past 10 continuations passes
+`maxContinuations: <n>`; nothing else to migrate.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
