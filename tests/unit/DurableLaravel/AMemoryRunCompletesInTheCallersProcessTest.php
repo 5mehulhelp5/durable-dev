@@ -95,7 +95,7 @@ final class AMemoryRunCompletesInTheCallersProcessTest extends TestCase
         $app = $this->memory([TwoStepWorkflow::class], [TwoStepHandler::class]);
 
         $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString('run-1'), 'two-step', []);
-        self::assertFalse($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-1'))['completed'] ?? true, 'queued, not run');
+        self::assertTrue($app->make(WorkflowMetadataStore::class)->hasActiveWorkflowMetadata(ExecutionId::fromString('run-1')), 'queued, not run');
         $app->make(InProcessWorkflowResumeDispatcher::class)->drain();
 
         self::assertTrue($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-1'))['completed'] ?? false);
@@ -107,7 +107,7 @@ final class AMemoryRunCompletesInTheCallersProcessTest extends TestCase
         $app = $this->memory([ShortNapWorkflow::class]);
 
         $app->make(WorkflowResumeDispatcher::class)->dispatchNewWorkflowRun(ExecutionId::fromString('run-2'), 'short-nap', []);
-        self::assertFalse($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-2'))['completed'] ?? true, 'queued, not run');
+        self::assertTrue($app->make(WorkflowMetadataStore::class)->hasActiveWorkflowMetadata(ExecutionId::fromString('run-2')), 'queued, not run');
         $app->make(InProcessWorkflowResumeDispatcher::class)->drain();
 
         self::assertTrue($app->make(WorkflowMetadataStore::class)->get(ExecutionId::fromString('run-2'))['completed'] ?? false);
