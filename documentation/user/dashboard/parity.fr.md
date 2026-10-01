@@ -17,8 +17,8 @@ surfaces diffèrent encore. Elle change quand un écart se referme.
 | État du backend | 4 états, dont 3 datés | 3 états, celui du backend en mémoire non daté | 4 états, dont 3 datés | Aucun |
 | Compteurs | Par issue, sur la page | Par issue, sur la fenêtre | Par issue, sur la page | Aucun |
 | Filtre par issue | Oui | Oui | Non | Non |
-| Filtre par nom de workflow | Nom entier, là où le backend sait l'appliquer | Contient, sans tenir compte de la casse, dans la fenêtre | Nom entier, là où le backend sait l'appliquer | Non |
-| Filtre par identifiant d'exécution | Préfixe, là où le backend sait l'appliquer | Contient, dans la fenêtre | Préfixe, là où le backend sait l'appliquer | Non |
+| Filtre par nom de workflow | Nom entier, là où le backend sait l'appliquer | Nom entier, dans la fenêtre | Nom entier, là où le backend sait l'appliquer | Non |
+| Filtre par identifiant d'exécution | Préfixe, là où le backend sait l'appliquer | Préfixe, dans la fenêtre | Préfixe, là où le backend sait l'appliquer | Non |
 | `waiting for a worker` | Ligne et compteur | Non | Ligne et compteur | Non |
 | `waiting on` | Liste | Liste et page de l'exécution | Liste et page de l'exécution | Section de l'exécution |
 | Une ligne par action | Oui | Oui, plus une table du journal | Oui | Non, une ligne par événement |

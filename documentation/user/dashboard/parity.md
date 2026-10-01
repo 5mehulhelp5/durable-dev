@@ -17,8 +17,8 @@ when a gap closes.
 | Backend state | 4 states, 3 of them dated | 3 states, the in-memory one undated | 4 states, 3 of them dated | None |
 | Counters | Per outcome, over the page | Per outcome, over the window | Per outcome, over the page | None |
 | Outcome filter | Yes | Yes | No | No |
-| Workflow name filter | Whole name, where the backend can | Contains, ignoring case, within the window | Whole name, where the backend can | No |
-| Execution id filter | Prefix, where the backend can | Contains, within the window | Prefix, where the backend can | No |
+| Workflow name filter | Whole name, where the backend can | Whole name, within the window | Whole name, where the backend can | No |
+| Execution id filter | Prefix, where the backend can | Prefix, within the window | Prefix, where the backend can | No |
 | `waiting for a worker` | Line and counter | No | Line and counter | No |
 | `waiting on` | List | List and run page | List and run page | Run section |
 | One line per action | Yes | Yes, plus a journal table | Yes | No, one row per event |

@@ -465,6 +465,16 @@ or is not a `Throwable`.
 **What to do:** pass `SomeException::class` rather than a string literal, and fix any name the
 analyser reports.
 
+### Magento grid: the text filters work, on the whole workflow name and the start of an id (#815)
+
+The workflow name, execution id and backend run id filters of the process history grid matched
+nothing in a real admin. They declared the `text` shorthand, which Magento turns into a `like`
+condition and a `%text%` pattern before the data provider sees it, and the provider compared that
+pattern with the value. They now declare an `eq` condition, so the text arrives as typed, and they
+follow the rule of the Sylius and Filament lists: the whole workflow name, and the start of the
+execution id or of the run id, all as typed, with `%` and `_` as ordinary characters.
+
+**What to do:** nothing in your code. Operators type the whole workflow name, or the start of an id.
 ### Dashboards: every event of the run carries the workflow's name (#850)
 
 On every backend, the events of the run's own line (its end, its failure, its cancellation) now
