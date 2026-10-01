@@ -41,7 +41,8 @@ première ligne est l'exécution elle-même.
 - **Le rouge marque l'événement qui a échoué.** Une activité qui a échoué deux fois puis réussi porte
   du rouge et se termine bien. Une annulation n'est pas en rouge.
 - **Le nom sur la ligne** est celui de l'activité, du workflow enfant ou de l'opération. Un minuteur
-  est nommé par son délai.
+  est nommé par son délai. La ligne de l'exécution porte le nom du workflow. Un nom long passe sur
+  une deuxième ligne.
 
 
 ![La page d'une exécution : la partie hachurée de reserveStock est du temps de file, et le minuteur qui suit est en attente](/images/dashboard/sylius-run.fr.png)

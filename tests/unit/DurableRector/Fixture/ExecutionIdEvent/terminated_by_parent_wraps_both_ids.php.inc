@@ -24,7 +24,7 @@ final class TerminatesAChild
 {
     public function __invoke(string $childId, string $parentId): WorkflowExecutionFailed
     {
-        return WorkflowExecutionFailed::terminatedByParent(\Gplanchat\Durable\ExecutionId::fromString($childId), $parentId);
+        return WorkflowExecutionFailed::terminatedByParent(\Gplanchat\Durable\ExecutionId::fromString($childId), \Gplanchat\Durable\ExecutionId::fromString($parentId));
     }
 }
 
