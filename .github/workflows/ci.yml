@@ -1298,7 +1298,6 @@ jobs:
                   tests/integration/Temporal/SearchAttributesTest.php
                   tests/integration/Temporal/ContinueAsNewKeepsTheExecutionIdTest.php
                   tests/integration/Temporal/WorkflowUpdateTest.php
-                  tests/integration/Temporal/UpdateEventsProbeTest.php
 
             - name: Server logs
               if: failure()
