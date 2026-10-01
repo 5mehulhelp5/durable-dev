@@ -408,7 +408,7 @@ Quand vous enregistrez une classe de workflow, le moteur l'indexe sous **deux** 
   - **`#[AsQueryMethod]`** donne une vue en lecture seule de l'état (aucun effet de bord durable depuis le gestionnaire) ;
   - **`#[AsUpdateMethod]`** porte des mises à jour validées, avec sémantique de réponse quand elle est prise en charge.
     Sur Temporal, les mises à jour demandent un serveur 1.21 ou plus récent, et un réglage du
-    serveur avant la 1.25 : voir les prérequis de Temporal sur la page [Backends](../backends/).
+    serveur avant la 1.25 : voir les [prérequis de Temporal](../backends/#prérequis) sur la page Backends.
 
 Paramètres et types de retour doivent être **sérialisables** (voir l'ADR de sérialisation **DUR007**).
 

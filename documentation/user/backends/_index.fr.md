@@ -117,7 +117,9 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
   De la 1.21 à la 1.24, les mises à jour sont désactivées par défaut : passez la valeur de
   configuration dynamique `frontend.enableUpdateWorkflowExecution` à `true`. Sans elle,
   `WorkflowClient::update()` échoue avec `UpdateWorkflowExecution operation is disabled on this
-  namespace`. Dans le fichier de configuration dynamique du serveur :
+  namespace`. Dans le fichier de configuration dynamique du serveur (inutile d'activer
+  `frontend.enableUpdateWorkflowExecutionAsyncAccepted` : Durable attend l'étape COMPLETED de la
+  mise à jour) :
 
   ```yaml
   frontend.enableUpdateWorkflowExecution:

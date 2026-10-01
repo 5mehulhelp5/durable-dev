@@ -111,7 +111,8 @@ exists when the application [serves a Nexus operation](../nexus/).
   From 1.21 through 1.24, updates are switched off by default: set the dynamic config value
   `frontend.enableUpdateWorkflowExecution` to `true`. Without it, `WorkflowClient::update()` fails
   with `UpdateWorkflowExecution operation is disabled on this namespace`. In the server's dynamic
-  config file:
+  config file (`frontend.enableUpdateWorkflowExecutionAsyncAccepted` is not needed: Durable waits
+  for the update's COMPLETED stage):
 
   ```yaml
   frontend.enableUpdateWorkflowExecution:
