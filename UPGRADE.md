@@ -786,6 +786,27 @@ does not exist. The journal of the `memory` backend lives in the process, so a s
 `php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
 `illuminate` and `temporal`.
 
+### Temporal: `pollForCompletion()` reports an unhandled activity failure as the journal does (#872)
+
+A workflow that lets an activity failure escape (plain, catastrophic, superseded or declared) now
+makes `WorkflowClient::pollForCompletion()` throw
+`Gplanchat\Durable\Exception\DurableWorkflowAlgorithmFailureException`, with the message the
+journal backends use (`Workflow did not handle activity failure: …`). Its previous exception is an
+`ActivityFailureCauseException` naming the original class. It used to throw a plain
+`\RuntimeException` whose message started with `Workflow "<execution id>" failed:`, with no
+previous exception. Every other failure keeps that plain `\RuntimeException`. For an activity
+failure, this replaces the third bullet of the Magento `run()` entry (#765) above.
+
+**Who is affected:** code that waits through the Temporal client and reads the failure's message or
+checks its exact class: the Symfony bench runner, Laravel's `WorkflowClientInterface` binding, the
+Sylius and Symfony Nexus demo commands, and Magento's `run()` with a DSN set.
+
+**What to do:** nothing if you catch `\RuntimeException`: the new exception extends it. Code that
+matched on `Workflow "…" failed:` for an activity failure catches
+`DurableWorkflowAlgorithmFailureException` instead, as it already does on the journal backends, and
+reads the original class from `$e->getPrevious()->originalExceptionClass()`. No Rector rule: the
+change is in what a `catch` block receives, not in a call.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
