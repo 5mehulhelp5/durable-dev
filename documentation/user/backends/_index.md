@@ -105,6 +105,19 @@ exists when the application [serves a Nexus operation](../nexus/).
   `RunFilterUnavailableException` naming 1.23 for a prefix, and the dashboards offer only the name
   filter.
   Filtering by exact workflow name works from 1.20.
+- **Updates** (`#[AsUpdateMethod]`, `onUpdate()`) need **Server 1.21 or newer**. On 1.20, when
+  the workflow task that answers an update also completes the workflow, the server writes no
+  update event to the history, and a later replay does not see the update.
+  From 1.21 through 1.24, updates are switched off by default: set the dynamic config value
+  `frontend.enableUpdateWorkflowExecution` to `true`. Without it, `WorkflowClient::update()` fails
+  with `UpdateWorkflowExecution operation is disabled on this namespace`. In the server's dynamic
+  config file (`frontend.enableUpdateWorkflowExecutionAsyncAccepted` is not needed: Durable waits
+  for the update's COMPLETED stage):
+
+  ```yaml
+  frontend.enableUpdateWorkflowExecution:
+    - value: true
+  ```
 
 ### Install `ext-grpc`
 
