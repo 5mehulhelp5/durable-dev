@@ -6,6 +6,7 @@ namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\Event\ChildWorkflowCompleted;
 use Gplanchat\Durable\Event\ChildWorkflowFailed;
+use Gplanchat\Durable\Event\ExecutionCompleted;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
 use Gplanchat\Durable\ExecutionId;
@@ -66,5 +67,32 @@ final class AContinueAsNewSurvivesACrashTest extends TestCase
         // resume reads again: the review of #870 accepted it.
         $left = array_map(strval(...), $chain->links->getChildExecutionIdsForParent(ExecutionId::fromString('parent-1')));
         self::assertSame('after markCompleted' === $point ? ['child-1'] : [], $left);
+    }
+
+    /**
+     * The first attempt dispatched the next run before it stopped, and the chain finished before
+     * the redelivery came: the redelivery leaves the finished runs as they are.
+     */
+    public function testARedeliveryAfterTheChainEndedReopensNothing(): void
+    {
+        $chain = new CrashingContinueAsNewChain('before markCompleted');
+
+        try {
+            $chain->resume('child-1');
+            self::fail('No crash before markCompleted().');
+        } catch (\LogicException) {
+        }
+        $chain->driveStartedRuns();
+
+        $chain->resume('child-1');
+        $chain->driveStartedRuns();
+
+        $runs = array_values(array_unique($chain->startedRuns));
+        self::assertCount(2, $runs);
+        foreach (['child-1', ...$runs] as $run) {
+            self::assertTrue($chain->get(ExecutionId::fromString($run))['completed'] ?? false, "{$run} stays completed");
+        }
+        self::assertCount(1, $chain->eventsOf($runs[1], ExecutionCompleted::class), 'the last run completes once');
+        self::assertCount(1, $chain->eventsOf('parent-1', ChildWorkflowCompleted::class));
     }
 }
