@@ -337,11 +337,15 @@ jobs:
                 }
                 JSON
 
+            # Only the Filament dimension moves, as in the laravel job: an unfiltered `--prefer-lowest`
+            # would lower phpunit and the bridge's dependencies too. The first update writes the lock
+            # the partial one starts from.
             - name: Composer update
               working-directory: /tmp/filament-app
               run: |
+                composer update --no-interaction --prefer-dist --no-progress
                 composer update --no-interaction --prefer-dist --no-progress \
-                  ${{ matrix.deps == 'lowest' && '--prefer-lowest' || '' }}
+                  ${{ matrix.deps == 'lowest' && '--prefer-lowest' || '' }} 'filament/*'
 
             - name: Filament line actually installed, and the bridge
               working-directory: /tmp/filament-app
