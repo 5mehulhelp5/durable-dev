@@ -899,8 +899,9 @@ wrong id. The worker no longer falls back: it answers the workflow task with
 `RespondWorkflowTaskFailed` and polls again. The failure message carries the error, and the cause
 is `WORKFLOW_WORKER_UNHANDLED_FAILURE`, as for a payload that fails to decode (#824). A field that
 is not JSON used to stop the worker process, and the next worker stopped on the same task; it now
-fails the task the same way. The server hands the task back, so the run makes no progress until
-it is terminated. A memo with no such field still falls back to the workflow id.
+fails the task the same way, as does any other payload that is not JSON among those the worker
+reads to build the history, on whichever history page it arrives. The server hands the task back, so the run makes no progress until it is
+terminated. A memo with no such field still falls back to the workflow id.
 
 `WorkflowTaskRunner::run()` reports a history that does not read, the started memo included, as
 `Gplanchat\Bridge\Temporal\Codec\PayloadDecodeFailure`, with the `\JsonException` as the
@@ -918,8 +919,28 @@ with something other than a non-empty string, and code that calls
 **What to do:** no Rector rule applies, since the signatures do not change. Catch `\JsonException`
 next to `\RuntimeException` around `durableExecutionIdFromStartedAttributes()`. A client other than
 Durable must not write the `durableExecutionId` memo key. A run that already carries such a memo
-has each workflow task answered as failed. Find it by the `WorkflowTaskFailed` events in its
-history, terminate it and start it again through `WorkflowClient`.
+has each workflow task answered as failed. While nothing else reaches the run, its history shows
+one `WorkflowTaskFailed` event, the first failure: the server does not write the retries to the
+history, it counts them in the pending workflow task's attempt (`temporal workflow describe`). Terminate the run and start it
+again through `WorkflowClient`.
+
+### Temporal: the worker logs a payload it cannot read before it fails the task (#936)
+
+Before it answers a task as failed for a payload it cannot read, the Temporal worker now logs an
+`error` record. The record's `exception` is the original error: the codec's exception or the
+`\JsonException`, with its stack trace. Its `event_id` is the id of the history event that did not
+read, or `null` when none is known, as for an activity or Nexus task. The server still gets the
+message only.
+
+`PayloadDecodeFailure` gains a fourth constructor argument and a property, `?int $eventId`.
+`PayloadCodecWorkflowServiceClient` gains an optional third argument, `?LoggerInterface $logger`;
+`WorkflowServiceClientFactory::create()` passes it the logger it receives, so the Symfony bundle,
+the Laravel provider and the Magento module need no change.
+
+**Who is affected:** nobody needs to change code. Both arguments are optional.
+
+**What to do:** nothing, unless you build `PayloadCodecWorkflowServiceClient` yourself: pass it a
+PSR-3 logger to get the record. No Rector rule applies.
 
 ## 0.1.0-beta1
 
