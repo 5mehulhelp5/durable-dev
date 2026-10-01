@@ -757,6 +757,31 @@ with `- identifier: durable.activityStubCouldBeParameter` under `ignoreErrors` i
 To ignore it on one call only, add `// @phpstan-ignore durable.activityStubCouldBeParameter` on
 that line.
 
+### Laravel `memory` backend: a new run is queued until `durable:drain` runs it (#881)
+
+On the `memory` backend, `WorkflowResumeDispatcher::dispatchNewWorkflowRun()` queues the run and
+returns. It no longer drives the run inside the call. The new command `durable:drain` drives what
+the process has queued, within the ten-second budget. The `memory` backend registers it; the other
+backends do not. `InProcessWorkflowResumeDispatcher::drain()`, which the command calls, is now
+public. With the run queued, a continue-as-new marks the old run completed before its next run
+runs.
+
+**Who is affected:** an application or a test on Laravel's `memory` backend that starts a run with
+`dispatchNewWorkflowRun()` and expects it to have run when the call returns.
+
+**What to do:** after `dispatchNewWorkflowRun()`, drain in the same process:
+
+```php
+$dispatcher->dispatchNewWorkflowRun($executionId, 'greeting', $payload);
+Artisan::call('durable:drain');
+```
+
+`php artisan durable:drain` drains only the process that runs it. The journal of the `memory`
+backend lives in the process, so a separate `artisan` call starts with an empty queue: call the
+command from the process that dispatched, with `Artisan::call()`, or call
+`app(InProcessWorkflowResumeDispatcher::class)->drain()`. Nothing changes on `illuminate` and
+`temporal`.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)

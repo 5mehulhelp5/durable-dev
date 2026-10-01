@@ -266,10 +266,12 @@ Cette section existe parce que les deux paquets portent des noms voisins sur Pac
 
 - sur `illuminate`, il met en file la première reprise pour `queue:work` ;
 - sur `temporal`, il démarre le workflow sur le cluster, qui livre tout ce qui suit ;
-- sur `memory`, il mène l'exécution **dans le processus appelant** : l'appel rend la main une fois
-  l'exécution terminée, ou quand elle attend un signal ou une échéance au-delà du budget de dix
-  secondes. Le journal de ce backend vit dans le processus : rien hors du processus ne peut faire
-  avancer l'exécution.
+- sur `memory`, il met l'exécution en file **dans le processus appelant**, et `durable:drain` la
+  mène, dans le même processus : `Artisan::call('durable:drain')` après l'envoi. Le drainage rend la
+  main une fois l'exécution terminée, ou quand elle attend un signal ou une échéance au-delà du
+  budget de dix secondes. Le journal de ce backend vit dans le processus : rien hors du processus ne
+  peut faire avancer l'exécution, et un `php artisan durable:drain` lancé à part draine sa propre
+  file, vide.
 
 ### Servir des opérations Nexus {#nexus-sur-le-backend-qui-sait-le-router}
 
