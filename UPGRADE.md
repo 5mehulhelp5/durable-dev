@@ -714,18 +714,22 @@ used to leave the code unchanged without a word:
 
 - above every statement that references `ApplicationFailure`, `ServerFailure`, `TerminatedFailure`
   or `TimeoutFailure`: a `catch` (marked above its `try`), a `new`, a `throw`, an `instanceof`, a
-  static call, a `::class`. Durable has no counterpart for these four failures. The `use` import is
-  not marked;
+  static call, a `::class`, a parameter or return type (marked above its method or function,
+  #909). Durable has no counterpart for these four failures, and once `temporal/sdk` is removed the
+  reference no longer resolves. The `use` import is not marked;
 - above every `Temporal\Promise` call the rules do not rewrite: a method other than `all`, `any`
   and `some`, one of those three with no argument, and `some()` without a count;
 - above an activity interface whose prefix the rule cannot turn into a Durable activity name (a
-  computed prefix, or a literal one that is neither empty nor a single name ending in a dot), and
+  computed prefix, a literal one that does not end in a dot, or `'.'` alone), and
   above an activity method whose `#[ActivityMethod(name:)]` is not a string literal. The contract
-  keeps its SDK attributes, as before.
+  keeps its SDK attributes, as before. A prefix with several segments, such as `'Billing.Order.'`,
+  is converted: both engines give the same activity names (#907). The prefix `'.'` used to become
+  `#[AsActivity(name: '')]`, which renamed `.charge` to `charge`; it is now marked.
 
 **What to do:** nothing before the run. After it, search for `durable-rector:` and handle each
 marker by hand; the README of `gplanchat/durable-rector` lists what the set still changes or skips
-without a marker. A second run adds no second marker.
+without a marker. A second run adds no second marker. A failure marker written by an earlier run
+keeps its old text ("a catch on it never matches after migration"), and a re-run adds no second one.
 
 ### `DurableTestCase` passes `budgetSeconds` and `maxContinuations` to the runner (#897)
 
@@ -757,6 +761,31 @@ with `- identifier: durable.activityStubCouldBeParameter` under `ignoreErrors` i
 To ignore it on one call only, add `// @phpstan-ignore durable.activityStubCouldBeParameter` on
 that line.
 
+### Laravel `memory` backend: a new run is queued until `durable:drain` runs it (#881)
+
+On the `memory` backend, `WorkflowResumeDispatcher::dispatchNewWorkflowRun()` queues the run and
+returns. It no longer drives the run inside the call. The new command `durable:drain` drives what
+the process has queued, within the ten-second budget. The `memory` backend registers it; the other
+backends do not. `InProcessWorkflowResumeDispatcher::drain()`, which the command calls, is now
+public. With the run queued, a continue-as-new marks the old run completed before its next run
+runs.
+
+**Who is affected:** an application or a test on Laravel's `memory` backend that starts a run with
+`dispatchNewWorkflowRun()` and expects it to have run when the call returns.
+
+**What to do:** after `dispatchNewWorkflowRun()`, drain in the same process:
+
+```php
+$dispatcher->dispatchNewWorkflowRun($executionId, 'greeting', $payload);
+app(InProcessWorkflowResumeDispatcher::class)->drain();
+```
+
+The provider registers `durable:drain` in a console process only (tests, commands, queue
+workers). There, `Artisan::call('durable:drain')` does the same; in an HTTP request the command
+does not exist. The journal of the `memory` backend lives in the process, so a separate
+`php artisan durable:drain` starts with an empty queue and drives nothing. Nothing changes on
+`illuminate` and `temporal`.
+
 ### Changed: the gRPC unary client moves to `gplanchat/grpc-client`
 
 `GrpcTransport`, `GrpcWire`, `CurlGrpcTransport` and `GuzzleGrpcTransport` leave the Temporal bridge
@@ -780,6 +809,7 @@ configure `durable.temporal.dsn` are not affected.
   code as its code, the server message in `statusMessage`). `GrpcWorkflowServiceClient` and
   `JsonGatewayWorkflowServiceClient` still throw Messenger's `TransportException`, so a caller of
   the Temporal client changes nothing.
+
 
 ## 0.1.0-beta1
 

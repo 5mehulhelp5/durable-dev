@@ -29,8 +29,8 @@ au-dessus changent seulement l'endroit où l'exécution est enregistrée, jamais
 Un workflow est la classe PHP qui décrit les étapes d'une exécution, et une activité est une unité
 d'effet de bord qu'un workflow appelle, comme un appel HTTP ou une écriture en base.
 
-Les trois ponts sont des **alternatives** et ne se superposent pas : vous installez Temporal, DBAL ou Illuminate, jamais deux
-d'entre eux.
+Les trois ponts sont des **alternatives** et ne se superposent pas : vous installez Temporal,
+DBAL ou Illuminate, jamais deux d'entre eux.
 
 Les deux derniers paquets sont des **outils de développement** et se placent en `require-dev` :
 
@@ -255,10 +255,7 @@ fait bien son travail ; si vous cherchez un moteur pensé d'abord pour Laravel, 
 contre un cluster Temporal (Temporal Cloud et Nexus compris, avec un historique que l'interface de
 Temporal lit) *ou* contre une base SQL, sans cluster à opérer. Un parc mixte Symfony / Sylius /
 Laravel partage aussi un seul moteur : une classe de workflow écrite pour `gplanchat/durable-bundle`
-tourne ici sans modification. Ces deux points sont toute la promesse du paquet, et
-`durable-workflow/workflow` ne la fait pas.
-
-Cette section existe parce que les deux paquets portent des noms voisins sur Packagist.
+tourne ici sans modification. `durable-workflow/workflow` ne propose ni l'un ni l'autre.
 
 ### Démarrer une exécution
 
@@ -266,10 +263,14 @@ Cette section existe parce que les deux paquets portent des noms voisins sur Pac
 
 - sur `illuminate`, il met en file la première reprise pour `queue:work` ;
 - sur `temporal`, il démarre le workflow sur le cluster, qui livre tout ce qui suit ;
-- sur `memory`, il mène l'exécution **dans le processus appelant** : l'appel rend la main une fois
-  l'exécution terminée, ou quand elle attend un signal ou une échéance au-delà du budget de dix
+- sur `memory`, il met l'exécution en file **dans le processus appelant**. Menez-la dans le même
+  processus avec `app(InProcessWorkflowResumeDispatcher::class)->drain()` après l'envoi. Dans un
+  processus console (tests, commandes, workers de file), `Artisan::call('durable:drain')` fait de
+  même ; la commande n'est pas enregistrée pendant une requête HTTP. Le drainage rend la main une
+  fois l'exécution terminée, ou quand elle attend un signal ou une échéance au-delà du budget de dix
   secondes. Le journal de ce backend vit dans le processus : rien hors du processus ne peut faire
-  avancer l'exécution.
+  avancer l'exécution, et un `php artisan durable:drain` lancé à part démarre avec une file vide et
+  ne mène rien.
 
 ### Servir des opérations Nexus {#nexus-sur-le-backend-qui-sait-le-router}
 
@@ -470,7 +471,7 @@ d'Illuminate. Un DSN dans `app/etc/env.php` choisit le backend ; aucun autre ré
 ```
 
 Sans ce DSN, le journal vit dans le processus qui l'écrit et disparaît quand ce processus se
-termine. C'est acceptable pour une commande en ligne, inadapté à tout le reste.
+termine. C'est acceptable pour une commande console, inadapté à tout le reste.
 
 `MagentoRuntime::run()` suit le même choix. Sans DSN, il exécute le workflow dans le processus
 appelant. Avec un DSN, il démarre le workflow sur le cluster et attend son résultat, que produisent
@@ -504,13 +505,12 @@ Magento ne ferait qu'ajouter une seconde file à superviser.
 n'avance : les exécutions démarrent, leur historique se remplit, et aucun processus ne répond à
 leurs tâches de workflow. Sans `--role=activity`, l'exécution semble fonctionner, ce qui rend le
 problème plus difficile à voir : elle avance **jusqu'à sa première activité** et s'y arrête, la
-commande débitée et le stock intact, et c'est le client qui vous l'apprend. Tourner sans le worker
-d'activité remet en place la panne que cette intégration existe pour supprimer.
+commande débitée et le stock intact, et c'est le client qui vous l'apprend.
 
 Les bornes `--time-limit` et `--max-tasks` servent au superviseur : elles terminent le processus
-pour que le superviseur puisse le relancer. Les reprises relèvent du cluster, qui planifie les
+pour que le superviseur puisse le relancer. Les nouvelles tentatives relèvent du cluster, qui planifie les
 tentatives d'une activité qu'un worker écoute ou non. Une exécution dont l'activité « a échoué après
-3 tentatives » en quelques secondes signale un worker absent, pas un code qui a échoué trois fois.
+3 tentatives » en quelques secondes signale un worker absent.
 
 > [!WARNING]
 > **Les réglages de file de Magento ne s'appliquent pas à Durable.** `retry_inprogress_after`, les
@@ -571,8 +571,8 @@ Chaque ligne ne nomme que l'intégration : le bundle tire la bibliothèque, et l
 bundle. Sans framework, vous nommez la bibliothèque vous-même, et vous câblez aussi les workers
 vous-même.
 
-La ligne Laravel nomme la bibliothèque plutôt qu'une intégration, et c'est désormais un *choix*, non
-plus un manque. `gplanchat/durable-laravel` existe : un service provider qui lie les quatre ports
+La ligne Laravel nomme la bibliothèque plutôt qu'une intégration, et c'est désormais un *choix*.
+`gplanchat/durable-laravel` existe : un service provider qui lie les quatre ports
 de stockage, des workflows déclarés dans `config/durable.php`, et le travail sur la file que
 l'application draine déjà. Tant qu'il n'est pas tagué, le pont s'installe seul et vous le câblez
 vous-même ; la section ci-dessus décrit ce que l'intégration fait à votre place.
