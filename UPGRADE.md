@@ -599,6 +599,22 @@ worker polls again. `WorkflowTaskProcessor` and `TemporalRuntimeAssembly` gain a
 argument `?LoggerInterface $logger`; the Symfony bundle, the Laravel provider and the Magento
 runtime factory pass theirs. Nothing to migrate.
 
+### `JournalRunHistoryReader::fromEntries()` (#819)
+
+`JournalRunHistoryReader` gains a static `fromEntries(iterable $entries, string $workflowName = '')`.
+It builds the same history as `read()` from journal entries you already read with
+`readStreamWithRecordedAt()`. The profiler panel uses it to draw `RunTimeline` without a second
+journal read. `read()` returns the same history as before.
+
+**What to do:** nothing.
+
+### Temporal: the workflow worker keeps polling after a rejected task failure (#863)
+
+A `RespondWorkflowTaskFailed` rejected with `NOT_FOUND` (the task has already timed out) or
+`INVALID_ARGUMENT` no longer stops the worker: both are logged as a warning, with the gRPC code
+and the server message, and the worker polls again. Any other gRPC error still propagates out of
+`WorkflowTaskProcessor::processOne()`. Nothing to migrate.
+
 ### A child memo key `durableExecutionId` or `durableWaitingOn` fails on every backend (#889)
 
 Durable writes both keys in a child's memo itself. The `ChildWorkflowOptions` constructor now
