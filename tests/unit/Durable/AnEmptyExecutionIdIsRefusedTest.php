@@ -59,9 +59,9 @@ final class AnEmptyExecutionIdIsRefusedTest extends TestCase
         $transport = new InMemoryActivityTransport();
         $runtime = new ExecutionRuntime($store, $transport, new RegistryActivityExecutor(), 0, null, true);
         $context = new ExecutionContext(
-            'exec-1',
+            ExecutionId::fromString('exec-1'),
             new EventStoreHistorySource($store, 'exec-1'),
-            new EventStoreCommandBuffer($store, $transport, 'exec-1'),
+            new EventStoreCommandBuffer($store, $transport, ExecutionId::fromString('exec-1')),
         );
         $lifecycle = $this->createMock(WorkflowLifecycleInterface::class);
         $lifecycle->expects(self::never())->method('onBeforeRun');

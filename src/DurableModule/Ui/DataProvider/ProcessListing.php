@@ -114,22 +114,21 @@ class ProcessListing extends AbstractDataProvider
      */
     private function applyFilters(array $runs): array
     {
+        // The rule of the Sylius and Filament lists (#815): the whole workflow name, the start of an
+        // id, both as typed. `%` and `_` are ordinary characters here, as they are there.
         foreach ($this->filters as $field => $value) {
             $runs = match ($field) {
                 'workflow_name' => array_values(array_filter(
                     $runs,
-                    static fn(WorkflowRunDescription $run): bool => str_contains(
-                        mb_strtolower($run->workflowName),
-                        mb_strtolower((string) $value),
-                    ),
+                    static fn(WorkflowRunDescription $run): bool => $run->workflowName === (string) $value,
                 )),
                 'run_id' => array_values(array_filter(
                     $runs,
-                    static fn(WorkflowRunDescription $run): bool => str_contains($run->runId, (string) $value),
+                    static fn(WorkflowRunDescription $run): bool => str_starts_with($run->runId, (string) $value),
                 )),
                 'execution_id' => array_values(array_filter(
                     $runs,
-                    static fn(WorkflowRunDescription $run): bool => str_contains($run->executionId, (string) $value),
+                    static fn(WorkflowRunDescription $run): bool => str_starts_with($run->executionId, (string) $value),
                 )),
                 'status' => array_values(array_filter(
                     $runs,

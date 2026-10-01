@@ -7,7 +7,9 @@ weight: 20
 
 To follow the workflows of a store from the Magento admin, install `gplanchat/durable-magento`
 ([Packages](../../packages/)) and open **System > Durable processes > Process history**. The page is
-read-only and in English.
+read-only. It is in English or French, following the **Interface Locale** of the admin account.
+The texts the core composes, such as the event labels and the `waiting on …` values, stay in
+English, as on Sylius and Filament.
 
 ## Screenshots
 
@@ -30,7 +32,7 @@ processes > Process history** on the role's resources.
   holds the [journal](../../glossary/) (the recorded steps of an execution and their results).
 - **Counters** per outcome, over the 200 most recent runs, whatever the grid filters say.
 - **The standard admin grid**: paging (20 by default), column controls, and filters on outcome,
-  workflow name, execution id and backend run id. The text filters look for the text anywhere in the value, among the runs of the window. The workflow name filter ignores case; the two id filters match the text as typed. A notice states the window when it is full.
+  workflow name, execution id and backend run id. The text filters follow the rule of the other surfaces, among the runs of the window: the whole workflow name, the start of the execution id and of the backend run id, all as typed. A notice states the window when it is full.
 - **A run page**, opened from a row: the execution, its backend run, outcome, start and end dates,
   what it waits on, its Nexus operations, a **History** timeline and a **Journal** table with one line per
   event (kind, phase, action, what happened). See [Read a run](../reading-a-run/).

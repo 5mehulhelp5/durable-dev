@@ -63,7 +63,7 @@ final class AnAsyncChildThatContinuesAsNewReportsToItsParentTest extends TestCas
         $outcomes = $this->parentOutcomes($journal, 'parent-1');
         self::assertCount(1, $outcomes);
         self::assertInstanceOf(ChildWorkflowCompleted::class, $outcomes[0]);
-        self::assertSame('child-1', $outcomes[0]->childExecutionId(), 'the id the parent scheduled');
+        self::assertSame('child-1', $outcomes[0]->childExecutionId()->toString(), 'the id the parent scheduled');
         self::assertSame('done at 2', $outcomes[0]->result());
         self::assertContains('resume parent-1', $resumes->sent);
         self::assertNull($links->getParentExecutionId(ExecutionId::fromString($last)), 'unlinked once the parent is resumed');
@@ -84,7 +84,7 @@ final class AnAsyncChildThatContinuesAsNewReportsToItsParentTest extends TestCas
         $outcomes = $this->parentOutcomes($journal, 'parent-1');
         self::assertCount(1, $outcomes);
         self::assertInstanceOf(ChildWorkflowFailed::class, $outcomes[0]);
-        self::assertSame('child-1', $outcomes[0]->childExecutionId());
+        self::assertSame('child-1', $outcomes[0]->childExecutionId()->toString());
         self::assertSame('failed at 2', $outcomes[0]->failureMessage());
     }
 
@@ -114,7 +114,7 @@ final class AnAsyncChildThatContinuesAsNewReportsToItsParentTest extends TestCas
         $outcomes = $this->parentOutcomes($journal, 'parent-1');
         self::assertCount(1, $outcomes);
         self::assertInstanceOf(ChildWorkflowCompleted::class, $outcomes[0]);
-        self::assertSame('child-1', $outcomes[0]->childExecutionId());
+        self::assertSame('child-1', $outcomes[0]->childExecutionId()->toString());
         self::assertSame('done at 2', $outcomes[0]->result());
     }
 
@@ -141,7 +141,7 @@ final class AnAsyncChildThatContinuesAsNewReportsToItsParentTest extends TestCas
     {
         foreach ($journal->readStream(ExecutionId::fromString($executionId)) as $event) {
             if ($event instanceof WorkflowContinuedAsNew && null !== $event->newExecutionId()) {
-                return $event->newExecutionId();
+                return $event->newExecutionId()->toString();
             }
         }
         self::fail("{$executionId} did not continue as new.");
