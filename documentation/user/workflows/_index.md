@@ -393,6 +393,8 @@ When you register a workflow class, the runtime indexes it under **two** strings
   - **`#[AsSignalMethod]`** takes external input that updates workflow state deterministically.
   - **`#[AsQueryMethod]`** gives a read-only view of state (no durable side effects from the handler).
   - **`#[AsUpdateMethod]`** carries validated updates with response semantics when supported.
+    On Temporal Server older than 1.25, updates need a server setting: see the Temporal
+    prerequisites on the [Backends](../backends/) page.
 
 Parameters and return types must be **serializable** (see the serialization ADR **DUR007**).
 

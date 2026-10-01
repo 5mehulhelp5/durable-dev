@@ -110,6 +110,18 @@ les trouve par leur nom, et `messenger.yaml` ne déclare aucun transport Tempora
   exécuter le `STARTS_WITH` qu'il demande. Sur ces serveurs, le catalogue lève pour un préfixe une
   `RunFilterUnavailableException` qui nomme la 1.23, et les tableaux de bord ne proposent que le
   filtre par nom. Le filtre exact par nom de workflow fonctionne dès la 1.20.
+- Les **mises à jour** (`#[AsUpdateMethod]`, `onUpdate()`) sont désactivées par défaut sur les
+  serveurs antérieurs à la 1.25, 1.20 comprise. Sur ces serveurs, passez la valeur de
+  configuration dynamique `frontend.enableUpdateWorkflowExecution` à `true` ; sans elle,
+  `WorkflowClient::update()` échoue avec `UpdateWorkflowExecution operation is disabled on this
+  namespace`. Dans le fichier de configuration dynamique du serveur :
+
+  ```yaml
+  frontend.enableUpdateWorkflowExecution:
+    - value: true
+  ```
+
+  L'intégration continue exécute les tests des mises à jour contre la 1.20 avec cette valeur.
 
 ### Installer `ext-grpc`
 
