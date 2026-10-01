@@ -7,6 +7,7 @@ namespace unit\Gplanchat\Durable\Workflow;
 use Gplanchat\Durable\Exception\WorkflowSuspendedException;
 use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\ExecutionEngine;
+use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\ExecutionRuntime;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
@@ -148,9 +149,9 @@ final class SagaTest extends TestCase
 
         for ($pass = 0; $pass < 10; ++$pass) {
             $this->runtime->runUntilIdle(new ExecutionContext(
-                $executionId,
+                ExecutionId::fromString($executionId),
                 new EventStoreHistorySource($this->eventStore, $executionId),
-                new EventStoreCommandBuffer($this->eventStore, $this->transport, $executionId),
+                new EventStoreCommandBuffer($this->eventStore, $this->transport, ExecutionId::fromString($executionId)),
             ));
 
             try {

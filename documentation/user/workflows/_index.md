@@ -415,7 +415,7 @@ engine keeps for itself are not on it.
 | `hasSignalHandler($name)`, `hasUpdateHandler($name)` | Whether a handler is registered under that name, for code that registers one only once. |
 | `sideEffect($closure)` | Runs non-deterministic local work once and journals its result, so replay reproduces it. |
 | `continueAsNew($type, $payload = [], $options = null)` | Ends this run and starts the next with a fresh history. |
-| `executionId()` | This execution's identifier. |
+| `executionId()` | This execution's identifier, an `ExecutionId`. Call `toString()` to put it in a payload or a log context: the object encodes to `{}` in JSON. |
 
 Activities are **only** reachable through a stub. This surface has no way to name one as a string
 with a free-form payload. A typo there would produce an activity that is never scheduled, where a

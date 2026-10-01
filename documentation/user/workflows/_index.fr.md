@@ -430,7 +430,7 @@ opérations que le moteur garde pour lui n'y figurent pas.
 | `hasSignalHandler($name)`, `hasUpdateHandler($name)` | Indique si un gestionnaire est enregistré sous ce nom, pour le code qui n'en enregistre un qu'une fois. |
 | `sideEffect($closure)` | Exécute une fois un travail local non déterministe et en journalise le résultat, pour que le rejeu le reproduise. |
 | `continueAsNew($type, $payload = [], $options = null)` | Termine cette exécution et démarre la suivante avec un historique neuf. |
-| `executionId()` | L'identifiant de cette exécution. |
+| `executionId()` | L'identifiant de cette exécution, un `ExecutionId`. Appelez `toString()` pour le mettre dans une charge utile ou un contexte de log : en JSON, l'objet devient `{}`. |
 
 Les activités ne sont joignables **qu'**à travers un stub. Cette surface n'offre aucun moyen d'en
 désigner une par une chaîne, avec une charge utile libre. Une faute de frappe y produirait une

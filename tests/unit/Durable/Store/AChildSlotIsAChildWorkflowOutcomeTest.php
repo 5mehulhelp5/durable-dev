@@ -21,8 +21,8 @@ final class AChildSlotIsAChildWorkflowOutcomeTest extends TestCase
     public function testACompletedChildIsItsIdAndItsResult(): void
     {
         $store = new InMemoryEventStore();
-        $store->append(new ChildWorkflowScheduled(ExecutionId::fromString('parent-1'), 'child-1', 'App\\Child', []));
-        $store->append(new ChildWorkflowCompleted(ExecutionId::fromString('parent-1'), 'child-1', ['ok' => true]));
+        $store->append(new ChildWorkflowScheduled(ExecutionId::fromString('parent-1'), ExecutionId::fromString('child-1'), 'App\\Child', []));
+        $store->append(new ChildWorkflowCompleted(ExecutionId::fromString('parent-1'), ExecutionId::fromString('child-1'), ['ok' => true]));
 
         $slot = (new EventStoreHistorySource($store, 'parent-1'))->findChildWorkflowForSlot(0);
 

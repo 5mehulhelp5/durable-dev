@@ -327,6 +327,33 @@ Child workflows accept the same schedule through `ChildWorkflowOptions`.
 
 ---
 
+## A child's memo, summary and details {#child-memo-summary-and-details}
+
+`ChildWorkflowOptions` takes a memo, a one-line summary and longer details for the child.
+
+```php
+use Gplanchat\Durable\ChildWorkflowOptions;
+
+$shipment = $env->childWorkflowStub(ShipmentWorkflow::class, new ChildWorkflowOptions(
+    memo: ['orderId' => 'ORD-4242'],
+    staticSummary: 'Ship order ORD-4242',
+    staticDetails: 'Two parcels, carrier chosen at dispatch',
+));
+```
+
+The SQL and in-memory backends record all three in the parent's journal, on the event that
+schedules the child. On Temporal, the memo becomes the child's memo, and the summary and details
+become the user metadata of the start command, which the Temporal UI shows on the child.
+
+> [!NOTE]
+> The summary and details need Temporal Server 1.25 or later. An older server drops them without
+> an error, and the child starts without them. The memo reaches every supported server.
+
+`durableExecutionId` and `durableWaitingOn` are memo keys Durable writes itself. On Temporal, a
+child memo that uses one of them throws `UnsupportedByBackendException`.
+
+---
+
 ## Migrating from the previous API
 
 Named arguments changed with the value objects. A call that was not migrated fails immediately,
