@@ -9,6 +9,26 @@
 <x-filament-panels::page>
     @include('durable-filament::backend', ['backend' => $backend])
 
+    @if ([] !== $workers)
+        {{-- Named by the Laravel worker command's role, and blamed only when the backend answered.
+             The sentence sits outside the badge, which truncates its text on both lines. --}}
+        <x-filament::section>
+            @foreach ($workers as $worker)
+                @php
+                    [$state, $color, $role, $sentence] = match (true) {
+                        $worker['polling'] => ['polled', 'success', 'status', $t('workers.polling', ['role' => $worker['role']])],
+                        null !== $worker['error'] => ['unknown', 'warning', 'status', $t('workers.unknown', ['role' => $worker['role'], 'error' => $worker['error']])],
+                        default => ['missing', 'danger', 'alert', $t('workers.missing', ['role' => $worker['role'], 'seconds' => $worker['seconds']])],
+                    };
+                @endphp
+                <p role="{{ $role }}" style="display: flex; gap: .5rem; align-items: baseline; margin-block: .25rem">
+                    <x-filament::badge :color="$color">{{ $t('workers.state.' . $state) }}</x-filament::badge>
+                    <span>{{ $sentence }}</span>
+                </p>
+            @endforeach
+        </x-filament::section>
+    @endif
+
     @if ($backend['available'])
         {{-- Every catalog filters by outcome; the two text filters show only where it can apply them. --}}
         <x-filament::section>
