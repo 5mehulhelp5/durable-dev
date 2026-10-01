@@ -8,6 +8,7 @@ use Gplanchat\Durable\Event\ChildWorkflowCompleted;
 use Gplanchat\Durable\Event\Event;
 use Gplanchat\Durable\Event\ExecutionStarted;
 use Gplanchat\Durable\Event\WorkflowContinuedAsNew;
+use Gplanchat\Durable\Exception\ContinuationCapReachedException;
 use Gplanchat\Durable\Exception\WorkflowStuckException;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Testing\WorkflowTestEnvironment;
@@ -80,6 +81,8 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
             $env->runWorkflowClass(ForeverWorkflow::class, ['n' => 0], 'forever-0');
             self::fail('The chain should have stopped at the cap.');
         } catch (WorkflowStuckException $e) {
+            // Its own class, still caught where a stuck execution is caught.
+            self::assertInstanceOf(ContinuationCapReachedException::class, $e);
             self::assertSame('forever-0', $e->executionId);
             self::assertStringContainsString('forever-0', $e->getMessage());
             self::assertStringContainsString('maxContinuations (10)', $e->getMessage());
@@ -97,7 +100,7 @@ final class TheHarnessFollowsAContinueAsNewChainTest extends TestCase
     {
         $env = WorkflowTestEnvironment::inMemory(maxContinuations: 1);
 
-        $this->expectException(WorkflowStuckException::class);
+        $this->expectException(ContinuationCapReachedException::class);
         $this->expectExceptionMessage('Workflow counter-0 continued as new more often than maxContinuations (1) allows');
 
         $env->runWorkflowClass(CounterWorkflow::class, ['n' => 0], 'counter-0');
