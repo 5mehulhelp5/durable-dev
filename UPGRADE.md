@@ -571,6 +571,20 @@ ints, so replaying them gives the same values, and the replay guard compares `30
 equal. Code that received an int from those payloads and branched on `is_int()` sees a float from
 new events.
 
+### Temporal: a child starts with its memo, summary and details (#804)
+
+`ChildWorkflowOptions::$memo`, `$staticSummary` and `$staticDetails` now reach the
+`StartChildWorkflowExecution` command: the memo as the child's memo, the summary and details as the
+command's user metadata, which the Temporal UI shows. Before, the SQL and in-memory journals
+recorded them and the Temporal bridge dropped them. The summary and details need Temporal Server
+1.25 or later: an older server drops them without an error. The memo reaches every supported
+server.
+
+A child memo key `durableExecutionId` or `durableWaitingOn` now throws
+`UnsupportedByBackendException` on Temporal: Durable writes both keys itself.
+
+**What to do:** rename a child memo key if it is one of those two.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
