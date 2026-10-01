@@ -102,9 +102,10 @@ final readonly class AdminDashboardController
      * page is about one run. Uncached, like Magento's banner: a cluster that answers the health
      * check and then hangs costs one 5 s probe per role on this render.
      *
-     * Outside Temporal, Messenger keeps no list of the processes that consume its transports: one
-     * `unlisted` row says so, as the Filament page does on Illuminate. The in-memory backend runs
-     * every task in the process that starts it, and gets no row.
+     * Without a workflow role, the journal is not on Temporal, and Messenger keeps no list of the
+     * processes that consume its transports: one `unlisted` row says so, as the Filament page does
+     * on Illuminate, after a Nexus role the cluster can describe. The in-memory backend runs every
+     * task in the process that starts it, and gets no row.
      *
      * @param array<string, mixed> $backend
      *
@@ -116,16 +117,19 @@ final readonly class AdminDashboardController
             return [];
         }
         $rows = [];
+        $described = [];
         if (null !== $this->workers) {
             $since = $this->workers->since();
-            foreach ($this->workers->describe() as $role => $queue) {
+            $described = $this->workers->describe();
+            foreach ($described as $role => $queue) {
                 $rows[] = ['role' => $role, 'pollers' => $queue->pollers, 'polling' => $queue->polledSince($since), 'error' => $queue->error, 'seconds' => WorkerPresence::SILENCE_SECONDS];
             }
         }
+        if (!isset($described['workflow'])) {
+            $rows[] = ['role' => 'queue', 'pollers' => 0, 'polling' => false, 'error' => null, 'seconds' => WorkerPresence::SILENCE_SECONDS, 'unlisted' => true];
+        }
 
-        return [] === $rows
-            ? [['role' => 'queue', 'pollers' => 0, 'polling' => false, 'error' => null, 'seconds' => WorkerPresence::SILENCE_SECONDS, 'unlisted' => true]]
-            : $rows;
+        return $rows;
     }
 
     private function requireTheSyliusAdmin(): void
