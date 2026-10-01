@@ -7,13 +7,14 @@ namespace Gplanchat\Durable\Filament;
 use Gplanchat\Bridge\Temporal\Store\TaskQueuePollers;
 use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
 use Gplanchat\Bridge\Temporal\TemporalConnection;
+use Gplanchat\Bridge\Temporal\WorkflowServiceClientInterface;
 use Illuminate\Contracts\Container\Container;
 
 /**
  * Who polls each worker role's queue, for the list page, as the Sylius dashboard shows it.
  *
  * On Temporal, the cluster lists the pollers of the workflow and activity task queues, read through
- * the bridge's probe over the client durable-laravel binds. Laravel's queue keeps no list of the
+ * the bridge's probe over the connection and client durable-laravel binds. Laravel's queue keeps no list of the
  * processes that run `queue:work`, so the Illuminate backend gets one "could not ask" row.
  *
  * @internal
@@ -30,7 +31,7 @@ final readonly class WorkerPresence
 
     public static function of(Container $app): self
     {
-        if (!class_exists(TemporalTaskQueueProbe::class) || !$app->bound(TemporalConnection::class)) {
+        if (!class_exists(TemporalTaskQueueProbe::class) || !$app->bound(TemporalConnection::class) || !$app->bound(WorkflowServiceClientInterface::class)) {
             return new self(static fn(): array => [
                 ['role' => 'queue', 'lastPolledAt' => null, 'error' => (string) __('durable-filament::durable.workers.queue_unlisted')],
             ]);
@@ -38,7 +39,7 @@ final readonly class WorkerPresence
 
         return new self(static fn(): array => array_map(
             static fn(TaskQueuePollers $queue): array => ['role' => $queue->kind->value, 'lastPolledAt' => $queue->lastPolledAt, 'error' => $queue->error],
-            (new TemporalTaskQueueProbe($app->make('durable.temporal.client'), $app->make(TemporalConnection::class)))->describe(),
+            (new TemporalTaskQueueProbe($app->make(WorkflowServiceClientInterface::class), $app->make(TemporalConnection::class)))->describe(),
         ));
     }
 
