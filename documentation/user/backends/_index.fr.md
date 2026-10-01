@@ -285,7 +285,8 @@ Voir **DUR030**.
 
 - Les quatre stockages locaux au processus deviennent des tables SQL : le journal d'événements,
   les métadonnées de workflow, les liens parents des workflows enfants et le catalogue des
-  exécutions. Tout le reste (rejeu, tampon de commandes, cycle de vie) est le code que le backend
+  exécutions. Une cinquième table, `durable_execution_heads`, tient un compteur par exécution qui
+  empêche une reprise dépassée d'écrire dans le journal (DUR053). Tout le reste (rejeu, tampon de commandes, cycle de vie) est le code que le backend
   en mémoire fait déjà tourner.
 - Reprises et activités voyagent par **Symfony Messenger** : prenez donc un transport durable
   (Doctrine, Redis, AMQP). Un transport `in-memory://` jette ce que le journal SQL vient de

@@ -157,7 +157,9 @@ activity code is byte-for-byte what runs on Temporal or in memory.
 | Replay determinism and the event journal | History retention, visibility API, the Temporal UI |
 
 Choose it when you need durability without running a cluster. It takes one database you already
-back up, one migration, and no extension to compile.
+back up and no extension to compile. The bridge ships no migration: `DurableSchema` creates the
+tables on the first write, and `bin/console durable:setup` creates them up front (see
+[DBAL backend](../backends/#dbal-backend)).
 
 ---
 
@@ -184,10 +186,14 @@ activity idempotent. Never share a transaction with business code for that purpo
 The five tables ship as migrations loaded straight from the package, so `migrate` is enough. Each
 store has its table, and the event journal also writes `durable_execution_heads`, a counter per
 execution that stops a superseded resume from writing (DUR053). To edit them, publish them with
-`vendor:publish --tag=durable-migrations`; from then on, you maintain the published copy. **Keep the
-published file's name.** Laravel keys migrations by basename and gives precedence to
-`database/migrations` when two names match, which makes your copy the one that runs. If you rename
-it, both migrations run, and the second fails on a table that already exists.
+`vendor:publish --tag=durable-migrations`. The command copies the whole `Migrations/` directory of
+the package, five files, into `database/migrations`; from then on, you maintain the published
+copies. **Keep the published files' names.** Laravel keys migrations by basename and gives
+precedence to `database/migrations` when two names match, which makes your copy the one that runs.
+If you rename a file, Laravel runs both the package's file and your copy. Only
+`0001_01_01_000000_create_durable_tables.php` fails on the second run: its `Schema::create` calls
+have no guard and stop on a table that already exists. The four other migrations check `hasColumn`,
+`hasIndex` or `hasTable` first and change nothing the second time.
 
 `Queue\ResumeLock` covers what no choice of storage supplies. When two workers resume the **same**
 execution, both replay it, both treat the commands it produces as new, and those commands go out

@@ -267,7 +267,9 @@ DBAL. There is no orchestration server, no sidecar and no `ext-grpc`. See **DUR0
 ### How it works
 
 - The four process-local stores become SQL tables: the event journal, the workflow metadata, the
-  parent links between child workflows, and the run catalog. Everything else (replay, command
+  parent links between child workflows, and the run catalog. A fifth table,
+  `durable_execution_heads`, holds a counter per execution that stops a superseded resume from
+  writing to the journal (DUR053). Everything else (replay, command
   buffer, lifecycle) is the code the In-Memory backend already runs.
 - Resumes and activities ride **Symfony Messenger**, so use a durable transport (Doctrine, Redis,
   AMQP). An `in-memory://` transport throws away what the SQL journal just persisted.

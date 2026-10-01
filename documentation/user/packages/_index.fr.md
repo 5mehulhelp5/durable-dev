@@ -167,7 +167,9 @@ workflows et d'activités est octet pour octet celui qui tourne sur Temporal ou 
 | Le déterminisme du rejeu et le journal d'événements | La rétention d'historique, l'API de visibilité, l'interface Temporal |
 
 Choisissez-le quand vous avez besoin de durabilité sans opérer de cluster. Il demande une base que
-vous sauvegardez déjà, une migration, et aucune extension à compiler.
+vous sauvegardez déjà et aucune extension à compiler. Le pont ne livre aucune migration :
+`DurableSchema` crée les tables à la première écriture, et `bin/console durable:setup` les crée
+d'avance (voir [Backend DBAL](../backends/#le-backend-dbal)).
 
 ---
 
@@ -196,10 +198,15 @@ Les cinq tables sont livrées en migrations, chargées directement depuis le paq
 suffit. Chaque stockage a sa table, et le journal d'événements écrit aussi dans
 `durable_execution_heads`, un compteur par exécution qui empêche une reprise dépassée d'écrire
 (DUR053). Pour les modifier, publiez-les avec `vendor:publish --tag=durable-migrations` ; à partir
-de là, vous maintenez la copie publiée. **Gardez le nom du fichier publié.** Laravel indexe les
-migrations par leur nom de base et donne la priorité à `database/migrations` quand deux noms
-coïncident, ce qui fait de votre copie celle qui s'exécute. Si vous la renommez, les deux migrations
-s'exécutent, et la seconde échoue sur une table qui existe déjà.
+de là, vous maintenez les copies publiées. La commande copie tout le répertoire `Migrations/` du
+paquet, cinq fichiers, dans `database/migrations`. **Gardez les noms des fichiers publiés.** Laravel
+indexe les migrations par leur nom de base et donne la priorité à `database/migrations` quand deux
+noms coïncident, ce qui fait de votre copie celle qui s'exécute. Si vous renommez un fichier,
+Laravel exécute à la fois le fichier du paquet et votre copie. Seule
+`0001_01_01_000000_create_durable_tables.php` échoue à la seconde exécution : ses appels à
+`Schema::create` n'ont aucune garde et s'arrêtent sur une table qui existe déjà. Les quatre autres
+migrations vérifient d'abord `hasColumn`, `hasIndex` ou `hasTable` et ne modifient rien la seconde
+fois.
 
 `Queue\ResumeLock` couvre ce qu'aucun choix de stockage ne fournit. Quand deux workers reprennent la
 **même** exécution, tous deux la rejouent, tous deux traitent les commandes qu'elle produit comme
