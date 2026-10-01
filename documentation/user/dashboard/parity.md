@@ -27,7 +27,7 @@ when a gap closes.
 | Nexus operations table | Yes | Yes | Yes | Yes |
 | Worker presence | Yes | Yes, journal and activity | No | No |
 | Payload masking | Folded | Folded | Folded | Always open |
-| Languages | English, French | English | English, French | English |
+| Languages | English, French | English, French | English, French | English |
 
 ## Words on screen
 

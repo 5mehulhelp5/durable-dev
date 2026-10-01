@@ -34,7 +34,7 @@ final class ActivityEventConversionTest extends TestCase
             'input' => TemporalActivityScheduleInput::toPayloads($written),
         ]));
 
-        $read = (new TemporalEventConverter('exec-1'))->convert($event);
+        $read = (new TemporalEventConverter(ExecutionId::fromString('exec-1')))->convert($event);
 
         self::assertInstanceOf(ActivityScheduled::class, $read);
         self::assertSame($written->payload(), $read->payload());
