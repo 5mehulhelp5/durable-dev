@@ -954,7 +954,10 @@ server owns its runs. `WorkflowMetadataStore::save()` does not change either.
 has a row, to start that run again or with another type or payload. The row now keeps its type, its
 payload and its `completed` flag, and a completed run stays completed. Custom
 `WorkflowResumeDispatcher` implementations should follow the same rule, or a re-dispatch can reopen
-a finished run.
+a finished run. An async child that reuses the id of a finished child, as the reuse policy allows
+(`AllowDuplicateFailedOnly` by default), is not affected: `ChildWorkflowRunner` clears the completed
+row before it starts the child. A `ChildWorkflowRunner` you build yourself in async mode needs its
+new `metadataStore` argument for that; the Symfony bundle passes it.
 
 **What to do:** start a new run under a new execution id. In a custom dispatcher, call `save()`
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
