@@ -60,7 +60,7 @@ final class AReusedAsyncChildIdRunsAgainTest extends TestCase
         $registry->registerClass(FailingChildWorkflow::class);
         $runtime = new ExecutionRuntime($journal, new InMemoryActivityTransport(), new RegistryActivityExecutor(), 0, null, true);
         $dispatch = $dispatcher($metadata);
-        $children = new ChildWorkflowRunner($journal, $runtime, $registry, new RegistryActivityExecutor(), 0, true, $dispatch, $links);
+        $children = new ChildWorkflowRunner($journal, $runtime, $registry, new RegistryActivityExecutor(), 0, true, $dispatch, $links, metadataStore: $metadata);
         $handler = new ResumeWorkflowHandler(
             new ExecutionEngine($journal, $runtime),
             $registry,
