@@ -196,12 +196,13 @@ serveur ne doit pas voir.
 
 Pour un worker qui utilise un codec, passez
 [`zend.exception_ignore_args`](https://www.php.net/manual/fr/ini.core.php#ini.zend.exception-ignore-args)
-à `On` dans son `php.ini`. Ce réglage vaut `Off` par défaut et dans `php.ini-development`. Dans ce
-cas, chaque ligne de la trace d'appels mise en texte liste les arguments de l'appel, et chaque
-chaîne y montre ses
+à `On` dans son `php.ini`. Ce réglage vaut `Off` par défaut et dans `php.ini-development`. Avec
+`Off`, chaque ligne de la trace d'appels sous forme de texte liste les arguments de l'appel, et
+chaque chaîne y montre ses
 [`zend.exception_string_param_max_len`](https://www.php.net/manual/fr/ini.core.php#ini.zend.exception-string-param-max-len)
-premiers caractères, 15 par défaut. Ces caractères peuvent venir d'une clé ou d'un chiffré. Avec
-`On`, comme dans `php.ini-production`, la trace omet les arguments.
+premiers caractères, 15 par défaut. Ces caractères peuvent venir d'une clé ou d'un chiffré. Un
+gestionnaire qui lit les appels par `getTrace()` reçoit chaque argument en entier. Avec `On`, comme
+dans `php.ini-production`, la trace omet les arguments.
 
 Ni un worker ni un tableau de bord ne présente du chiffré comme s'il s'agissait de
 données.
