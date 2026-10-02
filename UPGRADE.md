@@ -929,8 +929,9 @@ again through `WorkflowClient`.
 Before it answers a task as failed for a payload it cannot read, the Temporal worker now logs an
 `error` record. The record's `exception` is the original error: the codec's exception or the
 `\JsonException`, with its stack trace. Its `event_id` is the id of the history event that did not
-read, or `null` when none is known, as for an activity or Nexus task. The server still gets the
-message only.
+read, or `null` when none is known, as for an activity or Nexus task. The record names the task
+from its poll response: `workflow_id` and `run_id` for a workflow task, `activity_id` for an
+activity task (#939). The server still gets the message only.
 
 `PayloadDecodeFailure` gains a fourth constructor argument and a property, `?int $eventId`.
 `PayloadCodecWorkflowServiceClient` gains an optional third argument, `?LoggerInterface $logger`;
