@@ -468,16 +468,14 @@ ligne, sauf pour le transport.
 | Opérations Nexus (appeler **et** servir) | ❌ | ❌ | ❌ | ✅ |
 
 Aucun backend hors Temporal n'a d'ordonnanceur ou de frontière entre espaces de noms : cron et Nexus
-n'ont donc pas d'équivalent sur les trois autres. Une capacité absente **échoue explicitement**, à
-une lacune près sur Laravel, décrite plus bas. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus sans
+n'ont donc pas d'équivalent sur les trois autres. Une capacité absente **échoue explicitement**. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus sans
 route ne voit jamais d'appel échouer : c'est un service qui ne reçoit jamais rien. Sur Symfony, le
 montage du conteneur échoue quand `durable.temporal.dsn` n'est pas renseigné. Sur Magento,
 `bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster` quand
 `app/etc/env.php` n'a pas de DSN.
-Sur Laravel, rien n'échoue au démarrage. Hors de `temporal`, rien ne résout le registre Nexus : un
-gestionnaire listé dans `durable.nexus.handlers` ne lève rien et ne reçoit rien, et
-`php artisan durable:nexus-worker` se termine sur `Command "durable:nexus-worker" is not defined.`,
-qui ne nomme pas le backend (voir [#931](https://github.com/gplanchat/durable-dev/issues/931)).
+Sur Laravel, le fournisseur de services échoue au démarrage avec `NexusUnsupportedByBackendException` quand
+un gestionnaire est listé dans `durable.nexus.handlers` et que le backend n'est pas `temporal`. Le message
+nomme le backend.
 
 ---
 
