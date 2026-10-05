@@ -75,6 +75,14 @@ tâches en attente. La grille Magento non plus, puisque ses backends sont celui 
 l'admin, et Temporal. Voir [la procédure de mise à jour](https://github.com/gplanchat/durable-dev/blob/main/UPGRADE.md)
 pour ajouter la colonne à une table créée avant elle.
 
+Après la première prise en charge, les backends à journal enregistrent chaque attente d'un worker
+sous forme d'événements, comme Temporal : `WorkflowTaskScheduled` quand une reprise est envoyée,
+`WorkflowTaskStarted` quand un worker la prend, `WorkflowTaskCompleted` quand la passe se termine.
+Sur la ligne de l'exécution, l'intervalle entre l'envoi et la prise en charge est l'attente hachurée
+décrite à la section 4. La première tâche d'une exécution n'a pas de `WorkflowTaskScheduled` :
+l'application l'envoie par `dispatchNewWorkflowRun()`, qui n'écrit rien dans le journal, et la ligne
+`waiting for a worker` ci-dessus couvre cette première attente.
+
 Une exécution en cours dit aussi **ce qu'elle attend**, à sa dernière suspension :
 `waiting on timer "grace period" due at 2026-09-24T10:00:00+00:00`,
 `waiting on activity charge attempt 2 in flight`, ou `waiting on condition at src/…/OrderWorkflow.php:42`.
