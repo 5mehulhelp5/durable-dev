@@ -10,6 +10,8 @@ use Gplanchat\Durable\Event\WorkflowTaskScheduled;
 use Gplanchat\Durable\Event\WorkflowTaskStarted;
 use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\Observation\JournalRunHistoryReader;
+use Gplanchat\Durable\Observation\RunTimeline;
+use Gplanchat\Durable\Observation\WorkflowRunEvent;
 use Gplanchat\Durable\Observation\WorkflowRunEventKind;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use PHPUnit\Framework\TestCase;
@@ -39,5 +41,21 @@ final class TheWaitForAWorkerIsInTheJournalTest extends TestCase
         self::assertSame([false, true, false, false], array_column($history, 'started'));
         self::assertSame(['requested', 'started', 'started', 'settled'], array_map(static fn($e): ?string => $e->phase?->value, $history));
         self::assertSame(WorkflowRunEventKind::Execution, $history[0]->kind);
+    }
+
+    public function testTheIntervalBetweenScheduledAndStartedIsDrawnAsAWait(): void
+    {
+        $at = static fn(string $time): \DateTimeImmutable => new \DateTimeImmutable('2026-10-05T10:' . $time . '+00:00');
+        $run = static fn(int $sequence, string $time, string $label, bool $started): WorkflowRunEvent
+            => new WorkflowRunEvent($sequence, $at($time), WorkflowRunEventKind::Execution, $label, [], 'workflow', $started);
+
+        $timeline = RunTimeline::of([
+            $run(1, '00:00', 'WorkflowTaskScheduled', false),
+            $run(2, '00:42', 'WorkflowTaskStarted', true),
+        ]);
+
+        $segment = $timeline->actions[0]->segments[0];
+        self::assertTrue($segment->waiting);
+        self::assertStringStartsWith('waiting to be picked up · ', $segment->title);
     }
 }
