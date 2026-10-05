@@ -302,7 +302,7 @@ connection at a database (or a schema) and a database user of Durable's own, so 
 cannot reach the journal's tables at all.
 
 ```yaml
-# config/packages/doctrine.yaml — the journal on a connection of its own
+# config/packages/doctrine.yaml: the journal on a connection of its own
 doctrine:
     dbal:
         default_connection: default
@@ -422,27 +422,39 @@ like bugs and are not.
 
 All four backends run the **same fiber driver** and the same activity execution path. What differs
 is what the surrounding platform can offer. The two SQL columns differ only in the connection they
-sit on, so their answers match on every row except the transport.
+sit on, so their answers match on every row except the transport and what the host delivers
+(signals, updates and Nexus serving).
 
 | Capability | In-Memory | DBAL | Illuminate | Temporal |
 |---|---|---|---|---|
 | Activities, retries, timeouts | ✅ | ✅ | ✅ | ✅ |
 | Timers, side effects | ✅ | ✅ (Messenger delays) | ✅ (queue delays) | ✅ |
-| Signals, updates, queries | ✅ | ✅ | ✅ | ✅ |
+| Signal, update and query handlers in a workflow | ✅ | ✅ | ✅ | ✅ |
+| Sending a signal or an update from the application | ✅ (Symfony message) | ✅ (Symfony message) | ❌ (Laravel delivers none) | ✅ (client or Symfony message) |
+| The update's result returned to the caller | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) |
+| Reading a query from the application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) |
 | Child workflows | ✅ | ✅ | ✅ | ✅ |
 | `ParentClosePolicy` cascade | ✅ | ✅ | ✅ | ✅ (server-driven) |
 | Continue-as-new | ✅ | ✅ | ✅ | ✅ |
-| Cancellation with compensation | ✅ | ✅ | ✅ | ✅ |
+| Cancellation with compensation (a parent's `RequestCancel`) | ✅ | ✅ | ✅ | ✅ |
+| Cancellation requested from outside | ❌ | ❌ | ❌ | ✅ |
 | Survives process restart | ❌ | ✅ | ✅ | ✅ |
 | Task serialisation per execution | n/a (single process) | application lock | application lock | ✅ server-side |
 | Search attributes | journaled only | journaled only | journaled only | ✅ indexed and queryable |
 | Cron schedules | ❌ no scheduler | ❌ no scheduler | ❌ no scheduler | ✅ |
 | History retention / visibility API | ❌ | your SQL table | your SQL table | ✅ |
-| Nexus operations (call **and** serve) | ❌ | ❌ | ❌ | ✅ |
+| Calling a Nexus operation | ❌ | ❌ | ❌ | ✅ |
+| Serving a Nexus operation | ✅ with `temporal.dsn` (Symfony) | ✅ with `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) |
+
+`gplanchat/durable-magento` ships no signal or update delivery. On the journal backends, a signal
+or an update sent from the application is journaled, and the workflow's next pass handles it; the
+sender gets no answer. A query has no application-side entry point there at all.
 
 No backend but Temporal has a scheduler or a cross-namespace boundary, so cron and Nexus have no
-equivalent on the other three. A missing capability **fails explicitly**, with one gap on
-Laravel, described below. A Nexus *call* fails at the call. A Nexus *handler* with no route never sees a failing
+equivalent on the other three. Nexus fails explicitly, with one gap on Laravel, described below.
+Cron and search attributes do not: a child workflow's options are written into the journal and
+nothing reads them outside Temporal, and the start options of a root workflow exist only on the
+Temporal client. A Nexus *call* fails at the call. A Nexus *handler* with no route never sees a failing
 call: it is a service that never receives anything. On Symfony, the container build fails when
 `durable.temporal.dsn` is not set. On Magento, `bin/magento durable:worker --role=nexus` fails with
 `A Nexus worker needs a cluster` when `app/etc/env.php` has no DSN.
