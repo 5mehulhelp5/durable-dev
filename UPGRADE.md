@@ -1008,8 +1008,12 @@ without a queue and writes none of the three. A run costs three more events per 
 `EventDataMapper::toDomainEvent()` throws `Unknown event type` for these classes on an older
 version. **Upgrade every reader (dashboards, `durable:execution:diagnose`, the profiler, any worker
 that replays) before the writers**, then upgrade the workers that run `ResumeWorkflowHandler`.
-`DeliverWorkflowUpdateHandler` takes an optional second argument, `?EventStoreInterface`; the bundle
-passes it, and an update delivered without it schedules no task. A custom `EventStoreInterface`
+`DeliverWorkflowUpdateHandler` takes the journal as a required second argument,
+`__construct(WorkflowResumeDispatcher $resumeDispatcher, EventStoreInterface $eventStore)`. The
+bundle passes it. No Rector rule: the argument is a service of your application, which a rewrite
+cannot name. If you build the handler yourself (a custom container definition or a test), add the
+event store you already pass to `DeliverWorkflowSignalHandler` as the second argument. The Laravel
+and Magento hosts do not build this handler. A custom `EventStoreInterface`
 needs no change: it stores the event class and payload like any other event.
 
 **What to do:** in a test, filter the three classes out of the sequence you compare, or add them
