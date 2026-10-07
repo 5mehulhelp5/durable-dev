@@ -48,12 +48,34 @@ final class DurableLaravelTestTraitTest extends TestCase
 {
     use DurableLaravelTestTrait;
 
+    /** @var array<string, array{getenv: string|false, env: mixed, server: mixed}> */
+    private array $savedEnvironment = [];
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        // The process's environment outlives this test: NexusBenchTest hands getenv() to its children.
+        foreach ($this->savedEnvironment as $name => $previous) {
+            false === $previous['getenv'] ? putenv($name) : putenv($name . '=' . $previous['getenv']);
+            foreach (['env' => '_ENV', 'server' => '_SERVER'] as $key => $global) {
+                if (null === $previous[$key]) {
+                    unset($GLOBALS[$global][$name]);
+                } else {
+                    $GLOBALS[$global][$name] = $previous[$key];
+                }
+            }
+        }
+        $this->savedEnvironment = [];
+    }
+
     public function createApplication()
     {
-        putenv('DURABLE_BACKEND=memory');
-        $_ENV['DURABLE_BACKEND'] = $_SERVER['DURABLE_BACKEND'] = 'memory';
-        putenv('CACHE_STORE=array');
-        $_ENV['CACHE_STORE'] = $_SERVER['CACHE_STORE'] = 'array';
+        foreach (['DURABLE_BACKEND' => 'memory', 'CACHE_STORE' => 'array'] as $name => $value) {
+            $this->savedEnvironment[$name] ??= ['getenv' => getenv($name), 'env' => $_ENV[$name] ?? null, 'server' => $_SERVER[$name] ?? null];
+            putenv($name . '=' . $value);
+            $_ENV[$name] = $_SERVER[$name] = $value;
+        }
 
         $app = require \dirname(__DIR__) . '/bootstrap/app.php';
         $app->make(Kernel::class);
