@@ -30,6 +30,7 @@ use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
+use Gplanchat\Durable\Store\ProjectingEventStore;
 use Gplanchat\Durable\SystemClock;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
 use Gplanchat\Durable\Workflow\WorkflowDefinitionLoader;
@@ -178,6 +179,11 @@ class RuntimeFactory
 
     private ?TemporalRuntimeAssembly $assembly = null;
 
+    /** Without a DSN: the one journal and catalog of this factory, so a run is found where it was started (#985). */
+    private ?InMemoryEventStore $memoryJournal = null;
+
+    private ?InMemoryWorkflowRunCatalog $memoryCatalog = null;
+
     private function clock(): ClockInterface
     {
         return $this->clock ?? new SystemClock();
@@ -195,7 +201,7 @@ class RuntimeFactory
             $activities,
             $workflows,
             new InMemoryWorkflowRunner(
-                $eventStore,
+                null === $this->temporalSettings() ? new ProjectingEventStore($eventStore, $this->memoryCatalog()) : $eventStore,
                 $transport,
                 $activities,
                 $this->maxActivityRetries,
@@ -205,6 +211,7 @@ class RuntimeFactory
                 maxContinuations: $this->maxContinuations,
             ),
             null === $this->temporalSettings() ? null : $this->runOnCluster(...),
+            null === $this->temporalSettings() ? $this->memoryCatalog() : null,
         );
 
         foreach ($this->workflowClasses as $workflowClass) {
@@ -237,8 +244,18 @@ class RuntimeFactory
         $settings = $this->temporalSettings();
 
         return $settings === null
-            ? new InMemoryEventStore($this->clock())
+            ? $this->memoryJournal()
             : $this->assembly($settings)->readThroughEventStore(new InMemoryEventStore($this->clock()));
+    }
+
+    private function memoryJournal(): InMemoryEventStore
+    {
+        return $this->memoryJournal ??= new InMemoryEventStore($this->clock());
+    }
+
+    private function memoryCatalog(): InMemoryWorkflowRunCatalog
+    {
+        return $this->memoryCatalog ??= new InMemoryWorkflowRunCatalog($this->memoryJournal(), $this->clock());
     }
 
     /**
@@ -255,7 +272,7 @@ class RuntimeFactory
         $settings = $this->temporalSettings();
 
         if ($settings === null) {
-            return new InMemoryWorkflowRunCatalog(new InMemoryEventStore($this->clock()), $this->clock());
+            return $this->memoryCatalog();
         }
 
         // The history cursor is not decorative: `listRuns()` returns only the Temporal workflow's
