@@ -995,10 +995,10 @@ signature.
 
 Only Temporal routes an activity by task queue. On InMemory, DBAL, Illuminate and Magento Database
 the name was written to the journal and read by nothing: the activity ran on the one worker that
-drains the application's queue, wherever you had asked it to go. `ActivityOptions::$taskQueue` now makes
-scheduling throw `UnsupportedByBackendException`, which names the option and the queue. The same
-holds for the `taskQueue` argument of `#[Activities(...)]`, which builds the same options. The check
-applies when the workflow body schedules the activity: the run fails there and the journal records
+drains the application's queue, wherever you had asked it to go. `ActivityOptions::$taskQueue` now
+makes scheduling throw `UnsupportedByBackendException`, which names the option and the queue. The
+same holds for the `taskQueue` argument of `#[Activities(...)]`, which builds the same options. The
+check applies when the workflow body schedules the activity: the run fails there and the journal records
 `WorkflowExecutionFailed`. An activity already scheduled in a journal is not touched.
 
 **Who is affected:** an application that sets a task queue on an activity (in `ActivityOptions`, in
