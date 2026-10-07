@@ -52,7 +52,8 @@ final class TheRunListTest extends PanelTestCase
 
     public function testTheCoreTextsStayEnglishInALocaleWithoutTheKey(): void
     {
-        $this->catalog->healthMessage = new Message('backend.sql.answers');
+        // A key no locale carries: 'de' falls back to 'en', which does have backend.sql.answers.
+        $this->catalog->healthMessage = new Message('backend.fake.answers');
         $this->app->setLocale('de');
 
         $this->get('/admin/durable/runs')
