@@ -106,6 +106,10 @@ chaque rejeu.
   l'identifiant et garde l'échec du serveur comme exception précédente. Rien n'est modifié. Terminer
   deux fois une exécution lève donc une exception au second appel. Ces méthodes n'existent que sur
   Temporal. Les backends à journal (InMemory, DBAL, Illuminate, Magento) ne les ont pas encore.
+- **De l'extérieur, sur les autres backends.** L'application n'a aucun point d'entrée pour demander
+  une annulation en mémoire, sur DBAL, sur Illuminate ou sur Magento ; la
+  [matrice de capacités](../backends/#capability-matrix) classe la ligne comme non prise en charge
+  sur les trois premiers et « pas encore » pour la colonne Magento Database.
 
 ---
 

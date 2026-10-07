@@ -105,6 +105,10 @@ awaitable at the same place. The workflow therefore takes the same branch on eve
   failure as previous. Nothing is changed. Terminating an execution twice therefore throws the second
   time. These methods exist on Temporal only. The journal backends (InMemory, DBAL, Illuminate,
   Magento) do not have them yet.
+- **From outside, on the other backends.** The application has no entry point to request a
+  cancellation on In-Memory, DBAL, Illuminate or Magento; the
+  [capability matrix](../backends/#capability-matrix) lists the row as unsupported on the first
+  three and "not yet" for the Magento Database column.
 
 ---
 

@@ -451,26 +451,30 @@ activités. Ce qui diffère, c'est ce que la plateforme autour peut offrir. Les 
 diffèrent que par la connexion sur laquelle elles reposent : leurs réponses concordent sur chaque
 ligne, sauf pour le transport et ce que l'hôte livre (signaux, mises à jour et service Nexus).
 
-| Capacité | En mémoire | DBAL | Illuminate | Temporal |
-|---|---|---|---|---|
-| Activités, réessais, délais | ✅ | ✅ | ✅ | ✅ |
-| Minuteurs, effets de bord | ✅ | ✅ (délais Messenger) | ✅ (délais de la file) | ✅ |
-| Gestionnaires de signaux, de mises à jour et de requêtes dans un workflow | ✅ | ✅ | ✅ | ✅ |
-| Envoi d'un signal ou d'une mise à jour depuis l'application | ✅ (message Symfony) | ✅ (message Symfony) | ❌ (Laravel n'en livre aucun) | ✅ (client ou message Symfony) |
-| Résultat de la mise à jour renvoyé à l'appelant | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) |
-| Lecture d'une requête depuis l'application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) |
-| Workflows enfants | ✅ | ✅ | ✅ | ✅ |
-| Cascade `ParentClosePolicy` | ✅ | ✅ | ✅ | ✅ (pilotée par le serveur) |
-| Continue-as-new | ✅ | ✅ | ✅ | ✅ |
-| Annulation avec compensation (le `RequestCancel` d'un parent) | ✅ | ✅ | ✅ | ✅ |
-| Annulation demandée de l'extérieur | ❌ | ❌ | ❌ | ✅ |
-| Survit au redémarrage du processus | ❌ | ✅ | ✅ | ✅ |
-| Sérialisation des tâches par exécution | sans objet (processus unique) | verrou applicatif | verrou applicatif | ✅ côté serveur |
-| Attributs de recherche | journalisés seulement | journalisés seulement | journalisés seulement | ✅ indexés et interrogeables |
-| Planifications cron | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ✅ |
-| Rétention d'historique / API de visibilité | ❌ | votre table SQL | votre table SQL | ✅ |
-| Appel d'une opération Nexus | ❌ | ❌ | ❌ | ✅ |
-| Service d'une opération Nexus | ✅ avec `temporal.dsn` (Symfony) | ✅ avec `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) |
+La colonne Magento Database n'est pas un backend de la version courante. Son code est en cours de
+développement (épopée [#740](https://github.com/gplanchat/durable-dev/issues/740)), et rien n'en
+est sur `main`. Une cellule indique « pas encore » tant que la capacité n'est pas fusionnée.
+
+| Capacité | En mémoire | DBAL | Illuminate | Temporal | Magento Database |
+|---|---|---|---|---|---|
+| Activités, réessais, délais | ✅ | ✅ | ✅ | ✅ | pas encore |
+| Minuteurs, effets de bord | ✅ | ✅ (délais Messenger) | ✅ (délais de la file) | ✅ | pas encore |
+| Gestionnaires de signaux, de mises à jour et de requêtes dans un workflow | ✅ | ✅ | ✅ | ✅ | pas encore |
+| Envoi d'un signal ou d'une mise à jour depuis l'application | ✅ (message Symfony) | ✅ (message Symfony) | ❌ (Laravel n'en livre aucun) | ✅ (client ou message Symfony) | pas encore |
+| Résultat de la mise à jour renvoyé à l'appelant | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) | pas encore |
+| Lecture d'une requête depuis l'application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) | pas encore |
+| Workflows enfants | ✅ | ✅ | ✅ | ✅ | pas encore |
+| Cascade `ParentClosePolicy` | ✅ | ✅ | ✅ | ✅ (pilotée par le serveur) | pas encore |
+| Continue-as-new | ✅ | ✅ | ✅ | ✅ | pas encore |
+| Annulation avec compensation (le `RequestCancel` d'un parent) | ✅ | ✅ | ✅ | ✅ | pas encore |
+| Annulation demandée de l'extérieur | ❌ | ❌ | ❌ | ✅ | pas encore |
+| Survit au redémarrage du processus | ❌ | ✅ | ✅ | ✅ | pas encore |
+| Sérialisation des tâches par exécution | sans objet (processus unique) | verrou applicatif | verrou applicatif | ✅ côté serveur | pas encore |
+| Attributs de recherche | journalisés seulement | journalisés seulement | journalisés seulement | ✅ indexés et interrogeables | pas encore |
+| Planifications cron | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ✅ | pas encore |
+| Rétention d'historique / API de visibilité | ❌ | votre table SQL | votre table SQL | ✅ | pas encore |
+| Appel d'une opération Nexus | ❌ | ❌ | ❌ | ✅ | pas encore |
+| Service d'une opération Nexus | ✅ avec `temporal.dsn` (Symfony) | ✅ avec `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) | pas encore |
 
 `gplanchat/durable-magento` ne livre ni signal ni mise à jour. Sur les backends à journal, un signal
 ou une mise à jour envoyé depuis l'application est écrit au journal, et la passe suivante du
@@ -512,12 +516,16 @@ configuré. Sur Temporal, l'échec reste aussi dans l'historique du cluster.
 
 ---
 
-## Les réessais ont la même sémantique partout
+## Les limites de réessais diffèrent sur un réglage {#les-réessais-ont-la-même-sémantique-partout}
 
 Une activité sans borne de tentatives réessaie **indéfiniment** sur tous les backends, c'est le
-défaut de Temporal. Le `max_activity_retries` du bundle agit toujours comme un plafond quand une
-activité n'en pose pas, sur les backends en mémoire et DBAL ; à `0`, il ne plafonne rien. Sous
-Temporal, le cluster relance d'après la `RetryLimit` propre à l'activité, et ne lit pas le plafond.
+défaut de Temporal.
+
+`max_activity_retries` fait exception. Sur le backend en mémoire et sur les backends à journal
+(DBAL, Illuminate), le worker resserre la `RetryLimit` de l'activité à ce plafond, et la plus
+stricte des deux s'applique ; à `0`, il ne plafonne rien. Sous Temporal, le cluster relance d'après
+la `RetryLimit` propre à l'activité et ne lit pas ce réglage : une activité que le plafond
+arrête sur les autres backends continue de réessayer sous Temporal.
 
 Voir [Échecs et réessais](../failures/) et [Options](../options/#retrylimit).
 
