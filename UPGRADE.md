@@ -997,7 +997,8 @@ signature.
 by the four journal backends (InMemory, DBAL, Illuminate, Magento Database) and applied by none of
 them: the child ran in the parent's queue, once, with no schedule.
 `EventStoreCommandBuffer::scheduleChildWorkflow()` now throws `UnsupportedByBackendException` naming
-the option, and nothing is journaled. Temporal still applies all three. Search attributes and timeouts are not part of this change.
+the option, and nothing is journaled. Temporal still applies all three. Search attributes and
+timeouts are not part of this change.
 
 **Who is affected:** code that passes one of the three options to `executeChildWorkflow()` while it
 runs on one of those four backends, including tests on the in-memory backend of a workflow that

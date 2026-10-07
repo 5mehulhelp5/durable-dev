@@ -330,8 +330,8 @@ que le précédent n'est pas terminé, et une occurrence manquée est **sautée*
 Les workflows enfants acceptent la même planification par `ChildWorkflowOptions`.
 
 > [!NOTE]
-> Le cron est une capacité de Temporal. Les backends à journal (mémoire, DBAL, Illuminate) n'ont pas
-> d'ordonnanceur : le `cronSchedule`, le `namespace` ou le `taskQueue` d'un workflow enfant y échoue
+> Le cron est une capacité de Temporal. Les backends à journal (mémoire, DBAL, Illuminate, Magento Database)
+> n'ont pas d'ordonnanceur : le `cronSchedule`, le `namespace` ou le `taskQueue` d'un workflow enfant y échoue
 > avec `UnsupportedByBackendException`.
 
 ---

@@ -134,7 +134,7 @@ temporal server start-dev --namespace durable-test --port 7233
 > [!NOTE]
 > Les planifications cron et les attributs de recherche sont des capacités de Temporal sans
 > équivalent en processus. Les backends à journal ne les exécutent pas. Le `cronSchedule` d'un
-> workflow enfant y lève `UnsupportedByBackendException`, de même que son `namespace` et son
+> workflow enfant y échoue avec `UnsupportedByBackendException`, de même que son `namespace` et son
 > `taskQueue`. Ses attributs de recherche sont écrits au journal et rien n'agit dessus, et les
 > options de démarrage d'un workflow racine n'existent que sur le client Temporal.
 

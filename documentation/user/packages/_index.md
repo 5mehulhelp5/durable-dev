@@ -125,7 +125,7 @@ temporal server start-dev --namespace durable-test --port 7233
 
 > [!NOTE]
 > Cron schedules and search attributes are Temporal capabilities with no in-process equivalent. The
-> journal backends do not run them. A child workflow's `cronSchedule` raises
+> journal backends do not run them. A child workflow's `cronSchedule` fails with
 > `UnsupportedByBackendException` there, and so do its `namespace` and `taskQueue`. Its search
 > attributes are written into the journal and nothing acts on them, and the start options of a root
 > workflow exist only on the Temporal client.
