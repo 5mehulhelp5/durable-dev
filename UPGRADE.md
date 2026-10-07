@@ -991,6 +991,97 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### `WorkflowClientInterface::startAsync()` and `startSync()` take the start options
+
+`Gplanchat\Bridge\Temporal\WorkflowClientInterface` now declares the fourth argument that
+`WorkflowClient` already took: `?WorkflowStartOptions $options = null`, on both `startAsync()` and
+`startSync()`. Code that calls the interface is not affected, and can now pass options without a
+type error. A class that implements the interface, or an anonymous test double, must add the
+parameter to both methods or PHP raises a fatal error at load time.
+
+**What to do:** change the two signatures in your implementor.
+
+```diff
+-public function startAsync(string $workflowType, array $payload, ExecutionId $executionId): ExecutionId
++public function startAsync(string $workflowType, array $payload, ExecutionId $executionId, ?WorkflowStartOptions $options = null): ExecutionId
+-public function startSync(string $workflowType, array $payload, ExecutionId $executionId): mixed
++public function startSync(string $workflowType, array $payload, ExecutionId $executionId, ?WorkflowStartOptions $options = null): mixed
+```
+
+`WorkflowStartOptions` is `Gplanchat\Durable\WorkflowStartOptions`. The existing Rector set already
+adds a parameter that a parent method has and the implementor lacks
+(`AddParamBasedOnParentClassMethodRector`, registered in `durable-upgrade.php` for the request id of
+`signal()`), so it adds this one too, with no new rule. Run the `durable-upgrade` set on the class.
+
+### Schedule-to-close stops the retries that cannot fit
+
+On the journal backends (in-memory, DBAL, Illuminate), a failed attempt whose retry delay would end
+past `scheduleToClose` is no longer queued. The activity fails at once with that attempt's own
+exception and the `Timeout` retry state, as on Temporal. Before, the retry was queued and the
+activity failed with "Activity schedule-to-close timeout exceeded." when a worker took it.
+
+**What to do:** if a `catch` or a test matches that message after a failed attempt, match the
+attempt's own failure instead. No Rector rule: the change is in what the call does, not in its
+signature.
+
+### On Temporal, a child that fails to start, times out, is cancelled or is terminated releases its parent (#980)
+
+The Temporal history reader settled a child workflow only when the server recorded `COMPLETED` or
+`FAILED`. A refused start (`START_CHILD_WORKFLOW_EXECUTION_FAILED`), a timeout, a cancellation or a
+termination left the parent waiting. Each of the four now settles the parent's await with a
+`DurableChildWorkflowFailedException`, the exception the journal backends raise. A child that
+failed used to reach the parent as a bare `RuntimeException('Child workflow failed')`; it now
+reaches it as that exception, which extends `RuntimeException` and carries the child's execution id.
+The history reader leaves `workflowFailureKind`, `workflowFailureClass` and `workflowFailureContext`
+empty on that exception, so on Temporal they differ from what the journal backends record.
+
+**Who is affected:** a workflow that awaits a child on Temporal and relies on the exception message
+or class. A `catch (\RuntimeException)` keeps working. A parent that used to wait for good on one of
+the four new endings now continues, with the failure.
+
+**What to do:** catch `DurableChildWorkflowFailedException` where you handle a child's failure, as on
+the other backends. No Rector rule applies: the change is in what the history says, not in a
+signature.
+
+### An activity heartbeat timeout is refused on the journal backends (#977)
+
+`EventStoreCommandBuffer::scheduleActivity()` now throws `UnsupportedByBackendException` when the
+activity's `ActivityTimeouts::$heartbeat` is set. The InMemory, DBAL, Illuminate and Magento
+Database backends journaled that option and never read it: `NullActivityHeartbeatSender` returns
+false and no code compares the delay to a clock. Temporal sends it to the server and keeps
+accepting it. Runs already journaled with a heartbeat replay unchanged: only a new
+`scheduleActivity()` call is refused, because replay does not call it for an activity the journal
+already holds.
+
+**Who is affected:** code that passes a heartbeat timeout (`heartbeat:` in `#[Activities]`, or
+`new ActivityTimeouts(heartbeat: ...)`) on a deployment whose backend is not Temporal. The call
+fails when the workflow schedules the activity, and nothing is journaled for it.
+
+**What to do:** remove the option, or move the deployment to Temporal. No Rector rule applies: a
+rule cannot know whether the option is relied on, and removing it changes the behaviour on
+Temporal.
+
+### A child workflow's namespace, task queue and cron are refused on the journal backends (#977)
+
+`ChildWorkflowOptions::$namespace`, `$taskQueue` and `$cronSchedule` were written into the journal
+by the four journal backends (InMemory, DBAL, Illuminate, Magento Database) and applied by none of
+them: the child ran in the parent's queue, once, with no schedule.
+`EventStoreCommandBuffer::scheduleChildWorkflow()` now throws `UnsupportedByBackendException` naming
+the option, and nothing is journaled. Temporal still applies all three. Search attributes and
+timeouts are not part of this change.
+
+**Who is affected:** code that passes one of the three options to `executeChildWorkflow()` while it
+runs on one of those four backends, including tests on the in-memory backend of a workflow that
+targets Temporal in production.
+
+**What to do:** remove the option, or run that workflow on the Temporal backend. No Rector rule:
+whether your code depends on an option that no journal backend applied is not visible in the call.
+Search your code for `new ChildWorkflowOptions(` and check each call for `namespace:`, `taskQueue:`
+and `cronSchedule:`.
+
+Journals already written with these options replay unchanged: `ExecutionContext` skips
+`scheduleChildWorkflow()` when the journal already holds the scheduled child.
+
 ### Continue-as-new: task queue and run and task timeouts are refused outside Temporal
 
 `ExecutionContext::continueAsNew()` with a `ContinueAsNewOptions` that sets `taskQueue`, or a
