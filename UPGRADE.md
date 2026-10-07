@@ -991,6 +991,22 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### An activity heartbeat timeout is refused on the journal backends (#977)
+
+`EventStoreCommandBuffer::scheduleActivity()` now throws `UnsupportedByBackendException` when the
+activity's `ActivityTimeouts::$heartbeat` is set. The InMemory, DBAL, Illuminate and Magento
+Database backends journaled that option and never read it: `NullActivityHeartbeatSender` returns
+false and no code compares the delay to a clock. Temporal sends it to the server and keeps
+accepting it.
+
+**Who is affected:** code that passes a heartbeat timeout (`heartbeat:` in `#[Activities]`, or
+`new ActivityTimeouts(heartbeat: ...)`) on a deployment whose backend is not Temporal. The call
+fails when the workflow schedules the activity, and nothing is journaled for it.
+
+**What to do:** remove the option, or move the deployment to Temporal. No Rector rule applies: a
+rule cannot know whether the option is relied on, and removing it changes the behaviour on
+Temporal.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
