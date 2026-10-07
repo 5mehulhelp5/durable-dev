@@ -104,4 +104,16 @@ final class DurableLaravelTestTraitTest extends TestCase
 
         $this->assertWorkflowFailed($executionId, \InvalidArgumentException::class);
     }
+
+    public function testAnErrorUnrelatedToTheDrainedRunIsRethrown(): void
+    {
+        $completed = $this->dispatchWorkflow(GreetWorkflow::class, ['name' => 'World']);
+        $this->drainUntilSettled($completed);
+
+        // A later run fails: its error is not the journal's failure for $completed, so it must surface.
+        $this->dispatchWorkflow(BoomWorkflow::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->drainUntilSettled($completed);
+    }
 }
