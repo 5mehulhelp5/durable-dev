@@ -38,7 +38,7 @@ final class GreetWithOptionsWorkflow
     #[AsWorkflowMethod]
     public function run(
         string $name,
-        #[Activities(SuiteActivities::class, attempts: 3, startToClose: 120.0, taskQueue: 'greetings')]
+        #[Activities(SuiteActivities::class, attempts: 3, startToClose: 120.0)]
         ActivityStub $greeting,
         WorkflowEnvironment $env,
     ): string {
@@ -208,7 +208,6 @@ final class WorkflowMethodArgumentsTest extends TestCase
         $options = \Gplanchat\Durable\Activity\ActivityOptions::fromMetadata($scheduled[0]->metadata());
         self::assertSame(3, $options?->retryLimit->maxAttempts());
         self::assertSame(120.0, $options->timeouts->startToClose?->toSeconds());
-        self::assertSame('greetings', $options->taskQueue?->name());
     }
 
     public function testAnImpossibleOptionFailsAtRegistrationAndSaysWhere(): void

@@ -991,6 +991,24 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### An activity's task queue is refused on InMemory, DBAL and Illuminate (#977)
+
+Only Temporal routes an activity by task queue. On InMemory, DBAL and Illuminate the name was
+written to the journal and read by nothing: the activity ran on the one worker that drains the
+application's queue, wherever you had asked it to go. `ActivityOptions::$taskQueue` now makes
+scheduling throw `UnsupportedByBackendException`, which names the option and the queue. The same
+holds for the `taskQueue` argument of `#[Activities(...)]`, which builds the same options. A run
+already in a journal is not touched: the check applies when an activity is scheduled.
+
+**Who is affected:** an application that sets a task queue on an activity (in `ActivityOptions`, in
+`#[Activities(taskQueue: ...)]` or in a call to `activityStub()`) and runs it on one of the three
+journal backends. Temporal keeps sending the queue. Nothing is affected when you never set one.
+
+**What to do:** remove the option on those backends, or keep it in a configuration that only the
+Temporal environment loads. If you relied on it to split work between two groups of workers on a
+journal backend, that split never happened. No Rector rule
+applies: nothing in the code tells whether the queue was relied on.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
