@@ -120,7 +120,7 @@ Un battement plus long que `startToClose` est rejeté : la tentative se terminer
 battement manqué, et la borne de battement ne s'appliquerait donc jamais.
 
 La borne de battement n'existe que sur Temporal. Un backend à journal (InMemory, DBAL, Illuminate,
-Magento Database) refuse une activité planifiée avec elle et lève `UnsupportedByBackendException`.
+Magento Database) lève `UnsupportedByBackendException` quand vous planifiez une activité avec une borne de battement.
 
 Hors Temporal, `startToClose` est vérifié quand la tentative se termine ; rien ne l'impose pendant
 qu'elle tourne. Une tentative qui a dépassé échoue sur un délai dépassé, son résultat est écarté,

@@ -118,7 +118,7 @@ A heartbeat longer than `startToClose` is rejected: the attempt would end before
 heartbeat, so the heartbeat bound would never apply.
 
 The heartbeat bound is Temporal only. A journal backend (InMemory, DBAL, Illuminate, Magento
-Database) refuses an activity scheduled with one, and throws `UnsupportedByBackendException`.
+Database) throws `UnsupportedByBackendException` when you schedule an activity with a heartbeat bound.
 
 Outside Temporal, `startToClose` is checked when the attempt returns; nothing enforces it while
 the attempt runs. An attempt that overran fails with a timeout, its result is discarded, and the
