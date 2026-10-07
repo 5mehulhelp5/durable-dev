@@ -346,12 +346,13 @@ class RuntimeFactory
     /**
      * The start that works on every host, `dispatchNewWorkflowRun()` (#976). With a DSN, a new run
      * starts on the cluster and returns at once; without one, it runs in this process, as
-     * `MagentoRuntime::run()` does.
+     * `MagentoRuntime::run()` does, and a failing run does not throw from the call, as on the
+     * cluster.
      */
     public function resumeDispatcher(): WorkflowResumeDispatcher
     {
         if (null === $this->temporalSettings()) {
-            return new InProcessWorkflowResumeDispatcher($this->create());
+            return new InProcessWorkflowResumeDispatcher($this->create(), $this->logger);
         }
 
         return new TemporalWorkflowResumeDispatcher($this->workflowClient(), new InMemoryWorkflowMetadataStore(), new WorkflowDefinitionLoader());
