@@ -323,7 +323,7 @@ drain ends, for instance when it waits on a signal. On `illuminate`, it runs
 `queue:work --stop-when-empty` until the run completes or fails, within 30 seconds. A workflow that
 fails ends the drain without throwing: assert on it with `assertWorkflowFailed()`.
 
-### The three hosts side by side
+### The Symfony and Laravel helpers side by side {#the-three-hosts-side-by-side}
 
 | Operation | Symfony (`DurableBundleTestTrait`) | Laravel (`DurableLaravelTestTrait`) |
 |---|---|---|

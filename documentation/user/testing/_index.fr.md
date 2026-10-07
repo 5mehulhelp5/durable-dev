@@ -332,7 +332,7 @@ la vidange, par exemple quand il attend un signal. Sur `illuminate`, il lance
 secondes. Un workflow qui échoue termine la vidange sans lever : vérifiez-le avec
 `assertWorkflowFailed()`.
 
-### Les trois hôtes côte à côte
+### Les helpers Symfony et Laravel côte à côte {#les-trois-hôtes-côte-à-côte}
 
 | Opération | Symfony (`DurableBundleTestTrait`) | Laravel (`DurableLaravelTestTrait`) |
 |---|---|---|
