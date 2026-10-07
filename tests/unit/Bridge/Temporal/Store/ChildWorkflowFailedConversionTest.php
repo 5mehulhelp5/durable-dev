@@ -13,6 +13,7 @@ use Temporal\Api\Common\V1\Payloads;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Enums\V1\EventType;
 use Temporal\Api\Failure\V1\ApplicationFailureInfo;
+use Temporal\Api\Failure\V1\ChildWorkflowExecutionFailureInfo;
 use Temporal\Api\Failure\V1\Failure;
 use Temporal\Api\History\V1\ChildWorkflowExecutionCanceledEventAttributes;
 use Temporal\Api\History\V1\ChildWorkflowExecutionFailedEventAttributes;
@@ -46,6 +47,28 @@ final class ChildWorkflowFailedConversionTest extends TestCase
         self::assertSame(['a' => 1], $read->workflowFailureContext());
     }
 
+    public function testAChildThatFailedReadsTheKindFromTheNestedCauseOfTheWrapper(): void
+    {
+        $stored = ['kind' => 'workflow_handler_failure', 'failureClass' => 'App\\Boom', 'failureMessage' => 'boom', 'failureCode' => 7, 'context' => ['a' => 1]];
+        $cause = (new Failure())->setMessage('boom')->setApplicationFailureInfo(
+            (new ApplicationFailureInfo())->setDetails((new Payloads())->setPayloads([JsonPlainPayload::encode($stored)])),
+        );
+        $wrapper = (new Failure())->setMessage('Child Workflow execution failed')
+            ->setChildWorkflowExecutionFailureInfo(new ChildWorkflowExecutionFailureInfo())
+            ->setCause($cause);
+        $event = $this->event(EventType::EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_FAILED);
+        $event->setChildWorkflowExecutionFailedEventAttributes(
+            (new ChildWorkflowExecutionFailedEventAttributes())->setWorkflowExecution($this->execution())->setFailure($wrapper),
+        );
+
+        $read = $this->convert($event);
+
+        self::assertSame('workflow_handler_failure', $read->workflowFailureKind());
+        self::assertSame('App\\Boom', $read->workflowFailureClass());
+        self::assertSame(7, $read->failureCode());
+        self::assertSame(['a' => 1], $read->workflowFailureContext());
+    }
+
     public function testAChildThatFailedWithoutDetailsLeavesKindAndClassEmpty(): void
     {
         $event = $this->event(EventType::EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_FAILED);
@@ -72,6 +95,7 @@ final class ChildWorkflowFailedConversionTest extends TestCase
         self::assertSame('child-1', $read->childExecutionId()->toString());
         self::assertSame('Child workflow child-1 could not be started.', $read->failureMessage());
         self::assertNull($read->workflowFailureKind());
+        self::assertNull($read->workflowFailureClass());
     }
 
     public function testAChildThatTimedOut(): void
@@ -81,7 +105,11 @@ final class ChildWorkflowFailedConversionTest extends TestCase
             (new ChildWorkflowExecutionTimedOutEventAttributes())->setWorkflowExecution($this->execution()),
         );
 
-        self::assertSame('Child workflow child-1 timed out.', $this->convert($event)->failureMessage());
+        $read = $this->convert($event);
+
+        self::assertSame('Child workflow child-1 timed out.', $read->failureMessage());
+        self::assertNull($read->workflowFailureKind());
+        self::assertNull($read->workflowFailureClass());
     }
 
     public function testAChildThatWasCancelled(): void
@@ -91,7 +119,11 @@ final class ChildWorkflowFailedConversionTest extends TestCase
             (new ChildWorkflowExecutionCanceledEventAttributes())->setWorkflowExecution($this->execution()),
         );
 
-        self::assertSame('Child workflow child-1 was cancelled.', $this->convert($event)->failureMessage());
+        $read = $this->convert($event);
+
+        self::assertSame('Child workflow child-1 was cancelled.', $read->failureMessage());
+        self::assertNull($read->workflowFailureKind());
+        self::assertNull($read->workflowFailureClass());
     }
 
     public function testAChildThatWasTerminated(): void
@@ -101,7 +133,11 @@ final class ChildWorkflowFailedConversionTest extends TestCase
             (new ChildWorkflowExecutionTerminatedEventAttributes())->setWorkflowExecution($this->execution()),
         );
 
-        self::assertSame('Child workflow child-1 was terminated.', $this->convert($event)->failureMessage());
+        $read = $this->convert($event);
+
+        self::assertSame('Child workflow child-1 was terminated.', $read->failureMessage());
+        self::assertNull($read->workflowFailureKind());
+        self::assertNull($read->workflowFailureClass());
     }
 
     private function event(int $type): HistoryEvent
