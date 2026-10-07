@@ -6,6 +6,7 @@ namespace Gplanchat\DurableModule\Runtime;
 
 use Gplanchat\Bridge\Temporal\Codec\PayloadCodecInterface;
 use Gplanchat\Bridge\Temporal\Http\Psr18Http;
+use Gplanchat\Bridge\Temporal\Port\TemporalWorkflowResumeDispatcher;
 use Gplanchat\Bridge\Temporal\Store\TaskQueueKind;
 use Gplanchat\Bridge\Temporal\Store\TaskQueuePollers;
 use Gplanchat\Bridge\Temporal\Store\TemporalTaskQueueProbe;
@@ -25,10 +26,12 @@ use Gplanchat\Durable\ExecutionId;
 use Gplanchat\Durable\InMemoryWorkflowRunner;
 use Gplanchat\Durable\Nexus\Serving\NexusHandlerDeclarations;
 use Gplanchat\Durable\Nexus\Serving\NexusOperationRegistry;
+use Gplanchat\Durable\Port\WorkflowResumeDispatcher;
 use Gplanchat\Durable\Port\WorkflowRunCatalogInterface;
 use Gplanchat\Durable\RegistryActivityExecutor;
 use Gplanchat\Durable\Store\EventStoreInterface;
 use Gplanchat\Durable\Store\InMemoryEventStore;
+use Gplanchat\Durable\Store\InMemoryWorkflowMetadataStore;
 use Gplanchat\Durable\Store\InMemoryWorkflowRunCatalog;
 use Gplanchat\Durable\SystemClock;
 use Gplanchat\Durable\Transport\InMemoryActivityTransport;
@@ -338,6 +341,20 @@ class RuntimeFactory
     public function workflowClient(): WorkflowClient
     {
         return $this->assembly($this->requireCluster('Starting a workflow on the cluster'))->workflowClient();
+    }
+
+    /**
+     * The start that works on every host, `dispatchNewWorkflowRun()` (#976). With a DSN, a new run
+     * starts on the cluster and returns at once; without one, it runs in this process, as
+     * `MagentoRuntime::run()` does.
+     */
+    public function resumeDispatcher(): WorkflowResumeDispatcher
+    {
+        if (null === $this->temporalSettings()) {
+            return new InProcessWorkflowResumeDispatcher($this->create());
+        }
+
+        return new TemporalWorkflowResumeDispatcher($this->workflowClient(), new InMemoryWorkflowMetadataStore(), new WorkflowDefinitionLoader());
     }
 
     /**

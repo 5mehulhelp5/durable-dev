@@ -18,7 +18,8 @@ use Magento\Framework\Filesystem\Driver\File;
  * That is the whole point of §5.2. Starting the workflow **here** would make it die with the HTTP
  * request that placed the order, which is exactly the failure OST003 describes: the customer has
  * paid, the process stops, nobody picks it up. `startAsync()` hands the execution to the cluster,
- * and the workers carry it — including if this very request dies on the next line.
+ * and the workers carry it — including if this very request dies on the next line. With no
+ * cluster configured, `dispatchNewWorkflowRun()` runs the workflow in this request instead.
  *
  * It never throws: a placed order stays placed. A workflow that does not start is an operational
  * incident, not a reason to refuse the sale to the customer — and refusing it would not give the
@@ -49,12 +50,12 @@ class StartOrderWorkflow implements ObserverInterface
         $executionId = 'order-' . $increment;
 
         try {
-            $this->runtimeFactory->workflowClient()->startAsync(
+            $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
+                ExecutionId::fromString($executionId),
                 SlowOrderWorkflow::class,
                 ['orderId' => $increment, 'pauseSeconds' => 2],
-                ExecutionId::fromString($executionId),
             );
-            $this->trace(sprintf('%s -> execution %s started on the cluster', $increment, $executionId));
+            $this->trace(sprintf('%s -> execution %s started', $increment, $executionId));
         } catch (\Throwable $exception) {
             $this->trace(sprintf('%s -> NO execution: %s', $increment, $exception->getMessage()));
         }

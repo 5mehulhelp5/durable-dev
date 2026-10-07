@@ -473,8 +473,10 @@ exception. A workflow that waits on a signal waits the whole budget instead of f
 
 The result comes back decoded from JSON: an object the workflow returns arrives as an array.
 
-To start a workflow without waiting, from a web request for example, call
-`workflowClient()->startAsync()`.
+To start a workflow from an observer, call `RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()`,
+the start that works on every host. With a DSN, it starts the workflow on the cluster and returns at
+once. Without one, it runs the workflow in the calling process, within `budgetSeconds`, like `run()`.
+To start on the cluster only, call `workflowClient()->startAsync()`.
 
 **Workers are `bin/magento` commands**, not queue consumers. Supervise them like any other
 long-running process:
@@ -515,10 +517,22 @@ points to a missing worker.
 
 > [!NOTE]
 > Start executions **on the cluster**, outside the request that triggers them. An observer on
-> `sales_order_place_after` that calls `RuntimeFactory::workflowClient()->startAsync()` hands the
-> execution to Temporal and returns. `workflowClient()` needs the cluster, because `startAsync()`
-> exists only on Temporal. An execution started inline would end with the request, which is the
-> failure this integration exists to remove.
+> `sales_order_place_after` hands the execution to Temporal and returns:
+>
+> ```php
+> public function execute(Observer $observer): void
+> {
+>     $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
+>         ExecutionId::fromString('order-' . $observer->getEvent()->getData('order')->getIncrementId()),
+>         PlaceOrder::class,
+>         ['orderId' => $observer->getEvent()->getData('order')->getIncrementId()],
+>     );
+> }
+> ```
+>
+> The same observer works without a cluster: the workflow then runs inside the request and ends
+> with it, which is acceptable in development and is the failure this integration exists to remove
+> in production.
 
 ---
 

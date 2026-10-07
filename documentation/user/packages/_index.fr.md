@@ -498,8 +498,11 @@ aussitôt.
 
 Le résultat revient décodé du JSON : un objet que le workflow renvoie arrive sous forme de tableau.
 
-Pour démarrer un workflow sans attendre, depuis une requête web par exemple, appelez
-`workflowClient()->startAsync()`.
+Pour démarrer un workflow depuis un observateur, appelez
+`RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()`, le démarrage qui fonctionne sur tous
+les hôtes. Avec un DSN, il démarre le workflow sur le cluster et rend la main aussitôt. Sans DSN, il
+exécute le workflow dans le processus appelant, dans la limite de `budgetSeconds`, comme `run()`.
+Pour démarrer uniquement sur le cluster, appelez `workflowClient()->startAsync()`.
 
 **Les workers sont des commandes `bin/magento`**, pas des consommateurs de file. Supervisez-les
 comme n'importe quel processus long :
@@ -540,10 +543,22 @@ tentatives d'une activité qu'un worker écoute ou non. Une exécution dont l'ac
 
 > [!NOTE]
 > Démarrez les exécutions **sur le cluster**, hors de la requête qui les déclenche. Un observateur
-> sur `sales_order_place_after` qui appelle `RuntimeFactory::workflowClient()->startAsync()` confie
-> l'exécution à Temporal et rend la main. `workflowClient()` exige le cluster, car `startAsync()`
-> n'existe que sur Temporal. Une exécution démarrée dans la requête s'arrêterait avec elle, ce qui
-> est précisément la panne que cette intégration existe pour supprimer.
+> sur `sales_order_place_after` confie l'exécution à Temporal et rend la main :
+>
+> ```php
+> public function execute(Observer $observer): void
+> {
+>     $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
+>         ExecutionId::fromString('order-' . $observer->getEvent()->getData('order')->getIncrementId()),
+>         PlaceOrder::class,
+>         ['orderId' => $observer->getEvent()->getData('order')->getIncrementId()],
+>     );
+> }
+> ```
+>
+> Le même observateur fonctionne sans cluster : le workflow s'exécute alors dans la requête et
+> s'arrête avec elle, ce qui convient en développement et reste, en production, la panne que cette
+> intégration existe pour supprimer.
 
 ---
 
