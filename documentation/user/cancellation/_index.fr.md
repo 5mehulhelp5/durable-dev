@@ -98,6 +98,14 @@ chaque rejeu.
 - **De l'extérieur, sur Temporal.** Lancez `temporal workflow cancel`, ou appelez
   `RequestCancelWorkflowExecution` depuis n'importe quel client. Le serveur enregistre la demande et
   replanifie une tâche de workflow, que le worker traite ensuite.
+- **Depuis votre application, sur Temporal.** Appelez `WorkflowClient::cancel($workflowId)` pour
+  demander l'annulation, ou `WorkflowClient::terminate($workflowId, $reason)` pour terminer
+  l'exécution aussitôt, sans exécuter une ligne de plus du workflow. Les deux prennent l'identifiant
+  que renvoie `WorkflowClient::workflowId()`. Sur une exécution déjà terminée, ou qui n'existe pas,
+  le serveur répond NotFound et les deux méthodes lèvent une `\RuntimeException` de code 5 qui nomme
+  l'identifiant. L'exécution reste inchangée. Les signatures sont provisoires jusqu'à la décision sur
+  le design des dépôts (#782), et les backends à journal (InMemory, DBAL, Illuminate, Magento) n'ont
+  pas encore ces méthodes.
 
 ---
 
