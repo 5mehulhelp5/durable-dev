@@ -6,9 +6,13 @@ namespace unit\Gplanchat\Durable;
 
 use Gplanchat\Durable\ChildWorkflowOptions;
 use Gplanchat\Durable\CronSchedule;
+use Gplanchat\Durable\Event\ChildWorkflowScheduled;
 use Gplanchat\Durable\Exception\UnsupportedByBackendException;
+use Gplanchat\Durable\ExecutionContext;
 use Gplanchat\Durable\ExecutionId;
+use Gplanchat\Durable\Port\ChildWorkflowRunnerInterface;
 use Gplanchat\Durable\Store\EventStoreCommandBuffer;
+use Gplanchat\Durable\Store\EventStoreHistorySource;
 use Gplanchat\Durable\Store\InMemoryEventStore;
 use Gplanchat\Durable\TaskQueue;
 use Gplanchat\Durable\Transport\NoopActivityTransport;
@@ -55,5 +59,42 @@ final class ChildWorkflowOptionsRefusedByTheJournalBackendTest extends TestCase
         $buffer->scheduleChildWorkflow(ExecutionId::fromString('child-1'), 'ChildType', [], new ChildWorkflowOptions(memo: ['k' => 'v']));
 
         $this->addToAssertionCount(1);
+    }
+
+    public function testExecuteChildWorkflowRefusesTheCronScheduleOnAFirstPass(): void
+    {
+        $store = new InMemoryEventStore();
+        $context = $this->context($store);
+
+        try {
+            $context->executeChildWorkflow('ChildType', [], new ChildWorkflowOptions(cronSchedule: CronSchedule::hourly()));
+            self::fail('ChildWorkflowOptions::$cronSchedule must be refused');
+        } catch (UnsupportedByBackendException $refusal) {
+            self::assertStringContainsString('ChildWorkflowOptions::$cronSchedule', $refusal->getMessage());
+        }
+        self::assertCount(0, iterator_to_array($store->readStream(ExecutionId::fromString('parent-1')), false));
+    }
+
+    public function testAChildAlreadyScheduledWithTheOptionReplaysWithoutRefusal(): void
+    {
+        // A journal written before the refusal holds the child; replay skips scheduleChildWorkflow().
+        $store = new InMemoryEventStore();
+        $store->append(new ChildWorkflowScheduled(ExecutionId::fromString('parent-1'), ExecutionId::fromString('child-1'), 'ChildType', []));
+
+        $awaitable = $this->context($store)->executeChildWorkflow('ChildType', [], new ChildWorkflowOptions(cronSchedule: CronSchedule::hourly()));
+
+        self::assertNotNull($awaitable);
+    }
+
+    private function context(InMemoryEventStore $store): ExecutionContext
+    {
+        $id = ExecutionId::fromString('parent-1');
+
+        return new ExecutionContext(
+            $id,
+            new EventStoreHistorySource($store, $id),
+            new EventStoreCommandBuffer($store, new NoopActivityTransport(), $id),
+            $this->createStub(ChildWorkflowRunnerInterface::class),
+        );
     }
 }
