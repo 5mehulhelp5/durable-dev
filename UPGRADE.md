@@ -997,7 +997,8 @@ signature.
 `timeouts` with a run or task bound, now throws `UnsupportedByBackendException` on InMemory, Doctrine
 DBAL, Illuminate and Magento Database. The message names the option. These backends used to journal
 the option and never apply it: the next run stayed on the same queue and ran without the bound.
-Temporal applies all three and does not change. The execution identifier of the next run and the
+The run ends failed, with a `WorkflowExecutionFailed` event in its journal, and the exception reaches
+the caller. Temporal applies all three and does not change. The execution identifier of the next run and the
 way the chain is followed do not change either.
 
 **Who is affected:** code that passes `taskQueue` or `timeouts` (run, task) in `ContinueAsNewOptions`
