@@ -153,7 +153,7 @@ $options = new ActivityOptions(
     RetryLimit::ofAttempts(3),
     initialInterval: Duration::seconds(1),
     nonRetryableExceptions: [PaymentRefusedException::class],
-    taskQueue: TaskQueue::named('payments'),
+    taskQueue: TaskQueue::named('payments'), // Temporal uniquement ; un backend à journal la refuse
     timeouts: ActivityTimeouts::attempt(Duration::seconds(30)),
 );
 
@@ -386,7 +386,7 @@ immédiatement, avec une erreur.
 | `scheduleToStartTimeoutSeconds`, `scheduleToCloseTimeoutSeconds`, `heartbeatTimeoutSeconds` | arguments nommés d'`ActivityTimeouts` |
 | `workflowRunTimeoutSeconds: 600.0` | `timeouts: WorkflowTimeouts::run(Duration::minutes(10))` |
 | `workflowExecutionTimeoutSeconds`, `workflowTaskTimeoutSeconds` | arguments nommés de `WorkflowTimeouts` |
-| `taskQueue: 'payments'` | `taskQueue: TaskQueue::named('payments')` |
+| `taskQueue: 'payments'` | `taskQueue: TaskQueue::named('payments')` (sur les options d'activité : Temporal uniquement ; un backend à journal la refuse) |
 | `namespace: 'billing'` | `namespace: WorkflowNamespace::named('billing')` |
 | `cronSchedule: '0 9 * * *'` | `cronSchedule: CronSchedule::parse('0 9 * * *')` |
 | `searchAttributes: ['OrderId' => 'x']` | `SearchAttributes::none()->keyword('OrderId', 'x')` |

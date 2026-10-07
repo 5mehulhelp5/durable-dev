@@ -23,8 +23,8 @@ final class AnActivityTaskQueueIsRefusedByTheJournalBackendTest extends TestCase
     public function testANamedQueueIsRefusedNamingTheOptionAndTheBackend(): void
     {
         $this->expectException(UnsupportedByBackendException::class);
-        $this->expectExceptionMessage('ActivityOptions::$taskQueue ("payments")');
-        $this->expectExceptionMessage('InMemory, DBAL and Illuminate');
+        $this->expectExceptionMessage('The activity task queue "payments", set on ActivityOptions::$taskQueue, #[Activities(taskQueue:)] or activityStub()');
+        $this->expectExceptionMessage('InMemory, DBAL, Illuminate and Magento Database');
 
         $this->buffer()->scheduleActivity('a-1', 'charge', [], new ActivityOptions(taskQueue: TaskQueue::named('payments')));
     }
