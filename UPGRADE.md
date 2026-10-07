@@ -997,7 +997,9 @@ signature.
 activity's `ActivityTimeouts::$heartbeat` is set. The InMemory, DBAL, Illuminate and Magento
 Database backends journaled that option and never read it: `NullActivityHeartbeatSender` returns
 false and no code compares the delay to a clock. Temporal sends it to the server and keeps
-accepting it.
+accepting it. Runs already journaled with a heartbeat replay unchanged: only a new
+`scheduleActivity()` call is refused, because replay does not call it for an activity the journal
+already holds.
 
 **Who is affected:** code that passes a heartbeat timeout (`heartbeat:` in `#[Activities]`, or
 `new ActivityTimeouts(heartbeat: ...)`) on a deployment whose backend is not Temporal. The call

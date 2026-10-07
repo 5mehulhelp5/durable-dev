@@ -36,7 +36,7 @@ final class AnActivityHeartbeatTimeoutIsRefusedOnAJournalTest extends TestCase
             $buffer->scheduleActivity('a-1', 'charge', [], $this->options());
             self::fail('The heartbeat timeout was accepted.');
         } catch (UnsupportedByBackendException $e) {
-            self::assertStringContainsString('ActivityOptions heartbeat timeout', $e->getMessage());
+            self::assertStringContainsString('ActivityTimeouts::$heartbeat', $e->getMessage());
             self::assertStringContainsString('journal', $e->getMessage());
             self::assertStringContainsString('Temporal', $e->getMessage());
         }
