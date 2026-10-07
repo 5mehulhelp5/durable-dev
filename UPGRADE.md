@@ -991,6 +991,17 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### Schedule-to-close stops the retries that cannot fit
+
+On the journal backends (in-memory, DBAL, Illuminate), a failed attempt whose retry delay would end
+past `scheduleToClose` is no longer queued. The activity fails at once with that attempt's own
+exception and the `Timeout` retry state, as on Temporal. Before, the retry was queued and the
+activity failed with "Activity schedule-to-close timeout exceeded." when a worker took it.
+
+**What to do:** if a `catch` or a test matches that message after a failed attempt, match the
+attempt's own failure instead. No Rector rule: the change is in what the call does, not in its
+signature.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
