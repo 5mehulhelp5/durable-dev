@@ -465,6 +465,21 @@ handler listed in `durable.nexus.handlers` raises nothing and receives nothing, 
 `php artisan durable:nexus-worker` ends with `Command "durable:nexus-worker" is not defined.`, which
 does not name the backend (see [#931](https://github.com/gplanchat/durable-dev/issues/931)).
 
+### Starting a run from a Magento observer {#magento-start-blocks}
+
+`RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()` has the same signature and the same
+failure behaviour on the memory and Temporal backends of Magento: a workflow that fails does not throw from the call, and
+an undeclared workflow does. One difference remains, and it is named here as an exception to the
+rule that the application behaves the same on every backend. On Temporal, the call starts the run
+and returns. On the Magento memory backend, the run executes in the calling process, so the request
+waits for it, for up to `budgetSeconds` (10 by default), and a workflow that waits on a signal or a
+long timer holds the request for the whole budget. Nothing else can advance an in-memory run, so
+the wait cannot be removed. Set `durable/temporal/dsn` where a request must not wait.
+
+A second difference concerns a failure that the call swallows. The in-memory journal ends with the
+request, so the log line is the only trace of it, and only when a logger is configured. On Temporal,
+the failure also stays in the cluster history.
+
 ---
 
 ## Retry semantics are identical

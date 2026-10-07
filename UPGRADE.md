@@ -1099,6 +1099,19 @@ only a new continue-as-new is refused.
 **What to do:** remove the option, or run the workflow on Temporal. No Rector rule: whether a
 workflow relies on the option cannot be read from the code.
 
+### Magento starts a run with `dispatchNewWorkflowRun()`, and without a cluster it blocks the request (#976)
+
+`RuntimeFactory::resumeDispatcher()` returns a `WorkflowResumeDispatcher`. With a DSN it is the
+Temporal one: the run starts on the cluster and the call returns at once. Without a DSN, the run
+executes in the calling process, within `budgetSeconds` (10 by default), and the request waits for
+it. This is a named difference with Temporal, listed in the backends page. A workflow that fails
+does not throw from `dispatchNewWorkflowRun()`, as on Temporal: the failure goes to the factory's
+logger. The in-memory journal ends with the request, so the log line is the only trace of that
+failure, and only when a logger is configured; on Temporal it also stays in the cluster history. An undeclared workflow still throws `UndeclaredWorkflowException`. Nothing to migrate.
+
+**What to do:** in an observer, catch the exception the start can still throw, and configure
+`durable/temporal/dsn` where a request must not wait.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
