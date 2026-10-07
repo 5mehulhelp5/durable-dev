@@ -57,24 +57,35 @@ final class WorkflowClientCancelTerminateTest extends TestCase
         self::assertInstanceOf(TerminateWorkflowExecutionRequest::class, $request);
         self::assertSame('wf-1', $request->getWorkflowExecution()?->getWorkflowId());
         self::assertSame('no longer needed', $request->getReason());
+        self::assertSame('default', $request->getNamespace());
     }
 
     public function testCancellingAnEndedExecutionFailsWithOneDefinedOutcome(): void
     {
         $this->serverFailure = new \RuntimeException('workflow execution already completed', 5);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Workflow "wf-1" has already ended.');
-        $this->client()->cancel('wf-1');
+        try {
+            $this->client()->cancel('wf-1');
+            self::fail('Expected a RuntimeException.');
+        } catch (\RuntimeException $failure) {
+            self::assertSame('Workflow "wf-1" has ended or does not exist.', $failure->getMessage());
+            self::assertSame(5, $failure->getCode());
+            self::assertSame($this->serverFailure, $failure->getPrevious());
+        }
     }
 
     public function testTerminatingAnEndedExecutionFailsWithTheSameOutcome(): void
     {
         $this->serverFailure = new \RuntimeException('workflow execution already completed', 5);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Workflow "wf-1" has already ended.');
-        $this->client()->terminate('wf-1');
+        try {
+            $this->client()->terminate('wf-1');
+            self::fail('Expected a RuntimeException.');
+        } catch (\RuntimeException $failure) {
+            self::assertSame('Workflow "wf-1" has ended or does not exist.', $failure->getMessage());
+            self::assertSame(5, $failure->getCode());
+            self::assertSame($this->serverFailure, $failure->getPrevious());
+        }
     }
 
     public function testOtherServerFailuresPropagateUnchanged(): void

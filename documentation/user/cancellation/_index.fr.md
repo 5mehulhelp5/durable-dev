@@ -101,11 +101,11 @@ chaque rejeu.
 - **Depuis votre application, sur Temporal.** Appelez `WorkflowClient::cancel($workflowId)` pour
   demander l'annulation, ou `WorkflowClient::terminate($workflowId, $reason)` pour terminer
   l'exécution aussitôt, sans exécuter une ligne de plus du workflow. Les deux prennent l'identifiant
-  que renvoie `WorkflowClient::workflowId()`. Sur une exécution déjà terminée, ou qui n'existe pas,
-  le serveur répond NotFound et les deux méthodes lèvent une `\RuntimeException` de code 5 qui nomme
-  l'identifiant. L'exécution reste inchangée. Les signatures sont provisoires jusqu'à la décision sur
-  le design des dépôts (#782), et les backends à journal (InMemory, DBAL, Illuminate, Magento) n'ont
-  pas encore ces méthodes.
+  que renvoie `WorkflowClient::workflowId()`. Sur une exécution terminée, ou qui n'existe pas, le
+  serveur répond NotFound et les deux méthodes lèvent une `\RuntimeException` de code 5, qui nomme
+  l'identifiant et garde l'échec du serveur comme exception précédente. Rien n'est modifié. Terminer
+  deux fois une exécution lève donc une exception au second appel. Ces méthodes n'existent que sur
+  Temporal. Les backends à journal (InMemory, DBAL, Illuminate, Magento) ne les ont pas encore.
 
 ---
 

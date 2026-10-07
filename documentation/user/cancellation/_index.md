@@ -100,11 +100,11 @@ awaitable at the same place. The workflow therefore takes the same branch on eve
 - **From your application, on Temporal.** Call `WorkflowClient::cancel($workflowId)` to request the
   cancellation, or `WorkflowClient::terminate($workflowId, $reason)` to end the execution at once
   without running more of its code. Both take the workflow id that `WorkflowClient::workflowId()`
-  returns. On an execution that has already ended, or that does not exist, the server answers
-  NotFound, and both methods throw a `\RuntimeException` with code 5 that names the workflow id.
-  The execution is unchanged. The signatures are provisional until the repository design (#782)
-  settles them, and the journal backends (InMemory, DBAL, Illuminate, Magento) do not have these
-  methods yet.
+  returns. On an execution that has ended, or that does not exist, the server answers NotFound, and
+  both methods throw a `\RuntimeException` with code 5 that names the workflow id and keeps the server
+  failure as previous. Nothing is changed. Terminating an execution twice therefore throws the second
+  time. These methods exist on Temporal only. The journal backends (InMemory, DBAL, Illuminate,
+  Magento) do not have them yet.
 
 ---
 
