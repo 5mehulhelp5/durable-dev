@@ -128,6 +128,15 @@ et la politique de reprise détermine la suite. Rien n'interrompt une tentative 
 la main. Arrêter un worker bloqué revient à ce qui supervise le processus.
 `messenger:consume --time-limit` ne vérifie qu'entre deux messages, il ne peut donc pas l'arrêter.
 
+`scheduleToClose` borne l'activité entière, reprises comprises. Sur Temporal comme sur les backends
+à journal, une tentative échouée dont le délai de reprise dépasserait cette borne n'est pas
+reprise : l'activité échoue avec l'échec de cette tentative et l'état de reprise `Timeout`. Sur les
+backends à journal, la borne est aussi vérifiée quand un worker prend le message, et échoue avec
+« Activity schedule-to-close timeout exceeded. » `scheduleToStart` s'applique à un message qui
+attend dans la file. Sur Temporal, il s'applique à chaque tentative. Sur les backends à journal, il
+ne s'applique qu'à la première, et une reprise qui attend son délai n'est bornée que par
+`scheduleToClose`.
+
 Temporal exige une borne de clôture. Quand aucune n'est posée, le pont en fournit une par défaut.
 Ce repli porte son propre nom, `executionBoundOr()`.
 
@@ -288,7 +297,9 @@ $client->startAsync('CheckoutWorkflow', $input, ExecutionId::fromString($executi
 
 > [!NOTE]
 > `$client` est le `WorkflowClientInterface` de Temporal, et `startAsync()` n'existe que sur
-> Temporal, comme les options de démarrage qu'il prend. Sur tous les backends, une exécution démarre
+> Temporal, comme les options de démarrage qu'il prend. `WorkflowClientInterface::startAsync()` et
+> `startSync()` déclarent l'argument `?WorkflowStartOptions $options` : le code typé contre l'interface
+> peut le passer. Sur tous les backends, une exécution démarre
 > par `WorkflowResumeDispatcher::dispatchNewWorkflowRun()` ([Premiers pas](../getting-started/#4--le-déclencher-depuis-un-contrôleur-ou-un-service)),
 > qui ne prend pas d'options de démarrage.
 
