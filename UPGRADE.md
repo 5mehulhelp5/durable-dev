@@ -982,10 +982,16 @@ server owns its runs. `WorkflowMetadataStore::save()` does not change either.
 has a row, to start that run again or with another type or payload. The row now keeps its type, its
 payload and its `completed` flag, and a completed run stays completed. Custom
 `WorkflowResumeDispatcher` implementations should follow the same rule, or a re-dispatch can reopen
-a finished run. An async child that reuses the id of a finished child, as the reuse policy allows
-(`AllowDuplicateFailedOnly` by default), is not affected: `ChildWorkflowRunner` clears the completed
+a finished run. An async child that reuses the id of a finished child, when the reuse policy allows it (a failed
+child under `AllowDuplicateFailedOnly`, the default; any finished child under `AllowDuplicate`), is not affected: `ChildWorkflowRunner` clears the completed
 row before it starts the child. A `ChildWorkflowRunner` you build yourself in async mode needs its
-new `metadataStore` argument for that; the Symfony bundle passes it.
+new `metadataStore` argument for that, and its constructor refuses to build without it; the
+Symfony bundle passes it.
+
+A child id whose run has not finished is now refused under every policy, whichever parent started
+it: `ExecutionContext` throws `ChildWorkflowIdInUseException`. A policy only decides about a
+finished run. Custom `ChildWorkflowRunnerInterface` implementations add `isChildRunning()`; return
+`false` when the backend refuses the start itself, as the Temporal server does.
 
 **What to do:** start a new run under a new execution id. In a custom dispatcher, call `save()`
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
