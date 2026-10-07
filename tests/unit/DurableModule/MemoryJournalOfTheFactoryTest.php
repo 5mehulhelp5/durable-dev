@@ -16,6 +16,8 @@ use unit\DurableModule\Fixture\RecordingOrderActivities;
 
 /**
  * Pins what the in-memory journal and catalogue of a factory keep, and for how long (#985).
+ *
+ * Pins the current behaviour pending the id-reuse decision (#985); expected to change.
  */
 final class MemoryJournalOfTheFactoryTest extends TestCase
 {
