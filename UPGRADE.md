@@ -991,6 +991,39 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### `WorkflowClientInterface::startAsync()` and `startSync()` take the start options
+
+`Gplanchat\Bridge\Temporal\WorkflowClientInterface` now declares the fourth argument that
+`WorkflowClient` already took: `?WorkflowStartOptions $options = null`, on both `startAsync()` and
+`startSync()`. Code that calls the interface is not affected, and can now pass options without a
+type error. A class that implements the interface, or an anonymous test double, must add the
+parameter to both methods or PHP raises a fatal error at load time.
+
+**What to do:** change the two signatures in your implementor.
+
+```diff
+-public function startAsync(string $workflowType, array $payload, ExecutionId $executionId): ExecutionId
++public function startAsync(string $workflowType, array $payload, ExecutionId $executionId, ?WorkflowStartOptions $options = null): ExecutionId
+-public function startSync(string $workflowType, array $payload, ExecutionId $executionId): mixed
++public function startSync(string $workflowType, array $payload, ExecutionId $executionId, ?WorkflowStartOptions $options = null): mixed
+```
+
+`WorkflowStartOptions` is `Gplanchat\Durable\WorkflowStartOptions`. The existing Rector set already
+adds a parameter that a parent method has and the implementor lacks
+(`AddParamBasedOnParentClassMethodRector`, registered in `durable-upgrade.php` for the request id of
+`signal()`), so it adds this one too, with no new rule. Run the `durable-upgrade` set on the class.
+
+### Schedule-to-close stops the retries that cannot fit
+
+On the journal backends (in-memory, DBAL, Illuminate), a failed attempt whose retry delay would end
+past `scheduleToClose` is no longer queued. The activity fails at once with that attempt's own
+exception and the `Timeout` retry state, as on Temporal. Before, the retry was queued and the
+activity failed with "Activity schedule-to-close timeout exceeded." when a worker took it.
+
+**What to do:** if a `catch` or a test matches that message after a failed attempt, match the
+attempt's own failure instead. No Rector rule: the change is in what the call does, not in its
+signature.
+
 ### On Temporal, a child that fails to start, times out, is cancelled or is terminated releases its parent (#980)
 
 The Temporal history reader settled a child workflow only when the server recorded `COMPLETED` or

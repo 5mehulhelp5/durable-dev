@@ -123,6 +123,14 @@ retry policy determines what comes next. Nothing interrupts an attempt that neve
 a hung worker is the job of whatever supervises the process. `messenger:consume --time-limit` only
 checks between two messages, so it cannot stop one.
 
+`scheduleToClose` is the budget for the whole activity, retries included. On Temporal and on the
+journal backends, a failed attempt whose backoff would end past it is not retried: the activity
+fails with that attempt's own failure and the `Timeout` retry state. On the journal backends, the
+bound is also checked when a worker takes a message, and fails with "Activity schedule-to-close
+timeout exceeded." `scheduleToStart` applies to a message waiting in the queue. On Temporal, it
+applies to every attempt. On the journal backends, it applies to the first attempt only, and a
+retry waiting for its delay is not bounded by it, only by `scheduleToClose`.
+
 Temporal requires a closing bound. When none is set, the bridge supplies a default. That fallback
 has its own name, `executionBoundOr()`.
 
@@ -280,7 +288,8 @@ $client->startAsync('CheckoutWorkflow', $input, ExecutionId::fromString($executi
 
 > [!NOTE]
 > `$client` is the Temporal `WorkflowClientInterface`, and `startAsync()` exists only on Temporal,
-> like the start options it takes. On every backend, a run starts with
+> like the start options it takes. `WorkflowClientInterface::startAsync()` and `startSync()` declare
+> the `?WorkflowStartOptions $options` argument, so code typed against the interface can pass it. On every backend, a run starts with
 > `WorkflowResumeDispatcher::dispatchNewWorkflowRun()` ([Getting started](../getting-started/#4--dispatch-from-a-controller-or-service)),
 > which takes no start options.
 
