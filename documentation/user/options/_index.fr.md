@@ -285,7 +285,9 @@ $client->startAsync('CheckoutWorkflow', $input, ExecutionId::fromString($executi
 
 > [!NOTE]
 > `$client` est le `WorkflowClientInterface` de Temporal, et `startAsync()` n'existe que sur
-> Temporal, comme les options de démarrage qu'il prend. Sur tous les backends, une exécution démarre
+> Temporal, comme les options de démarrage qu'il prend. `WorkflowClientInterface::startAsync()` et
+> `startSync()` déclarent l'argument `?WorkflowStartOptions $options` : le code typé contre l'interface
+> peut le passer. Sur tous les backends, une exécution démarre
 > par `WorkflowResumeDispatcher::dispatchNewWorkflowRun()` ([Premiers pas](../getting-started/#4--le-déclencher-depuis-un-contrôleur-ou-un-service)),
 > qui ne prend pas d'options de démarrage.
 

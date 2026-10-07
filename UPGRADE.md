@@ -991,6 +991,28 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### `WorkflowClientInterface::startAsync()` and `startSync()` take the start options
+
+`Gplanchat\Bridge\Temporal\WorkflowClientInterface` now declares the fourth argument that
+`WorkflowClient` already took: `?WorkflowStartOptions $options = null`, on both `startAsync()` and
+`startSync()`. Code that calls the interface is not affected, and can now pass options without a
+type error. A class that implements the interface, or an anonymous test double, must add the
+parameter to both methods or PHP raises a fatal error at load time.
+
+**What to do:** change the two signatures in your implementor.
+
+```diff
+-public function startAsync(string $workflowType, array $payload, ExecutionId $executionId): ExecutionId
++public function startAsync(string $workflowType, array $payload, ExecutionId $executionId, ?WorkflowStartOptions $options = null): ExecutionId
+-public function startSync(string $workflowType, array $payload, ExecutionId $executionId): mixed
++public function startSync(string $workflowType, array $payload, ExecutionId $executionId, ?WorkflowStartOptions $options = null): mixed
+```
+
+`WorkflowStartOptions` is `Gplanchat\Durable\WorkflowStartOptions`. The existing Rector set already
+adds a parameter that a parent method has and the implementor lacks
+(`AddParamBasedOnParentClassMethodRector`, registered in `durable-upgrade.php` for the request id of
+`signal()`), so it adds this one too, with no new rule. Run the `durable-upgrade` set on the class.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
