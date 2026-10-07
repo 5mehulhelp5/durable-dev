@@ -499,10 +499,12 @@ aussitôt.
 Le résultat revient décodé du JSON : un objet que le workflow renvoie arrive sous forme de tableau.
 
 Pour démarrer un workflow depuis un observateur, appelez
-`RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()`, le démarrage qui fonctionne sur tous
-les hôtes. Avec un DSN, il démarre le workflow sur le cluster et rend la main aussitôt. Sans DSN, il
-exécute le workflow dans le processus appelant, dans la limite de `budgetSeconds`, comme `run()`.
-Pour démarrer uniquement sur le cluster, appelez `workflowClient()->startAsync()`.
+`RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()`. Avec un DSN, il démarre le workflow
+sur le cluster et rend la main aussitôt. Sans DSN, il exécute le workflow dans le processus
+appelant, dans la limite de `budgetSeconds`, et la requête l'attend : il bloque comme `run()`. Un
+workflow qui échoue ne lève pas d'exception depuis l'appel, comme sur le cluster ; l'échec part dans
+le logger que la fabrique détient. Un workflow non déclaré, lui, lève une exception. Pour démarrer
+uniquement sur le cluster, appelez `workflowClient()->startAsync()`.
 
 **Les workers sont des commandes `bin/magento`**, pas des consommateurs de file. Supervisez-les
 comme n'importe quel processus long :
@@ -542,23 +544,33 @@ tentatives d'une activité qu'un worker écoute ou non. Une exécution dont l'ac
 > ne passe par `MessageQueue`. Réglez-les pour vos propres consommateurs.
 
 > [!NOTE]
-> Démarrez les exécutions **sur le cluster**, hors de la requête qui les déclenche. Un observateur
-> sur `sales_order_place_after` confie l'exécution à Temporal et rend la main :
+> Démarrez les exécutions **sur le cluster**, hors de la requête qui les déclenche. Avec un DSN, un
+> observateur sur `sales_order_place_after` confie l'exécution à Temporal et rend la main. Un
+> démarrage peut encore lever une exception (un workflow non déclaré) : interceptez-la, car une
+> exception qui sort de l'observateur interrompt le flux propre de la boutique.
 >
 > ```php
 > public function execute(Observer $observer): void
 > {
->     $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
->         ExecutionId::fromString('order-' . $observer->getEvent()->getData('order')->getIncrementId()),
->         PlaceOrder::class,
->         ['orderId' => $observer->getEvent()->getData('order')->getIncrementId()],
->     );
+>     $incrementId = $observer->getEvent()->getData('order')->getIncrementId();
+>
+>     try {
+>         $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
+>             ExecutionId::fromString('order-' . $incrementId),
+>             PlaceOrder::class,
+>             ['orderId' => $incrementId],
+>         );
+>     } catch (\Throwable $exception) {
+>         $this->logger->error('Le workflow n\'a pas démarré : ' . $exception->getMessage());
+>     }
 > }
 > ```
 >
-> Le même observateur fonctionne sans cluster : le workflow s'exécute alors dans la requête et
-> s'arrête avec elle, ce qui convient en développement et reste, en production, la panne que cette
-> intégration existe pour supprimer.
+> Le même observateur fonctionne sans cluster, avec une différence : le workflow s'exécute dans la
+> requête, qui l'attend, pendant `budgetSeconds` au plus (10 par défaut). Un workflow qui attend un
+> signal ou un long minuteur retient la requête pendant tout le budget. Le journal en mémoire
+> disparaît avec la requête : une exécution non terminée à ce moment est perdue. C'est acceptable en
+> développement ; en production, configurez le DSN.
 
 ---
 

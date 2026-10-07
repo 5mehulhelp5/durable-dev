@@ -491,6 +491,19 @@ gestionnaire listé dans `durable.nexus.handlers` ne lève rien et ne reçoit ri
 `php artisan durable:nexus-worker` se termine sur `Command "durable:nexus-worker" is not defined.`,
 qui ne nomme pas le backend (voir [#931](https://github.com/gplanchat/durable-dev/issues/931)).
 
+### Démarrer une exécution depuis un observateur Magento {#magento-start-blocks}
+
+`RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()` a la même signature et le même
+comportement en cas d'échec sur les deux backends Magento : un workflow qui échoue ne lève pas
+d'exception depuis l'appel, un workflow non déclaré en lève une. Une différence subsiste, nommée ici
+comme exception à la règle selon laquelle l'application se comporte de la même façon sur tous les
+backends. Sur Temporal, l'appel démarre l'exécution et rend la main. Sur le backend mémoire de
+Magento, l'exécution s'effectue dans le processus appelant : la requête l'attend, pendant
+`budgetSeconds` au plus (10 par défaut), et un workflow qui attend un signal ou un long minuteur
+retient la requête pendant tout le budget. Rien d'autre ne peut faire avancer une exécution en
+mémoire, donc l'attente ne peut pas disparaître. Renseignez `durable/temporal/dsn` là où une requête
+ne doit pas attendre.
+
 ---
 
 ## Les réessais ont la même sémantique partout

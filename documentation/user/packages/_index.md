@@ -473,10 +473,12 @@ exception. A workflow that waits on a signal waits the whole budget instead of f
 
 The result comes back decoded from JSON: an object the workflow returns arrives as an array.
 
-To start a workflow from an observer, call `RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()`,
-the start that works on every host. With a DSN, it starts the workflow on the cluster and returns at
-once. Without one, it runs the workflow in the calling process, within `budgetSeconds`, like `run()`.
-To start on the cluster only, call `workflowClient()->startAsync()`.
+To start a workflow from an observer, call `RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()`.
+With a DSN, it starts the workflow on the cluster and returns at once. Without one, it runs the
+workflow in the calling process, within `budgetSeconds`, and the request waits for it: it blocks
+like `run()`. A workflow that fails does not throw from the call, as on the cluster; the failure goes
+to the logger the factory holds. An undeclared workflow does throw. To start on the cluster only,
+call `workflowClient()->startAsync()`.
 
 **Workers are `bin/magento` commands**, not queue consumers. Supervise them like any other
 long-running process:
@@ -516,23 +518,33 @@ points to a missing worker.
 > Durable's goes through `MessageQueue`. Tune them for your own consumers.
 
 > [!NOTE]
-> Start executions **on the cluster**, outside the request that triggers them. An observer on
-> `sales_order_place_after` hands the execution to Temporal and returns:
+> Start executions **on the cluster**, outside the request that triggers them. With a DSN, an
+> observer on `sales_order_place_after` hands the execution to Temporal and returns. A start can
+> still throw (an undeclared workflow), so catch it: an exception that leaves the observer aborts the
+> shop's own flow.
 >
 > ```php
 > public function execute(Observer $observer): void
 > {
->     $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
->         ExecutionId::fromString('order-' . $observer->getEvent()->getData('order')->getIncrementId()),
->         PlaceOrder::class,
->         ['orderId' => $observer->getEvent()->getData('order')->getIncrementId()],
->     );
+>     $incrementId = $observer->getEvent()->getData('order')->getIncrementId();
+>
+>     try {
+>         $this->runtimeFactory->resumeDispatcher()->dispatchNewWorkflowRun(
+>             ExecutionId::fromString('order-' . $incrementId),
+>             PlaceOrder::class,
+>             ['orderId' => $incrementId],
+>         );
+>     } catch (\Throwable $exception) {
+>         $this->logger->error('The workflow did not start: ' . $exception->getMessage());
+>     }
 > }
 > ```
 >
-> The same observer works without a cluster: the workflow then runs inside the request and ends
-> with it, which is acceptable in development and is the failure this integration exists to remove
-> in production.
+> The same observer runs without a cluster, with a difference: the workflow runs inside the request,
+> which waits for it, for up to `budgetSeconds` (10 by default). A workflow that waits on a signal or
+> a long timer holds the request for the whole budget. The in-memory journal ends with the request,
+> so a run that is not finished by then is lost. That is acceptable in development; in production,
+> configure the DSN.
 
 ---
 
