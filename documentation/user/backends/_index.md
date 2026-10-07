@@ -452,9 +452,10 @@ sender gets no answer. A query has no application-side entry point there at all.
 
 No backend but Temporal has a scheduler or a cross-namespace boundary, so cron and Nexus have no
 equivalent on the other three. Nexus fails explicitly, with one gap on Laravel, described below.
-Cron and search attributes do not: a child workflow's options are written into the journal and
-nothing reads them outside Temporal, and the start options of a root workflow exist only on the
-Temporal client. A Nexus *call* fails at the call. A Nexus *handler* with no route never sees a failing
+A child workflow's `namespace`, `taskQueue` and `cronSchedule` fail explicitly too: the journal
+backends raise `UnsupportedByBackendException` naming the option. Search attributes do not: a child
+workflow's are written into the journal and nothing reads them outside Temporal, and the start
+options of a root workflow exist only on the Temporal client. A Nexus *call* fails at the call. A Nexus *handler* with no route never sees a failing
 call: it is a service that never receives anything. On Symfony, the container build fails when
 `durable.temporal.dsn` is not set. On Magento, `bin/magento durable:worker --role=nexus` fails with
 `A Nexus worker needs a cluster` when `app/etc/env.php` has no DSN.

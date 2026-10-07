@@ -133,9 +133,10 @@ temporal server start-dev --namespace durable-test --port 7233
 
 > [!NOTE]
 > Les planifications cron et les attributs de recherche sont des capacités de Temporal sans
-> équivalent en processus. Les backends à journal ne les exécutent pas : les options d'un workflow
-> enfant sont écrites au journal et rien n'agit dessus, et les options de démarrage d'un workflow
-> racine n'existent que sur le client Temporal.
+> équivalent en processus. Les backends à journal ne les exécutent pas. Le `cronSchedule` d'un
+> workflow enfant y lève `UnsupportedByBackendException`, de même que son `namespace` et son
+> `taskQueue`. Ses attributs de recherche sont écrits au journal et rien n'agit dessus, et les
+> options de démarrage d'un workflow racine n'existent que sur le client Temporal.
 
 ---
 
@@ -609,8 +610,8 @@ contre Temporal, y compris pour le décompte des réessais, la classification de
 l'annulation et la compensation.
 
 Certaines capacités n'ont pas d'équivalent sur un backend. Nexus y échoue avec un message explicite ;
-cron et les attributs de recherche, posés sur un workflow enfant, sont enregistrés sans être
-exécutés. [Backends](../backends/#capability-matrix) liste les différences.
+le `namespace`, le `taskQueue` et le `cronSchedule` d'un workflow enfant lèvent
+`UnsupportedByBackendException`, et ses attributs de recherche sont enregistrés sans être exécutés. [Backends](../backends/#capability-matrix) liste les différences.
 
 ---
 
