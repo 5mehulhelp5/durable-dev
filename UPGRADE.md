@@ -991,6 +991,23 @@ new `metadataStore` argument for that; the Symfony bundle passes it.
 only when `get()` returns `null`. No Rector rule: the change is in what the call does, not in its
 signature.
 
+### On Temporal, a child that fails to start, times out, is cancelled or is terminated releases its parent (#980)
+
+The Temporal history reader settled a child workflow only when the server recorded `COMPLETED` or
+`FAILED`. A refused start (`START_CHILD_WORKFLOW_EXECUTION_FAILED`), a timeout, a cancellation or a
+termination left the parent waiting. Each of the four now settles the parent's await with a
+`DurableChildWorkflowFailedException`, the exception the journal backends raise. A child that
+failed used to reach the parent as a bare `RuntimeException('Child workflow failed')`; it now
+reaches it as that exception, which extends `RuntimeException` and carries the child's execution id.
+
+**Who is affected:** a workflow that awaits a child on Temporal and relies on the exception message
+or class. A `catch (\RuntimeException)` keeps working. A parent that used to wait for good on one of
+the four new endings now continues, with the failure.
+
+**What to do:** catch `DurableChildWorkflowFailedException` where you handle a child's failure, as on
+the other backends. No Rector rule applies: the change is in what the history says, not in a
+signature.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
