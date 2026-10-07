@@ -1082,6 +1082,23 @@ and `cronSchedule:`.
 Journals already written with these options replay unchanged: `ExecutionContext` skips
 `scheduleChildWorkflow()` when the journal already holds the scheduled child.
 
+### Continue-as-new: task queue and run and task timeouts are refused outside Temporal
+
+`ExecutionContext::continueAsNew()` with a `ContinueAsNewOptions` that sets `taskQueue`, or a
+`timeouts` with a run or task bound, now throws `UnsupportedByBackendException` on InMemory, Doctrine
+DBAL, Illuminate and Magento Database. The message names the option. These backends used to journal
+the option and never apply it: the next run stayed on the same queue and ran without the bound.
+The run ends failed, with a `WorkflowExecutionFailed` event in its journal, and the exception reaches
+the caller. Temporal applies all three and does not change. The execution identifier of the next run and the
+way the chain is followed do not change either.
+
+**Who is affected:** code that passes `taskQueue` or `timeouts` (run, task) in `ContinueAsNewOptions`
+and runs on a journal backend. A workflow already journaled with such options replays as before;
+only a new continue-as-new is refused.
+
+**What to do:** remove the option, or run the workflow on Temporal. No Rector rule: whether a
+workflow relies on the option cannot be read from the code.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
