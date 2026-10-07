@@ -323,7 +323,7 @@ schéma) et un utilisateur SQL propres à Durable, pour que le code métier ne p
 atteindre les tables du journal.
 
 ```yaml
-# config/packages/doctrine.yaml — le journal sur une connexion à lui
+# config/packages/doctrine.yaml : le journal sur une connexion à lui
 doctrine:
     dbal:
         default_connection: default
@@ -449,27 +449,39 @@ qui ressemblent à des bugs sans en être.
 Les quatre backends font tourner le **même pilote à fibres** et le même chemin d'exécution des
 activités. Ce qui diffère, c'est ce que la plateforme autour peut offrir. Les deux colonnes SQL ne
 diffèrent que par la connexion sur laquelle elles reposent : leurs réponses concordent sur chaque
-ligne, sauf pour le transport.
+ligne, sauf pour le transport et ce que l'hôte livre (signaux, mises à jour et service Nexus).
 
 | Capacité | En mémoire | DBAL | Illuminate | Temporal |
 |---|---|---|---|---|
 | Activités, réessais, délais | ✅ | ✅ | ✅ | ✅ |
 | Minuteurs, effets de bord | ✅ | ✅ (délais Messenger) | ✅ (délais de la file) | ✅ |
-| Signaux, mises à jour, requêtes | ✅ | ✅ | ✅ | ✅ |
+| Gestionnaires de signaux, de mises à jour et de requêtes dans un workflow | ✅ | ✅ | ✅ | ✅ |
+| Envoi d'un signal ou d'une mise à jour depuis l'application | ✅ (message Symfony) | ✅ (message Symfony) | ❌ (Laravel n'en livre aucun) | ✅ (client ou message Symfony) |
+| Résultat de la mise à jour renvoyé à l'appelant | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) |
+| Lecture d'une requête depuis l'application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) |
 | Workflows enfants | ✅ | ✅ | ✅ | ✅ |
 | Cascade `ParentClosePolicy` | ✅ | ✅ | ✅ | ✅ (pilotée par le serveur) |
 | Continue-as-new | ✅ | ✅ | ✅ | ✅ |
-| Annulation avec compensation | ✅ | ✅ | ✅ | ✅ |
+| Annulation avec compensation (le `RequestCancel` d'un parent) | ✅ | ✅ | ✅ | ✅ |
+| Annulation demandée de l'extérieur | ❌ | ❌ | ❌ | ✅ |
 | Survit au redémarrage du processus | ❌ | ✅ | ✅ | ✅ |
 | Sérialisation des tâches par exécution | sans objet (processus unique) | verrou applicatif | verrou applicatif | ✅ côté serveur |
 | Attributs de recherche | journalisés seulement | journalisés seulement | journalisés seulement | ✅ indexés et interrogeables |
 | Planifications cron | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ✅ |
 | Rétention d'historique / API de visibilité | ❌ | votre table SQL | votre table SQL | ✅ |
-| Opérations Nexus (appeler **et** servir) | ❌ | ❌ | ❌ | ✅ |
+| Appel d'une opération Nexus | ❌ | ❌ | ❌ | ✅ |
+| Service d'une opération Nexus | ✅ avec `temporal.dsn` (Symfony) | ✅ avec `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) |
+
+`gplanchat/durable-magento` ne livre ni signal ni mise à jour. Sur les backends à journal, un signal
+ou une mise à jour envoyé depuis l'application est écrit au journal, et la passe suivante du
+workflow le traite ; l'émetteur ne reçoit aucune réponse. Une requête n'y a aucun point d'entrée
+côté application.
 
 Aucun backend hors Temporal n'a d'ordonnanceur ou de frontière entre espaces de noms : cron et Nexus
-n'ont donc pas d'équivalent sur les trois autres. Une capacité absente **échoue explicitement**, à
-une lacune près sur Laravel, décrite plus bas. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus sans
+n'ont donc pas d'équivalent sur les trois autres. Nexus échoue explicitement, à une lacune près sur
+Laravel, décrite plus bas. Cron et les attributs de recherche non : les options d'un workflow enfant
+sont écrites au journal et rien ne les lit hors de Temporal, et les options de démarrage d'un
+workflow racine n'existent que sur le client Temporal. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus sans
 route ne voit jamais d'appel échouer : c'est un service qui ne reçoit jamais rien. Sur Symfony, le
 montage du conteneur échoue quand `durable.temporal.dsn` n'est pas renseigné. Sur Magento,
 `bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster` quand

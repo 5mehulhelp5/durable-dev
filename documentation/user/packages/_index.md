@@ -125,7 +125,8 @@ temporal server start-dev --namespace durable-test --port 7233
 
 > [!NOTE]
 > Cron schedules and search attributes are Temporal capabilities with no in-process equivalent. The
-> in-memory backend rejects them with an explicit error instead of ignoring them silently.
+> journal backends do not run them: the options of a child workflow are written into the journal and
+> nothing acts on them, and the start options of a root workflow exist only on the Temporal client.
 
 ---
 
@@ -578,7 +579,8 @@ Every backend runs the **same fiber driver** and the **same activity execution p
 you tested in memory behaves the same way against DBAL or Temporal, including retry counting,
 failure classification, cancellation and compensation.
 
-When a capability has no equivalent on a backend, that backend **fails with an explicit message**.
+Some capabilities have no equivalent on a backend. Nexus fails with an explicit message there; cron
+and search attributes, set on a child workflow, are recorded and not acted on.
 [Backends](../backends/#capability-matrix) lists the differences.
 
 ---
