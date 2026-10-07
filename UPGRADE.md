@@ -998,7 +998,8 @@ Temporal one: the run starts on the cluster and the call returns at once. Withou
 executes in the calling process, within `budgetSeconds` (10 by default), and the request waits for
 it. This is a named difference with Temporal, listed in the backends page. A workflow that fails
 does not throw from `dispatchNewWorkflowRun()`, as on Temporal: the failure goes to the factory's
-logger. An undeclared workflow still throws `UndeclaredWorkflowException`. Nothing to migrate.
+logger. The in-memory journal ends with the request, so the log line is the only trace of that
+failure, and only when a logger is configured; on Temporal it also stays in the cluster history. An undeclared workflow still throws `UndeclaredWorkflowException`. Nothing to migrate.
 
 **What to do:** in an observer, catch the exception the start can still throw, and configure
 `durable/temporal/dsn` where a request must not wait.

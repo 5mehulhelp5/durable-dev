@@ -15,7 +15,7 @@ use Psr\Log\LoggerInterface;
  *
  * `MagentoRuntime::run()` does the work and bounds it with `budgetSeconds`. As on Temporal, where
  * the dispatch only starts the run, a run that fails does not throw from the dispatch: the failure
- * goes to the logger and stays in the journal. Only a start error throws, an undeclared workflow.
+ * goes to the logger. Only a start error throws, an undeclared workflow.
  * The resumes are no-ops: nothing else advances a run, and `run()` already drove it to its end.
  *
  * ponytail: it blocks the request, as `run()` does, up to `budgetSeconds`. That is the named

@@ -494,7 +494,7 @@ qui ne nomme pas le backend (voir [#931](https://github.com/gplanchat/durable-de
 ### Démarrer une exécution depuis un observateur Magento {#magento-start-blocks}
 
 `RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()` a la même signature et le même
-comportement en cas d'échec sur les deux backends Magento : un workflow qui échoue ne lève pas
+comportement en cas d'échec sur les backends mémoire et Temporal de Magento : un workflow qui échoue ne lève pas
 d'exception depuis l'appel, un workflow non déclaré en lève une. Une différence subsiste, nommée ici
 comme exception à la règle selon laquelle l'application se comporte de la même façon sur tous les
 backends. Sur Temporal, l'appel démarre l'exécution et rend la main. Sur le backend mémoire de
@@ -503,6 +503,10 @@ Magento, l'exécution s'effectue dans le processus appelant : la requête l'atte
 retient la requête pendant tout le budget. Rien d'autre ne peut faire avancer une exécution en
 mémoire, donc l'attente ne peut pas disparaître. Renseignez `durable/temporal/dsn` là où une requête
 ne doit pas attendre.
+
+Une seconde différence concerne l'échec que l'appel absorbe. Le journal en mémoire s'arrête avec la
+requête : la ligne de log est donc la seule trace de l'échec, et seulement si un logger est
+configuré. Sur Temporal, l'échec reste aussi dans l'historique du cluster.
 
 ---
 
