@@ -451,30 +451,28 @@ activités. Ce qui diffère, c'est ce que la plateforme autour peut offrir. Les 
 diffèrent que par la connexion sur laquelle elles reposent : leurs réponses concordent sur chaque
 ligne, sauf pour le transport et ce que l'hôte livre (signaux, mises à jour et service Nexus).
 
-La colonne Magento Database n'est pas un backend de la version courante. Son code est dans des pull
-requests en brouillon (épopée [#740](https://github.com/gplanchat/durable-dev/issues/740)), et rien
-n'en est sur `main`. Une cellule indique « pas encore » tant qu'une pull request n'est pas
-fusionnée ; les numéros nomment les brouillons qui portent une partie de la ligne. Un « pas
-encore » sans numéro n'a aucune pull request.
+La colonne Magento Database n'est pas un backend de la version courante. Son code est en cours de
+développement (épopée [#740](https://github.com/gplanchat/durable-dev/issues/740)), et rien n'en
+est sur `main`. Une cellule indique « pas encore » tant que la capacité n'est pas fusionnée.
 
 | Capacité | En mémoire | DBAL | Illuminate | Temporal | Magento Database |
 |---|---|---|---|---|---|
-| Activités, réessais, délais | ✅ | ✅ | ✅ | ✅ | pas encore (brouillons #963, #966, #1005) |
-| Minuteurs, effets de bord | ✅ | ✅ (délais Messenger) | ✅ (délais de la file) | ✅ | pas encore (brouillon #966) |
+| Activités, réessais, délais | ✅ | ✅ | ✅ | ✅ | pas encore |
+| Minuteurs, effets de bord | ✅ | ✅ (délais Messenger) | ✅ (délais de la file) | ✅ | pas encore |
 | Gestionnaires de signaux, de mises à jour et de requêtes dans un workflow | ✅ | ✅ | ✅ | ✅ | pas encore |
 | Envoi d'un signal ou d'une mise à jour depuis l'application | ✅ (message Symfony) | ✅ (message Symfony) | ❌ (Laravel n'en livre aucun) | ✅ (client ou message Symfony) | pas encore |
 | Résultat de la mise à jour renvoyé à l'appelant | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) | pas encore |
 | Lecture d'une requête depuis l'application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) | pas encore |
-| Workflows enfants | ✅ | ✅ | ✅ | ✅ | pas encore (brouillon #968) |
+| Workflows enfants | ✅ | ✅ | ✅ | ✅ | pas encore |
 | Cascade `ParentClosePolicy` | ✅ | ✅ | ✅ | ✅ (pilotée par le serveur) | pas encore |
 | Continue-as-new | ✅ | ✅ | ✅ | ✅ | pas encore |
 | Annulation avec compensation (le `RequestCancel` d'un parent) | ✅ | ✅ | ✅ | ✅ | pas encore |
 | Annulation demandée de l'extérieur | ❌ | ❌ | ❌ | ✅ | pas encore |
-| Survit au redémarrage du processus | ❌ | ✅ | ✅ | ✅ | pas encore (brouillons #958, #969) |
-| Sérialisation des tâches par exécution | sans objet (processus unique) | verrou applicatif | verrou applicatif | ✅ côté serveur | pas encore (brouillons #960, #988) |
+| Survit au redémarrage du processus | ❌ | ✅ | ✅ | ✅ | pas encore |
+| Sérialisation des tâches par exécution | sans objet (processus unique) | verrou applicatif | verrou applicatif | ✅ côté serveur | pas encore |
 | Attributs de recherche | journalisés seulement | journalisés seulement | journalisés seulement | ✅ indexés et interrogeables | pas encore |
 | Planifications cron | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ❌ pas d'ordonnanceur | ✅ | pas encore |
-| Rétention d'historique / API de visibilité | ❌ | votre table SQL | votre table SQL | ✅ | pas encore (brouillon #989) |
+| Rétention d'historique / API de visibilité | ❌ | votre table SQL | votre table SQL | ✅ | pas encore |
 | Appel d'une opération Nexus | ❌ | ❌ | ❌ | ✅ | pas encore |
 | Service d'une opération Nexus | ✅ avec `temporal.dsn` (Symfony) | ✅ avec `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) | pas encore |
 
@@ -507,8 +505,8 @@ défaut de Temporal.
 `max_activity_retries` fait exception. Sur le backend en mémoire et sur les backends à journal
 (DBAL, Illuminate), le worker resserre la `RetryLimit` de l'activité à ce plafond, et la plus
 stricte des deux s'applique ; à `0`, il ne plafonne rien. Sous Temporal, le cluster relance d'après
-la `RetryLimit` propre à l'activité et ne lit pas ce réglage : un plafond qui arrête une activité
-sur les autres backends la laisse réessayer sous Temporal.
+la `RetryLimit` propre à l'activité et ne lit pas ce réglage : une activité que le plafond
+arrête sur les autres backends continue de réessayer sous Temporal.
 
 Voir [Échecs et réessais](../failures/) et [Options](../options/#retrylimit).
 

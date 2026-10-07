@@ -425,29 +425,28 @@ is what the surrounding platform can offer. The two SQL columns differ only in t
 sit on, so their answers match on every row except the transport and what the host delivers
 (signals, updates and Nexus serving).
 
-The Magento Database column is not a backend of the current release. Its code is in draft pull
-requests (epic [#740](https://github.com/gplanchat/durable-dev/issues/740)), and none of it is on
-`main`. A cell reads "not yet" until a pull request merges; the numbers name the drafts that carry
-part of the row. A "not yet" with no number has no pull request.
+The Magento Database column is not a backend of the current release. Its code is in
+development (epic [#740](https://github.com/gplanchat/durable-dev/issues/740)), and none of it is
+on `main`. A cell reads "not yet" until the capability merges.
 
 | Capability | In-Memory | DBAL | Illuminate | Temporal | Magento Database |
 |---|---|---|---|---|---|
-| Activities, retries, timeouts | ✅ | ✅ | ✅ | ✅ | not yet (drafts #963, #966, #1005) |
-| Timers, side effects | ✅ | ✅ (Messenger delays) | ✅ (queue delays) | ✅ | not yet (draft #966) |
+| Activities, retries, timeouts | ✅ | ✅ | ✅ | ✅ | not yet |
+| Timers, side effects | ✅ | ✅ (Messenger delays) | ✅ (queue delays) | ✅ | not yet |
 | Signal, update and query handlers in a workflow | ✅ | ✅ | ✅ | ✅ | not yet |
 | Sending a signal or an update from the application | ✅ (Symfony message) | ✅ (Symfony message) | ❌ (Laravel delivers none) | ✅ (client or Symfony message) | not yet |
 | The update's result returned to the caller | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) | not yet |
 | Reading a query from the application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) | not yet |
-| Child workflows | ✅ | ✅ | ✅ | ✅ | not yet (draft #968) |
+| Child workflows | ✅ | ✅ | ✅ | ✅ | not yet |
 | `ParentClosePolicy` cascade | ✅ | ✅ | ✅ | ✅ (server-driven) | not yet |
 | Continue-as-new | ✅ | ✅ | ✅ | ✅ | not yet |
 | Cancellation with compensation (a parent's `RequestCancel`) | ✅ | ✅ | ✅ | ✅ | not yet |
 | Cancellation requested from outside | ❌ | ❌ | ❌ | ✅ | not yet |
-| Survives process restart | ❌ | ✅ | ✅ | ✅ | not yet (drafts #958, #969) |
-| Task serialisation per execution | n/a (single process) | application lock | application lock | ✅ server-side | not yet (drafts #960, #988) |
+| Survives process restart | ❌ | ✅ | ✅ | ✅ | not yet |
+| Task serialisation per execution | n/a (single process) | application lock | application lock | ✅ server-side | not yet |
 | Search attributes | journaled only | journaled only | journaled only | ✅ indexed and queryable | not yet |
 | Cron schedules | ❌ no scheduler | ❌ no scheduler | ❌ no scheduler | ✅ | not yet |
-| History retention / visibility API | ❌ | your SQL table | your SQL table | ✅ | not yet (draft #989) |
+| History retention / visibility API | ❌ | your SQL table | your SQL table | ✅ | not yet |
 | Calling a Nexus operation | ❌ | ❌ | ❌ | ✅ | not yet |
 | Serving a Nexus operation | ✅ with `temporal.dsn` (Symfony) | ✅ with `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) | not yet |
 
@@ -477,8 +476,8 @@ An activity with no attempt bound retries **indefinitely** on every backend, whi
 `max_activity_retries` is the exception. On the in-memory and journal backends (DBAL, Illuminate),
 the worker narrows the activity's own `RetryLimit` to that ceiling, and the stricter of the two
 applies; at `0` it caps nothing. On Temporal, the cluster retries from the activity's own
-`RetryLimit` and the setting is not read: a ceiling that stops an activity on the other backends
-leaves it retrying on Temporal.
+`RetryLimit` and the setting is not read: an activity that the ceiling stops on the other backends
+keeps retrying on Temporal.
 
 See [Failures and retries](../failures/) and [Options](../options/#retrylimit).
 
