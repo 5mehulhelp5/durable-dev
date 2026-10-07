@@ -1043,6 +1043,24 @@ the four new endings now continues, with the failure.
 the other backends. No Rector rule applies: the change is in what the history says, not in a
 signature.
 
+### An activity heartbeat timeout is refused on the journal backends (#977)
+
+`EventStoreCommandBuffer::scheduleActivity()` now throws `UnsupportedByBackendException` when the
+activity's `ActivityTimeouts::$heartbeat` is set. The InMemory, DBAL, Illuminate and Magento
+Database backends journaled that option and never read it: `NullActivityHeartbeatSender` returns
+false and no code compares the delay to a clock. Temporal sends it to the server and keeps
+accepting it. Runs already journaled with a heartbeat replay unchanged: only a new
+`scheduleActivity()` call is refused, because replay does not call it for an activity the journal
+already holds.
+
+**Who is affected:** code that passes a heartbeat timeout (`heartbeat:` in `#[Activities]`, or
+`new ActivityTimeouts(heartbeat: ...)`) on a deployment whose backend is not Temporal. The call
+fails when the workflow schedules the activity, and nothing is journaled for it.
+
+**What to do:** remove the option, or move the deployment to Temporal. No Rector rule applies: a
+rule cannot know whether the option is relied on, and removing it changes the behaviour on
+Temporal.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
