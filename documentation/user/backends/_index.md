@@ -425,26 +425,31 @@ is what the surrounding platform can offer. The two SQL columns differ only in t
 sit on, so their answers match on every row except the transport and what the host delivers
 (signals, updates and Nexus serving).
 
-| Capability | In-Memory | DBAL | Illuminate | Temporal |
-|---|---|---|---|---|
-| Activities, retries, timeouts | ✅ | ✅ | ✅ | ✅ |
-| Timers, side effects | ✅ | ✅ (Messenger delays) | ✅ (queue delays) | ✅ |
-| Signal, update and query handlers in a workflow | ✅ | ✅ | ✅ | ✅ |
-| Sending a signal or an update from the application | ✅ (Symfony message) | ✅ (Symfony message) | ❌ (Laravel delivers none) | ✅ (client or Symfony message) |
-| The update's result returned to the caller | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) |
-| Reading a query from the application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) |
-| Child workflows | ✅ | ✅ | ✅ | ✅ |
-| `ParentClosePolicy` cascade | ✅ | ✅ | ✅ | ✅ (server-driven) |
-| Continue-as-new | ✅ | ✅ | ✅ | ✅ |
-| Cancellation with compensation (a parent's `RequestCancel`) | ✅ | ✅ | ✅ | ✅ |
-| Cancellation requested from outside | ❌ | ❌ | ❌ | ✅ |
-| Survives process restart | ❌ | ✅ | ✅ | ✅ |
-| Task serialisation per execution | n/a (single process) | application lock | application lock | ✅ server-side |
-| Search attributes | journaled only | journaled only | journaled only | ✅ indexed and queryable |
-| Cron schedules | ❌ no scheduler | ❌ no scheduler | ❌ no scheduler | ✅ |
-| History retention / visibility API | ❌ | your SQL table | your SQL table | ✅ |
-| Calling a Nexus operation | ❌ | ❌ | ❌ | ✅ |
-| Serving a Nexus operation | ✅ with `temporal.dsn` (Symfony) | ✅ with `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) |
+The Magento Database column is not a backend of the current release. Its code is in draft pull
+requests (epic [#740](https://github.com/gplanchat/durable-dev/issues/740)), and none of it is on
+`main`. A cell reads "not yet" until a pull request merges; the numbers name the drafts that carry
+part of the row. A "not yet" with no number has no pull request.
+
+| Capability | In-Memory | DBAL | Illuminate | Temporal | Magento Database |
+|---|---|---|---|---|---|
+| Activities, retries, timeouts | ✅ | ✅ | ✅ | ✅ | not yet (drafts #963, #966, #1005) |
+| Timers, side effects | ✅ | ✅ (Messenger delays) | ✅ (queue delays) | ✅ | not yet (draft #966) |
+| Signal, update and query handlers in a workflow | ✅ | ✅ | ✅ | ✅ | not yet |
+| Sending a signal or an update from the application | ✅ (Symfony message) | ✅ (Symfony message) | ❌ (Laravel delivers none) | ✅ (client or Symfony message) | not yet |
+| The update's result returned to the caller | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::update()`) | not yet |
+| Reading a query from the application | ❌ | ❌ | ❌ | ✅ (`WorkflowClient::query()`) | not yet |
+| Child workflows | ✅ | ✅ | ✅ | ✅ | not yet (draft #968) |
+| `ParentClosePolicy` cascade | ✅ | ✅ | ✅ | ✅ (server-driven) | not yet |
+| Continue-as-new | ✅ | ✅ | ✅ | ✅ | not yet |
+| Cancellation with compensation (a parent's `RequestCancel`) | ✅ | ✅ | ✅ | ✅ | not yet |
+| Cancellation requested from outside | ❌ | ❌ | ❌ | ✅ | not yet |
+| Survives process restart | ❌ | ✅ | ✅ | ✅ | not yet (drafts #958, #969) |
+| Task serialisation per execution | n/a (single process) | application lock | application lock | ✅ server-side | not yet (drafts #960, #988) |
+| Search attributes | journaled only | journaled only | journaled only | ✅ indexed and queryable | not yet |
+| Cron schedules | ❌ no scheduler | ❌ no scheduler | ❌ no scheduler | ✅ | not yet |
+| History retention / visibility API | ❌ | your SQL table | your SQL table | ✅ | not yet (draft #989) |
+| Calling a Nexus operation | ❌ | ❌ | ❌ | ✅ | not yet |
+| Serving a Nexus operation | ✅ with `temporal.dsn` (Symfony) | ✅ with `temporal.dsn` (Symfony) | ❌ | ✅ (Symfony, Laravel, Magento) | not yet |
 
 `gplanchat/durable-magento` ships no signal or update delivery. On the journal backends, a signal
 or an update sent from the application is journaled, and the workflow's next pass handles it; the
@@ -465,12 +470,15 @@ does not name the backend (see [#931](https://github.com/gplanchat/durable-dev/i
 
 ---
 
-## Retry semantics are identical
+## Retry limits differ on one setting {#retry-semantics-are-identical}
 
 An activity with no attempt bound retries **indefinitely** on every backend, which is the Temporal default.
-The bundle's `max_activity_retries` still acts as a ceiling when an activity does not set its own,
-on the in-memory and DBAL backends; at `0` it caps nothing. On Temporal, the cluster retries from the
-activity's own `RetryLimit` and does not read the ceiling.
+
+`max_activity_retries` is the exception. On the in-memory and journal backends (DBAL, Illuminate),
+the worker narrows the activity's own `RetryLimit` to that ceiling, and the stricter of the two
+applies; at `0` it caps nothing. On Temporal, the cluster retries from the activity's own
+`RetryLimit` and the setting is not read: a ceiling that stops an activity on the other backends
+leaves it retrying on Temporal.
 
 See [Failures and retries](../failures/) and [Options](../options/#retrylimit).
 

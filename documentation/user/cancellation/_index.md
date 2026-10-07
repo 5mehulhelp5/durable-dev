@@ -97,6 +97,9 @@ awaitable at the same place. The workflow therefore takes the same branch on eve
 - **From outside, on Temporal.** Run `temporal workflow cancel`, or call
   `RequestCancelWorkflowExecution` from any client. The server records the request and reschedules a
   workflow task, which the worker then processes.
+- **From outside, on the other backends.** The application has no entry point to request a
+  cancellation on In-Memory, DBAL or Illuminate; the
+  [capability matrix](../backends/#capability-matrix) lists the row as unsupported there.
 
 ---
 
