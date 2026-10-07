@@ -323,8 +323,9 @@ previous one has finished, and a missed occurrence is **skipped**, never caught 
 Child workflows accept the same schedule through `ChildWorkflowOptions`.
 
 > [!NOTE]
-> Cron is a Temporal capability. The journal backends (in-memory, DBAL, Illuminate) have no scheduler: a child
-> workflow's `cronSchedule`, `namespace` or `taskQueue` raises `UnsupportedByBackendException` there.
+> Cron is a Temporal capability. The journal backends (in-memory, DBAL, Illuminate) have no
+> scheduler: a child workflow's `cronSchedule`, `namespace` or `taskQueue` fails with
+> `UnsupportedByBackendException` there.
 
 ---
 

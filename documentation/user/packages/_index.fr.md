@@ -610,8 +610,9 @@ contre Temporal, y compris pour le décompte des réessais, la classification de
 l'annulation et la compensation.
 
 Certaines capacités n'ont pas d'équivalent sur un backend. Nexus y échoue avec un message explicite ;
-le `namespace`, le `taskQueue` et le `cronSchedule` d'un workflow enfant lèvent
-`UnsupportedByBackendException`, et ses attributs de recherche sont enregistrés sans être exécutés. [Backends](../backends/#capability-matrix) liste les différences.
+le `namespace`, le `taskQueue` et le `cronSchedule` d'un workflow enfant échouent avec
+`UnsupportedByBackendException`, et ses attributs de recherche sont enregistrés sans être
+exécutés. [Backends](../backends/#capability-matrix) liste les différences.
 
 ---
 

@@ -331,8 +331,8 @@ Les workflows enfants acceptent la même planification par `ChildWorkflowOptions
 
 > [!NOTE]
 > Le cron est une capacité de Temporal. Les backends à journal (mémoire, DBAL, Illuminate) n'ont pas
-> d'ordonnanceur : le `cronSchedule`, le `namespace` ou le `taskQueue` d'un workflow enfant y lève
-> `UnsupportedByBackendException`.
+> d'ordonnanceur : le `cronSchedule`, le `namespace` ou le `taskQueue` d'un workflow enfant y échoue
+> avec `UnsupportedByBackendException`.
 
 ---
 

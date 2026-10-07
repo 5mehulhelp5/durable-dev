@@ -581,9 +581,9 @@ Every backend runs the **same fiber driver** and the **same activity execution p
 you tested in memory behaves the same way against DBAL or Temporal, including retry counting,
 failure classification, cancellation and compensation.
 
-Some capabilities have no equivalent on a backend. Nexus fails with an explicit message there; a child
-workflow's `namespace`, `taskQueue` and `cronSchedule` raise `UnsupportedByBackendException`, and its
-search attributes are recorded and not acted on.
+Some capabilities have no equivalent on a backend. Nexus fails with an explicit message there; a
+child workflow's `namespace`, `taskQueue` and `cronSchedule` fail with
+`UnsupportedByBackendException`, and its search attributes are recorded and not acted on.
 [Backends](../backends/#capability-matrix) lists the differences.
 
 ---

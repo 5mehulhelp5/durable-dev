@@ -994,18 +994,22 @@ signature.
 ### A child workflow's namespace, task queue and cron are refused on the journal backends (#977)
 
 `ChildWorkflowOptions::$namespace`, `$taskQueue` and `$cronSchedule` were written into the journal
-by the in-memory, DBAL and Illuminate backends and applied by none of them: the child ran in the
-parent's queue, once, with no schedule. `EventStoreCommandBuffer::scheduleChildWorkflow()` now throws
-`UnsupportedByBackendException` naming the option, and nothing is journaled. Temporal still applies
-all three. Search attributes and timeouts are not part of this change.
+by the four journal backends (InMemory, DBAL, Illuminate, Magento Database) and applied by none of
+them: the child ran in the parent's queue, once, with no schedule.
+`EventStoreCommandBuffer::scheduleChildWorkflow()` now throws `UnsupportedByBackendException` naming
+the option, and nothing is journaled. Temporal still applies all three. Search attributes and timeouts are not part of this change.
 
 **Who is affected:** code that passes one of the three options to `executeChildWorkflow()` while it
-runs on a journal backend, including tests on the in-memory backend of a workflow that targets
-Temporal in production.
+runs on one of those four backends, including tests on the in-memory backend of a workflow that
+targets Temporal in production.
 
-**What to do:** remove the option, or run that workflow on the Temporal backend. No Rector rule: a
-rule cannot tell whether your code relied on an option the journal ignored. Search your code for
-`new ChildWorkflowOptions(` and check each call for `namespace:`, `taskQueue:` and `cronSchedule:`.
+**What to do:** remove the option, or run that workflow on the Temporal backend. No Rector rule:
+whether your code depends on an option that no journal backend applied is not visible in the call.
+Search your code for `new ChildWorkflowOptions(` and check each call for `namespace:`, `taskQueue:`
+and `cronSchedule:`.
+
+Journals already written with these options replay unchanged: `ExecutionContext` skips
+`scheduleChildWorkflow()` when the journal already holds the scheduled child.
 
 ## 0.1.0-beta1
 
