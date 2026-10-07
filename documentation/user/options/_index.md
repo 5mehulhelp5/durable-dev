@@ -335,7 +335,9 @@ previous one has finished, and a missed occurrence is **skipped**, never caught 
 Child workflows accept the same schedule through `ChildWorkflowOptions`.
 
 > [!NOTE]
-> Cron is a Temporal capability. The in-memory backend has no scheduler and does not support it.
+> Cron is a Temporal capability. The journal backends (in-memory, DBAL, Illuminate, Magento Database) have
+> no scheduler: a child workflow's `cronSchedule`, `namespace` or `taskQueue` fails with
+> `UnsupportedByBackendException` there.
 
 ---
 
