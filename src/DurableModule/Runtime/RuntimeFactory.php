@@ -179,7 +179,14 @@ class RuntimeFactory
 
     private ?TemporalRuntimeAssembly $assembly = null;
 
-    /** Without a DSN: the one journal and catalog of this factory, so a run is found where it was started (#985). */
+    /**
+     * Without a DSN: the one journal and catalog of this factory, so a run is found where it was started (#985).
+     *
+     * Ceiling: the factory is shared across requests in a long-lived Magento worker, and nothing
+     * evicts. Every run, with its full event stream, and every catalogue row stay until the process
+     * ends. A second `run()` with an id already in the journal replays the recorded result instead
+     * of executing again. Bounding or clearing the journal is an open decision (#985).
+     */
     private ?InMemoryEventStore $memoryJournal = null;
 
     private ?InMemoryWorkflowRunCatalog $memoryCatalog = null;
