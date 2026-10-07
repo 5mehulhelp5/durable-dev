@@ -483,17 +483,36 @@ côté application.
 
 Aucun backend hors Temporal n'a d'ordonnanceur ou de frontière entre espaces de noms : cron et Nexus
 n'ont donc pas d'équivalent sur les trois autres. Nexus échoue explicitement, à une lacune près sur
-Laravel, décrite plus bas. Cron et les attributs de recherche non : les options d'un workflow enfant
-sont écrites au journal et rien ne les lit hors de Temporal, et les options de démarrage d'un
-workflow racine n'existent que sur le client Temporal. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus sans
-route ne voit jamais d'appel échouer : c'est un service qui ne reçoit jamais rien. Sur Symfony, le
-montage du conteneur échoue quand `durable.temporal.dsn` n'est pas renseigné. Sur Magento,
+Laravel, décrite plus bas. Le `namespace`, le `taskQueue` et le `cronSchedule` d'un workflow enfant
+échouent aussi explicitement : un backend à journal échoue avec `UnsupportedByBackendException` en
+nommant l'option. Les attributs de recherche font exception : ceux d'un workflow enfant sont écrits
+au journal et rien ne les lit hors de Temporal, et les options de démarrage d'un workflow racine
+n'existent que sur le client Temporal. Un *appel* Nexus échoue à l'appel. Un *gestionnaire* Nexus
+sans route ne voit jamais d'appel échouer : c'est un service qui ne reçoit jamais rien. Sur Symfony,
+le montage du conteneur échoue quand `durable.temporal.dsn` n'est pas renseigné. Sur Magento,
 `bin/magento durable:worker --role=nexus` échoue avec `A Nexus worker needs a cluster` quand
 `app/etc/env.php` n'a pas de DSN.
 Sur Laravel, rien n'échoue au démarrage. Hors de `temporal`, rien ne résout le registre Nexus : un
 gestionnaire listé dans `durable.nexus.handlers` ne lève rien et ne reçoit rien, et
 `php artisan durable:nexus-worker` se termine sur `Command "durable:nexus-worker" is not defined.`,
 qui ne nomme pas le backend (voir [#931](https://github.com/gplanchat/durable-dev/issues/931)).
+
+### Démarrer une exécution depuis un observateur Magento {#magento-start-blocks}
+
+`RuntimeFactory::resumeDispatcher()->dispatchNewWorkflowRun()` a la même signature et le même
+comportement en cas d'échec sur les backends mémoire et Temporal de Magento : un workflow qui échoue ne lève pas
+d'exception depuis l'appel, un workflow non déclaré en lève une. Une différence subsiste, nommée ici
+comme exception à la règle selon laquelle l'application se comporte de la même façon sur tous les
+backends. Sur Temporal, l'appel démarre l'exécution et rend la main. Sur le backend mémoire de
+Magento, l'exécution s'effectue dans le processus appelant : la requête l'attend, pendant
+`budgetSeconds` au plus (10 par défaut), et un workflow qui attend un signal ou un long minuteur
+retient la requête pendant tout le budget. Rien d'autre ne peut faire avancer une exécution en
+mémoire, donc l'attente ne peut pas disparaître. Renseignez `durable/temporal/dsn` là où une requête
+ne doit pas attendre.
+
+Une seconde différence concerne l'échec que l'appel absorbe. Le journal en mémoire s'arrête avec la
+requête : la ligne de log est donc la seule trace de l'échec, et seulement si un logger est
+configuré. Sur Temporal, l'échec reste aussi dans l'historique du cluster.
 
 ---
 
