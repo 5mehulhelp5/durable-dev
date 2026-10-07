@@ -999,6 +999,8 @@ termination left the parent waiting. Each of the four now settles the parent's a
 `DurableChildWorkflowFailedException`, the exception the journal backends raise. A child that
 failed used to reach the parent as a bare `RuntimeException('Child workflow failed')`; it now
 reaches it as that exception, which extends `RuntimeException` and carries the child's execution id.
+The history reader leaves `workflowFailureKind`, `workflowFailureClass` and `workflowFailureContext`
+empty on that exception, so on Temporal they differ from what the journal backends record.
 
 **Who is affected:** a workflow that awaits a child on Temporal and relies on the exception message
 or class. A `catch (\RuntimeException)` keeps working. A parent that used to wait for good on one of

@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\Api\Enums\V1\EventType;
 use Temporal\Api\History\V1\ChildWorkflowExecutionCanceledEventAttributes;
+use Temporal\Api\History\V1\ChildWorkflowExecutionCompletedEventAttributes;
 use Temporal\Api\History\V1\ChildWorkflowExecutionFailedEventAttributes;
 use Temporal\Api\History\V1\ChildWorkflowExecutionTerminatedEventAttributes;
 use Temporal\Api\History\V1\ChildWorkflowExecutionTimedOutEventAttributes;
@@ -32,19 +33,19 @@ use Temporal\Api\History\V1\StartChildWorkflowExecutionInitiatedEventAttributes;
 final class AChildThatEndsUnhappilySettlesItsParentTest extends TestCase
 {
     /**
-     * @return iterable<string, array{string}>
+     * @return iterable<string, array{string, string}>
      */
     public static function theUnhappyEndings(): iterable
     {
-        yield 'the child failed' => ['failed'];
-        yield 'the start was refused' => ['start_failed'];
-        yield 'the child timed out' => ['timed_out'];
-        yield 'the child was cancelled' => ['canceled'];
-        yield 'the child was terminated' => ['terminated'];
+        yield 'the child failed' => ['failed', 'failed'];
+        yield 'the start was refused' => ['start_failed', 'could not be started'];
+        yield 'the child timed out' => ['timed_out', 'timed out'];
+        yield 'the child was cancelled' => ['canceled', 'was cancelled'];
+        yield 'the child was terminated' => ['terminated', 'was terminated'];
     }
 
     #[DataProvider('theUnhappyEndings')]
-    public function testTheHistoryReportsTheChildAsFailedWithTheJournalsException(string $ending): void
+    public function testTheHistoryReportsTheChildAsFailedWithTheJournalsException(string $ending, string $wording): void
     {
         $history = TemporalExecutionHistory::fromEvents([$this->initiated('child-1'), $this->ending($ending, 'child-1')]);
 
@@ -53,10 +54,42 @@ final class AChildThatEndsUnhappilySettlesItsParentTest extends TestCase
         self::assertNotNull($outcome, 'the parent would wait for ever');
         self::assertInstanceOf(DurableChildWorkflowFailedException::class, $outcome->failed);
         self::assertSame('child-1', $outcome->failed->childExecutionId);
+        self::assertSame(\sprintf('Child workflow child-1 %s.', $wording), $outcome->failed->getMessage());
+    }
+
+    public function testARefusedStartBelongsToItsSlotWhenTheIdIsReused(): void
+    {
+        $history = TemporalExecutionHistory::fromEvents([
+            $this->initiated('child-1', 5),
+            $this->initiated('child-1', 6),
+            $this->ending('start_failed', 'child-1', 6),
+        ]);
+
+        self::assertNull($history->findChildWorkflowForSlot(0), 'slot 0 is still running');
+        self::assertInstanceOf(DurableChildWorkflowFailedException::class, $history->findChildWorkflowForSlot(1)?->failed);
+    }
+
+    public function testARefusedStartDoesNotOverwriteTheResultOfTheSlotThatUsedTheIdFirst(): void
+    {
+        $completed = new HistoryEvent();
+        $completed->setEventId(8);
+        $completed->setEventType(EventType::EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_COMPLETED);
+        $completed->setChildWorkflowExecutionCompletedEventAttributes(
+            (new ChildWorkflowExecutionCompletedEventAttributes())->setWorkflowExecution(new WorkflowExecution(['workflow_id' => 'child-1'])),
+        );
+        $history = TemporalExecutionHistory::fromEvents([
+            $this->initiated('child-1', 5),
+            $completed,
+            $this->initiated('child-1', 9),
+            $this->ending('start_failed', 'child-1', 9),
+        ]);
+
+        self::assertNull($history->findChildWorkflowForSlot(0)?->failed);
+        self::assertInstanceOf(DurableChildWorkflowFailedException::class, $history->findChildWorkflowForSlot(1)?->failed);
     }
 
     #[DataProvider('theUnhappyEndings')]
-    public function testTheParentsAwaitIsSettledOnReplay(string $ending): void
+    public function testTheParentsAwaitIsSettledOnReplay(string $ending, string $wording): void
     {
         $history = TemporalExecutionHistory::fromEvents([$this->initiated('child-1'), $this->ending($ending, 'child-1')]);
         $context = new ExecutionContext(
@@ -73,20 +106,20 @@ final class AChildThatEndsUnhappilySettlesItsParentTest extends TestCase
 
     // -------------------------------------------------------------------------
 
-    private function initiated(string $childWorkflowId): HistoryEvent
+    private function initiated(string $childWorkflowId, int $eventId = 5): HistoryEvent
     {
         $attrs = new StartChildWorkflowExecutionInitiatedEventAttributes();
         $attrs->setWorkflowId($childWorkflowId);
 
         $event = new HistoryEvent();
-        $event->setEventId(5);
+        $event->setEventId($eventId);
         $event->setEventType(EventType::EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED);
         $event->setStartChildWorkflowExecutionInitiatedEventAttributes($attrs);
 
         return $event;
     }
 
-    private function ending(string $ending, string $childWorkflowId): HistoryEvent
+    private function ending(string $ending, string $childWorkflowId, int $initiatedEventId = 5): HistoryEvent
     {
         $execution = new WorkflowExecution(['workflow_id' => $childWorkflowId]);
         $event = new HistoryEvent();
@@ -99,7 +132,7 @@ final class AChildThatEndsUnhappilySettlesItsParentTest extends TestCase
                 break;
             case 'start_failed':
                 $event->setEventType(EventType::EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_FAILED);
-                $event->setStartChildWorkflowExecutionFailedEventAttributes((new StartChildWorkflowExecutionFailedEventAttributes())->setWorkflowId($childWorkflowId));
+                $event->setStartChildWorkflowExecutionFailedEventAttributes((new StartChildWorkflowExecutionFailedEventAttributes())->setWorkflowId($childWorkflowId)->setInitiatedEventId($initiatedEventId));
                 break;
             case 'timed_out':
                 $event->setEventType(EventType::EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_TIMED_OUT);
