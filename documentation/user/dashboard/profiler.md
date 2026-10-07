@@ -32,8 +32,11 @@ filters.
 3. Read the **Summary** tab first: one row per execution, with its execution id, type, outcome and
    number of events.
 
-The **Executions** tab opens each execution: its event history, its Nexus operations, its journal
-timeline and its process trace. The **Overview** tab draws every process on one time frame and
+The **Executions** tab opens each execution: its event history, its Nexus operations, its timeline
+and its process trace. The timeline is the one the run pages draw, with one line per action, the
+wait for a worker hatched and the failing interval in red (see [Read a run](../reading-a-run/)).
+The process trace shows the time this process spent on the run during the request, which the
+journal does not record. The **Overview** tab draws every process on one time frame and
 lists the Messenger dispatches of the request.
 
 ## Load a journal the request did not dispatch
@@ -61,9 +64,6 @@ queued: with an asynchronous transport, the handler has not run in this process.
 - **Wording.** The outcome column uses the words of the other dashboards, and adds three states that
   are not outcomes: Queued (no journal yet), Pending and Cancellation requested. The panel is in
   English only.
-- **Timeline.** One row per event, in journal order. Queue time is not hatched and a failed event
-  is not painted red.
-- **Payloads.** They are masked like the dashboard's, and always shown open.
 - **Limits.** 500 events per journal, and a warning when a Nexus operations table is cut.
 
 [Parity](../parity/) lists every difference.

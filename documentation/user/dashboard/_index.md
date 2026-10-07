@@ -52,8 +52,7 @@ On Sylius and Filament, the list can also be filtered by workflow name (the whol
 start of the execution id. Both are exact about case and take `%` and `_` literally. They show only
 where the backend can apply them. On Temporal, that means [turning on its search
 attributes](../backends/#register-durables-search-attributes); without them, the page filters by
-outcome only. The Magento grid offers its own text filters on workflow name, execution id and run
-id: the workflow name filter ignores case, the two id filters match the text as typed, and each looks for it anywhere in the value, among the runs of its window.
+outcome only. The Magento grid offers the same two filters, and one on the backend run id that follows the rule of the execution id. It applies them to the runs of its window, so they show whatever the backend.
 
 A **continued-as-new** run is not a failure. It is a normal ending: the component treats it as a
 fresh execution, and the run that handed over finished without error. Painting both alike would put

@@ -27,6 +27,9 @@ Durable**. La page est en lecture seule.
 
 - **L'état du backend**, au-dessus de tout, daté, avec une ligne par rôle de worker quand Temporal
   tient le [journal](../../glossary/) (les étapes enregistrées d'une exécution et leurs résultats).
+  Sous le backend DBAL, une ligne affiche « Impossible de demander » : Messenger ne tient aucune
+  liste des processus qui lancent `bin/console durable:worker`. Le backend en mémoire n'affiche
+  aucune ligne de worker.
 - **Des compteurs** par issue, avec un nombre **En attente d'un worker**, sur les exécutions de la
   page.
 - **Un filtre** sur l'issue, et sur le nom du workflow et le début de l'identifiant d'exécution là
