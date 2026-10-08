@@ -72,6 +72,13 @@ Magento grid, whose backends are the in-memory one, empty from the admin, and Te
 [Upgrading](https://github.com/gplanchat/durable-dev/blob/main/UPGRADE.md) to add the column to a
 table created before it existed.
 
+After the first pickup, the journal backends record each wait for a worker as events, as Temporal
+does: `WorkflowTaskScheduled` when a resume is dispatched, `WorkflowTaskStarted` when a worker takes
+it, `WorkflowTaskCompleted` when the pass ends. On the run's line, the interval from scheduled to
+started is the hatched wait described under section 4. The first task of a run has no
+`WorkflowTaskScheduled`: the application dispatches it through `dispatchNewWorkflowRun()`, which
+writes nothing to the journal, and the `waiting for a worker` line above covers that first wait.
+
 A running run also says **what it waits on**, as of its last suspension:
 `waiting on timer "grace period" due at 2026-09-24T10:00:00+00:00`,
 `waiting on activity charge attempt 2 in flight`, or `waiting on condition at src/…/OrderWorkflow.php:42`.

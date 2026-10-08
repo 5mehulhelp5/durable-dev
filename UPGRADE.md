@@ -1227,6 +1227,35 @@ A decorator forwards the call to the store it wraps. No Rector rule covers this:
 the storage. Run `WorkflowMetadataStoreConformanceTestCase` against your store; the two new
 `testInsertingIfAbsent*` cases check the method.
 
+### The journal records workflow tasks (#850)
+
+**Who is affected**: an application that reads the journal and lists its event types or counts its
+events, a test that asserts the exact sequence of a run's events after a resume, and a deployment
+where an older Durable version reads a journal that a newer one writes.
+
+The resume handler now appends `WorkflowTaskStarted` when a worker takes a resume and
+`WorkflowTaskCompleted` when the pass ends. Each place that dispatches a plain resume (activity
+outcome, timer, signal, update, child, parent close, and the pass's own follow-up) first appends
+`WorkflowTaskScheduled`, unless the last task event of the run is already a `WorkflowTaskScheduled`.
+`dispatchResumeAwaiting()` writes nothing, and neither does a `dispatchNewWorkflowRun()` that your
+own code calls to start a run, so the first task of a run has no `WorkflowTaskScheduled`. The in-memory test harness drives passes
+without a queue and writes none of the three. A run costs three more events per pass.
+
+`EventDataMapper::toDomainEvent()` throws `Unknown event type` for these classes on an older
+version. **Upgrade every reader (dashboards, `durable:execution:diagnose`, the profiler, any worker
+that replays) before the writers**, then upgrade the workers that run `ResumeWorkflowHandler`.
+`DeliverWorkflowUpdateHandler` takes the journal as a required second argument,
+`__construct(WorkflowResumeDispatcher $resumeDispatcher, EventStoreInterface $eventStore)`. The
+bundle passes it. No Rector rule: the argument is a service of your application, which a rewrite
+cannot name. If you build the handler yourself (a custom container definition or a test), add the
+event store you already pass to `DeliverWorkflowSignalHandler` as the second argument. The Laravel
+and Magento hosts do not build this handler. A custom `EventStoreInterface`
+needs no change: it stores the event class and payload like any other event.
+
+**What to do:** in a test, filter the three classes out of the sequence you compare, or add them
+where the run passes through a worker. Journals written before this change replay as they did.
+No Rector rule: no signature changes.
+
 ## 0.1.0-beta1
 
 ### A failed retry enqueue is sent again; journals gain `ActivityRetryQueued` (#590)
