@@ -39,7 +39,8 @@ line is the run itself.
 - **Red marks the event that failed.** An activity that failed twice and then succeeded carries
   red and ends well. A cancellation is not red.
 - **The name on the row** is the name of the activity, the child workflow or the operation. A timer
-  is named by its delay.
+  is named by its delay. The run's own line carries the workflow's name. A long name wraps onto a
+  second line.
 
 
 ![A run page: the hatched stretch of reserveStock is queue time, and the timer that follows is pending](/images/dashboard/sylius-run.png)
@@ -50,7 +51,7 @@ line is the run itself.
 
 *Order/4243 on Sylius. The event that failed is red, and the run ends as failed.*
 
-The web profiler does not draw this timeline: it lists one row per event.
+The web profiler draws the same timeline for each run of the request it profiles.
 
 ## The events
 

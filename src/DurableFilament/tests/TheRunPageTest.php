@@ -40,6 +40,16 @@ final class TheRunPageTest extends PanelTestCase
             ->assertSee('&quot;amount&quot;: 42', false);
     }
 
+    public function testTheWaitIsTranslatedFromItsKey(): void
+    {
+        $this->app->setLocale('fr');
+
+        $this->get('/admin/durable/run?executionId=order-1')
+            ->assertOk()
+            ->assertSee('En attente de payment-received')
+            ->assertDontSee('waiting on payment-received');
+    }
+
     public function testAnUnknownRunIsSaidAsSuch(): void
     {
         $this->get('/admin/durable/run?executionId=nope')
@@ -111,7 +121,9 @@ final class TheRunPageTest extends PanelTestCase
             ->assertOk()
             ->assertSee('durable-frieze-bar activity waiting', false)
             ->assertSee('left: 25.000%; width: 50.000%', false)
-            ->assertSee('Hatched: waiting to be picked up');
+            ->assertSee('Hatched: waiting to be picked up')
+            // #850: a long name wraps instead of losing its end ("fraud review hold (4320 min …").
+            ->assertSee('.durable-frieze-name { flex: 0 0 12rem; text-align: end; font-size: .82rem; line-height: 1.2; overflow-wrap: anywhere; }', false);
     }
 
     public function testTheRunPageMasksWithTheApplicationRedactor(): void

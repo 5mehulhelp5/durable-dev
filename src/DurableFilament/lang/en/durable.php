@@ -6,12 +6,29 @@ return [
     'navigation' => 'Durable runs',
     'backend' => [
         'checked' => ':name · checked at :time',
+        'not_configured' => 'No readable durable backend is configured for this application.',
+        'sql' => ['answers' => 'The SQL database answers.', 'unreachable' => 'The SQL database is unreachable: :error'],
+        'database' => ['answers' => 'The database answers.', 'unreachable' => 'The database is unreachable: :error'],
+        'temporal' => ['connected' => 'Connected to Temporal namespace ":namespace".', 'unreachable' => 'Temporal namespace ":namespace" is unreachable: :error'],
+        'memory' => ['ephemeral' => 'The in-memory catalog answers, and it only ever sees runs from this process: an empty list means nothing ran here, not that nothing ran. Configure a backend that records outside this process, a SQL database or a Temporal cluster, to read the runs of every other one.'],
     ],
     'outcomes_heading' => 'Outcomes across the :count runs on this page',
     'kpi' => [
         'waiting_for_worker' => 'Waiting for a worker',
     ],
+    'workers' => [
+        'state' => [
+            'polled' => 'Polled',
+            'missing' => 'No poller',
+            'unknown' => 'Could not ask',
+        ],
+        'polling' => 'The :role worker is polling.',
+        'missing' => 'No :role worker has polled in :seconds seconds: executions stop at their first :role task. Start php artisan durable:temporal-worker --role=:role.',
+        'unknown' => 'Could not ask the backend whether a :role worker polls: :error',
+        'queue_unlisted' => 'Laravel\'s queue keeps no list of the processes that run php artisan queue:work.',
+    ],
     'status' => [
+        'all' => 'All',
         'running' => 'Running',
         'completed' => 'Completed',
         'failed' => 'Failed',
@@ -19,6 +36,7 @@ return [
         'continued_as_new' => 'Continued as new',
     ],
     'filter' => [
+        'outcome' => 'Outcome',
         'workflow_name' => 'Workflow name',
         'execution_id_prefix' => 'Execution id starts with',
         'submit' => 'Filter',
@@ -37,6 +55,8 @@ return [
         'next' => 'Next page',
     ],
     'run' => [
+        'waiting_for_worker' => 'waiting for a worker · :elapsed',
+        'waiting_on' => 'waiting on :reason',
         'title' => 'Workflow run',
         'back' => 'Back to the runs',
         'not_found' => 'No run with this id on this backend.',
