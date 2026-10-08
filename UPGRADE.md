@@ -1166,6 +1166,38 @@ configure `durable.temporal.dsn` are not affected.
   `JsonGatewayWorkflowServiceClient` still throw Messenger's `TransportException`, so a caller of
   the Temporal client changes nothing.
 
+### `durable-rector`: `Workflow::getVersion()` becomes `version()` (#894)
+
+The `temporal-sdk` set rewrites `yield Workflow::getVersion($changeId, $min, $max)` to
+`$this->environment->version($changeId, $min, $max)`, with positional or named arguments, and no
+`await()` around it. Until now, `UnmigratableTemporalCallRector` marked every `getVersion()` call
+as having no equivalent, and the facade rule wrapped a yielded call in `await()`. In a workflow
+class, `Workflow::DEFAULT_VERSION` becomes `ChangePoint::DEFAULT_VERSION`, with a
+`use Gplanchat\Durable\Versioning\ChangePoint;` import. Both constants are `-1`.
+
+`gplanchat/durable-rector` now requires `rector/rector` `^2.4.7`, the first version with the
+import API the rule uses.
+
+Three shapes stay as written and get a `durable-rector:` marker:
+
+- a `getVersion()` call with a number of arguments other than three;
+- a `getVersion()` call that is not yielded where it is made: the SDK returns a promise there, and
+  `version()` returns the int;
+- a reference to `Workflow::DEFAULT_VERSION` outside a workflow class.
+
+**Who is affected:** a project that migrates off the Temporal PHP SDK with the `temporal-sdk` set,
+and whose workflows call `Workflow::getVersion()`.
+
+**What to do:** update `rector/rector` to 2.4.7 or later, then run the set again. At each marker,
+write the call by hand. One runtime case differs: a run that went past the point before the call
+existed and has no recorded work after it, for example one waiting only on a condition or a
+signal, gets `$maxSupported` from `version()`, where the SDK returns `DEFAULT_VERSION`. The
+docblock of `ExecutionContext::version()` describes this limit.
+
+A `Workflow::getVersion() — no equivalent yet` marker written by an earlier run of the set is
+removed where the set rewrites the call to `version()`, and replaced by the new marker where the
+call stays unmapped. Other comments on the statement stay.
+
 ### `WorkflowMetadataStore` gains `insertIfAbsent()` (#946)
 
 **Who is affected**: only whoever **implements** `WorkflowMetadataStore` (a custom store, or a test
