@@ -14,7 +14,7 @@ when a gap closes.
 | | Sylius | Magento | Filament | Web profiler |
 | --- | --- | --- | --- | --- |
 | Runs listed | All | The 200 most recent | All | Those seen in one request, plus 20 named in `durable_execution` at most |
-| Backend state | 4 states, 3 of them dated | 3 states, the in-memory one undated | 4 states, 3 of them dated | None |
+| Backend state | 4 states, 3 of them dated | 3 states, all dated | 4 states, 3 of them dated | None |
 | Counters | Per outcome, over the page | Per outcome, over the window | Per outcome, over the page | None |
 | Outcome filter | Yes | Yes | Yes | No |
 | Workflow name filter | Whole name, where the backend can | Whole name, within the window | Whole name, where the backend can | No |
@@ -25,7 +25,7 @@ when a gap closes.
 | Hatched queue time | Yes | Yes | On the timeline | Yes |
 | Red on the failing event | Yes | Yes | On the timeline | Yes |
 | Nexus operations table | Yes | Yes | Yes | Yes |
-| Worker presence | Yes | Yes, journal and activity | Yes, workflow and activity | No |
+| Worker presence | Per role on Temporal, "Could not ask" on DBAL, none in memory | Journal and activity on Temporal, none in memory | Workflow and activity on Temporal, "Could not ask" on Illuminate, none in memory | No |
 | Payload masking | Folded | Folded | Folded | Folded |
 | Languages | English, French | English, French | English, French | English |
 

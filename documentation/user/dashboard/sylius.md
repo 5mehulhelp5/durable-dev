@@ -26,7 +26,9 @@ Dashboard**. The page is read-only.
 ## What the page offers
 
 - **The backend state**, above everything, dated, and one line per worker role when Temporal holds
-  the [journal](../../glossary/) (the recorded steps of an execution and their results).
+  the [journal](../../glossary/) (the recorded steps of an execution and their results). On the
+  DBAL backend, one line reads "Could not ask": Messenger keeps no list of the processes that run
+  `bin/console durable:worker`. The in-memory backend shows no worker line.
 - **Counters** per outcome, with a **Waiting for a worker** count, over the runs on the page.
 - **A filter** on outcome, and on workflow name and execution id prefix where the backend can apply
   them.
