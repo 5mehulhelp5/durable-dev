@@ -1142,6 +1142,30 @@ Temporal environment loads. If you relied on it to split work between two groups
 journal backend, that split never happened. No Rector rule applies: nothing in the code tells
 whether the queue was relied on.
 
+### Changed: the gRPC unary client moves to `gplanchat/grpc-client`
+
+`GrpcTransport`, `GrpcWire`, `CurlGrpcTransport` and `GuzzleGrpcTransport` leave the Temporal bridge
+for a package of their own, `gplanchat/grpc-client`, which the bridge now requires. The package
+has no Temporal or Messenger dependency: it sends one unary call over HTTP/2 and reads the status
+from the trailers.
+
+**Who is affected:** code that names these four classes, or that catches the exception of a
+transport obtained from `WorkflowServiceClientFactory::createTransport()`. Applications that only
+configure `durable.temporal.dsn` are not affected.
+
+**What to do:**
+
+- Run the Rector set `durable-upgrade.php`: it renames the four classes
+  (`Gplanchat\Bridge\Temporal\Grpc\GrpcTransport` and `Gplanchat\Bridge\Temporal\Http\{GrpcWire,CurlGrpcTransport,GuzzleGrpcTransport}`
+  become `Gplanchat\GrpcClient\...`).
+- Rector does not change constructor arguments. `CurlGrpcTransport` and `GuzzleGrpcTransport` now
+  take a `Gplanchat\GrpcClient\GrpcEndpoint`. Pass `$connection->endpoint()` where you passed the
+  `TemporalConnection`; the same goes for `CurlGrpcTransport::tlsOptions()`.
+- A transport now throws `Gplanchat\GrpcClient\GrpcException` (a `\RuntimeException`, the gRPC status
+  code as its code, the server message in `statusMessage`). `GrpcWorkflowServiceClient` and
+  `JsonGatewayWorkflowServiceClient` still throw Messenger's `TransportException`, so a caller of
+  the Temporal client changes nothing.
+
 ### `durable-rector`: `Workflow::getVersion()` becomes `version()` (#894)
 
 The `temporal-sdk` set rewrites `yield Workflow::getVersion($changeId, $min, $max)` to
