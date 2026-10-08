@@ -105,7 +105,10 @@
                                 <td style="white-space: nowrap"><x-filament::badge :color="\Gplanchat\Durable\Filament\StatusColor::of($run['status'])" style="min-width: max-content">{{ $t('status.' . $run['status']) }}</x-filament::badge></td>
                                 {{-- An absent fact in a table is an em dash (DUR049). --}}
                                 <td style="white-space: nowrap">{{ isset($run['startedAt']) ? $run['startedAt']->format('Y-m-d H:i:s') : '—' }}</td>
-                                <td>{{ implode(' · ', array_filter([$run['waitingForWorker'] ?? null, $run['waitingOn'] ?? null])) }}</td>
+                                <td>{{ implode(' · ', array_filter([
+                                    isset($run['waitingForWorker']) ? \Gplanchat\Durable\Filament\CoreMessage::say($run['localizedWaitingForWorker'] ?? null, $run['waitingForWorker']) : null,
+                                    isset($run['waitingOn']) ? \Gplanchat\Durable\Filament\CoreMessage::say($run['localizedWaitingOn'] ?? null, $run['waitingOn']) : null,
+                                ])) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
