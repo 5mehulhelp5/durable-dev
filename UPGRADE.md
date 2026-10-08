@@ -957,8 +957,13 @@ retry policy. An undecodable payload (#775) stays retryable, since its key can c
 When a Nexus operation handler throws, a non-JSON input included, the Nexus worker still answers a
 retryable `INTERNAL` error with the message only. It now also logs it.
 
-Both log an `error` record whose `exception` is the original error, with its stack trace, and whose
-`event_id` is `null`. The activity record also carries `activity_id`.
+Both log an `error` record whose `exception` is the original error, with its stack trace, whose
+`event_id` is `null` and whose `rpc` is the answer sent (`RespondActivityTaskFailed` or
+`RespondNexusTaskFailed`). The activity record also carries `workflow_id`, `run_id` and
+`activity_id`, since an `activity_id` is unique only within its workflow. The Nexus record carries
+`service`, `operation` and `request_id`. The undecodable-payload records (#936, #939) name their
+task the same way: a Nexus task gets `service` and `operation`, and `request_id` for a start
+request, and an activity task gets `workflow_id` and `run_id` besides `activity_id` (#949).
 
 `TemporalActivityWorker` gains an optional sixth constructor argument, and `TemporalNexusWorker` an
 optional fourth one, `?LoggerInterface $logger`. The Symfony bundle, the Laravel provider and the
